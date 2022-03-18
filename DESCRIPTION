@@ -45,6 +45,8 @@ Imports:
 	SummarizedExperiment, 
 	S4Vectors,
 	NxtIRFdata
+Remotes:
+	alexchwong/ompBAM
 LinkingTo: 
     ompBAM,
     Rcpp,

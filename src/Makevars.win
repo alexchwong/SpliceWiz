@@ -1,0 +1,7 @@
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) 
+PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS)
+
+ZLIB_CFLAGS+=$(shell echo 'zlibbioc::pkgconfig("PKG_CFLAGS")'|\
+    "${R_HOME}/bin/R" --vanilla --slave)
+PKG_LIBS+=$(shell echo 'zlibbioc::pkgconfig("PKG_LIBS_shared")' |\
+    "${R_HOME}/bin/R" --vanilla --slave)

@@ -67,7 +67,6 @@ SE_charbound <- function(idx, txt, fmt) {
     idx
 }
 
-#' @export
 idxstats <- function(bam_file, n_threads) {
     idxstats_pbam(bam_file, n_threads)
 }

@@ -1,6 +1,6 @@
 Package: SpliceWiz
 Title: Exploration of differential alternative splicing events in splice-aware 
-  alignment BAM files.
+  alignment BAM files
 Version: 0.99.0
 Authors@R: c(person("Alex Chit Hei", "Wong", email="a.wong@centenary.org.au", 
 		role=c("aut", "cre", "cph")),
@@ -21,7 +21,7 @@ License: MIT + file LICENSE
 Imports:
 	methods, stats, utils, tools, parallel,
 	magrittr,
-	Rcpp (>= 1.0.5), zlibbioc,
+	Rcpp (>= 1.0.5),
 	data.table,
 	fst,
 	ggplot2,

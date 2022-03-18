@@ -2,6 +2,6 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 idxstats_pbam <- function(bam_file, n_threads_to_use = 1L) {
-    .Call('_SpliceWiz_idxstats_pbam', PACKAGE = 'SpliceWiz', bam_file, n_threads_to_use)
+    .Call(`_SpliceWiz_idxstats_pbam`, bam_file, n_threads_to_use)
 }
 

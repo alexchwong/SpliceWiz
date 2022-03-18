@@ -1,19 +1,64 @@
 Package: SpliceWiz
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
-Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
-Imports: 
-    Rcpp,
-    zlibbioc
+Title: Exploration of differential alternative splicing events in splice-aware 
+  alignment BAM files.
+Version: 0.99.0
+Authors@R: c(person("Alex Chit Hei", "Wong", email="a.wong@centenary.org.au", 
+		role=c("aut", "cre", "cph")),
+	person("Ulf", "Schmitz", role=c("ctb")),
+	person("William", "Ritchie", role=c("cph")))
+Description: Reads and fragments aligned to splice junctions can be used to
+    quantify alternative splicing events (ASE). However, overlapping ASEs can
+	confound their quantification. SpliceWiz quantifies ASEs, calculating
+	percent-spliced-in (PSI) using junction reads, and intron retention using
+	IRFinder-based quantitation. Novel filters identify ASEs that are relatively
+	less confounded by overlapping events, whereby PSIs can be calculated with
+	higher confidence. SpliceWiz is ultra-fast, using multi-threaded processing
+	of BAM files. It can be run using a graphical user or command line 
+	interfaces. GUI-based interactive visualization of differential ASEs,
+	including novel group-based RNA-seq coverage visualization, simplifies
+	short-read RNA-seq analysis in R.
+License: MIT + file LICENSE
+Imports:
+	methods, stats, utils, tools, parallel,
+	magrittr,
+	Rcpp (>= 1.0.5), zlibbioc,
+	data.table,
+	fst,
+	ggplot2,
+	AnnotationHub, 
+	BiocFileCache,
+	BiocGenerics,
+	BiocParallel,
+	Biostrings, 
+	BSgenome,
+	DelayedArray,
+	DelayedMatrixStats,
+	genefilter,
+	GenomeInfoDb,
+	GenomicRanges,
+	HDF5Array,
+	IRanges,
+	plotly,
+	R.utils,
+	rhdf5,
+	rtracklayer,
+	SummarizedExperiment, 
+	S4Vectors,
+	NxtIRFdata
 LinkingTo: 
     ompBAM,
     Rcpp,
-    zlibbioc
+    zlibbioc, 
+	RcppProgress
+SystemRequirements: C++11
+Collate: AllImports.R
+	RcppExports.R
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
+VignetteBuilder: knitr
+biocViews: Software, Transcriptomics, RNASeq, AlternativeSplicing, Coverage, 
+  DifferentialSplicing
+URL: https://github.com/alexchwong/SpliceWiz
+BugReports: https://support.bioconductor.org/
+Config/testthat/edition: 3

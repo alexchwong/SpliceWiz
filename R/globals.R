@@ -188,3 +188,42 @@ dash_withProgress <- function(expr, min = 0, max = 1,
         eval(expr, env)
     }
 }
+
+# GUI specific functions
+
+update_data_frame <- function(existing_df, new_df) {
+    # add extra samples to existing df
+    DT1 = as.data.table(existing_df)
+    DT2 = as.data.table(new_df)
+
+    common_cols = intersect(names(DT1)[-1], names(DT2)[-1])
+    new_cols = names(DT2)[!(names(DT2) %in% names(DT1))]
+
+    if(!all(DT2$sample %in% DT1$sample)) {
+        DT_add = DT2[!(sample %in% DT1$sample)]
+        if(length(new_cols) > 0) DT_add = DT_add[, c(new_cols) := NULL]
+        newDT = rbind(DT1, DT_add, fill = TRUE)
+    } else {
+        newDT = copy(DT1)
+    }
+
+    if(length(new_cols) > 0) {
+        DT_tomerge = copy(DT2)
+        if(length(common_cols) > 0) {
+            DT_tomerge[, c(common_cols) := NULL]
+        }
+        newDT = merge(newDT, DT_tomerge, all = TRUE, by = "sample")
+    }
+
+    # now update conflicting values
+    if(length(common_cols) > 0 & any(DT2$sample %in% DT1$sample)) {
+        DT_toupdate = DT2[(sample %in% DT1$sample)]
+        if(length(new_cols) > 0) {
+            DT_toupdate = DT_toupdate[, c(new_cols) := NULL]
+        }
+        newDT[DT_toupdate, on = .(sample), 
+            (common_cols) := mget(paste0("i.", common_cols))]
+    }
+    return(as.data.frame(newDT))
+}
+

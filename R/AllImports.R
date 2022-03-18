@@ -35,7 +35,7 @@
 #' @importFrom IRanges IRanges Views RleList
 #' @importFrom plotly config layout plotlyOutput event_data ggplotly 
 #' @importFrom plotly plotlyProxy plotlyProxyInvoke renderPlotly subplot 
-#' @importFrom plotly highlight
+#' @importFrom plotly highlight orca
 #' @importFrom rhdf5 h5createFile h5createDataset h5delete h5write h5createGroup
 #' @importFrom rtracklayer import export TwoBitFile track
 #' @importFrom S4Vectors metadata Rle metadata<- SimpleList 
@@ -47,6 +47,24 @@
 #' @importFrom SummarizedExperiment assayNames assayNames<-
 #' @importClassesFrom S4Vectors DataFrame 
 #' @importClassesFrom SummarizedExperiment SummarizedExperiment
+#' @import shiny
+#' @import shinydashboard
+#' @importFrom shinyFiles getVolumes parseDirPath parseFilePaths parseSavePath
+#' @importFrom shinyFiles shinyDirButton shinyDirChoose shinyFileChoose
+#' @importFrom shinyFiles shinyFilesButton shinyFileSave shinySaveButton
+#' @importFrom shinyWidgets sliderTextInput updateSliderTextInput
+#' @importFrom shinyWidgets radioGroupButtons updateRadioGroupButtons
+#' @importFrom shinyWidgets switchInput actionBttn
+#' @importFrom shinyWidgets sendSweetAlert ask_confirmation
+#' @importFrom rhandsontable rhandsontable hot_to_r
+#' @importFrom rhandsontable renderRHandsontable rHandsontableOutput
+#' @importFrom stats runif na.omit prcomp
+#' @importFrom DT datatable selectRows dataTableProxy  
+#' @importFrom grDevices colorRampPalette
+#' @importFrom heatmaply heatmaply
+#' @importFrom matrixStats colVars
+#' @importFrom RColorBrewer brewer.pal.info
+#' @importFrom XML getHTMLLinks
 NULL
 
 # Import namespaces of internal functions of BiocGenerics and S4Vectors

@@ -44,9 +44,20 @@ Imports:
 	rhdf5,
 	rtracklayer,
 	SummarizedExperiment, 
-	S4Vectors
+	S4Vectors,
+	shiny,
+	shinyFiles,
+	shinyWidgets,
+	shinydashboard,
+	rhandsontable,
+	DT,
+	grDevices,
+	heatmaply,
+	matrixStats,
+	RColorBrewer,
+	XML
 Suggests: 
-    knitr, rmarkdown, pheatmap, shiny, openssl, crayon, egg,
+    knitr, rmarkdown, pheatmap, openssl, crayon, egg,
     DESeq2, limma, DoubleExpSeq, Rsubread, testthat (>= 3.0.0)
 Remotes:
 	alexchwong/ompBAM
@@ -78,6 +89,24 @@ Collate: AllImports.R
 	MakeSE.R
 	Filters.R
 	ASE-methods.R
+	dash_filterModules.R
+	dash_globals.R
+	dash_settings.R
+	dash_ref_new_ui.R
+	dash_ref_new_server.R
+	dash_expr_ui.R
+	dash_expr_server.R
+	dash_QC.R
+	dash_filters.R
+	dash_DE_ui.R
+	dash_DE_server.R
+	dash_vis_ui.R
+	dash_vis_server.R
+	dash_cov_ui.R
+	dash_cov_server.R
+	dash_ui.R
+	dash_server.R
+	dash.R
 	SpliceWiz-package.R
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

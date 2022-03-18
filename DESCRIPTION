@@ -18,6 +18,7 @@ Description: Reads and fragments aligned to splice junctions can be used to
 	including novel group-based RNA-seq coverage visualization, simplifies
 	short-read RNA-seq analysis in R.
 License: MIT + file LICENSE
+Depends: NxtIRFdata
 Imports:
 	methods, stats, utils, tools, parallel,
 	magrittr,
@@ -43,8 +44,7 @@ Imports:
 	rhdf5,
 	rtracklayer,
 	SummarizedExperiment, 
-	S4Vectors,
-	NxtIRFdata
+	S4Vectors
 Suggests: 
     knitr, rmarkdown, pheatmap, shiny, openssl, crayon, egg,
     DESeq2, limma, DoubleExpSeq, Rsubread, testthat (>= 3.0.0)
@@ -58,6 +58,27 @@ LinkingTo:
 SystemRequirements: C++11
 Collate: AllImports.R
 	RcppExports.R
+	AllClasses.R
+	AllGenerics.R
+	NxtFilter-methods.R
+	NxtSE-methods.R
+	globals.R
+	ggplot_themes.R
+	example_data.R
+	wrappers.R
+	make_plot_data.R
+	Coverage.R
+	utils.R
+	File_finders.R
+	BuildRef.R
+	STAR_utils.R
+	Mappability.R
+	IRFinder.R
+	CollateData.R
+	MakeSE.R
+	Filters.R
+	ASE-methods.R
+	SpliceWiz-package.R
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2

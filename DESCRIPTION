@@ -45,6 +45,9 @@ Imports:
 	SummarizedExperiment, 
 	S4Vectors,
 	NxtIRFdata
+Suggests: 
+    knitr, rmarkdown, pheatmap, shiny, openssl, crayon, egg,
+    DESeq2, limma, DoubleExpSeq, Rsubread, testthat (>= 3.0.0)
 Remotes:
 	alexchwong/ompBAM
 LinkingTo: 

@@ -83,7 +83,7 @@ on a NxtSE object
 \examples{
 # see ?MakeSE on example code of how this object was generated
 
-se <- NxtIRF_example_NxtSE()
+se <- SpliceWiz_example_NxtSE()
 
 # Get the list of NxtIRF recommended filters
 

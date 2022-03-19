@@ -62,7 +62,7 @@
 #'   `event_list` list of ASE events, and the last 2 columns containing the
 #'   average PSI values of the nominator and denominator conditions.
 #' @examples
-#' se <- NxtIRF_example_NxtSE()
+#' se <- SpliceWiz_example_NxtSE()
 #'
 #' colData(se)$treatment <- rep(c("A", "B"), each = 3)
 #'

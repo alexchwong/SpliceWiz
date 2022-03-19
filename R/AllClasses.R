@@ -28,7 +28,7 @@
 #'     gtf = chrZ_gtf()
 #' )
 #'
-#' bams <- NxtIRF_example_bams()
+#' bams <- SpliceWiz_example_bams()
 #' IRFinder(bams$path, bams$sample,
 #'   reference_path = file.path(tempdir(), "Reference"),
 #'   output_path = file.path(tempdir(), "IRFinder_output")

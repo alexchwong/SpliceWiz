@@ -34,7 +34,7 @@ The following examples are considered valid genomic coordinates:
 }
 }
 \examples{
-se <- NxtIRF_example_NxtSE()
+se <- SpliceWiz_example_NxtSE()
 
 coordinates <- rowData(se)$EventRegion
 

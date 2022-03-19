@@ -121,7 +121,7 @@
 #'     full models. See [DoubleExpSeq::DBGLM1] for details.
 #' @examples
 #' # see ?MakeSE on example code of generating this NxtSE object
-#' se <- NxtIRF_example_NxtSE()
+#' se <- SpliceWiz_example_NxtSE()
 #'
 #' colData(se)$treatment <- rep(c("A", "B"), each = 3)
 #'

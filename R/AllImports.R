@@ -1,5 +1,4 @@
 #' @useDynLib SpliceWiz, .registration = TRUE
-#' @import NxtIRFdata
 #' @importFrom methods as is coerce callNextMethod new
 #' @importFrom parallel detectCores
 #' @importFrom stats as.formula model.matrix qt runif na.omit prcomp aggregate
@@ -13,7 +12,9 @@
 #' @importFrom fst read.fst write.fst
 #' @import ggplot2
 #' @importFrom AnnotationHub AnnotationHub cache
-#' @importFrom BiocFileCache BiocFileCache bfcrpath bfcquery
+#' @importFrom ExperimentHub ExperimentHub
+#' @importFrom BiocFileCache BiocFileCache bfcrpath bfcquery 
+#' @importFrom BiocFileCache bfcmetalist bfcmeta bfcremove bfcadd bfcmeta<-
 #' @importFrom BiocGenerics start end width
 #' @importFrom BiocGenerics nrow ncol rbind cbind
 #' @importFrom BiocParallel SnowParam MulticoreParam SerialParam

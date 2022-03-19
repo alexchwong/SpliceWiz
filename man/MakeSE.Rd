@@ -68,7 +68,7 @@ novel IR events are not 'double-counted'.
 \examples{
 
 # The following code can be used to reproduce the NxtSE object
-# that can be fetched with NxtIRF_example_NxtSE()
+# that can be fetched with SpliceWiz_example_NxtSE()
 
 BuildReference(
     reference_path = file.path(tempdir(), "Reference"),
@@ -76,7 +76,7 @@ BuildReference(
     gtf = chrZ_gtf()
 )
 
-bams <- NxtIRF_example_bams()
+bams <- SpliceWiz_example_bams()
 IRFinder(bams$path, bams$sample,
   reference_path = file.path(tempdir(), "Reference"),
   output_path = file.path(tempdir(), "IRFinder_output")
@@ -104,6 +104,6 @@ covfile(se) <- covfile_df$path
 
 # Check that the produced object is identical to the example NxtSE
 
-example_se <- NxtIRF_example_NxtSE()
+example_se <- SpliceWiz_example_NxtSE()
 identical(se, example_se) # should return TRUE
 }

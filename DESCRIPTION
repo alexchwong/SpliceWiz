@@ -18,7 +18,6 @@ Description: Reads and fragments aligned to splice junctions can be used to
 	including novel group-based RNA-seq coverage visualization, simplifies
 	short-read RNA-seq analysis in R.
 License: MIT + file LICENSE
-Depends: NxtIRFdata
 Imports:
 	methods, stats, utils, tools, parallel,
 	magrittr,
@@ -26,7 +25,7 @@ Imports:
 	data.table,
 	fst,
 	ggplot2,
-	AnnotationHub, 
+	AnnotationHub, ExperimentHub,
 	BiocFileCache,
 	BiocGenerics,
 	BiocParallel,
@@ -74,6 +73,7 @@ Collate: AllImports.R
 	NxtFilter-methods.R
 	NxtSE-methods.R
 	globals.R
+	zzz_example_data.R
 	ggplot_themes.R
 	example_data.R
 	wrappers.R

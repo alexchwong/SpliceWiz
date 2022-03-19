@@ -294,8 +294,8 @@ server_ref_new <- function(id, refresh_tab, volumes) {
             output$txt_reference_path <- renderText({
                 settings_newref$newref_path <- tempdir()
             })
-            settings_newref$newref_fasta <- NxtIRFdata::chrZ_genome()
-            settings_newref$newref_gtf <- NxtIRFdata::chrZ_gtf()
+            settings_newref$newref_fasta <- chrZ_genome()
+            settings_newref$newref_gtf <- chrZ_gtf()
             
             output$txt_genome <- renderText(settings_newref$newref_fasta)
             output$txt_gtf <- renderText(settings_newref$newref_gtf)

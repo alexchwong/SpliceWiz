@@ -111,7 +111,7 @@
 #' * `ggplot[[5]]` contains the T-test track if one is generated.
 #' * `ggplot[[6]]` always contains the genome track.
 #' @examples
-#' se <- NxtIRF_example_NxtSE()
+#' se <- SpliceWiz_example_NxtSE()
 #'
 #' # Plot the genome track only, with specified gene:
 #' p <- Plot_Genome(se, Gene = "SRSF3")
@@ -366,7 +366,7 @@ as_egg_ggplot <- function(p_obj) {
 #'   size of the region vastly exceeds the width of the figure.
 #'
 #' @examples
-#' se <- NxtIRF_example_NxtSE()
+#' se <- SpliceWiz_example_NxtSE()
 #'
 #' cov_file <- covfile(se)[1]
 #'

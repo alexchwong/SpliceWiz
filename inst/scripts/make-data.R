@@ -42,7 +42,7 @@ NULL
 #' the documentation of all functions that use NxtSE objects as input
 #' @examples
 #' se = readRDS(
-#'   system.file("extdata", "example_NxtSE.Rds", package = "NxtIRFcore")
+#'   system.file("extdata", "example_NxtSE.Rds", package = "SpliceWiz")
 #' )
 #' se = SpliceWiz_example_NxtSE()
 #' @seealso [MakeSE()]

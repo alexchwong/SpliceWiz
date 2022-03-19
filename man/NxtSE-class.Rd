@@ -168,7 +168,7 @@ BuildReference(
     gtf = chrZ_gtf()
 )
 
-bams <- SpliceWiz_example_bams()
+bams <- NxtIRF_example_bams()
 IRFinder(bams$path, bams$sample,
   reference_path = file.path(tempdir(), "Reference"),
   output_path = file.path(tempdir(), "IRFinder_output")

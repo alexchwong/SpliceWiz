@@ -188,7 +188,7 @@ stacked ggplot, using egg::ggarrange
 }}
 
 \examples{
-se <- SpliceWiz_example_NxtSE()
+se <- NxtIRF_example_NxtSE()
 
 # Plot the genome track only, with specified gene:
 p <- Plot_Genome(se, Gene = "SRSF3")

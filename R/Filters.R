@@ -48,7 +48,7 @@
 #' @examples
 #' # see ?MakeSE on example code of how this object was generated
 #'
-#' se <- SpliceWiz_example_NxtSE()
+#' se <- NxtIRF_example_NxtSE()
 #'
 #' # Get the list of NxtIRF recommended filters
 #'

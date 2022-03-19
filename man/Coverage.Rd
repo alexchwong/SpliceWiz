@@ -108,7 +108,7 @@ binned by the given number of bins or bin_size
 }}
 
 \examples{
-se <- SpliceWiz_example_NxtSE()
+se <- NxtIRF_example_NxtSE()
 
 cov_file <- covfile(se)[1]
 

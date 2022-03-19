@@ -86,7 +86,7 @@ A SpliceWiz reference requires a genome FASTA file (containing genome nucleotide
 sequences) and a gene annotation GTF file (preferably from Ensembl or Gencode).
 
 SpliceWiz provides an example genome and gene annotation which can be accessed
-via the following functions:
+via the NxtIRFdata package installed with SpliceWiz:
 
 ```{r}
 # Provides the path to the example genome:
@@ -113,11 +113,11 @@ SpliceWiz provides an example set of 6 BAM files to demonstrate its use via this
 vignette.
 
 Firstly, retrieve the BAM files from ExperimentHub using the SpliceWiz helper
-function `SpliceWiz_example_bams()`. This makes a copy of the BAM files to the
+function `NxtIRF_example_bams()`. This makes a copy of the BAM files to the
 temporary directory:
 
 ```{r}
-bams = SpliceWiz_example_bams()
+bams = NxtIRF_example_bams()
 bams
 ```
 

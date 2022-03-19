@@ -200,7 +200,7 @@ to estimate group dispersions, followed by LRT
 
 \examples{
 # see ?MakeSE on example code of generating this NxtSE object
-se <- SpliceWiz_example_NxtSE()
+se <- NxtIRF_example_NxtSE()
 
 colData(se)$treatment <- rep(c("A", "B"), each = 3)
 

@@ -1,5 +1,5 @@
 test_that("SpliceWiz pipeline reproduces NxtSE object", {
-    bams = SpliceWiz_example_bams()
+    bams = NxtIRF_example_bams()
     chr_alias = data.frame(old = "chrZ", new = "chrZ")
 
     BuildReference(
@@ -26,7 +26,7 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
     # Test identical assays
     se_realized = realize_NxtSE(se)
     
-    se_compare <- SpliceWiz_example_NxtSE()
+    se_compare <- NxtIRF_example_NxtSE()
     
     expect_equal(
         assay(se_realized, "Included"), 

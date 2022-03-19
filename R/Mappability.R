@@ -30,29 +30,6 @@
 #' NB2: In systems where `STAR` is not available, consider using HISAT2 or
 #' Rsubread. A working example using Rsubread is shown below.
 #'
-#' Additionally, SpliceWiz retrieves pre-generated Mappability exclusion regions
-#' suitable for use in generating references based on hg38,
-#' hg19, mm10 and mm9 genomes. These were generated empirically. Synthetic 70-nt
-#' reads, with start distances 10-nt apart, were systematically generated from
-#' the genome. These reads were aligned to the same genome using the STAR 
-#' aligner. Then, the BAM file read coverage was assessed.
-#' Whereas mappable regions are expected to be covered with 7 reads,
-#' low mappability regions are defined as regions covered with 4 or fewer
-#' reads.
-#'
-#' @param genome_type Either one of `hg38`, `hg19`, `mm10` or `mm9`
-#' @param as_type (Default "GRanges") Whether to return the Mappability 
-#'   exclusion data as a GRanges object `"GRanges"`, or a BED `"bed"` or gzipped
-#'   BED `"bed.gz"` copied locally to the given directory `path`.
-#' @param path (Default = tempdir()) The desired destination path in which to 
-#'   place a copy of the files. The directory does not need to exist but its 
-#'   parent directory does.
-#' @param overwrite (Default = `FALSE`)
-#'   Whether or not to overwrite files if they already exist in the given path. 
-#' @param offline (Default = `FALSE`)
-#'   Whether or not to work in offline mode. This may be suitable
-#'   if these functions have been previously run and the user wishes to run
-#'   these functions without fetching online hub resources. Default = FALSE
 #' @param reference_path The directory of the reference prepared by
 #'   `GetReferenceResource()`
 #' @param read_len The nucleotide length of the synthetic reads
@@ -82,24 +59,6 @@
 #'   This BED file is automatically used by `BuildReference()` if
 #'   `MappabilityRef` is not specified.
 #' @examples
-#'
-#' # (0) (Optional) Retrieve ready-to-use Mappability Exclusion reference
-#' #                from AnnotationHub:
-#'
-#' # Returns the Mappability exclusion for hg38 directly as GRanges object
-#'
-#' hg38.MapExcl.gr <- get_mappability_exclusion(
-#'     genome_type = "hg38", 
-#'     as_type = "GRanges"
-#' ) 
-#' 
-#' # returns the location of the Mappability exclusion gzipped BED for hg38
-#'
-#' gzippedBEDpath <- get_mappability_exclusion(
-#'     genome_type = "hg38", 
-#'     as_type = "bed.gz",
-#'     path = tempdir()
-#' ) 
 #'
 #' # (1a) Creates genome resource files
 #'
@@ -144,8 +103,7 @@
 #'     aligned_bam = file.path(ref_path, "Mappability", "AlignedReads.bam")
 #' )
 #'
-#' # (4) Build the SpliceWiz reference using the calculated Mappability 
-#' #     Exclusions
+#' # (4) Build the NxtIRF reference using the calculated Mappability Exclusions
 #'
 #' BuildReference(ref_path)
 #'
@@ -159,89 +117,6 @@
 #' @seealso [BuildReference]
 #' @md
 NULL
-
-#' @describeIn Mappability-methods Fetches Mappability Exclusion reference
-#' from ExperimentHub and places a copy in the given path; 
-#' returns the location of this Mappability exclusion resource file
-#' @export
-get_mappability_exclusion <- function(
-        genome_type = c("hg38", "hg19", "mm10", "mm9"),
-        as_type = c("GRanges", "bed", "bed.gz"),
-        path = tempdir(), overwrite = FALSE, offline = FALSE
-) {
-    genome_type <- match.arg(genome_type)
-    if(genome_type == "") 
-        stop("genome_type must be one of `hg38`, `hg19`, `mm10`, or `mm9`")
-    as_type <- match.arg(as_type)
-    if(as_type == "") 
-        stop("as_type must be one of `GRanges`, `bed`, or `bed.gz`")
-    if(as_type != "GRanges") .find_and_create_dir(path)
-
-    title <- paste("NxtIRF", "mappability", genome_type, sep="/")
-    destfile <- sprintf(file.path(path, "%s.MappabilityExclusion.bed"),
-        genome_type)
-    if(file.exists(paste0(destfile, ".gz")) & !overwrite & as_type != "bed.gz") 
-        return(paste0(destfile, ".gz"))
-    if(file.exists(destfile) & !overwrite & as_type != "bed") return(destfile)
-    
-    hubobj <- NULL
-    # Check cache:
-    if(!is.na(.query_local_cache(title))) {
-        gr <- readRDS(.query_local_cache(title))
-    } else {
-        tryCatch({
-            hubobj <- ExperimentHub(localHub = offline)
-        }, error = function(e) {
-            hubobj <- NULL
-        })
-        if(is.null(hubobj)) {
-            message(
-                "Failed establishing ExperimentHub connection. ",
-                "Run ExperimentHub() to reproduce error msg"
-            )
-            return(NULL)
-        }
-        record_name <- names(hubobj[hubobj$title == title])
-        if(length(record_name) < 1) {
-            stopmsg <- paste("Mappability record not found -", genome_type,
-                ifelse(offline, "- Perhaps try again in `online` mode.",
-                paste("- Ensure ExperimentHub package is",
-                    "updated to the latest version")))
-            stop(stopmsg)
-        } else if(length(record_name) > 1) {
-            stopmsg <- paste("Multiple mappability records found -", 
-                genome_type,
-                "- please update SpliceWiz to latest version")
-            stop(stopmsg)
-        }
-        tryCatch({
-            cache_loc <- cache(hubobj[hubobj$title == title])
-        }, error = function(e) {
-            cache_loc <- ""
-        })
-        if(!file.exists(cache_loc)) {
-            message("Downloading mappability from ExperimentHub failed")
-            return(NULL)
-        }
-        .add_file_to_local_cache(cache_loc, title)
-        gr <- hubobj[[record_name]]  # GRanges object from Rds
-    }
-    
-    if(as_type == "GRanges") return(gr)
-    if(!file.exists(destfile) | overwrite) {
-        if(file.exists(destfile)) file.remove(destfile)
-        rtracklayer::export(gr, destfile, "bed")
-    }
-    if(!file.exists(destfile)) {
-        message("rtracklayer BED export failed for - ", genome_type)
-        return(NULL)
-    }
-    if(as_type == "bed") return(destfile)
-    if(file.exists(paste0(destfile, ".gz")))
-        file.remove(paste0(destfile, ".gz"))
-    R.utils::gzip(destfile)
-    return(paste0(destfile, ".gz"))
-}
 
 #' @describeIn Mappability-methods Generates synthetic reads from a
 #' genome FASTA file, for mappability calculations.

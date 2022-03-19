@@ -44,11 +44,11 @@ NULL
 #' se = readRDS(
 #'   system.file("extdata", "example_NxtSE.Rds", package = "SpliceWiz")
 #' )
-#' se = SpliceWiz_example_NxtSE()
+#' se = NxtIRF_example_NxtSE()
 #' @seealso [MakeSE()]
 make_example_NxtSE <- function() {
     require(SpliceWiz)
-    bams = SpliceWiz_example_bams()
+    bams = NxtIRF_example_bams()
     BuildReference(
         fasta = chrZ_genome(), gtf = chrZ_gtf(),
         reference_path = file.path(tempdir(), "Reference")

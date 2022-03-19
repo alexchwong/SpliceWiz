@@ -54,7 +54,7 @@
 #'
 #' # Run BAM2COV, which only produces COV files but does not run IRFinder:
 #'
-#' bams <- SpliceWiz_example_bams()
+#' bams <- NxtIRF_example_bams()
 #'
 #' BAM2COV(bams$path, bams$sample,
 #'   output_path = file.path(tempdir(), "IRFinder_output"),
@@ -73,7 +73,7 @@
 #'     gtf = chrZ_gtf()
 #' )
 #'
-#' bams <- SpliceWiz_example_bams()
+#' bams <- NxtIRF_example_bams()
 #'
 #' IRFinder(bams$path, bams$sample,
 #'   reference_path = file.path(tempdir(), "Reference"),

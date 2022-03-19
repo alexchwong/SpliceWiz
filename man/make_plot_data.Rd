@@ -111,7 +111,7 @@ alternative splicing events (ASEs)
 }}
 
 \examples{
-se <- SpliceWiz_example_NxtSE()
+se <- NxtIRF_example_NxtSE()
 
 colData(se)$treatment <- rep(c("A", "B"), each = 3)
 

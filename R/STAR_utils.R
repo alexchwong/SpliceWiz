@@ -9,7 +9,7 @@
 #' @details
 #' **Pre-requisites**
 #'
-#' `STAR_buildRef` requires [GetReferenceResource] to be run to fetch the
+#' `STAR_buildRef` requires [storeRef] to be run to fetch the
 #' required genome and gene annotation files.
 #'
 #' `STAR_Mappability`, `STAR_align_experiment` and `STAR_align_fastq` requires a
@@ -39,7 +39,7 @@
 #'   required
 #'
 #' @param reference_path The path to the reference.
-#'    [GetReferenceResource] must first be run using this path
+#'    [storeRef] must first be run using this path
 #'    as its `reference_path`
 #' @param STAR_ref_path (Default - the "STAR" subdirectory under
 #'    \code{reference_path}) The directory containing the STAR reference to be
@@ -98,7 +98,7 @@
 #'
 #' FTP <- "ftp://ftp.ensembl.org/pub/release-94/"
 #'
-#' GetReferenceResource(
+#' storeRef(
 #'     reference_path = "Reference_FTP",
 #'     fasta = paste0(FTP, "fasta/homo_sapiens/dna/",
 #'         "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"),
@@ -120,7 +120,7 @@
 #' #     genome is ~100k in length, so --genomeSAindexNbases needs to be
 #' #     adjusted to be min(14, log2(GenomeLength)/2 - 1)
 #'
-#' GetReferenceResource(
+#' storeRef(
 #'     reference_path = "Reference_chrZ",
 #'     fasta = chrZ_genome(),
 #'     gtf = chrZ_gtf()
@@ -137,7 +137,7 @@
 #'
 #' #' NB: also specifies to use the hg38 nonPolyA resource
 #'
-#' BuildReference(reference_path = "Reference_FTP", genome_type = "hg38")
+#' buildRef(reference_path = "Reference_FTP", genome_type = "hg38")
 #'
 #' # 4a) Align a single sample using the STAR reference
 #'

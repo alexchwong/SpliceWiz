@@ -15,8 +15,8 @@ test_that("NxtIRF OpenMP produces same output regardless of threads", {
     } else {
         bams = Find_Bams(tempdir())
     }
-    if(!file.exists(file.path(tempdir(), "Reference", "IRFinder.ref.gz"))) {
-        BuildReference(
+    if(!file.exists(file.path(tempdir(), "Reference", "SpliceWiz.ref.gz"))) {
+        buildRef(
             fasta = chrZ_genome(), gtf = chrZ_gtf(),
             reference_path = file.path(tempdir(), "Reference")
         )

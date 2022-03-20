@@ -49,7 +49,7 @@ NULL
 make_example_NxtSE <- function() {
     require(SpliceWiz)
     bams = NxtIRF_example_bams()
-    BuildReference(
+    buildRef(
         fasta = chrZ_genome(), gtf = chrZ_gtf(),
         reference_path = file.path(tempdir(), "Reference")
     )

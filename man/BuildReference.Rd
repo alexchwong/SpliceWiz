@@ -2,12 +2,13 @@
 % Please edit documentation in R/BuildRef.R
 \name{BuildReference}
 \alias{BuildReference}
-\alias{GetReferenceResource}
+\alias{storeRef}
+\alias{buildRef}
 \alias{GetNonPolyARef}
 \alias{BuildReference_Full}
 \title{Builds reference files used by IRFinder / NxtIRF.}
 \usage{
-GetReferenceResource(
+storeRef(
   reference_path = "./Reference",
   fasta = "",
   gtf = "",
@@ -15,7 +16,7 @@ GetReferenceResource(
   force_download = FALSE
 )
 
-BuildReference(
+buildRef(
   reference_path = "./Reference",
   fasta = "",
   gtf = "",
@@ -52,21 +53,21 @@ reference files}
 
 \item{fasta}{The file path or web link to the user-supplied genome
 FASTA file. Alternatively, the name of the AnnotationHub record containing
-the genome resource. May be omitted if \code{GetReferenceResource()} has already
+the genome resource. May be omitted if \code{storeRef()} has already
 been run using the same \code{reference_path}.}
 
 \item{gtf}{The file path or web link  to the user-supplied transcript
 GTF file (or gzipped GTF file). Alternatively, the name of the
 AnnotationHub record containing the transcript GTF file. May be omitted if
-\code{GetReferenceResource()} has already been run using the same
+\code{storeRef()} has already been run using the same
 \code{reference_path}.}
 
-\item{overwrite}{(default \code{FALSE}) For \code{GetReferenceResource()}: if the
+\item{overwrite}{(default \code{FALSE}) For \code{storeRef()}: if the
 genome FASTA and gene annotation GTF files already exist in the \code{resource}
-subdirectory, it will not be overwritten. For \code{BuildReference()} and
+subdirectory, it will not be overwritten. For \code{buildRef()} and
 \code{BuildReference_Full()}: the NxtIRF reference will not be overwritten
 if one already exist. A reference is considered to exist if
-the file \code{IRFinder.ref.gz} is present inside \code{reference_path}.}
+the file \code{SpliceWiz.ref.gz} is present inside \code{reference_path}.}
 
 \item{force_download}{(default \code{FALSE}) When online resources are retrieved,
 a local copy is stored in the \code{SpliceWiz} BiocFileCache. Subsequent calls
@@ -83,7 +84,7 @@ UCSC/Gencode genome use "chr1", "chr2", ..., "chrX", "chrY". See example
 below. Refer to \url{https://github.com/dpryan79/ChromosomeMappings} for a
 list of chromosome alias resources.}
 
-\item{genome_type}{Allows \code{BuildReference()} to select default
+\item{genome_type}{Allows \code{buildRef()} to select default
 \code{nonPolyARef} and \code{MappabilityRef} for selected genomes. Allowed options
 are: \code{hg38}, \code{hg19}, \code{mm10}, and \code{mm9}.}
 
@@ -122,7 +123,7 @@ reference generation (but multiple cores are utilised in data-table
 and fst file processing automatically, where available). See \link{STAR-methods}}
 }
 \value{
-For \code{GetReferenceResource}: creates the following local resources:
+For \code{storeRef}: creates the following local resources:
 \itemize{
 \item \code{reference_path/resource/genome.2bit}: Local copy of the genome sequences
 as a TwoBitFile.
@@ -133,7 +134,7 @@ which is written to the given directory specified by \code{reference_path}.
 Files created includes:
 \item \code{reference_path/settings.Rds}: An RDS file containing parameters used
 to generate the NxtIRF reference
-\item \code{reference_path/IRFinder.ref.gz}: A gzipped text file containing collated
+\item \code{reference_path/SpliceWiz.ref.gz}: A gzipped text file containing collated
 IRFinder reference files. This file is used by \link{IRFinder}
 \item \verb{reference_path/fst/}: Contains fst files for subsequent easy access to
 NxtIRF generated references
@@ -153,7 +154,7 @@ as alternative splicing annotation data for NxtIRF. See examples
 below for guides to making the NxtIRF reference.
 }
 \details{
-\code{GetReferenceResource()} processes the files, downloads resources from
+\code{storeRef()} processes the files, downloads resources from
 web links or from \code{AnnotationHub()}, and saves a local copy in the "resource"
 subdirectory within the given \code{reference_path}. Resources are retrieved via
 either:
@@ -165,21 +166,21 @@ to specify the files or web paths to use.
 the genome sequence and gene annotations to \code{fasta} and \code{gtf}.
 }
 
-\code{BuildReference()} will first run \code{GetReferenceResource()} if resources are
-not yet saved locally (i.e. \code{GetReferenceResource()} is not already run).
+\code{buildRef()} will first run \code{storeRef()} if resources are
+not yet saved locally (i.e. \code{storeRef()} is not already run).
 Then, it creates the NxtIRF / IRFinder references. Typical run-times are
 5 to 10 minutes for human and mouse genomes (after resources are downloaded).
 
-NB: the parameters \code{fasta} and \code{gtf} can be omitted in \code{BuildReference()} if
-\code{GetReferenceResource()} is already run.
+NB: the parameters \code{fasta} and \code{gtf} can be omitted in \code{buildRef()} if
+\code{storeRef()} is already run.
 
-Typical usage involves running \code{BuildReference()} for human and mouse genomes
+Typical usage involves running \code{buildRef()} for human and mouse genomes
 and specifying the \code{genome_type} to use the default \code{MappabilityRef} and
 \code{nonPolyARef} files for the specified genome. For non-human non-mouse
 genomes, use one of the following alternatives:
 \itemize{
 \item Create the NxtIRF reference without using Mappability Exclusion regions. To
-do this, simply run \code{BuildReference()} and omit \code{MappabilityRef}. This is
+do this, simply run \code{buildRef()} and omit \code{MappabilityRef}. This is
 acceptable assuming the introns assessed are short and do not contain
 intronic repeats
 \item Calculating Mappability Exclusion regions using the STAR aligner,
@@ -188,7 +189,7 @@ and building the NxtIRF reference. This can be done using the
 \item Instead of using the STAR aligner, any genome splice-aware aligner could be
 used. See \link{Mappability-methods} for details. After producing the
 \code{MappabilityExclusion.bed.gz} file (in the \code{Mappability} subfolder), run
-\code{BuildReference()} using this file (or simply leave it blank).
+\code{buildRef()} using this file (or simply leave it blank).
 }
 
 BED files are tab-separated text files containing 3 unnamed columns
@@ -200,11 +201,11 @@ See examples below for common use cases.
 }
 \section{Functions}{
 \itemize{
-\item \code{GetReferenceResource}: Processes / downloads a copy of the genome
+\item \code{storeRef}: Processes / downloads a copy of the genome
 and gene annotations and stores this in the "resource" subdirectory
 of the given reference path
 
-\item \code{BuildReference}: First calls \code{GetReferenceResource()}
+\item \code{buildRef}: First calls \code{storeRef()}
 (if required). Afterwards creates the NxtIRF reference in the
 given reference path
 
@@ -221,19 +222,19 @@ creates the NxtIRF reference
 # Quick runnable example: generate a reference using NxtIRF's example genome
 
 example_ref <- file.path(tempdir(), "Reference")
-GetReferenceResource(
+storeRef(
     reference_path = example_ref,
     fasta = chrZ_genome(),
     gtf = chrZ_gtf()
 )
-BuildReference(
+buildRef(
     reference_path = example_ref
 )
 
 # NB: the above is equivalent to:
 
 example_ref <- file.path(tempdir(), "Reference")
-BuildReference(
+buildRef(
     reference_path = example_ref,
     fasta = chrZ_genome(),
     gtf = chrZ_gtf()
@@ -249,7 +250,7 @@ GetNonPolyARef("hg19")
 # Generate a NxtIRF reference from user supplied FASTA and GTF files for a
 # hg38-based genome:
 
-BuildReference(
+buildRef(
     reference_path = "./Reference_user",
     fasta = "genome.fa", gtf = "transcripts.gtf",
     genome_type = "hg38"
@@ -261,7 +262,7 @@ BuildReference(
 # Reference generation from Ensembl's FTP links:
 
 FTP <- "ftp://ftp.ensembl.org/pub/release-94/"
-BuildReference(
+buildRef(
     reference_path = "./Reference_FTP",
     fasta = paste0(FTP, "fasta/homo_sapiens/dna/",
         "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"),
@@ -296,7 +297,7 @@ AnnotationHub::query(ah, c("Homo Sapiens", "release-94"))
 #   AH65747 | Homo_sapiens.GRCh38.dna_sm.primary_assembly.2bit
 #   AH65748 | Homo_sapiens.GRCh38.ncrna.2bit
 
-BuildReference(
+buildRef(
     reference_path = "./Reference_AH",
     fasta = "AH65745",
     gtf = "AH64631",
@@ -308,7 +309,7 @@ BuildReference(
 
 chrom.df <- GenomeInfoDb::genomeStyles()$Homo_sapiens
 
-BuildReference(
+buildRef(
     reference_path = "./Reference_UCSC",
     fasta = "AH65745",
     gtf = "AH64631",
@@ -333,7 +334,7 @@ BuildReference_Full(
 
 # NB: the above is equivalent to running the following in sequence:
 
-GetReferenceResource(
+storeRef(
     reference_path = "./Reference_with_STAR",
     fasta = "genome.fa", gtf = "transcripts.gtf"
 )
@@ -342,7 +343,7 @@ STAR_buildRef(
     also_generate_mappability = TRUE,
     n_threads = 4
 )
-BuildReference(
+buildRef(
     reference_path = "./Reference_with_STAR",
     genome_type = ""
 )

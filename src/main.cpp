@@ -1453,7 +1453,7 @@ void print_usage(std::string exec) {
 // main
 int main(int argc, char * argv[]) {
 	// Command line usage:
-    // spliceWiz main -t N sample.bam IRFinder.ref.gz Output.txt.gz 
+    // spliceWiz main -t N sample.bam SpliceWiz.ref.gz Output.txt.gz 
     // spliceWiz bam2cov -t N sample.bam sample.cov
     // spliceWiz gen_map_reads genome.fa reads_to_map.fa 70 10
     // spliceWiz gen_map_regions mappedreads.bam mappability.bed

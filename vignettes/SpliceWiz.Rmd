@@ -100,7 +100,7 @@ Using these two files, we construct a SpliceWiz reference as follows:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 ref_path = file.path(tempdir(), "Reference")
-BuildReference(
+buildRef(
     reference_path = ref_path,
     fasta = chrZ_genome(),
     gtf = chrZ_gtf()
@@ -259,7 +259,7 @@ SpliceWiz first needs to generate a set of reference files. The SpliceWiz refere
 is used to quantitate IR and alternative splicing, as well as in downstream
 visualisation tools.
 
-### Building an example SpliceWiz reference using BuildReference()
+### Building an example SpliceWiz reference using buildRef()
 
 First, load the SpliceWiz package:
 
@@ -284,17 +284,17 @@ coordinates.
 ```{r, eval = FALSE}
 ref_path = file.path(tempdir(), "Reference")
 
-GetReferenceResource(
+storeRef(
     reference_path = ref_path,
     fasta = chrZ_genome(), 
     gtf = chrZ_gtf()
 )
 
-BuildReference(reference_path = ref_path)
+buildRef(reference_path = ref_path)
 
 # or equivalently, in a one-step process:
 
-BuildReference(
+buildRef(
     reference_path = ref_path,
     fasta = chrZ_genome(), 
     gtf = chrZ_gtf()
@@ -302,18 +302,18 @@ BuildReference(
 
 ```
 
-The first function, GetReferenceResource(), requires 3 arguments:
+The first function, storeRef(), requires 3 arguments:
 (1) `fasta` The file (or url) of the genome FASTA file,
 (2) `gtf` The file (or url) of the gene annotation GTF file, and
 (3) `reference_path` The directory (ideally an empty directory) to create
 the SpliceWiz reference
 
-`GetReferenceResource()` processes the given source genome / annotation files,
+`storeRef()` processes the given source genome / annotation files,
 downloading them where necesssary, and saves a local copy of the GTF file as
 well as a compressed version of the FASTA sequence file (as a TwoBitFile which
 is a binary compressed version of the genome sequence).
 
-The next function, `BuildReference()`, uses the resources to build the SpliceWiz
+The next function, `buildRef()`, uses the resources to build the SpliceWiz
 reference. SpliceWiz builds its own version of alternative splicing annotations
 by comparing differential combinations of splice junctions between the
 transcripts of each gene. Events annotated include Skipped Exons (SE),
@@ -871,7 +871,7 @@ files for nonPolyA and Mappability exclusion references in the generation of its
 reference. Valid options for `genome_path` are "hg38", "hg19", "mm10" and "mm9".
 
 ```{r eval=FALSE}
-BuildReference(
+buildRef(
     reference_path = ref_path,
     fasta = "genome.fa", gtf = "transcripts.gtf",
     genome_type = "hg38"
@@ -888,7 +888,7 @@ reference.
 ```{r eval=FALSE}
 FTP = "ftp://ftp.ensembl.org/pub/release-94/"
 
-BuildReference(
+buildRef(
     reference_path = ref_path,
     fasta = paste0(FTP, "fasta/homo_sapiens/dna/",
         "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"), 
@@ -920,7 +920,7 @@ We wish to fetch "AH65745" and "AH64631" which contains the desired FASTA
 and GTF files, respectively. To build a reference using these resources:
 
 ```{r eval=FALSE}
-BuildReference(
+buildRef(
     reference_path = ref_path,
     fasta = "AH65745",
     gtf = "AH64631",
@@ -939,7 +939,7 @@ sequences from intron retention analysis. For other species, one could
 generate a SpliceWiz reference without this reference:
 
 ```{r eval=FALSE}
-BuildReference(
+buildRef(
     reference_path = ref_path,
     fasta = "genome.fa", gtf = "transcripts.gtf",
     genome_type = ""
@@ -977,7 +977,7 @@ here for convenience, to demonstrate how this would be done:
 
 ref_path = file.path(tempdir(), "Reference")
 
-GetReferenceResource(
+storeRef(
     reference_path = ref_path,
     fasta = chrZ_genome(),
     gtf = chrZ_gtf()
@@ -1017,7 +1017,7 @@ Mappability_CalculateExclusions(
 
 # (4) Build the SpliceWiz reference using the calculated Mappability Exclusions
 
-BuildReference(ref_path)      
+buildRef(ref_path)      
 
 ```
 
@@ -1042,7 +1042,7 @@ ref_path = "./Reference"
 # Ensure genome resources are prepared from genome FASTA and GTF file:
 
 if(!file.exists(file.path(ref_path, "resources"))) {
-    GetReferenceResource(
+    storeRef(
         reference_path = ref_path,
         fasta = "genome.fa",
         gtf = "transcripts.gtf"

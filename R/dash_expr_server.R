@@ -750,10 +750,10 @@ Expr_IRF_initiate_run <- function(input, session, n_threads, settings_expr) {
             title = "Missing BAMs", type = "error",
             text = "Please check all selected bam files exist")          
     } else if(!file.exists(file.path(
-            settings_expr$ref_path, "IRFinder.ref.gz"))) {
+            settings_expr$ref_path, "SpliceWiz.ref.gz"))) {
         sendSweetAlert(session = session, type = "error",
             title = "Missing IRFinder Reference",
-            text = "IRFinder.ref.gz is missing")
+            text = "SpliceWiz.ref.gz is missing")
     } else if(
             !is_valid(settings_expr$irf_path) || 
             !dir.exists(settings_expr$irf_path)

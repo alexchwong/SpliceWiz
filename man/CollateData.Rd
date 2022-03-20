@@ -90,7 +90,7 @@ uses \link[GenomicRanges:findOverlaps-methods]{GenomicRanges::findOverlaps} to s
 the same genomic region as the intron of interest.
 }
 \examples{
-BuildReference(
+buildRef(
     reference_path = file.path(tempdir(), "Reference"),
     fasta = chrZ_genome(),
     gtf = chrZ_gtf()

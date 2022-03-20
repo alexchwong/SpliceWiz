@@ -65,7 +65,7 @@
 #'   locations of the "COV" files will not be recorded in the collated data and
 #'   will have to be re-assigned using `covfile(se)<-`. See [MakeSE]
 #' @examples
-#' BuildReference(
+#' buildRef(
 #'     reference_path = file.path(tempdir(), "Reference"),
 #'     fasta = chrZ_genome(),
 #'     gtf = chrZ_gtf()

@@ -22,7 +22,7 @@
 #'
 #' # Run the full pipeline to generate a NxtSE object:
 #'
-#' BuildReference(
+#' buildRef(
 #'     reference_path = file.path(tempdir(), "Reference"),
 #'     fasta = chrZ_genome(), 
 #'     gtf = chrZ_gtf()

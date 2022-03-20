@@ -70,7 +70,7 @@ novel IR events are not 'double-counted'.
 # The following code can be used to reproduce the NxtSE object
 # that can be fetched with NxtIRF_example_NxtSE()
 
-BuildReference(
+buildRef(
     reference_path = file.path(tempdir(), "Reference"),
     fasta = chrZ_genome(),
     gtf = chrZ_gtf()

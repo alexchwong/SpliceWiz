@@ -2,7 +2,7 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
     bams = NxtIRF_example_bams()
     chr_alias = data.frame(old = "chrZ", new = "chrZ")
 
-    BuildReference(
+    buildRef(
         fasta = chrZ_genome(), 
         gtf = chrZ_gtf(),
         reference_path = file.path(tempdir(), "Reference"),

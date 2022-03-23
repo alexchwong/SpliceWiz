@@ -170,5 +170,5 @@ f4
 
 }
 \seealso{
-\link{Run_NxtIRF_Filters}
+\link{Run_SpliceWiz_Filters}
 }

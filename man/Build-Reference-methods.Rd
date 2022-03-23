@@ -135,7 +135,7 @@ Files created includes:
 \item \code{reference_path/settings.Rds}: An RDS file containing parameters used
 to generate the SpliceWiz reference
 \item \code{reference_path/SpliceWiz.ref.gz}: A gzipped text file containing collated
-SpliceWiz reference files. This file is used by \link{IRFinder}
+SpliceWiz reference files. This file is used by \link{processBAM}
 \item \verb{reference_path/fst/}: Contains fst files for subsequent easy access to
 SpliceWiz generated references
 \item \code{reference_path/cov_data.Rds}: An RDS file containing data required to

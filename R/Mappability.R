@@ -31,7 +31,7 @@
 #' Rsubread. A working example using Rsubread is shown below.
 #'
 #' @param reference_path The directory of the reference prepared by
-#'   `storeRef()`
+#'   `getResources()`
 #' @param read_len The nucleotide length of the synthetic reads
 #' @param read_stride The nucleotide distance between adjacent synthetic reads
 #' @param error_pos The position of the procedurally-generated nucleotide error
@@ -39,7 +39,7 @@
 #' @param verbose Whether additional status messages are shown
 #' @param alt_fasta_file (Optional) The path to the user-supplied genome fasta
 #'   file, if different to that found inside the `resource` subdirectory of the
-#'   `reference_path`. If `storeRef()` has already been run,
+#'   `reference_path`. If `getResources()` has already been run,
 #'   this parameter should be omitted.
 #' @param aligned_bam The BAM file of alignment of the synthetic reads generated
 #'   by `Mappability_GenReads()`. Users should use a genome splice-aware
@@ -64,7 +64,7 @@
 #'
 #' ref_path <- file.path(tempdir(), "Reference")
 #'
-#' storeRef(
+#' getResources(
 #'     reference_path = ref_path,
 #'     fasta = chrZ_genome(),
 #'     gtf = chrZ_gtf()
@@ -114,7 +114,7 @@
 #' @aliases
 #' Mappability_GenReads
 #' Mappability_CalculateExclusions
-#' @seealso [BuildReference]
+#' @seealso [Build-Reference-methods]
 #' @md
 NULL
 
@@ -138,7 +138,7 @@ Mappability_GenReads <- function(reference_path,
     outfile <- file.path(normalizePath(reference_path),
         "Mappability", "Reads.fa")
     .log(paste("Generating synthetic reads, saving to", outfile), "message")
-    .run_IRFinder_GenerateMapReads(
+    .run_processBAM_GenerateMapReads(
         normalizePath(alt_fasta_file), outfile,
         read_len, read_stride, error_pos + 1
     )
@@ -163,7 +163,7 @@ Mappability_CalculateExclusions <- function(reference_path,
 
     .log(paste("Calculating Mappability Exclusion regions from:",
         aligned_bam), type = "message")
-    .run_IRFinder_MapExclusionRegions(
+    .run_processBAM_MapExclusionRegions(
         bamfile = normalizePath(aligned_bam),
         output_file = output_file,
         threshold = threshold,
@@ -189,7 +189,7 @@ Mappability_CalculateExclusions <- function(reference_path,
 
 # Wrappers to native Rcpp functions:
 
-.run_IRFinder_GenerateMapReads <- function(genome.fa = "", out.fa,
+.run_processBAM_GenerateMapReads <- function(genome.fa = "", out.fa,
     read_len = 70, read_stride = 10, error_pos = 36) {
     return(
         c_GenerateMappabilityReads(normalizePath(genome.fa),
@@ -200,7 +200,7 @@ Mappability_CalculateExclusions <- function(reference_path,
     )
 }
 
-.run_IRFinder_MapExclusionRegions <- function(bamfile = "", output_file,
+.run_processBAM_MapExclusionRegions <- function(bamfile = "", output_file,
         threshold = 4, includeCov = FALSE, n_threads = 1) {
     s_bam <- normalizePath(bamfile)
 

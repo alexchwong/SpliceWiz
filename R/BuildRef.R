@@ -1,11 +1,11 @@
-#' Builds reference files used by IRFinder / NxtIRF.
+#' Builds reference files used by SpliceWiz
 #'
 #' @description
-#' These function builds the reference required by the IRFinder engine, as well
-#' as alternative splicing annotation data for NxtIRF. See examples
-#' below for guides to making the NxtIRF reference.
+#' These function builds the reference required by the SpliceWiz engine, as well
+#' as alternative splicing annotation data for SpliceWiz. See examples
+#' below for guides to making the SpliceWiz reference.
 #' @details
-#' `storeRef()` processes the files, downloads resources from
+#' `getResources()` processes the files, downloads resources from
 #' web links or from `AnnotationHub()`, and saves a local copy in the "resource"
 #' subdirectory within the given `reference_path`. Resources are retrieved via
 #' either:
@@ -15,25 +15,25 @@
 #' 2. AnnotationHub genome and gene annotation (Ensembl): supply the names of
 #'    the genome sequence and gene annotations to `fasta` and `gtf`.
 #'
-#' `buildRef()` will first run `storeRef()` if resources are
-#' not yet saved locally (i.e. `storeRef()` is not already run).
-#' Then, it creates the NxtIRF / IRFinder references. Typical run-times are
+#' `buildRef()` will first run `getResources()` if resources are
+#' not yet saved locally (i.e. `getResources()` is not already run).
+#' Then, it creates the SpliceWiz references. Typical run-times are
 #' 5 to 10 minutes for human and mouse genomes (after resources are downloaded).
 #'
 #' NB: the parameters `fasta` and `gtf` can be omitted in `buildRef()` if
-#' `storeRef()` is already run.
+#' `getResources()` is already run.
 #'
 #' Typical usage involves running `buildRef()` for human and mouse genomes
 #' and specifying the `genome_type` to use the default `MappabilityRef` and
 #' `nonPolyARef` files for the specified genome. For non-human non-mouse
 #' genomes, use one of the following alternatives:
-#' * Create the NxtIRF reference without using Mappability Exclusion regions. To
-#'     do this, simply run `buildRef()` and omit `MappabilityRef`. This is
+#' * Create the SpliceWiz reference without using Mappability Exclusion regions. 
+#'     To do this, simply run `buildRef()` and omit `MappabilityRef`. This is
 #'     acceptable assuming the introns assessed are short and do not contain
 #'     intronic repeats
 #' * Calculating Mappability Exclusion regions using the STAR aligner,
-#'     and building the NxtIRF reference. This can be done using the
-#'     `BuildReference_Full()` function, on systems where `STAR` is installed
+#'     and building the SpliceWiz reference. This can be done using the
+#'     `buildFullRef()` function, on systems where `STAR` is installed
 #' * Instead of using the STAR aligner, any genome splice-aware aligner could be
 #'     used. See [Mappability-methods] for details. After producing the
 #'     `MappabilityExclusion.bed.gz` file (in the `Mappability` subfolder), run
@@ -42,7 +42,7 @@
 #' BED files are tab-separated text files containing 3 unnamed columns
 #' specifying chromosome, start and end coordinates. To view an example BED
 #' file, open the file specified in the path returned by
-#' `GetNonPolyARef("hg38")`
+#' `getNonPolyARef("hg38")`
 #'
 #' See examples below for common use cases.
 #'
@@ -50,17 +50,17 @@
 #'   reference files
 #' @param fasta The file path or web link to the user-supplied genome
 #'   FASTA file. Alternatively, the name of the AnnotationHub record containing
-#'   the genome resource. May be omitted if `storeRef()` has already
+#'   the genome resource. May be omitted if `getResources()` has already
 #'   been run using the same `reference_path`.
 #' @param gtf The file path or web link  to the user-supplied transcript
 #'   GTF file (or gzipped GTF file). Alternatively, the name of the
 #'   AnnotationHub record containing the transcript GTF file. May be omitted if
-#'   `storeRef()` has already been run using the same
+#'   `getResources()` has already been run using the same
 #'   `reference_path`.
-#' @param overwrite (default `FALSE`) For `storeRef()`: if the
+#' @param overwrite (default `FALSE`) For `getResources()`: if the
 #'   genome FASTA and gene annotation GTF files already exist in the `resource`
 #'   subdirectory, it will not be overwritten. For `buildRef()` and
-#'   `BuildReference_Full()`: the NxtIRF reference will not be overwritten
+#'   `buildFullRef()`: the SpliceWiz reference will not be overwritten
 #'   if one already exist. A reference is considered to exist if
 #'   the file `SpliceWiz.ref.gz` is present inside `reference_path`.
 #' @param force_download (default `FALSE`) When online resources are retrieved,
@@ -98,44 +98,44 @@
 #'   exclude transcripts other than `protein_coding` and
 #'   `processed_transcript` transcripts from IR analysis.
 #' @param n_threads The number of threads used to generate the STAR reference
-#'   and mappability calculations. Multi-threading is not used for NxtIRF
+#'   and mappability calculations. Multi-threading is not used for SpliceWiz
 #'   reference generation (but multiple cores are utilised in data-table
 #'   and fst file processing automatically, where available). See [STAR-methods]
-#' @param use_STAR_mappability (default FALSE) In `BuildReference_Full()`,
+#' @param use_STAR_mappability (default FALSE) In `buildFullRef()`,
 #'   whether to run [STAR_Mappability] to calculate low-mappability regions.
 #'   We recommend setting this to `FALSE` for the common genomes
 #'   (human and mouse), and to `TRUE` for genomes not supported by
 #'   `genome_type`. When set to false, the MappabilityExclusion default file
 #'   corresponding to `genome_type` will automatically be used.
 #' @return
-#' For `storeRef`: creates the following local resources:
+#' For `getResources`: creates the following local resources:
 #' * `reference_path/resource/genome.2bit`: Local copy of the genome sequences
 #'   as a TwoBitFile.
 #' * `reference_path/resource/transcripts.gtf.gz`: Local copy of the gene
 #'   annotation as a gzip-compressed file.
-#' For `BuildReference` and `BuildReference_Full`: creates a NxtIRF reference
+#' For `buildRef` and `buildFullRef`: creates a SpliceWiz reference
 #'   which is written to the given directory specified by `reference_path`.
 #'   Files created includes:
 #' * `reference_path/settings.Rds`: An RDS file containing parameters used
-#'   to generate the NxtIRF reference
+#'   to generate the SpliceWiz reference
 #' * `reference_path/SpliceWiz.ref.gz`: A gzipped text file containing collated
-#'   IRFinder reference files. This file is used by [IRFinder]
+#'   SpliceWiz reference files. This file is used by [IRFinder]
 #' * `reference_path/fst/`: Contains fst files for subsequent easy access to
-#'   NxtIRF generated references
+#'   SpliceWiz generated references
 #' * `reference_path/cov_data.Rds`: An RDS file containing data required to
 #'    visualise genome / transcript tracks.
 #'
-#' `BuildReference_Full` also creates a `STAR` reference located in the `STAR`
+#' `buildFullRef` also creates a `STAR` reference located in the `STAR`
 #'   subdirectory inside the designated `reference_path`
 #'
-#' For `GetNonPolyARef`: Returns the file path to the BED file for
+#' For `getNonPolyARef`: Returns the file path to the BED file for
 #' the nonPolyA loci for the specified genome.
 #'
 #' @examples
-#' # Quick runnable example: generate a reference using NxtIRF's example genome
+#' # Quick runnable example: generate a reference using SpliceWiz's example genome
 #'
 #' example_ref <- file.path(tempdir(), "Reference")
-#' storeRef(
+#' getResources(
 #'     reference_path = example_ref,
 #'     fasta = chrZ_genome(),
 #'     gtf = chrZ_gtf()
@@ -155,12 +155,12 @@
 #'
 #' # Get the path to the Non-PolyA BED file for hg19
 #'
-#' GetNonPolyARef("hg19")
+#' getNonPolyARef("hg19")
 #' \dontrun{
 #'
 #' ### Long examples ###
 #'
-#' # Generate a NxtIRF reference from user supplied FASTA and GTF files for a
+#' # Generate a SpliceWiz reference from user supplied FASTA and GTF files for a
 #' # hg38-based genome:
 #'
 #' buildRef(
@@ -217,7 +217,7 @@
 #'     genome_type = "hg38"
 #' )
 #'
-#' # Build a NxtIRF reference, setting chromosome aliases to allow
+#' # Build a SpliceWiz reference, setting chromosome aliases to allow
 #' # this reference to process BAM files aligned to UCSC-style genomes:
 #'
 #' chrom.df <- GenomeInfoDb::genomeStyles()$Homo_sapiens
@@ -230,14 +230,14 @@
 #'     chromosome_aliases = chrom.df[, c("Ensembl", "UCSC")]
 #' )
 #'
-#' # One-step generation of NxtIRF and STAR references, using 4 threads.
+#' # One-step generation of SpliceWiz and STAR references, using 4 threads.
 #' # NB1: requires a linux-based system with STAR installed.
 #' # NB2: A STAR reference genome will be generated in the `STAR` subfolder
 #' #      inside the given `reference_path`.
 #' # NB3: A custom Mappability Exclusion file will be calculated using STAR
-#' #      and will be used to generate the NxtIRF reference.
+#' #      and will be used to generate the SpliceWiz reference.
 #'
-#' BuildReference_Full(
+#' buildFullRef(
 #'     reference_path = "./Reference_with_STAR",
 #'     fasta = "genome.fa", gtf = "transcripts.gtf",
 #'     genome_type = "",
@@ -247,7 +247,7 @@
 #'
 #' # NB: the above is equivalent to running the following in sequence:
 #'
-#' storeRef(
+#' getResources(
 #'     reference_path = "./Reference_with_STAR",
 #'     fasta = "genome.fa", gtf = "transcripts.gtf"
 #' )
@@ -265,15 +265,15 @@
 #' [Mappability-methods] for methods to calculate low mappability regions\cr\cr
 #' [STAR-methods] for a list of STAR wrapper functions\cr\cr
 #' \link[AnnotationHub]{AnnotationHub}\cr\cr
-#' @name BuildReference
+#' @name Build-Reference-methods
 #' @md
 NULL
 
-#' @describeIn BuildReference Processes / downloads a copy of the genome
+#' @describeIn Build-Reference-methods Processes / downloads a copy of the genome
 #' and gene annotations and stores this in the "resource" subdirectory
 #' of the given reference path
 #' @export
-storeRef <- function(
+getResources <- function(
         reference_path = "./Reference",
         fasta = "", gtf = "",
         overwrite = FALSE, force_download = FALSE
@@ -287,8 +287,8 @@ storeRef <- function(
     )
 }
 
-#' @describeIn BuildReference First calls \code{storeRef()}
-#' (if required). Afterwards creates the NxtIRF reference in the
+#' @describeIn Build-Reference-methods First calls \code{getResources()}
+#' (if required). Afterwards creates the SpliceWiz reference in the
 #' given reference path
 #' @export
 buildRef <- function(
@@ -301,7 +301,7 @@ buildRef <- function(
     .validate_path(reference_path)
     if (!overwrite && 
             file.exists(file.path(reference_path, "SpliceWiz.ref.gz"))) {
-        .log("NxtIRF reference already exists in given directory", "message")
+        .log("SpliceWiz reference already exists in given directory", "message")
         return()
     }
     extra_files <- .fetch_genome_defaults(reference_path,
@@ -329,7 +329,7 @@ buildRef <- function(
     .process_introns(reference_path, reference_data$genome,
         UseExtendedTranscripts)
 
-    dash_progress("Generating IRFinder Reference", N_steps)
+    dash_progress("Generating SpliceWiz Reference", N_steps)
     .gen_irf(reference_path, extra_files, reference_data$genome, chromosomes)
     gc()
 
@@ -366,11 +366,52 @@ buildRef <- function(
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
 }
 
-#' @describeIn BuildReference Returns the path to the BED file containing
+#' @describeIn Build-Reference-methods One-step function that fetches resources,
+#'   creates a STAR reference (including mappability calculations), then
+#'   creates the SpliceWiz reference
+#' @export
+buildFullRef <- function(
+        reference_path,
+        fasta, gtf,
+        chromosome_aliases = NULL,
+        overwrite = FALSE, force_download = FALSE,
+        genome_type = genome_type,
+        use_STAR_mappability = FALSE,
+        nonPolyARef = getNonPolyARef(genome_type),
+        BlacklistRef = "",
+        UseExtendedTranscripts = TRUE,
+        n_threads = 4
+) {
+    if (!overwrite && 
+            file.exists(file.path(reference_path, "SpliceWiz.ref.gz"))) {
+        .log("SpliceWiz reference already exists in given directory", "message")
+        return()
+    }
+
+    .validate_STAR_version()
+
+    getResources(reference_path = reference_path,
+        fasta = fasta, gtf = gtf,
+        overwrite = overwrite, force_download = force_download)
+
+    STAR_buildRef(reference_path = reference_path,
+        also_generate_mappability = use_STAR_mappability,
+        n_threads = n_threads)
+
+    buildRef(reference_path = reference_path,
+        genome_type = genome_type,
+        nonPolyARef = nonPolyARef,
+        BlacklistRef = BlacklistRef,
+        chromosome_aliases = chromosome_aliases,
+        UseExtendedTranscripts = UseExtendedTranscripts)
+}
+
+
+#' @describeIn Build-Reference-methods Returns the path to the BED file containing
 #'   coordinates of known non-polyadenylated transcripts for genomes
 #'   \code{hg38}, \code{hg19}, \code{mm10} and \code{mm9},
 #' @export
-GetNonPolyARef <- function(genome_type) {
+getNonPolyARef <- function(genome_type) {
     if (genome_type == "hg38") {
         nonPolyAFile <- system.file(
             "extra-input-files/Human_hg38_nonPolyA_ROI.bed",
@@ -397,45 +438,7 @@ GetNonPolyARef <- function(genome_type) {
     return(nonPolyAFile)
 }
 
-#' @describeIn BuildReference One-step function that fetches resources,
-#'   creates a STAR reference (including mappability calculations), then
-#'   creates the NxtIRF reference
-#' @export
-BuildReference_Full <- function(
-        reference_path,
-        fasta, gtf,
-        chromosome_aliases = NULL,
-        overwrite = FALSE, force_download = FALSE,
-        genome_type = genome_type,
-        use_STAR_mappability = FALSE,
-        nonPolyARef = GetNonPolyARef(genome_type),
-        BlacklistRef = "",
-        UseExtendedTranscripts = TRUE,
-        n_threads = 4
-) {
-    if (!overwrite && 
-            file.exists(file.path(reference_path, "SpliceWiz.ref.gz"))) {
-        .log("NxtIRF reference already exists in given directory", "message")
-        return()
-    }
-
-    .validate_STAR_version()
-
-    storeRef(reference_path = reference_path,
-        fasta = fasta, gtf = gtf,
-        overwrite = overwrite, force_download = force_download)
-
-    STAR_buildRef(reference_path = reference_path,
-        also_generate_mappability = use_STAR_mappability,
-        n_threads = n_threads)
-
-    buildRef(reference_path = reference_path,
-        genome_type = genome_type,
-        nonPolyARef = nonPolyARef,
-        BlacklistRef = BlacklistRef,
-        chromosome_aliases = chromosome_aliases,
-        UseExtendedTranscripts = UseExtendedTranscripts)
-}
+################ Functions that may be exported in later releases ##############
 
 Get_Genome <- function(reference_path, validate = TRUE,
         as_DNAStringSet = FALSE) {
@@ -527,7 +530,7 @@ return(TRUE)
             settings.list[["BuildVersion"]] < buildref_version) {
         .log(paste(from_str,
             "in reference_path =", reference_path,
-            "NxtIRF reference is earlier than current version",
+            "SpliceWiz reference is earlier than current version",
             buildref_version))
     }
 }
@@ -556,7 +559,7 @@ return(TRUE)
             settings.list[["BuildVersion"]] < buildref_version) {
         .log(paste(from_str,
             "in reference_path =", reference_path,
-            "NxtIRF reference is earlier than current version",
+            "SpliceWiz reference is earlier than current version",
             buildref_version))
     }
 }
@@ -566,7 +569,7 @@ return(TRUE)
         force_download = FALSE
 ) {
     if (!is_valid(nonPolyARef)) {
-        nonPolyAFile <- GetNonPolyARef(genome_type)
+        nonPolyAFile <- getNonPolyARef(genome_type)
         nonPolyAFile <- .parse_valid_file(nonPolyAFile,
             "Reference generated without non-polyA reference")
     } else {
@@ -1184,7 +1187,7 @@ return(TRUE)
     Proteins <- gtf_gr[gtf_gr$type == "CDS"]
     if (length(Proteins) == 0) {
         .log("No CDS (proteins) detected in reference!")
-    } # Is this critical to NxtIRF function?
+    } # Is this critical to SpliceWiz function?
 
     Proteins <- GenomeInfoDb::sortSeqlevels(Proteins)
     Proteins <- sort(Proteins)
@@ -1663,9 +1666,9 @@ return(TRUE)
 # Sub
 
 .gen_irf <- function(reference_path, extra_files, genome, chromosome_aliases) {
-    .log("Generating IRFinder reference", "message")
+    .log("Generating SpliceWiz reference", "message")
 
-    # Generating IRFinder-base references
+    # Generating SpliceWiz-base references
     message("...prepping data")
     data <- .gen_irf_prep_data(reference_path)
     data2 <- .gen_irf_prep_introns(
@@ -1710,7 +1713,7 @@ return(TRUE)
         chr$seqalias <- ""
     }
     .gen_irf_final(reference_path, ref.cover, readcons, ref.ROI, ref.sj, chr)
-    message("IRFinder reference generation completed")
+    message("SpliceWiz reference generation completed")
 }
 ################################################################################
 
@@ -2010,7 +2013,7 @@ return(TRUE)
     return(IntronCover.summa)
 }
 
-# Generates IRFinder intron name
+# Generates SpliceWiz intron name
 .gen_irf_irfname <- function(IntronCover.summa, stranded = TRUE) {
     if (stranded) {
         IntronCover.summa[, c("IRFname") := paste("dir",
@@ -2060,7 +2063,7 @@ return(TRUE)
     return(IntronCover.summa)
 }
 
-# Imports IntronCover temp files, generates IRFinder-readable reference
+# Imports IntronCover temp files, generates SpliceWiz-readable reference
 .gen_irf_refcover <- function(reference_path) {
     tmpdir.IntronCover <- fread(file.path(
         reference_path, "tmpdir.IntronCover.bed"

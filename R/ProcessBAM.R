@@ -1,16 +1,15 @@
-#' Runs the OpenMP/C++-based NxtIRF/IRFinder algorithm
+#' Runs the OpenMP/C++ based SpliceWiz algorithm
 #'
-#' These function calls the IRFinder C++ routine on one or more BAM files.\cr\cr
-#' The routine is an improved version over the original IRFinder, with
+#' These function calls the SpliceWiz C++ routine on one or more BAM files.
+#' \cr\cr The routine is an improved version over the original IRFinder, with
 #' OpenMP-based multi-threading and the production of compact "COV" files to
-#' record alignment coverage. A NxtIRF reference built using [BuildReference]
-#' is required.\cr\cr
-#' After IRFinder is run, users should call
+#' record alignment coverage. A SpliceWiz reference built using 
+#' [Build-Reference-methods] is required.\cr\cr
+#' After `processBAM()` is run, users should call
 #' [CollateData] to collate individual outputs into an experiment / dataset.
 #' \cr\cr
-#' BAM2COV creates COV files from BAM files without running the full IRFinder
-#' algorithm.\cr\cr
-#' See details for performance info.
+#' BAM2COV creates COV files from BAM files without running `processBAM()`.
+#' \cr\cr See details for performance info.
 #'
 #' @details
 #' Typical run-times for a 100-million paired-end alignment BAM file takes 10
@@ -28,23 +27,23 @@
 #' @param bamfiles A vector containing file paths of 1 or more BAM files
 #' @param sample_names The sample names of the given BAM files. Must
 #'   be a vector of the same length as `bamfiles`
-#' @param reference_path The directory containing the NxtIRF reference
+#' @param reference_path The directory containing the SpliceWiz reference
 #' @param output_path The output directory of this function
 #' @param n_threads (default `1`) The number of threads to use. See details.
-#' @param Use_OpenMP (default `TRUE`) Whether to use OpenMP to run IRFinder.
+#' @param Use_OpenMP (default `TRUE`) Whether to use OpenMP.
 #'   If set to `FALSE`, BiocParallel will be used if `n_threads` is set
-#' @param overwrite (default `FALSE`) If IRFinder output files already exist,
+#' @param overwrite (default `FALSE`) If output files already exist,
 #'   will not attempt to re-run. If `run_featureCounts` is `TRUE`, will not
 #'   overwrite gene counts of previous run unless `overwrite` is `TRUE`.
 #' @param run_featureCounts (default `FALSE`) Whether this function will run
-#'   [Rsubread::featureCounts] on the BAM files after running IRFinder.
+#'   [Rsubread::featureCounts] on the BAM files after counting spliced reads.
 #'   If so, the output will be
 #'   saved to `"main.FC.Rds` in the `output_path` directory as a list object.
-#' @param verbose (default `FALSE`) Set to `TRUE` to allow IRFinder to output
-#'   progress bars and messages
-#' @return IRFinder output will be saved to `output_path`. Output files will be
-#'   named using the given sample names.
-#'   * sample.txt.gz: The main IRFinder output file containing the quantitation
+#' @param verbose (default `FALSE`) Set to `TRUE` to allow `processBAM()` to 
+#'   output progress bars and messages
+#' @return `processBAM()` output will be saved to `output_path`. Output files 
+#'   will be named using the given sample names.
+#'   * sample.txt.gz: The main output file containing the quantitation
 #'   of IR and splice junctions, as well as QC information\cr\cr
 #'   * sample.cov: Contains coverage information in compressed binary. See
 #'     [GetCoverage]
@@ -52,16 +51,16 @@
 #'   (only if `run_featureCounts == TRUE`)
 #' @examples
 #'
-#' # Run BAM2COV, which only produces COV files but does not run IRFinder:
+#' # Run BAM2COV, which only produces COV files but does not run `processBAM()`:
 #'
-#' bams <- NxtIRF_example_bams()
+#' bams <- SpliceWiz_example_bams()
 #'
 #' BAM2COV(bams$path, bams$sample,
-#'   output_path = file.path(tempdir(), "IRFinder_output"),
+#'   output_path = file.path(tempdir(), "SpliceWiz_Output"),
 #'   n_threads = 2, overwrite = TRUE
 #' )
 #'
-#' # Run IRFinder algorithm, which produces:
+#' # Run processBAM(), which produces:
 #' # - text output of intron coverage and spliced read counts
 #' # - COV files which record read coverages
 #'
@@ -73,20 +72,20 @@
 #'     gtf = chrZ_gtf()
 #' )
 #'
-#' bams <- NxtIRF_example_bams()
+#' bams <- SpliceWiz_example_bams()
 #'
-#' IRFinder(bams$path, bams$sample,
+#' processBAM(bams$path, bams$sample,
 #'   reference_path = file.path(tempdir(), "Reference"),
-#'   output_path = file.path(tempdir(), "IRFinder_output"),
+#'   output_path = file.path(tempdir(), "SpliceWiz_Output"),
 #'   n_threads = 2
 #' )
-#' @seealso [BuildReference] [CollateData] [IsCOV]
-#' @name IRFinder
+#' @seealso [Build-Reference-methods] [CollateData] [IsCOV]
+#' @name processBAM
 #' @md
 NULL
 
-#' @describeIn IRFinder Converts BAM files to COV files without running
-#'   IRFinder algorithm
+#' @describeIn processBAM Converts BAM files to COV files without running
+#'   `processBAM()`
 #' @export
 BAM2COV <- function(
         bamfiles = "./Unsorted.bam",
@@ -141,30 +140,30 @@ BAM2COV <- function(
             "BAM2COV must have crashed"))
 }
 
-#' @describeIn IRFinder Runs IRFinder algorithm on BAM files. Requires a
-#' NxtIRF/IRFinder reference generated by buildRef()
+#' @describeIn processBAM Processes BAM files. Requires a
+#' SpliceWiz reference generated by buildRef()
 #' @export
-IRFinder <- function(
+processBAM <- function(
         bamfiles = "./Unsorted.bam",
         sample_names = "sample1",
         reference_path = "./Reference",
-        output_path = "./IRFinder_Output",
+        output_path = "./SpliceWiz_Output",
         n_threads = 1, Use_OpenMP = TRUE,
         overwrite = FALSE,
         run_featureCounts = FALSE,
         verbose = FALSE
 ) {
     # Check args
-    if (length(bamfiles) != length(sample_names)) .log(paste("In IRFinder(),",
+    if (length(bamfiles) != length(sample_names)) .log(paste("In processBAM(),",
         "Number of BAM files and sample names must be the same"))
     if (length(sample_names) != length(unique(sample_names)))
-        .log(paste("In IRFinder(), some sample names are not unique"))
+        .log(paste("In processBAM(), some sample names are not unique"))
 
     if (length(bamfiles) == 0) .log("bamfiles argument must not be empty")
-    if (!all(file.exists(bamfiles))) .log(paste("In IRFinder(),",
+    if (!all(file.exists(bamfiles))) .log(paste("In processBAM(),",
         "some BAMs in bamfiles do not exist"))
 
-    if (!dir.exists(dirname(output_path))) .log(paste("In IRFinder(),",
+    if (!dir.exists(dirname(output_path))) .log(paste("In processBAM(),",
         dirname(output_path), " - path does not exist"))
 
     if (!dir.exists(output_path)) dir.create(output_path)
@@ -182,51 +181,51 @@ IRFinder <- function(
 
     # Call wrapper
     if (!all(already_exist)) {
-        .run_IRFinder(
+        .run_processBAM(
             reference_path = reference_path,
             bamfiles = bamfiles[!already_exist],
             output_files = s_output[!already_exist],
             max_threads = n_threads, Use_OpenMP = Use_OpenMP,
-            overwrite_IRFinder_output = overwrite,
+            overwrite_SpliceWiz_Output = overwrite,
             verbose = verbose
         )
     } else {
-        .log("IRFinder has already been run on given BAM files", "message")
+        .log("processBAM has already been run on given BAM files", "message")
     }
 
     s_output <- file.path(normalizePath(output_path), sample_names)
     if (!all(file.exists(paste0(s_output, ".txt.gz"))))
-        .log(paste("Some IRFinder outputs could not be found.",
-            "IRFinder must have crashed"))
+        .log(paste("Some processBAM outputs could not be found.",
+            "processBAM must have crashed"))
 
     # Run featureCounts
     if (run_featureCounts) {
-        .irfinder_run_featureCounts(
+        .processBAM_run_featureCounts(
             reference_path, s_output,
             bamfiles, sample_names, n_threads, overwrite
         )
     }
 }
 
-# IRFinder wrapper to R/C++. Handles whether OpenMP or BiocParallel is used
-.run_IRFinder <- function(
+# Wrapper to R/C++. Handles whether OpenMP or BiocParallel is used
+.run_processBAM <- function(
         reference_path = "./Reference",
         bamfiles = "Unsorted.bam",
         output_files = "./Sample",
         max_threads = max(parallel::detectCores(), 1),
         Use_OpenMP = TRUE,
-        overwrite_IRFinder_output = FALSE,
+        overwrite_SpliceWiz_Output = FALSE,
         verbose = TRUE
     ) {
-    .validate_reference(reference_path) # Check valid NxtIRF reference
-    s_bam <- normalizePath(bamfiles) # Clean path name for C/IRFinder
-    s_ref <- normalizePath(reference_path) # Clean path name for C/IRFinder
+    .validate_reference(reference_path) # Check valid SpliceWiz reference
+    s_bam <- normalizePath(bamfiles) # Clean path name for C++
+    s_ref <- normalizePath(reference_path) # Clean path name for C++
 
     # Check args
-    .irfinder_validate_args(s_bam, max_threads, output_files)
+    .processBAM_validate_args(s_bam, max_threads, output_files)
     ref_file <- file.path(s_ref, "SpliceWiz.ref.gz")
 
-    .log("Running IRFinder", "message")
+    .log("Running SpliceWiz processBAM", "message")
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & Use_OpenMP) {
         SpliceWizMain_multi(ref_file, s_bam, output_files, n_threads, verbose)
@@ -245,14 +244,14 @@ IRFinder <- function(
             BiocParallel::bplapply(selected_rows_subset,
                 function(i, s_bam, reference_file,
                         output_files, verbose, overwrite) {
-                    .irfinder_run_single(s_bam[i], reference_file,
+                    .processBAM_run_single(s_bam[i], reference_file,
                         output_files[i], verbose, overwrite)
                 },
                 s_bam = s_bam,
                 reference_file = ref_file,
                 output_files = output_files,
                 verbose = verbose,
-                overwrite = overwrite_IRFinder_output,
+                overwrite = overwrite_SpliceWiz_Output,
                 BPPARAM = BPPARAM_mod
             )
         }
@@ -269,9 +268,9 @@ IRFinder <- function(
         overwrite = FALSE,
         verbose = TRUE
     ) {
-    s_bam <- normalizePath(bamfiles) # Clean path name for C/IRFinder
+    s_bam <- normalizePath(bamfiles) # Clean path name for C++
     # Check args
-    .irfinder_validate_args(s_bam, max_threads, output_file_prefixes)
+    .processBAM_validate_args(s_bam, max_threads, output_file_prefixes)
 
     .log("Running BAM2COV", "message")
     n_threads <- floor(max_threads)
@@ -308,8 +307,8 @@ IRFinder <- function(
     }
 }
 
-# Call C++/IRFinder on a single sample. Used for BiocParallel
-.irfinder_run_single <- function(
+# Call C++ on a single sample. Used for BiocParallel
+.processBAM_run_single <- function(
     bam, ref, out, verbose, overwrite
 ) {
     file_gz <- paste0(out, ".txt.gz")
@@ -318,21 +317,21 @@ IRFinder <- function(
     if (overwrite ||
         !(file.exists(file_gz) | file.exists(file_cov))) {
         ret <- SpliceWizMain(bam, ref, out, verbose, 1)
-        # Check IRFinder returns all files successfully
+        # Check SpliceWiz returns all files successfully
         if (ret != 0) {
             .log(paste(
-                "IRFinder exited with errors, see error messages above"))
+                "SpliceWiz processBAM exited with errors"))
         } else if (!file.exists(file_gz)) {
             .log(paste(
-                "IRFinder failed to produce", file_gz))
+                "SpliceWiz processBAM failed to produce", file_gz))
         } else if (!file.exists(file_cov)) {
             .log(paste(
-                "IRFinder failed to produce", file_cov))
+                "SpliceWiz processBAM failed to produce", file_cov))
         } else {
-            .log(paste("IRFinder processed", bam_short), "message")
+            .log(paste("SpliceWiz processBAM processed", bam_short), "message")
         }
     } else {
-        .log(paste("IRFinder output for", bam_short,
+        .log(paste("SpliceWiz processBAM output for", bam_short,
             "already exists, skipping..."), "message")
     }
 }
@@ -345,10 +344,10 @@ IRFinder <- function(
     bam_short <- file.path(basename(dirname(bam)), basename(bam))
     if (overwrite || !(file.exists(file_cov))) {
         ret <- c_BAM2COV(bam, file_cov, verbose, 1)
-        # Check IRFinder returns all files successfully
+        # Check BAM2COV returns all files successfully
         if (ret != 0) {
             .log(paste(
-                "IRFinder exited with errors, see error messages above"))
+                "BAM2COV exited with errors"))
         } else if (!file.exists(file_cov)) {
             .log(paste(
                 "BAM2COV failed to produce", file_cov))
@@ -361,9 +360,9 @@ IRFinder <- function(
     }
 }
 
-# Runs featureCounts on given BAM files, intended to be run after IRFinder
-# as the IRFinder determines the strandedness and paired-ness of the experiment
-.irfinder_run_featureCounts <- function(
+# Runs featureCounts on given BAM files, intended to be run after processBAM
+# as processBAM determines the strandedness and paired-ness of the experiment
+.processBAM_run_featureCounts <- function(
         reference_path, output_files,
         s_bam, s_names, n_threads, overwrite
 ) {
@@ -412,7 +411,7 @@ IRFinder <- function(
             res.old <- readRDS(outfile)
             if (!all(columns %in% names(res))) {
                 .log(paste(outfile,
-                    "found but was not a valid NxtIRF featureCounts",
+                    "found but was not a valid SpliceWiz featureCounts",
                     "output; overwriting previous output"
                 ), "warning")
             } else if (
@@ -446,7 +445,7 @@ IRFinder <- function(
 
 
 # Validate arguments; return error if invalid
-.irfinder_validate_args <- function(s_bam, max_threads, output_files) {
+.processBAM_validate_args <- function(s_bam, max_threads, output_files) {
     if (!is.numeric(max_threads)) max_threads <- 1
     if (max_threads < 1) max_threads <- 1
     max_threads <- floor(max_threads)

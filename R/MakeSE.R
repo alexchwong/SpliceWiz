@@ -64,13 +64,13 @@
 #'     gtf = chrZ_gtf()
 #' )
 #'
-#' bams <- NxtIRF_example_bams()
-#' IRFinder(bams$path, bams$sample,
+#' bams <- SpliceWiz_example_bams()
+#' processBAM(bams$path, bams$sample,
 #'   reference_path = file.path(tempdir(), "Reference"),
-#'   output_path = file.path(tempdir(), "IRFinder_output")
+#'   output_path = file.path(tempdir(), "SpliceWiz_Output")
 #' )
 #'
-#' expr <- Find_IRFinder_Output(file.path(tempdir(), "IRFinder_output"))
+#' expr <- Find_SpliceWiz_Output(file.path(tempdir(), "SpliceWiz_Output"))
 #' CollateData(expr,
 #'   reference_path = file.path(tempdir(), "Reference"),
 #'   output_path = file.path(tempdir(), "NxtIRF_output")

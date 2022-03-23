@@ -1,6 +1,6 @@
 #' NxtIRF Example BAMs and NxtSE Experiment Object
 #'
-#' `NxtIRF_example_bams()` is a wrapper function to obtain and make a local copy
+#' `SpliceWiz_example_bams()` is a wrapper function to obtain and make a local copy
 #' of 6 example files provided by the NxtIRFdata companion package to
 #' demonstrate the use of SpliceWiz. See [NxtIRFdata::example_bams] for
 #' a description of the provided BAM files. \cr\cr
@@ -9,7 +9,7 @@
 #' in the example code in [MakeSE]
 #'
 #' @return
-#' In `NxtIRF_example_bams()`: returns a 2-column data frame containing
+#' In `SpliceWiz_example_bams()`: returns a 2-column data frame containing
 #'   sample names and BAM paths of the example dataset.
 #'
 #' In `NxtIRF_example_NxtSE()`: returns a \linkS4class{NxtSE} object.
@@ -18,7 +18,7 @@
 #' # returns a data frame with the first column as sample names, and the
 #' # second column as BAM paths
 #'
-#' NxtIRF_example_bams()
+#' SpliceWiz_example_bams()
 #'
 #' # Returns a NxtSE object created by the example bams aligned to the
 #' # mock NxtSE reference
@@ -36,7 +36,7 @@
 #' \doi{10.1186/s13059-017-1184-4}
 #' @name example-NxtIRF-data
 #' @aliases
-#' NxtIRF_example_bams NxtIRF_example_NxtSE
+#' SpliceWiz_example_bams NxtIRF_example_NxtSE
 #' @keywords package
 #' @seealso [MakeSE]
 #' @md
@@ -45,7 +45,7 @@ NULL
 #' @describeIn example-NxtIRF-data Returns a 2-column data frame, containing
 #'   sample names and sample paths (in tempdir()) of example BAM files
 #' @export
-NxtIRF_example_bams <- function() {
+SpliceWiz_example_bams <- function() {
     bams <- NxtIRFdata::example_bams()
     if (is.null(bams) || length(bams) != 6) stop("Example bam fetching failed")
     return(Find_Bams(tempdir()))

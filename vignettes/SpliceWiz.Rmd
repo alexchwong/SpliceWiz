@@ -113,19 +113,19 @@ SpliceWiz provides an example set of 6 BAM files to demonstrate its use via this
 vignette.
 
 Firstly, retrieve the BAM files from ExperimentHub using the SpliceWiz helper
-function `NxtIRF_example_bams()`. This makes a copy of the BAM files to the
+function `SpliceWiz_example_bams()`. This makes a copy of the BAM files to the
 temporary directory:
 
 ```{r}
-bams = NxtIRF_example_bams()
+bams = SpliceWiz_example_bams()
 bams
 ```
 
 Finally, run SpliceWiz/IRFinder as follows:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
-irf_path = file.path(tempdir(), "IRFinder_output")
-IRFinder(
+irf_path = file.path(tempdir(), "SpliceWiz_Output")
+processBAM(
     bamfiles = bams$path,
     sample_names = bams$sample,
     reference_path = ref_path,
@@ -136,10 +136,10 @@ IRFinder(
 ### Collate individual IRFinder runs to build a SpliceWiz Experiment
 
 First, collate the IRFinder output files using the helper function
-`Find_IRFinder_Output()`
+`Find_SpliceWiz_Output()`
 
 ```{r}
-expr = Find_IRFinder_Output(irf_path)
+expr = Find_SpliceWiz_Output(irf_path)
 ```
 
 This creates a 3-column data frame with sample name, IRFinder gzipped text
@@ -284,7 +284,7 @@ coordinates.
 ```{r, eval = FALSE}
 ref_path = file.path(tempdir(), "Reference")
 
-storeRef(
+getResources(
     reference_path = ref_path,
     fasta = chrZ_genome(), 
     gtf = chrZ_gtf()
@@ -302,13 +302,13 @@ buildRef(
 
 ```
 
-The first function, storeRef(), requires 3 arguments:
+The first function, getResources(), requires 3 arguments:
 (1) `fasta` The file (or url) of the genome FASTA file,
 (2) `gtf` The file (or url) of the gene annotation GTF file, and
 (3) `reference_path` The directory (ideally an empty directory) to create
 the SpliceWiz reference
 
-`storeRef()` processes the given source genome / annotation files,
+`getResources()` processes the given source genome / annotation files,
 downloading them where necesssary, and saves a local copy of the GTF file as
 well as a compressed version of the FASTA sequence file (as a TwoBitFile which
 is a binary compressed version of the genome sequence).
@@ -322,7 +322,7 @@ Alternative 5' or 3' Splice Sites (A5SS / A3SS), and Intron Retention (IR).
 For IR events, every intron is considered as a potential Intron Retention event,
 assuming most IR events are not annotated.
 
-Additionally, BuildReference assesses the coding sequence changes that arise if
+Additionally, Build-Reference-methods assesses the coding sequence changes that arise if
 each individual IR event occurs, annotating the IR events as NMD-inducing if the
 inclusion of the intron results in premature termination codons (PTCs, as 
 defined by a stop codon located 55 bases upstream of the last exon junction).
@@ -333,7 +333,7 @@ SpliceWiz adopts the IRFinder algorithm to measure IR in aligned BAM files. The
 IRFinder algorithm also provides spliced junction counts that is used by
 SpliceWiz to quantitate alternate splicing events.
 
-### Running IRFinder() on example BAM files
+### Running processBAM() on example BAM files
 
 In this vignette, we provide 6 example BAM files. These were generated based on
 aligned RNA-seq BAMs of 6 samples from the Leucegene AML dataset (GSE67039).
@@ -373,8 +373,8 @@ columns as the sample names and paths of all the BAM files found. We use this to
 run IRFinder on all the BAM files using the following:
 
 ```{r, eval = FALSE}
-irf_path = file.path(tempdir(), "IRFinder_output")
-IRFinder(
+irf_path = file.path(tempdir(), "SpliceWiz_Output")
+processBAM(
     bamfiles = bams$path,
     sample_names = bams$sample,
     reference_path = ref_path,
@@ -400,7 +400,7 @@ retrieved using below:
 # Re-run IRFinder without overwrite, and run featureCounts
 require(Rsubread)
 
-IRFinder(
+processBAM(
     bamfiles = bams$path,
     sample_names = bams$sample,
     reference_path = ref_path,
@@ -435,7 +435,7 @@ this data using the CollateData() function. Again, we use a convenience function
 to generate a list of IRFinder output files:
 
 ```{r, eval = FALSE}
-expr <- Find_IRFinder_Output(irf_path)
+expr <- Find_SpliceWiz_Output(irf_path)
 ```
 
 `expr` is a 3-column data frame. The first two columns contain the sample 
@@ -928,7 +928,7 @@ buildRef(
 )
 ```
 
-`BuildReference` will recognise the inputs of `fasta` and `gtf` as AnnotationHub
+`Build-Reference-methods` will recognise the inputs of `fasta` and `gtf` as AnnotationHub
 resources as they begin with "AH".
 
 ### Create a SpliceWiz reference from species other than human or mouse:
@@ -947,7 +947,7 @@ buildRef(
 ```
 
 Alternatively, if `STAR` is available on the computer or server where R/RStudio
-is being run, we can use the one-line function `BuildReference_Full`. This
+is being run, we can use the one-line function `buildFullRef`. This
 function will:
 * Prepare the resources from the given FASTA and GTF files
 * Generate a STAR genome
@@ -956,7 +956,7 @@ function will:
 * Build the SpliceWiz reference using the genome resources and mappability file
 
 ```{r eval=FALSE}
-BuildReference_Full(
+buildFullRef(
     reference_path = ref_path,
     fasta = "genome.fa", gtf = "transcripts.gtf",
     genome_type = "",
@@ -977,7 +977,7 @@ here for convenience, to demonstrate how this would be done:
 
 ref_path = file.path(tempdir(), "Reference")
 
-storeRef(
+getResources(
     reference_path = ref_path,
     fasta = chrZ_genome(),
     gtf = chrZ_gtf()
@@ -1042,7 +1042,7 @@ ref_path = "./Reference"
 # Ensure genome resources are prepared from genome FASTA and GTF file:
 
 if(!file.exists(file.path(ref_path, "resources"))) {
-    storeRef(
+    getResources(
         reference_path = ref_path,
         fasta = "genome.fa",
         gtf = "transcripts.gtf"
@@ -1108,11 +1108,11 @@ To use IRFinder using 4 OpenMP threads:
 ```{r eval=FALSE}
 # assume SpliceWiz reference has been generated in `ref_path`
 
-IRFinder(
+processBAM(
     bamfiles = bams$path,
     sample_names = bams$sample,
     reference_path = ref_path,
-    output_path = "./IRFinder_output",
+    output_path = "./SpliceWiz_Output",
     n_threads = 4,
     Use_OpenMP = TRUE
 )
@@ -1125,7 +1125,7 @@ the IRFinder algorithm. One reason might be because a SpliceWiz/IRFinder referen
 is not available.
 
 To convert a list of BAM files, run `BAM2COV()`. This is a function structurally
-similar to `IRFinder()` but without the need to give the path to the SpliceWiz
+similar to `processBAM()` but without the need to give the path to the SpliceWiz
 reference:
 
 ```{r eval=FALSE}
@@ -1133,7 +1133,7 @@ reference:
 BAM2COV(
     bamfiles = bams$path,
     sample_names = bams$sample,
-    output_path = "./IRFinder_output",
+    output_path = "./SpliceWiz_Output",
     n_threads = 4,
     Use_OpenMP = TRUE
 )
@@ -1142,11 +1142,11 @@ BAM2COV(
 ## Collating IRFinder data into a single experiment:
 
 Assuming the SpliceWiz reference is in `ref_path`, after running IRFinder as shown
-in the previous section, use the convenience function `Find_IRFinder_Output()`
+in the previous section, use the convenience function `Find_SpliceWiz_Output()`
 to tabulate a list of samples and their corresponding IRFinder outputs:
 
 ```{r eval=FALSE}
-expr = Find_IRFinder_Output("./IRFinder_output")
+expr = Find_SpliceWiz_Output("./SpliceWiz_Output")
 ```
 
 This data.frame can be directly used to run `CollateData`:

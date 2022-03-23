@@ -82,7 +82,7 @@ normalisation methods across samples grouped by conditions;
 
 The main functions are:
 \itemize{
-\item \link{BuildReference} - Prepares genome and gene annotation
+\item \link{Build-Reference-methods} - Prepares genome and gene annotation
 references from FASTA and GTF files, and synthesises the NxtIRF reference
 for the IRFinder engine and NxtIRF-based downstream analysis.
 \item \link{STAR-methods} - (Optional) Provides wrapper functions to build the STAR

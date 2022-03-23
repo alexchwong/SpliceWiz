@@ -48,17 +48,17 @@ NULL
 #' @seealso [MakeSE()]
 make_example_NxtSE <- function() {
     require(SpliceWiz)
-    bams = NxtIRF_example_bams()
+    bams = SpliceWiz_example_bams()
     buildRef(
         fasta = chrZ_genome(), gtf = chrZ_gtf(),
         reference_path = file.path(tempdir(), "Reference")
     )
-    IRFinder(bams$path, bams$sample,
+    processBAM(bams$path, bams$sample,
         reference_path = file.path(tempdir(), "Reference"),
-        output_path = file.path(tempdir(), "IRFinder_output"),
+        output_path = file.path(tempdir(), "SpliceWiz_Output"),
         overwrite = TRUE, n_threads = 1
     )
-    expr = Find_IRFinder_Output(file.path(tempdir(), "IRFinder_output"))
+    expr = Find_SpliceWiz_Output(file.path(tempdir(), "SpliceWiz_Output"))
     CollateData(expr, 
       reference_path = file.path(tempdir(), "Reference"),
       output_path = file.path(tempdir(), "NxtIRF_output")

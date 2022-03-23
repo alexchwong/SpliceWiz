@@ -75,7 +75,7 @@
 #'
 #' The main functions are:
 #'
-#' * [BuildReference] - Prepares genome and gene annotation
+#' * [Build-Reference-methods] - Prepares genome and gene annotation
 #'   references from FASTA and GTF files, and synthesises the NxtIRF reference
 #'   for the IRFinder engine and NxtIRF-based downstream analysis.
 #' * [STAR-methods] - (Optional) Provides wrapper functions to build the STAR

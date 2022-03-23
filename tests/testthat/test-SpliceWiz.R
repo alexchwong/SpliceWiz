@@ -1,5 +1,5 @@
 test_that("SpliceWiz pipeline reproduces NxtSE object", {
-    bams = NxtIRF_example_bams()
+    bams = SpliceWiz_example_bams()
     chr_alias = data.frame(old = "chrZ", new = "chrZ")
 
     buildRef(
@@ -9,12 +9,12 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
         chromosome_aliases = chr_alias
     )
     
-    IRFinder(bams$path, bams$sample,
+    processBAM(bams$path, bams$sample,
         reference_path = file.path(tempdir(), "Reference"),
-        output_path = file.path(tempdir(), "IRFinder_output"),
+        output_path = file.path(tempdir(), "SpliceWiz_Output"),
         n_threads = 1
     )
-    expr <- Find_IRFinder_Output(file.path(tempdir(), "IRFinder_output"))
+    expr <- Find_SpliceWiz_Output(file.path(tempdir(), "SpliceWiz_Output"))
     
     CollateData(expr, 
         reference_path = file.path(tempdir(), "Reference"),

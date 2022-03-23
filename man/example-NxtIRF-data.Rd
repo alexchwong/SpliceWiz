@@ -2,22 +2,22 @@
 % Please edit documentation in R/example_data.R
 \name{example-NxtIRF-data}
 \alias{example-NxtIRF-data}
-\alias{NxtIRF_example_bams}
+\alias{SpliceWiz_example_bams}
 \alias{NxtIRF_example_NxtSE}
 \title{NxtIRF Example BAMs and NxtSE Experiment Object}
 \usage{
-NxtIRF_example_bams()
+SpliceWiz_example_bams()
 
 NxtIRF_example_NxtSE()
 }
 \value{
-In \code{NxtIRF_example_bams()}: returns a 2-column data frame containing
+In \code{SpliceWiz_example_bams()}: returns a 2-column data frame containing
 sample names and BAM paths of the example dataset.
 
 In \code{NxtIRF_example_NxtSE()}: returns a \linkS4class{NxtSE} object.
 }
 \description{
-\code{NxtIRF_example_bams()} is a wrapper function to obtain and make a local copy
+\code{SpliceWiz_example_bams()} is a wrapper function to obtain and make a local copy
 of 6 example files provided by the NxtIRFdata companion package to
 demonstrate the use of SpliceWiz. See \link[NxtIRFdata:NxtIRFdata-package]{NxtIRFdata::example_bams} for
 a description of the provided BAM files. \cr\cr
@@ -27,7 +27,7 @@ in the example code in \link{MakeSE}
 }
 \section{Functions}{
 \itemize{
-\item \code{NxtIRF_example_bams}: Returns a 2-column data frame, containing
+\item \code{SpliceWiz_example_bams}: Returns a 2-column data frame, containing
 sample names and sample paths (in tempdir()) of example BAM files
 
 \item \code{NxtIRF_example_NxtSE}: Returns a (in-memory / realized) NxtSE object
@@ -40,7 +40,7 @@ BAM files
 # returns a data frame with the first column as sample names, and the
 # second column as BAM paths
 
-NxtIRF_example_bams()
+SpliceWiz_example_bams()
 
 # Returns a NxtSE object created by the example bams aligned to the
 # mock NxtSE reference

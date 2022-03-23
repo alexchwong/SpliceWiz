@@ -116,7 +116,7 @@ server_ref_new <- function(id, refresh_tab, volumes) {
             withProgress(message = "Retrieving Mappability resource", value = 0,
             {
                 if(gt %in% valid_gt_options) {
-                    settings_newref$newref_NPA <- GetNonPolyARef(gt)
+                    settings_newref$newref_NPA <- getNonPolyARef(gt)
                     settings_newref$newref_mappa <- 
                         .nxtIRF_get_mappa(gt)
                 } else if(gt == "(custom)") {
@@ -240,7 +240,7 @@ server_ref_new <- function(id, refresh_tab, volumes) {
                 }
 
                 withProgress(message = 'Building Reference', value = 0, {
-                    do.call(BuildReference, args)
+                    do.call(Build-Reference-methods, args)
                 })
                 # If successfully created, load this reference automatically
                 if(file.exists(

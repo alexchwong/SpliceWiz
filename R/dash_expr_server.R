@@ -790,7 +790,7 @@ Expr_IRF_actually_run <- function(input, session, n_threads, settings_expr) {
                 i_done, "of", length(settings_expr$selected_rows), "done")
         )
         for(i in settings_expr$selected_rows) {
-            IRFinder(
+            processBAM(
                 bamfiles = settings_expr$df.files$bam_file[i],
                 sample_names = settings_expr$df.files$sample[i],
                 reference_path = settings_expr$ref_path,

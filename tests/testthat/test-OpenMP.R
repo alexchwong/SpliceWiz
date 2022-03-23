@@ -11,7 +11,7 @@ test_that("NxtIRF OpenMP produces same output regardless of threads", {
     }
     
     if(!file.exists(file.path(tempdir(), "02H003.bam"))) {
-        bams = NxtIRF_example_bams()
+        bams = SpliceWiz_example_bams()
     } else {
         bams = Find_Bams(tempdir())
     }
@@ -23,7 +23,7 @@ test_that("NxtIRF OpenMP produces same output regardless of threads", {
     }
 
     for(i in seq_len(n_threads)) {
-        IRFinder(bams$path[1], paste0("thread_", i),
+        processBAM(bams$path[1], paste0("thread_", i),
             reference_path = file.path(tempdir(), "Reference"),
             output_path = file.path(tempdir(), "IRFinder_test_threads"),
             overwrite = TRUE, n_threads = i, verbose = TRUE

@@ -25,7 +25,7 @@
 #' IRFinder outputs two files per BAM processed. These are named by the given
 #' sample names. The text output is named "sample1.txt.gz", and the COV file
 #' is named "sample1.cov", where `sample1` is the name of the sample. These
-#' files can be organised / tabulated using the function `Find_IRFinder_Output`.
+#' files can be organised / tabulated using the function `Find_SpliceWiz_Output`.
 #' The generic function `Find_Samples` will organise the IRFinder text output
 #' files but exclude the COV files. Use the latter as the `Experiment` in
 #' [CollateData] if one decides to collate an experiment without linked COV
@@ -59,7 +59,7 @@
 #' # Retrieve all IRFinder output files in a given folder,
 #' # named by sample names
 #'
-#' expr <- Find_IRFinder_Output(file.path(tempdir(), "IRFinder_output"))
+#' expr <- Find_SpliceWiz_Output(file.path(tempdir(), "SpliceWiz_Output"))
 #' \dontrun{
 #'
 #' # Find FASTQ files in a directory, named by sample names
@@ -173,7 +173,7 @@ Find_Bams <- function(sample_path, level = 0) {
 #' @describeIn Find_Samples Use Find_Samples() to return all IRFinder output
 #' files in a given folder, including COV files
 #' @export
-Find_IRFinder_Output <- function(sample_path, level = 0) {
+Find_SpliceWiz_Output <- function(sample_path, level = 0) {
     DT <- Find_Samples(sample_path, c(".txt.gz", ".cov"), level = level)
     colnames(DT) <- c("sample", "irf_file", "cov_file")
     return(DT)

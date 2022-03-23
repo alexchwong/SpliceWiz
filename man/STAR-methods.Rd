@@ -53,7 +53,7 @@ STAR_align_fastq(
 }
 \arguments{
 \item{reference_path}{The path to the reference.
-\link{storeRef} must first be run using this path
+\link{getResources} must first be run using this path
 as its \code{reference_path}}
 
 \item{STAR_ref_path}{(Default - the "STAR" subdirectory under
@@ -121,7 +121,7 @@ accessible via $PATH. See details and examples
 \details{
 \strong{Pre-requisites}
 
-\code{STAR_buildRef} requires \link{storeRef} to be run to fetch the
+\code{STAR_buildRef} requires \link{getResources} to be run to fetch the
 required genome and gene annotation files.
 
 \code{STAR_Mappability}, \code{STAR_align_experiment} and \code{STAR_align_fastq} requires a
@@ -182,7 +182,7 @@ STAR_version()
 
 FTP <- "ftp://ftp.ensembl.org/pub/release-94/"
 
-storeRef(
+getResources(
     reference_path = "Reference_FTP",
     fasta = paste0(FTP, "fasta/homo_sapiens/dna/",
         "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"),
@@ -204,7 +204,7 @@ STAR_buildRef(
 #     genome is ~100k in length, so --genomeSAindexNbases needs to be
 #     adjusted to be min(14, log2(GenomeLength)/2 - 1)
 
-storeRef(
+getResources(
     reference_path = "Reference_chrZ",
     fasta = chrZ_genome(),
     gtf = chrZ_gtf()
@@ -252,6 +252,6 @@ STAR_align_experiment(
 }
 }
 \seealso{
-\link{BuildReference} \link{Find_Samples} \link{Mappability-methods}\cr\cr
+\link{Build-Reference-methods} \link{Find_Samples} \link{Mappability-methods}\cr\cr
 \href{https://github.com/alexdobin/STAR/blob/master/doc/STARmanual.pdf}{The latest STAR documentation}
 }

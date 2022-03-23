@@ -84,7 +84,7 @@ Collate: AllImports.R
 	BuildRef.R
 	STAR_utils.R
 	Mappability.R
-	IRFinder.R
+	ProcessBAM.R
 	CollateData.R
 	MakeSE.R
 	Filters.R

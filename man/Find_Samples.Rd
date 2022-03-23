@@ -4,7 +4,7 @@
 \alias{Find_Samples}
 \alias{Find_FASTQ}
 \alias{Find_Bams}
-\alias{Find_IRFinder_Output}
+\alias{Find_SpliceWiz_Output}
 \title{Convenience Function to (recursively) find all files in a folder.}
 \usage{
 Find_Samples(sample_path, suffix = ".txt.gz", level = 0)
@@ -18,7 +18,7 @@ Find_FASTQ(
 
 Find_Bams(sample_path, level = 0)
 
-Find_IRFinder_Output(sample_path, level = 0)
+Find_SpliceWiz_Output(sample_path, level = 0)
 }
 \arguments{
 \item{sample_path}{The path in which to recursively search for files
@@ -70,7 +70,7 @@ case, use \code{level = 1} to automatically annotate the sample names using
 IRFinder outputs two files per BAM processed. These are named by the given
 sample names. The text output is named "sample1.txt.gz", and the COV file
 is named "sample1.cov", where \code{sample1} is the name of the sample. These
-files can be organised / tabulated using the function \code{Find_IRFinder_Output}.
+files can be organised / tabulated using the function \code{Find_SpliceWiz_Output}.
 The generic function \code{Find_Samples} will organise the IRFinder text output
 files but exclude the COV files. Use the latter as the \code{Experiment} in
 \link{CollateData} if one decides to collate an experiment without linked COV
@@ -87,7 +87,7 @@ in a given folder
 \item \code{Find_Bams}: Use Find_Samples() to return all BAM files in a
 given folder
 
-\item \code{Find_IRFinder_Output}: Use Find_Samples() to return all IRFinder output
+\item \code{Find_SpliceWiz_Output}: Use Find_Samples() to return all IRFinder output
 files in a given folder, including COV files
 }}
 
@@ -103,7 +103,7 @@ df.bams <- Find_Bams(bam_path, level = 0)
 # Retrieve all IRFinder output files in a given folder,
 # named by sample names
 
-expr <- Find_IRFinder_Output(file.path(tempdir(), "IRFinder_output"))
+expr <- Find_SpliceWiz_Output(file.path(tempdir(), "SpliceWiz_Output"))
 \dontrun{
 
 # Find FASTQ files in a directory, named by sample names

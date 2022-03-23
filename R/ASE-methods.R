@@ -30,8 +30,8 @@
 #' NB: NxtIRF separately considers known "RI" and novel "IR" events separately:
 #' * **IR** novel events are calculated using the IRFinder method, whereby
 #' spliced transcripts are **all** isoforms that do not retain the intron, as
-#' estimated via the `SpliceMax` and `SpliceOverMax` methods
-#' - see [CollateData].
+#' estimated via the `SpliceMax` and `SpliceOver` methods
+#' - see [collateData].
 #' * **RI** known retained introns are those that lie completely within a
 #' single exon of another transcript.
 #' (NB: in SpliceWiz v1.1.1 and later, this encompasses exons from any
@@ -64,9 +64,9 @@
 #' | A3SS | Upstream 3'-SS | Downstream 3'-SS |
 #'
 #'
-#' @param se The \linkS4class{NxtSE} object created by `MakeSE()`. To reduce
+#' @param se The \linkS4class{NxtSE} object created by `makeSE()`. To reduce
 #'   runtime and avoid excessive multiple testing, consider filtering
-#'   the object using [apply_filters]
+#'   the object using [applyFilters]
 #' @param test_factor The condition type which contains the
 #'   contrasting variable
 #' @param test_nom The nominator condition to test for differential ASE. Usually
@@ -84,11 +84,11 @@
 #' @return A data table containing the following:
 #'   * EventName: The name of the ASE event. This identifies each ASE
 #'     in downstream functions including [make_diagonal], [make_matrix],
-#'     and [Plot_Coverage]
+#'     and [plotCoverage]
 #'   * EventType: The type of event. See details section above.
 #'   * EventRegion: The genomic coordinates the event occupies. This spans the
 #'     most upstream and most downstream splice junction involved in the ASE,
-#'     and is use to guide the [Plot_Coverage] function.
+#'     and is use to guide the [plotCoverage] function.
 #'   * NMD_direction: Indicates whether one isoform is a NMD substrate. +1 means
 #'     included isoform is NMD, -1 means the excluded isoform is NMD, and 0
 #'     means there is no change in NMD status (i.e. both / neither are NMD)
@@ -120,20 +120,20 @@
 #'   * Dispersion_Reduced, Dispersion_Full: Dispersion values for reduced and
 #'     full models. See [DoubleExpSeq::DBGLM1] for details.
 #' @examples
-#' # see ?MakeSE on example code of generating this NxtSE object
-#' se <- NxtIRF_example_NxtSE()
+#' # see ?makeSE on example code of generating this NxtSE object
+#' se <- SpliceWiz_example_NxtSE()
 #'
 #' colData(se)$treatment <- rep(c("A", "B"), each = 3)
 #'
 #' require("limma")
-#' res_limma <- limma_ASE(se, "treatment", "A", "B")
+#' res_limma <- ASE_limma(se, "treatment", "A", "B")
 #'
 #' require("DoubleExpSeq")
-#' res_DES <- DoubleExpSeq_ASE(se, "treatment", "A", "B")
+#' res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 #' \dontrun{
 #'
 #' require("DESeq2")
-#' res_DESeq <- DESeq_ASE(se, "treatment", "A", "B")
+#' res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")
 #' }
 #' @name ASE-methods
 #' @references
@@ -156,7 +156,7 @@ NULL
 #' @describeIn ASE-methods Use limma to perform differential ASE analysis of
 #'   a filtered NxtSE object
 #' @export
-limma_ASE <- function(se, test_factor, test_nom, test_denom,
+ASE_limma <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
         filter_antiover = TRUE, filter_antinear = FALSE) {
 
@@ -204,7 +204,7 @@ limma_ASE <- function(se, test_factor, test_nom, test_denom,
 #' @describeIn ASE-methods Use DESeq2 to perform differential ASE analysis of
 #'   a filtered NxtSE object
 #' @export
-DESeq_ASE <- function(se, test_factor, test_nom, test_denom,
+ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
         n_threads = 1,
         filter_antiover = TRUE, filter_antinear = FALSE) {
@@ -253,7 +253,7 @@ DESeq_ASE <- function(se, test_factor, test_nom, test_denom,
 #'   of a filtered NxtSE object (uses double exponential beta-binomial model)
 #'   to estimate group dispersions, followed by LRT
 #' @export
-DoubleExpSeq_ASE <- function(se, test_factor, test_nom, test_denom,
+ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         # batch1 = "", batch2 = "",
         filter_antiover = TRUE, filter_antinear = FALSE) {
 
@@ -475,7 +475,7 @@ DoubleExpSeq_ASE <- function(se, test_factor, test_nom, test_denom,
         colData = .DESeq_colData_sanitise(colData),
         design = as.formula(dds_formula)
     )
-    message("DESeq_ASE: Profiling expression of Included and Excluded counts")
+    message("ASE_DESeq: Profiling expression of Included and Excluded counts")
 
     dds <- DESeq2::DESeq(dds, parallel = TRUE, BPPARAM = BPPARAM)
     res <- as.data.frame(DESeq2::results(dds,
@@ -524,7 +524,7 @@ DoubleExpSeq_ASE <- function(se, test_factor, test_nom, test_denom,
         colData = .DESeq_colData_sanitise(colData),
         design = as.formula(dds_formula)
     )
-    message("DESeq_ASE: Profiling differential ASE")
+    message("ASE_DESeq: Profiling differential ASE")
 
     dds <- DESeq2::DESeq(dds, parallel = TRUE, BPPARAM = BPPARAM)
     res <- as.data.frame(DESeq2::results(dds,

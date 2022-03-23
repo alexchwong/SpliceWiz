@@ -44,8 +44,8 @@ NULL
 #' se = readRDS(
 #'   system.file("extdata", "example_NxtSE.Rds", package = "SpliceWiz")
 #' )
-#' se = NxtIRF_example_NxtSE()
-#' @seealso [MakeSE()]
+#' se = SpliceWiz_example_NxtSE()
+#' @seealso [makeSE()]
 make_example_NxtSE <- function() {
     require(SpliceWiz)
     bams = SpliceWiz_example_bams()
@@ -58,12 +58,12 @@ make_example_NxtSE <- function() {
         output_path = file.path(tempdir(), "SpliceWiz_Output"),
         overwrite = TRUE, n_threads = 1
     )
-    expr = Find_SpliceWiz_Output(file.path(tempdir(), "SpliceWiz_Output"))
-    CollateData(expr, 
+    expr = findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
+    collateData(expr, 
       reference_path = file.path(tempdir(), "Reference"),
       output_path = file.path(tempdir(), "NxtIRF_output")
     )
-    se = MakeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
+    se = makeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
     
     # Save COV files
     file.copy(

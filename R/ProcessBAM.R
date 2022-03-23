@@ -6,7 +6,7 @@
 #' record alignment coverage. A SpliceWiz reference built using 
 #' [Build-Reference-methods] is required.\cr\cr
 #' After `processBAM()` is run, users should call
-#' [CollateData] to collate individual outputs into an experiment / dataset.
+#' [collateData] to collate individual outputs into an experiment / dataset.
 #' \cr\cr
 #' BAM2COV creates COV files from BAM files without running `processBAM()`.
 #' \cr\cr See details for performance info.
@@ -46,7 +46,7 @@
 #'   * sample.txt.gz: The main output file containing the quantitation
 #'   of IR and splice junctions, as well as QC information\cr\cr
 #'   * sample.cov: Contains coverage information in compressed binary. See
-#'     [GetCoverage]
+#'     [getCoverage]
 #'   * main.FC.Rds: A single file containing gene counts for the whole dataset
 #'   (only if `run_featureCounts == TRUE`)
 #' @examples
@@ -79,7 +79,7 @@
 #'   output_path = file.path(tempdir(), "SpliceWiz_Output"),
 #'   n_threads = 2
 #' )
-#' @seealso [Build-Reference-methods] [CollateData] [IsCOV]
+#' @seealso [Build-Reference-methods] [collateData] [IsCOV]
 #' @name processBAM
 #' @md
 NULL

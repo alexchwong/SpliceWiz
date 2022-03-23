@@ -105,7 +105,7 @@ Then, events with a splicing coverage below \code{minimum}
 are excluded. \cr\cr
 We recommend testing IR events for > 90\% coverage and AS
 events for > 60\% coverage as given in the default filters which can be
-accessed using \link{get_default_filters}\cr\cr
+accessed using \link{getDefaultFilters}\cr\cr
 \item \strong{Consistency}: Skipped exons (SE) and mutually exclusive exons
 (MXE) comprise reads aligned to two contiguous splice junctions.
 Most algorithms take the average counts from both junctions. This
@@ -130,7 +130,7 @@ exon-intron spanning reads.
 }
 
 We highly recommend using the default filters, which can be acquired
-using \link{get_default_filters}
+using \link{getDefaultFilters}
 }
 \section{Functions}{
 \itemize{

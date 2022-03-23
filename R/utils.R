@@ -20,7 +20,7 @@
 #'   to be converted
 #' @return A GRanges object that corresponds to the given coordinates
 #' @examples
-#' se <- NxtIRF_example_NxtSE()
+#' se <- SpliceWiz_example_NxtSE()
 #'
 #' coordinates <- rowData(se)$EventRegion
 #'
@@ -137,12 +137,12 @@ CoordToGR <- function(coordinates) {
 #'   checked
 #' @return `TRUE` if all files are valid COV files. `FALSE` otherwise
 #' @examples
-#' se <- NxtIRF_example_NxtSE()
+#' se <- SpliceWiz_example_NxtSE()
 #'
 #' cov_files <- covfile(se)
 #'
 #' IsCOV(cov_files) # returns true if these are true COV files
-#' @seealso [IRFinder] [CollateData]
+#' @seealso [processBAM] [collateData]
 #' @md
 #' @export
 IsCOV <- function(coverage_files) {

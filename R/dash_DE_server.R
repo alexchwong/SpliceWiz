@@ -147,7 +147,7 @@ server_DE <- function(
 
             if(settings_DE$method == "DESeq2") {
             
-                res.ASE = DESeq_ASE(
+                res.ASE = ASE_DESeq(
                     get_se(), settings_DE$DE_Var, 
                     settings_DE$nom_DE, settings_DE$denom_DE,
                     settings_DE$batchVar1, settings_DE$batchVar2,
@@ -162,7 +162,7 @@ server_DE <- function(
                 
             } else if(settings_DE$method == "limma") {
 
-                res.ASE = limma_ASE(
+                res.ASE = ASE_limma(
                     get_se(), settings_DE$DE_Var, 
                     settings_DE$nom_DE, settings_DE$denom_DE,
                     settings_DE$batchVar1, settings_DE$batchVar2
@@ -173,7 +173,7 @@ server_DE <- function(
                     setorderv(res.ASE, "adj.P.Val")
                 }
             } else if(settings_DE$method == "DoubleExpSeq") {
-                res.ASE = DoubleExpSeq_ASE(
+                res.ASE = ASE_DoubleExpSeq(
                     get_se(), settings_DE$DE_Var, 
                     settings_DE$nom_DE, settings_DE$denom_DE
                 )

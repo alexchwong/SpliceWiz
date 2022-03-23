@@ -23,12 +23,12 @@ always be 'COV\1', distinguishing it from BAM or other files in BGZF format.
 This function checks whether the given file complies with this.
 }
 \examples{
-se <- NxtIRF_example_NxtSE()
+se <- SpliceWiz_example_NxtSE()
 
 cov_files <- covfile(se)
 
 IsCOV(cov_files) # returns true if these are true COV files
 }
 \seealso{
-\link{IRFinder} \link{CollateData}
+\link{processBAM} \link{collateData}
 }

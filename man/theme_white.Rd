@@ -43,6 +43,6 @@ ggplot(df, aes(gp, y)) +
   theme_white
 }
 \seealso{
-\link{Plot_Coverage}
+\link{plotCoverage}
 }
 \keyword{datasets}

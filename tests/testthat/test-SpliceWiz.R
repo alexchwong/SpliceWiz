@@ -14,19 +14,19 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
         output_path = file.path(tempdir(), "SpliceWiz_Output"),
         n_threads = 1
     )
-    expr <- Find_SpliceWiz_Output(file.path(tempdir(), "SpliceWiz_Output"))
+    expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
     
-    CollateData(expr, 
+    collateData(expr, 
         reference_path = file.path(tempdir(), "Reference"),
         output_path = file.path(tempdir(), "NxtIRF_output")
     )
 
-    se <- MakeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
+    se <- makeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
     
     # Test identical assays
     se_realized = realize_NxtSE(se)
     
-    se_compare <- NxtIRF_example_NxtSE()
+    se_compare <- SpliceWiz_example_NxtSE()
     
     expect_equal(
         assay(se_realized, "Included"), 

@@ -32,14 +32,14 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
 
     if (!all(c("Included", "Excluded", "Depth", "Coverage", "minDepth") %in%
         names(assays(se)))) {
-        .log(paste("Object was not created by MakeSE(),",
+        .log(paste("Object was not created by makeSE(),",
             "returning SummarizedExperiment object instead"), "warning",
             use_system_time = FALSE)
         return(se)
     }
     if (!all(c("Up_Inc", "Down_Inc", "Up_Exc", "Down_Exc") %in%
             names(S4Vectors::metadata(se)))) {
-        .log(paste("Object was not created by MakeSE(),",
+        .log(paste("Object was not created by makeSE(),",
             "returning SummarizedExperiment object instead"), "warning",
             use_system_time = FALSE)
         return(se)
@@ -295,7 +295,7 @@ setMethod("sampleQC", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
 })
 
 #' @describeIn NxtSE-class Retrieves a list of annotation data associated
-#'   with this NxtSE object; primarily used in Plot_Coverage()
+#'   with this NxtSE object; primarily used in plotCoverage()
 #' @export
 setMethod("ref", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     x@metadata[["ref"]]

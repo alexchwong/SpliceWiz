@@ -225,7 +225,7 @@ server_filters <- function(
             settings_filter$filters = get_filters_from_DE()
         })
         observeEvent(input$loadDefault_Filters, {
-            settings_filter$filters = get_default_filters()
+            settings_filter$filters = getDefaultFilters()
         })
         return(settings_filter)
     })

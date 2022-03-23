@@ -1,13 +1,13 @@
 #' Constructs a NxtSE object from the collated data
 #'
 #' Creates a \linkS4class{NxtSE} object from the data
-#' from IRFinder output collated using [CollateData]. This object is used
+#' from IRFinder output collated using [collateData]. This object is used
 #' for downstream differential analysis of IR and alternative splicing events
-#' using [ASE-methods] as well as visualisation using [Plot_Coverage]
+#' using [ASE-methods] as well as visualisation using [plotCoverage]
 #'
 #' @details
-#' `MakeSE` retrieves the generic SummarizedExperiment structure saved by
-#' [CollateData], and initialises a \linkS4class{NxtSE} object. It references
+#' `makeSE` retrieves the generic SummarizedExperiment structure saved by
+#' [collateData], and initialises a \linkS4class{NxtSE} object. It references
 #' the required on-disk assay data using DelayedArrays, thereby utilising
 #' 'on-disk' memory to conserve memory usage.
 #'
@@ -17,32 +17,32 @@
 #' using [realize_NxtSE]
 #' 
 #' It should be noted that downstream applications of NxtIRF, including
-#' [ASE-methods], [Plot_Coverage], are much faster if the \linkS4class{NxtSE}
+#' [ASE-methods], [plotCoverage], are much faster if the \linkS4class{NxtSE}
 #' is realized. It is recommended to realize the \linkS4class{NxtSE} object
 #' before extensive usage.
 #'
-#' If COV files assigned via [CollateData] have been moved relative to the
+#' If COV files assigned via [collateData] have been moved relative to the
 #' `collate_path`, the created \linkS4class{NxtSE} object will not have any
-#' linked COV files and [Plot_Coverage] cannot be used. To reassign these
+#' linked COV files and [plotCoverage] cannot be used. To reassign these
 #' files, a vector of file paths corresponding to all the COV files of the data
 #' set can be assigned using `covfile(se) <- vector_of_cov_files`. See
 #' example below for details.
 #'
-#' If `RemoveOverlapping = TRUE`, `MakeSE` will try to
+#' If `RemoveOverlapping = TRUE`, `makeSE` will try to
 #' identify which introns belong to major isoforms, then remove introns of
 #' minor introns that overlaps those of major isoforms. Non-overlapping
 #' introns are then reassessed iteratively, until all introns are included
 #' or excluded in this way. This is important to ensure that overlapping
 #' novel IR events are not 'double-counted'.
 #'
-#' @param collate_path (Required) The output path of [CollateData] pointing
+#' @param collate_path (Required) The output path of [collateData] pointing
 #'   to the collated data
 #' @param colData (Optional) A data frame containing the sample annotation
 #'   information. The first column must contain the sample names.
 #'   Omit `colData` to generate a NxtSE object of the whole dataset without
 #'   any assigned annotations.
 #'   Alternatively, if the names of only a subset of samples are given, then
-#'   `MakeSE()` will construct the NxtSE object based only on the samples given.
+#'   `makeSE()` will construct the NxtSE object based only on the samples given.
 #'   The colData can be set later using `colData()`
 #' @param RemoveOverlapping (default = `TRUE`) Whether to filter out overlapping
 #'   novel IR events belonging to minor isoforms. See details.
@@ -56,7 +56,7 @@
 #' @examples
 #'
 #' # The following code can be used to reproduce the NxtSE object
-#' # that can be fetched with NxtIRF_example_NxtSE()
+#' # that can be fetched with SpliceWiz_example_NxtSE()
 #'
 #' buildRef(
 #'     reference_path = file.path(tempdir(), "Reference"),
@@ -70,33 +70,33 @@
 #'   output_path = file.path(tempdir(), "SpliceWiz_Output")
 #' )
 #'
-#' expr <- Find_SpliceWiz_Output(file.path(tempdir(), "SpliceWiz_Output"))
-#' CollateData(expr,
+#' expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
+#' collateData(expr,
 #'   reference_path = file.path(tempdir(), "Reference"),
 #'   output_path = file.path(tempdir(), "NxtIRF_output")
 #' )
 #'
-#' se <- MakeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
+#' se <- makeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
 #'
 #' # "Realize" NxtSE object to load all H5 assays into memory:
 #'
 #' se <- realize_NxtSE(se)
 #'
-#' # If COV files have been removed since the last call to CollateData()
+#' # If COV files have been removed since the last call to collateData()
 #' # reassign them to the NxtSE object, for example:
 #'
 #' covfile_path <- system.file("extdata", package = "SpliceWiz")
-#' covfile_df <- Find_Samples(covfile_path, ".cov")
+#' covfile_df <- findSamples(covfile_path, ".cov")
 #'
 #' covfile(se) <- covfile_df$path
 #'
 #' # Check that the produced object is identical to the example NxtSE
 #'
-#' example_se <- NxtIRF_example_NxtSE()
+#' example_se <- SpliceWiz_example_NxtSE()
 #' identical(se, example_se) # should return TRUE
 #' @md
 #' @export
-MakeSE <- function(
+makeSE <- function(
         collate_path, colData, RemoveOverlapping = TRUE,
         realize = FALSE
 ) {
@@ -112,7 +112,7 @@ MakeSE <- function(
     dash_progress("Loading NxtSE object from file...", N)
     .log("Loading NxtSE object from file...", "message", appendLF = FALSE)
 
-    se <- .MakeSE_load_NxtSE(file.path(collate_path, "NxtSE.rds"))
+    se <- .makeSE_load_NxtSE(file.path(collate_path, "NxtSE.rds"))
 
     # Locate relative paths of COV files, or have all-empty if not all are found
     covfiles <- file.path(collate_path, se@metadata[["cov_file"]])
@@ -176,20 +176,20 @@ MakeSE <- function(
 ################################################################################
 
 # Checks:
-# - whether the given path contains a valid CollateData() output
+# - whether the given path contains a valid collateData() output
 # - whether
 .makeSE_validate_args <- function(collate_path, colData) {
     item.todo <- c("rowEvent", "Included", "Excluded", "Depth", "Coverage",
         "minDepth", "Up_Inc", "Down_Inc", "Up_Exc", "Down_Exc")
 
     if (!file.exists(file.path(collate_path, "colData.Rds"))) {
-        .log(paste("In MakeSE():",
+        .log(paste("In makeSE():",
             file.path(collate_path, "colData.Rds"),
             "was not found"))
     }
     colData.Rds <- readRDS(file.path(collate_path, "colData.Rds"))
     if (!("df.anno" %in% names(colData.Rds))) {
-        .log(paste("In MakeSE():",
+        .log(paste("In makeSE():",
             file.path(collate_path, "colData.Rds"),
             "must contain df.anno containing annotations"))
     }
@@ -201,7 +201,7 @@ MakeSE <- function(
             colnames(colData)[1] <- "sample"
         }
         if (!all(colData$sample %in% colData.Rds$df.anno$sample)) {
-            .log(paste("In MakeSE():",
+            .log(paste("In makeSE():",
                 "some samples in colData were not found in given path"),
                 "message")
             colData <- colData[colData$sample %in% colData.Rds$df.anno$sample, ]
@@ -232,7 +232,7 @@ MakeSE <- function(
 }
 
 # Loads a NxtSE RDS
-.MakeSE_load_NxtSE <- function(filepath) {
+.makeSE_load_NxtSE <- function(filepath) {
     se <- readRDS(filepath)
     path <- dirname(filepath)
     se@assays <- .collateData_expand_assay_paths(se@assays, path)

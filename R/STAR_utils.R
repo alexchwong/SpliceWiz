@@ -59,7 +59,7 @@
 #'   parsed into STAR. See examples below.
 #' @param Experiment A two or three-column data frame with the columns denoting
 #'   sample names, forward-FASTQ and reverse-FASTQ files. This can be
-#'   conveniently generated using [Find_FASTQ]
+#'   conveniently generated using [findFASTQ]
 #' @param BAM_output_path The path under which STAR outputs the aligned BAM
 #'   files. In `STAR_align_experiment()`, STAR will output aligned
 #'   BAMS inside subdirectories of this folder, named by sample names. In
@@ -170,7 +170,7 @@
 #' @aliases
 #' STAR_buildRef STAR_align_experiment STAR_align_fastq
 #' @seealso
-#' [Build-Reference-methods] [Find_Samples] [Mappability-methods]\cr\cr
+#' [Build-Reference-methods] [findSamples] [Mappability-methods]\cr\cr
 #' [The latest STAR documentation](https://github.com/alexdobin/STAR/blob/master/doc/STARmanual.pdf)
 #' @md
 NULL
@@ -387,7 +387,7 @@ STAR_align_experiment <- function(Experiment, STAR_ref_path, BAM_output_path,
         } # end of FOR loop
 
         if (two_pass && pass == 1) {
-            SJ.files <- Find_Samples(BAM_output_path, suffix = ".out.tab")
+            SJ.files <- findSamples(BAM_output_path, suffix = ".out.tab")
             if (nrow(SJ.files) == 0) {
                 .log(paste("In STAR two-pass,",
                     "no SJ.out.tab files were found"))

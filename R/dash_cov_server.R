@@ -86,7 +86,7 @@ server_cov <- function(
         observeEvent(settings_Cov$plot_params, {
             if(.server_cov_check_plot_args(settings_Cov$plot_params)) {
                 withProgress(message = 'Refreshing Plotly...', value = 0, {
-                    obj <- do.call(Plot_Coverage, settings_Cov$plot_params)
+                    obj <- do.call(plotCoverage, settings_Cov$plot_params)
                 
                     req(obj)
                     settings_Cov$final_plot <- obj$final_plot
@@ -360,7 +360,7 @@ server_cov_get_all_tracks <- function(input) {
     }
 }
 
-# Compiles a list of arguments to pass into Plot_Coverage
+# Compiles a list of arguments to pass into plotCoverage
 .server_cov_refresh_plot_args <- function(
         se, ref, norm_event, 
         view_chr, view_start, view_end, 

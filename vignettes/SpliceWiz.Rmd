@@ -136,10 +136,10 @@ processBAM(
 ### Collate individual IRFinder runs to build a SpliceWiz Experiment
 
 First, collate the IRFinder output files using the helper function
-`Find_SpliceWiz_Output()`
+`findSpliceWizOutput()`
 
 ```{r}
-expr = Find_SpliceWiz_Output(irf_path)
+expr = findSpliceWizOutput(irf_path)
 ```
 
 This creates a 3-column data frame with sample name, IRFinder gzipped text
@@ -147,7 +147,7 @@ output, and COV files. Compile these output files into a single experiment:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 nxtirf_path = file.path(tempdir(), "NxtIRF_output")
-CollateData(
+collateData(
     Experiment = expr,
     reference_path = ref_path,
     output_path = nxtirf_path
@@ -159,7 +159,7 @@ CollateData(
 The `NxtSE` is a data structure that inherits `SummarizedExperiment`
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
-se = MakeSE(nxtirf_path)
+se = makeSE(nxtirf_path)
 ```
 
 ### Set some experimental conditions:
@@ -176,7 +176,7 @@ The code below will contrast condition:B in respect to condition:A
 ```{r, results='hide', message = FALSE, warning = FALSE}
 # Requires limma to be installed:
 require("limma")
-res_limma = limma_ASE(
+res_limma = ASE_limma(
     se = se,
     test_factor = "condition",
     test_nom = "B",
@@ -185,7 +185,7 @@ res_limma = limma_ASE(
 
 # Requires DESeq2 to be installed:
 require("DESeq2")
-res_deseq = DESeq_ASE(
+res_deseq = ASE_DESeq(
     se = se,
     test_factor = "condition",
     test_nom = "B",
@@ -194,7 +194,7 @@ res_deseq = DESeq_ASE(
 
 # Requires DoubleExpSeq to be installed:
 require("DoubleExpSeq")
-res_DES = DoubleExpSeq_ASE(
+res_DES = ASE_DoubleExpSeq(
     se = se,
     test_factor = "condition",
     test_nom = "B",
@@ -213,12 +213,12 @@ res_limma.filtered = subset(res_limma, abs(AvgPSI_A - AvgPSI_B) > 0.05)
 Plot individual samples:
 
 ```{r, fig.width = 8, fig.height = 6}
-p = Plot_Coverage(
+p = plotCoverage(
     se = se,
     Event = res_limma.filtered$EventName[1],
     tracks = colnames(se)[c(1,2,4,5)],
 )
-as_egg_ggplot(p)
+as_ggplot_cov(p)
 ```
 
 Display the plotly interactive version of the coverage plot (not shown here)
@@ -231,7 +231,7 @@ p$final_plot
 Plot by condition:
 
 ```{r, fig.width = 8, fig.height = 6}
-p = Plot_Coverage(
+p = plotCoverage(
     se = se,
     Event = res_limma.filtered$EventName[1],
     tracks = c("A", "B"),
@@ -239,7 +239,7 @@ p = Plot_Coverage(
     stack_tracks = TRUE,
     t_test = TRUE,
 )
-as_egg_ggplot(p)
+as_ggplot_cov(p)
 ```
 
 ```{r include = FALSE}
@@ -362,7 +362,7 @@ labeled by their sample names, e.g. "sample1/Unsorted.bam",
 
 ```{r,  eval = FALSE}
 # as BAM file names denote their sample names
-bams = Find_Bams(bam_path, level = 0) 
+bams = findBAMS(bam_path, level = 0) 
 
 # In the case where BAM files are labelled using sample names as parent 
 # directory names (which oftens happens with the STAR aligner), use level = 1
@@ -431,11 +431,11 @@ by RNA-seq reads in IR events).
 ### Reviewing the IRFinder output:
 
 Having run IRFinder on all individual BAM files of an experiment, we can collate
-this data using the CollateData() function. Again, we use a convenience function
+this data using the collateData() function. Again, we use a convenience function
 to generate a list of IRFinder output files:
 
 ```{r, eval = FALSE}
-expr <- Find_SpliceWiz_Output(irf_path)
+expr <- findSpliceWizOutput(irf_path)
 ```
 
 `expr` is a 3-column data frame. The first two columns contain the sample 
@@ -451,25 +451,25 @@ data from individual strands. Currently, only SpliceWiz is able to read COV file
 but we anticipate other packages can use COV files via SpliceWiz (in future
 SpliceWiz releases)! We will demonstrate how to use COV files in a later section.
 
-## Using CollateData to parse IRFinder output from multiple files.
+## Using collateData to parse IRFinder output from multiple files.
 
 Now that we have an organised list of IRFinder output files, we parse this into
-`CollateData()`
+`collateData()`
 
 ```{r, eval = FALSE}
 nxtirf_path = file.path(tempdir(), "NxtIRF_output")
 
-CollateData(
+collateData(
     Experiment = expr,
     reference_path = ref_path,
     output_path = nxtirf_path,
-    IRMode = "SpliceOverMax",
+    IRMode = "SpliceOver",
     n_threads = 1
 )
 ```
 
-CollateData extracts IR quantitation and junction counts and organises these
-counts into unified arrays of data. CollateData also compiles QC parameters
+collateData extracts IR quantitation and junction counts and organises these
+counts into unified arrays of data. collateData also compiles QC parameters
 for all samples, including read depth and strandedness (directionality).
 
 `IRMode` is a parameter that specifies how IRFinder calculates percentage
@@ -481,21 +481,21 @@ of alternate exons flanking the intron being assessed. SpliceWiz extends this
 estimate by accounting for the possibility that BOTH flanking exons may be
 alternate exons, thereby accounting for splice events that overlap the intron
 but does not involve the junctions of either flanking exons. We call this
-parameter `SpliceOverMax`, which includes `SpliceMax` with the
+parameter `SpliceOver`, which includes `SpliceMax` with the
 addition of distant splice events.
 
 ## Building a NxtSE object from collated data
 
-Now that `CollateData()` has created the unified data in the \code{"NxtSE"}
+Now that `collateData()` has created the unified data in the \code{"NxtSE"}
 directory, we can retrieve the data as a NxtSE object:
 
 ```{r, eval = FALSE}
-se = MakeSE(nxtirf_path, RemoveOverlapping = TRUE)
+se = makeSE(nxtirf_path, RemoveOverlapping = TRUE)
 ```
 
 Two things of note:
 
-(1) By default, MakeSE constructs the NxtSE object using all the samples in
+(1) By default, makeSE constructs the NxtSE object using all the samples in
 the collated data. It is possible (and particularly useful in large data sets)
 to read only a subset of samples. In this case, construct a data.frame object
 with the first column containing the desired sample names and parse this into
@@ -504,7 +504,7 @@ the `colData` parameter as shown:
 ```{r, eval = FALSE}
 subset_samples = colnames(se)[1:4]
 df = data.frame(sample = subset_samples)
-se_small = MakeSE(nxtirf_path, colData = df, RemoveOverlapping = TRUE)
+se_small = makeSE(nxtirf_path, colData = df, RemoveOverlapping = TRUE)
 ```
 
 (2) In complex transcriptomes including those of human and mouse, alternative
@@ -531,13 +531,13 @@ vignette (please see the documentation for details).
 To filter the NxtSE object using default filters:
 
 ```{r, results = FALSE, message = FALSE, warning = FALSE}
-expressed_events <- apply_filters(se, get_default_filters())
+expressed_events <- applyFilters(se, getDefaultFilters())
 
 se.filtered = se[expressed_events,]
 ```
 
-In the above code, `get_default_filters()` retrieves the default filters
-suggested by SpliceWiz. `apply_filters` returns a vector containing which
+In the above code, `getDefaultFilters()` retrieves the default filters
+suggested by SpliceWiz. `applyFilters` returns a vector containing which
 events are included if the filters are applied to the NxtSE object. Finally,
 we obtain a NxtSE object by subsetting the original NxtSE using the vector
 of `expressed_events`.
@@ -545,7 +545,7 @@ of `expressed_events`.
 To view a description of what these filters actually do, simply display them:
 
 ```{r}
-get_default_filters()
+getDefaultFilters()
 ```
 
 To construct custom filters, create a NxtFilter object as shown:
@@ -589,7 +589,7 @@ require("limma")
 
 # Compare by condition-B vs condition-A
 
-res_limma_condition <- limma_ASE(
+res_limma_condition <- ASE_limma(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -598,7 +598,7 @@ res_limma_condition <- limma_ASE(
 
 # Compare by condition-B vs condition-A, batch-corrected by "batch"
 
-res_limma_treatment_batchcorrected <- limma_ASE(
+res_limma_treatment_batchcorrected <- ASE_limma(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -608,7 +608,7 @@ res_limma_treatment_batchcorrected <- limma_ASE(
 ```
 
 NB: we can also use DESeq2 or DoubleExpSeq to perform the same analysis using
-`DESeq_ASE()` or `DoubleExpSeq_ASE()`. The differences are as follows:
+`ASE_DESeq()` or `ASE_DoubleExpSeq()`. The differences are as follows:
 
 * Limma: models counts as log-normal distributed
 * DESeq2: models counts as negative binomial distributed
@@ -651,7 +651,7 @@ ggplot(subset(res_limma_condition, EventType == "IR"),
 
 ### Volcano plot of differential Alternate Splicing Events
 
-`limma_ASE` and `DESeq_ASE` contain direct output from limma or DESeq2.
+`ASE_limma` and `ASE_DESeq` contain direct output from limma or DESeq2.
 The P.Value and pvalue of limma and DESeq2 output denote nominal P values, 
 whereas multiple-correction is performed via the adj.P.Val and padj columns of 
 limma and DESeq2, respectively. To plot these:
@@ -716,22 +716,22 @@ the intron depths reflect the fraction of transcripts with retained introns and
 can be compared across samples.
 
 We will first demonstrate by plotting the RNA-seq coverage of a single gene
-by a single sample. `Plot_Coverage()` performs the calculations and generates
+by a single sample. `plotCoverage()` performs the calculations and generates
 a compound object containing both static and interactive plots. We can coerce
-this to a static plot using `as_egg_ggplot()`
+this to a static plot using `as_ggplot_cov()`
 
 ```{r, fig.width = 8, fig.height = 6}
-res = Plot_Coverage(
+res = plotCoverage(
     se = se.filtered, 
     Gene = "TP53", 
     tracks = colnames(se.filtered)[1]
 )
 
-as_egg_ggplot(res)
+as_ggplot_cov(res)
 ```
 
 The interactive plot (not run here) can be displayed by directly calling
-the `final_plot` element of the object returned by `Plot_Coverage`
+the `final_plot` element of the object returned by `plotCoverage`
 
 ```{r eval = FALSE}
 # Running this will display an interactive plot
@@ -743,26 +743,26 @@ all annotated transcripts. For clarity, one can either collapse the transcripts
 at a per-gene level, by setting condense_tracks = TRUE:
  
 ```{r, fig.width = 8, fig.height = 6}
-res = Plot_Coverage(
+res = plotCoverage(
     se = se.filtered, 
     Gene = "TP53",
     tracks = colnames(se.filtered)[1],
     condense_tracks = TRUE
 )
-as_egg_ggplot(res)
+as_ggplot_cov(res)
 ```
 
 Alternatively, for fine control, one can supply a vector containing the
 transcript names to be displayed:
 
 ```{r, fig.width = 8, fig.height = 6}
-res = Plot_Coverage(
+res = plotCoverage(
     se = se.filtered, 
     Gene = "TP53",
     tracks = colnames(se.filtered)[1],
     selected_transcripts = c("TP53-201", "TP53-204")
 )
-as_egg_ggplot(res)
+as_ggplot_cov(res)
 ```
 
 In the heatmap in the previous section, we can see some retained introns in 
@@ -778,7 +778,7 @@ Performing differential analysis will confirm this to be the case:
 ```{r }
 require("limma")
 
-res_limma_NSUN5 <- limma_ASE(
+res_limma_NSUN5 <- ASE_limma(
     se = se.filtered,
     test_factor = "NSUN5_IR",
     test_nom = "High",
@@ -794,13 +794,13 @@ The names of the tracks will be the names of the nominator (test) and
 denominator (control) conditions
 
 ```{r, fig.width = 8, fig.height = 6}
-res = Plot_Coverage(
+res = plotCoverage(
     se = se.filtered, 
     Event = res_limma_NSUN5$EventName[1],
     condition = "NSUN5_IR",
     tracks = c("High", "Low"),
 )
-as_egg_ggplot(res)
+as_ggplot_cov(res)
 ```
 
 Note the lines represent mean coverages of all samples in the labelled
@@ -825,7 +825,7 @@ that tests the per-nucleotide statistical difference between the normalised
 coverage between the two conditions. To do this, set `t_test = TRUE`:
 
 ```{r, fig.width = 8, fig.height = 6}
-res = Plot_Coverage(
+res = plotCoverage(
     se = se.filtered, 
     Event = "NSUN5/ENST00000252594_Intron2/clean",
     condition = "NSUN5_IR",
@@ -833,7 +833,7 @@ res = Plot_Coverage(
     stack_tracks = TRUE,
     t_test = TRUE
 )
-as_egg_ggplot(res)
+as_ggplot_cov(res)
 ```
 
 On the first track, the different coloured traces represent the two conditions.
@@ -842,10 +842,10 @@ test the difference between the coverages between the conditions, at
 per-nucleotide resolution.
 
 Note that the t-test track does not replace formal statistical analysis using
-the `limma_ASE` or `DESeq_ASE` functions. Instead, they provide a useful
+the `ASE_limma` or `ASE_DESeq` functions. Instead, they provide a useful
 adjunct to assess the adequacy of the normalisation of the group coverages.
 
-There are more complex customisation options with SpliceWiz's Plot_Coverage tool
+There are more complex customisation options with SpliceWiz's plotCoverage tool
 which will be explored in subsequent tutorials (TODO).
 
 # (3) SpliceWiz cookbook
@@ -1096,7 +1096,7 @@ feature, as one-pass mapping is adequate in typical-use cases.
 To conveniently find all BAM files recursively in a given path:
 
 ```{r eval=FALSE}
-bams = Find_Bams("./bams", level = 1)
+bams = findBAMS("./bams", level = 1)
 ```
 
 This convenience function returns the putative sample names, either from BAM
@@ -1142,17 +1142,17 @@ BAM2COV(
 ## Collating IRFinder data into a single experiment:
 
 Assuming the SpliceWiz reference is in `ref_path`, after running IRFinder as shown
-in the previous section, use the convenience function `Find_SpliceWiz_Output()`
+in the previous section, use the convenience function `findSpliceWizOutput()`
 to tabulate a list of samples and their corresponding IRFinder outputs:
 
 ```{r eval=FALSE}
-expr = Find_SpliceWiz_Output("./SpliceWiz_Output")
+expr = findSpliceWizOutput("./SpliceWiz_Output")
 ```
 
-This data.frame can be directly used to run `CollateData`:
+This data.frame can be directly used to run `collateData`:
 
 ```{r eval = FALSE}
-CollateData(
+collateData(
     Experiment = expr,
     reference_path = ref_path,
     output_path = "./NxtIRF_output"
@@ -1164,7 +1164,7 @@ that inherits `SummarizedExperiment` and has specialized containers to hold
 additional data required by NxtIRF.
 
 ```{r eval = FALSE}
-se = MakeSE("./NxtIRF_output")
+se = makeSE("./NxtIRF_output")
 ```
 
 ## Downstream analysis using SpliceWiz

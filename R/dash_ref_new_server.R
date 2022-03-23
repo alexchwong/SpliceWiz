@@ -240,7 +240,7 @@ server_ref_new <- function(id, refresh_tab, volumes) {
                 }
 
                 withProgress(message = 'Building Reference', value = 0, {
-                    do.call(Build-Reference-methods, args)
+                    do.call(buildRef, args)
                 })
                 # If successfully created, load this reference automatically
                 if(file.exists(

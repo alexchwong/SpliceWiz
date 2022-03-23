@@ -40,19 +40,19 @@
 #' @param filters A vector or list of one or more NxtFilter objects. If left
 #'   blank, the NxtIRF default filters will be used.
 #' @return
-#' For `runFilter` and `apply_filters`: a vector of type `logical`,
+#' For `runFilter` and `applyFilters`: a vector of type `logical`,
 #'   representing the rows of NxtSE that should be kept.
 #'
-#' For `get_default_filters`: returns a list of default recommended filters
-#'   that should be parsed into `apply_filters`.
+#' For `getDefaultFilters`: returns a list of default recommended filters
+#'   that should be parsed into `applyFilters`.
 #' @examples
-#' # see ?MakeSE on example code of how this object was generated
+#' # see ?makeSE on example code of how this object was generated
 #'
-#' se <- NxtIRF_example_NxtSE()
+#' se <- SpliceWiz_example_NxtSE()
 #'
 #' # Get the list of NxtIRF recommended filters
 #'
-#' filters <- get_default_filters()
+#' filters <- getDefaultFilters()
 #'
 #' # View a description of what these filters do:
 #'
@@ -64,18 +64,18 @@
 #'
 #' # Filter the NxtSE using all four default filters
 #'
-#' se.defaultFiltered <- se[apply_filters(se, get_default_filters()), ]
-#' @name Run_NxtIRF_Filters
-#' @aliases get_default_filters apply_filters runFilter
+#' se.defaultFiltered <- se[applyFilters(se, getDefaultFilters()), ]
+#' @name Run_SpliceWiz_Filters
+#' @aliases getDefaultFilters applyFilters runFilter
 #' @seealso [NxtFilter] for details describing how to create and assign settings
 #'   to NxtFilter objects.
 #' @md
 NULL
 
-#' @describeIn Run_NxtIRF_Filters Returns a vector of recommended default
-#'   NxtIRF filters
+#' @describeIn Run_SpliceWiz_Filters Returns a vector of recommended default
+#'   SpliceWiz filters
 #' @export
-get_default_filters <- function(legacy = FALSE) {
+getDefaultFilters <- function(legacy = FALSE) {
     f1 <- NxtFilter("Data", "Depth", pcTRUE = 80, minimum = 20)
     f2 <- NxtFilter("Data", "Coverage", pcTRUE = 80,
         minimum = 90, minDepth = 5, EventTypes = c("IR", "RI"))
@@ -92,10 +92,10 @@ get_default_filters <- function(legacy = FALSE) {
     return(list(f1, f2, f3, f4_new, f5, f6))
 }
 
-#' @describeIn Run_NxtIRF_Filters Run a vector or list of NxtFilter objects
+#' @describeIn Run_SpliceWiz_Filters Run a vector or list of NxtFilter objects
 #'   on a NxtSE object
 #' @export
-apply_filters <- function(se, filters = get_default_filters()) {
+applyFilters <- function(se, filters = getDefaultFilters()) {
     if (!is.list(filters)) filters <- list(filters)
     if (length(filters) == 0) .log("No filters given")
     for (i in length(filters)) {
@@ -106,7 +106,7 @@ apply_filters <- function(se, filters = get_default_filters()) {
         }
     }
     if (!is(se, "NxtSE")) {
-        .log(paste("In apply_filters(),",
+        .log(paste("In applyFilters(),",
             "se must be a NxtSE object"))
     }
     filterSummary <- rep(TRUE, nrow(se))
@@ -118,7 +118,7 @@ apply_filters <- function(se, filters = get_default_filters()) {
     return(filterSummary)
 }
 
-#' @describeIn Run_NxtIRF_Filters Run a single filter on a NxtSE object
+#' @describeIn Run_SpliceWiz_Filters Run a single filter on a NxtSE object
 #' @export
 runFilter <- function(se, filterObj) {
     if (!is(se, "NxtSE")) .log("`se` must be a NxtSE object")
@@ -406,7 +406,7 @@ runFilter <- function(se, filterObj) {
             colnames(rowSelected))) {
         .log(paste(
             "This experiment was collated with an old version of SpliceWiz.",
-            "Rerun CollateData with the current version before using the",
+            "Rerun collateData with the current version before using the",
             "terminus filter"
         ), "message")
         return(rep(TRUE, nrow(se)))

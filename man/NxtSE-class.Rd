@@ -103,7 +103,7 @@ See Functions section (below) for details
 }
 \description{
 The NxtSE class inherits from the \linkS4class{SummarizedExperiment}
-class and is constructed from \link{MakeSE}. NxtSE extends SummarizedExperiment
+class and is constructed from \link{makeSE}. NxtSE extends SummarizedExperiment
 by housing additional assays pertaining to IR and splice junction counts.
 }
 \section{Functions}{
@@ -128,7 +128,7 @@ the paths to the corresponding COV files
 of the samples
 
 \item \code{ref,NxtSE-method}: Retrieves a list of annotation data associated
-with this NxtSE object; primarily used in Plot_Coverage()
+with this NxtSE object; primarily used in plotCoverage()
 
 \item \code{realize_NxtSE,NxtSE-method}: Converts all DelayedMatrix assays as matrices
 (i.e. performs all delayed calculation and loads resulting object
@@ -174,13 +174,13 @@ processBAM(bams$path, bams$sample,
   output_path = file.path(tempdir(), "SpliceWiz_Output")
 )
 
-expr <- Find_SpliceWiz_Output(file.path(tempdir(), "SpliceWiz_Output"))
-CollateData(expr, 
+expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
+collateData(expr, 
   reference_path = file.path(tempdir(), "Reference"),
   output_path = file.path(tempdir(), "NxtIRF_output")
 )
 
-se <- MakeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
+se <- makeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
 
 # Coerce NxtSE -> SummarizedExperiment
 se_raw <- as(se, "SummarizedExperiment")
@@ -201,7 +201,7 @@ covfile(se)
 # Get sample QC information
 sampleQC(se)
 
-# Get resource NxtIRF data (used internally for Plot_Coverage())
+# Get resource NxtIRF data (used internally for plotCoverage())
 cov_data <- ref(se)
 names(cov_data)
 
@@ -223,7 +223,7 @@ se_IRSE <- rbind(se_IR, se_SE)
 identical(se_IRSE, subset(se, EventType \%in\% c("IR", "SE"))) # TRUE
 
 # Convert HDF5-based NxtSE to in-memory se
-# MakeSE() creates a HDF5-based NxtSE object where all assay data is stored
+# makeSE() creates a HDF5-based NxtSE object where all assay data is stored
 # as an h5 file instead of in-memory. All operations are performed as
 # delayed operations as per DelayedArray package.
 # To realize the NxtSE object as an in-memory object, use:

@@ -106,7 +106,7 @@ server_expr <- function(
             )
         })
         
-        # Click "Load Experiment" after setting CollateData output path
+        # Click "Load Experiment" after setting collateData output path
         observeEvent(input$load_expr,{
             req(input$load_expr)
             if(
@@ -309,7 +309,7 @@ server_expr <- function(
                 output = output)
         })
 
-        # Running CollateData
+        # Running collateData
         observeEvent(input$run_collate_expr, {
             req(input$run_collate_expr)
             req(settings_expr$df.files)
@@ -318,11 +318,11 @@ server_expr <- function(
             ))
             reference_path = settings_expr$ref_path
             output_path = settings_expr$collate_path
-            if(Expr_CollateData_Validate_Vars(
+            if(Expr_collateData_Validate_Vars(
                     session, Experiment, reference_path, output_path
             )) {
                 withProgress(message = 'Collating IRFinder output', value = 0, {
-                    CollateData(
+                    collateData(
                         Experiment, reference_path, output_path, 
                         n_threads = get_threads_reactive()
                     )
@@ -331,7 +331,7 @@ server_expr <- function(
                     settings_expr$collate_path, 
                     settings_expr$df.anno, settings_expr$df.files, 
                     settings_expr$bam_path, settings_expr$irf_path, 
-                    session, post_CollateData = TRUE
+                    session, post_collateData = TRUE
                 )   # saves / updates expr
                 output <- .server_expr_parse_collate_path(
                     limited = limited,
@@ -341,7 +341,7 @@ server_expr <- function(
             }
         })
 
-        # Running MakeSE (Only available on limited == TRUE)
+        # Running makeSE (Only available on limited == TRUE)
         observeEvent(input$build_expr, {
             if(
                     is_valid(settings_expr$collate_path) &&
@@ -351,7 +351,7 @@ server_expr <- function(
                 colData = as.data.table(settings_expr$df.anno)
                 withProgress(message = 'Loading NxtSE object', value = 0, {
                     tryCatch({
-                        settings_expr$se = MakeSE(
+                        settings_expr$se = makeSE(
                             settings_expr$collate_path, colData,
                             realize = TRUE
                         )
@@ -585,13 +585,13 @@ Expr_Load_BAMs <- function(df.files, bam_path, session) {
     if(!is_valid(bam_path)) return(df.files)
 
     # First assume bams are named by subdirectory names
-    temp.DT <- Find_Samples(bam_path, suffix = ".bam", level = 1)
+    temp.DT <- findSamples(bam_path, suffix = ".bam", level = 1)
     if(!is.null(temp.DT) && nrow(temp.DT) > 0) {
         temp.DT <- as.data.table(temp.DT)
         if(length(unique(temp.DT$sample)) == nrow(temp.DT)) {
             # Assume subdirectory names designate sample names
         } else {
-            temp.DT <- as.data.table(Find_Samples(
+            temp.DT <- as.data.table(findSamples(
                 bam_path, suffix = ".bam", level = 0))
             if(length(unique(temp.DT$sample)) == nrow(temp.DT)) {
             # Else assume bam names designate sample names
@@ -658,13 +658,13 @@ Expr_BAM_update_status <- function(df.files, bam_path, collate_path) {
 Expr_Load_IRFs <- function(df.files, irf_path) {
     if(!is_valid(irf_path)) return(df.files)
     # merge irfinder paths
-    temp.DT <- Find_Samples(irf_path, suffix = ".txt.gz", level = 0)
+    temp.DT <- findSamples(irf_path, suffix = ".txt.gz", level = 0)
     if(!is.null(temp.DT) && nrow(temp.DT) > 0) {
         temp.DT <- as.data.table(temp.DT)
         if(length(unique(temp.DT$sample)) == nrow(temp.DT)) {
             # Assume output names designate sample names
         } else {
-            temp.DT <- as.data.table(Find_Samples(
+            temp.DT <- as.data.table(findSamples(
                 irf_path, suffix = ".txt.gz", level = 1))
             if(length(unique(temp.DT$sample)) == nrow(temp.DT)) {
             # Else assume subdirectory names designate sample names
@@ -686,13 +686,13 @@ Expr_Load_IRFs <- function(df.files, irf_path) {
             df.files <- as.data.frame(DT)      
         }   
     }
-    temp.DT2 <- Find_Samples(irf_path, suffix = ".cov", level = 0)
+    temp.DT2 <- findSamples(irf_path, suffix = ".cov", level = 0)
     if(!is.null(temp.DT2) && nrow(temp.DT2) > 0) {
         temp.DT2 <- as.data.table(temp.DT2)
         if(length(unique(temp.DT2$sample)) == nrow(temp.DT2)) {
             # Assume output names designate sample names
         } else {
-            temp.DT2 <- as.data.table(Find_Samples(
+            temp.DT2 <- as.data.table(findSamples(
                 irf_path, suffix = ".cov", level = 1))
             if(length(unique(temp.DT2$sample)) == nrow(temp.DT2)) {
         # Else assume subdirectory names designate sample names
@@ -931,11 +931,11 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
     ) {
         output$se_expr_infobox <- renderUI(
             ui_infobox_expr(1, "NxtSE not collated",
-                "Run CollateData via Experiment tab"))
+                "Run collateData via Experiment tab"))
     } else if(is_valid(settings_expr$collate_path)) {
         output$se_expr_infobox <- renderUI(
             ui_infobox_expr(0,
-            submsg = "Run IRFinder and CollateData via the Experiment tab"))
+            submsg = "Run IRFinder and collateData via the Experiment tab"))
     } else {
         output$se_expr_infobox <- renderUI(
             ui_infobox_expr(0,
@@ -1004,21 +1004,21 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
     } else {
         sendSweetAlert(
             session = session,
-            title = "Annotations not saved; run CollateData first!",
+            title = "Annotations not saved; run collateData first!",
             type = "error"
         )
     }
 }
 
-# Check paths are legit before running CollateData()
-Expr_CollateData_Validate_Vars <- function(
+# Check paths are legit before running collateData()
+Expr_collateData_Validate_Vars <- function(
         session, Experiment, reference_path, output_path
 ) {
     if(!is_valid(reference_path)) {
         sendSweetAlert(
             session = session,
             title = "Missing Reference",
-            text = "Please load Reference before running NxtIRF::CollateData",
+            text = "Please load Reference before running NxtIRF::collateData",
             type = "error"
         )
         return(FALSE)
@@ -1027,7 +1027,7 @@ Expr_CollateData_Validate_Vars <- function(
             session = session,
             title = "Missing NxtIRF Path",
             text = paste("Please select NxtIRF path before",
-                "running NxtIRF::CollateData"),
+                "running NxtIRF::collateData"),
             type = "error"
         )
         return(FALSE)
@@ -1051,11 +1051,11 @@ Expr_CollateData_Validate_Vars <- function(
     return(TRUE)
 }
 
-# Sends sweetAlerts to show whether CollateData() has run successfully
+# Sends sweetAlerts to show whether collateData() has run successfully
 Expr_Update_colData <- function(
         collate_path, df.anno, df.files, 
         bam_path, irf_path, session, 
-        post_CollateData = FALSE)
+        post_collateData = FALSE)
 {
     if(file.exists(file.path(collate_path, "colData.Rds"))) {
         colData.Rds <- readRDS(file.path(collate_path, "colData.Rds"))
@@ -1065,7 +1065,7 @@ Expr_Update_colData <- function(
             colData.Rds$bam_path <- bam_path
             colData.Rds$irf_path <- irf_path
             saveRDS(colData.Rds, file.path(collate_path, "colData.Rds"))
-            if(post_CollateData) {
+            if(post_collateData) {
                 sendSweetAlert(
                     session = session,
                     title = "NxtIRF-Collate run completed",
@@ -1073,7 +1073,7 @@ Expr_Update_colData <- function(
                 )
             }
         } else {
-            if(post_CollateData) {
+            if(post_collateData) {
                 sendSweetAlert(
                     session = session,
                     title = "NxtIRF-Collate did not collate all samples",

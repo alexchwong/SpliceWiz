@@ -17,7 +17,7 @@ alignment coverage across splice and IR events, grouped by user-defined
 experimental conditions.
 }
 \details{
-\href{https://doi.org/10.1186/s13059-017-1184-4}{IRFinder} is a well-established
+\href{https://doi.org/10.1186/s13059-017-1184-4}{processBAM} is a well-established
 bioinformatic tool that measures intron
 retention (IR) in annotated and novel retained introns in short-read RNA
 sequencing samples. It is a computationally-efficient algorithm that measures
@@ -88,21 +88,21 @@ for the IRFinder engine and NxtIRF-based downstream analysis.
 \item \link{STAR-methods} - (Optional) Provides wrapper functions to build the STAR
 genome reference and alignment of short-read FASTQ raw sequencing files.
 This functionality is only available on systems with STAR installed.
-\item \link{IRFinder} - OpenMP/C++ based IRFinder algorithm to analyse
-single or multiple BAM files using the NxtIRF/IRFinder reference.
-\item \link{CollateData} - Collates an experiment based on multiple IRFinder outputs
+\item \link{processBAM} - OpenMP/C++ based algorithm to analyse
+single or multiple BAM files.
+\item \link{collateData} - Collates an experiment based on multiple IRFinder outputs
 for individual samples, into one unified H5-based data structure.
-\item \link{MakeSE} - Constructs a \linkS4class{NxtSE} (H5-based
+\item \link{makeSE} - Constructs a \linkS4class{NxtSE} (H5-based
 SummarizedExperiment) object, specialised to house measurements of retained
 introns and junction counts of alternative splice events.
-\item \link{apply_filters} - Use default or custom filters to remove alternative
+\item \link{applyFilters} - Use default or custom filters to remove alternative
 splicing or IR events pertaining to low-abundance genes and transcripts.
 \item \link{ASE-methods} - one-step method to perform differential alternate splice
 event (ASE) analysis on a NxtSE object using limma or DESeq2.
 \item \link{make_plot_data}: Functions that compile individual and group-mean percent
 spliced in (PSI) values of IR and alternative splice events; useful to
 produce scatter plots or heatmaps.
-\item \link{Plot_Coverage}: Generate RNA-seq coverage plots of
+\item \link{plotCoverage}: Generate RNA-seq coverage plots of
 individual samples or across samples grouped by user-specified conditions
 }
 

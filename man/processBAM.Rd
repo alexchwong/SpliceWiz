@@ -61,7 +61,7 @@ will be named using the given sample names.
 \item sample.txt.gz: The main output file containing the quantitation
 of IR and splice junctions, as well as QC information\cr\cr
 \item sample.cov: Contains coverage information in compressed binary. See
-\link{GetCoverage}
+\link{getCoverage}
 \item main.FC.Rds: A single file containing gene counts for the whole dataset
 (only if \code{run_featureCounts == TRUE})
 }
@@ -73,7 +73,7 @@ OpenMP-based multi-threading and the production of compact "COV" files to
 record alignment coverage. A SpliceWiz reference built using
 \link{Build-Reference-methods} is required.\cr\cr
 After \code{processBAM()} is run, users should call
-\link{CollateData} to collate individual outputs into an experiment / dataset.
+\link{collateData} to collate individual outputs into an experiment / dataset.
 \cr\cr
 BAM2COV creates COV files from BAM files without running \code{processBAM()}.
 \cr\cr See details for performance info.
@@ -132,5 +132,5 @@ processBAM(bams$path, bams$sample,
 )
 }
 \seealso{
-\link{Build-Reference-methods} \link{CollateData} \link{IsCOV}
+\link{Build-Reference-methods} \link{collateData} \link{IsCOV}
 }

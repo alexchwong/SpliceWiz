@@ -233,7 +233,7 @@ ui_ddb_build_expr <- function(id, color = "danger") {
 
         tags$h4("Collate Experiment"),
         actionButton(ns("run_collate_expr"), 
-            "Run CollateData()"),
+            "Run collateData()"),
         br(),br(),
 
         tags$h4("Add Annotations"),

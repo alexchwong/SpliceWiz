@@ -10,7 +10,7 @@
 #'   geom_point() +
 #'   theme_white
 #' @name theme_white
-#' @seealso [Plot_Coverage]
+#' @seealso [plotCoverage]
 NULL
 
 #' @describeIn theme_white White theme without figure legend

@@ -4,15 +4,15 @@
 #' of 6 example files provided by the NxtIRFdata companion package to
 #' demonstrate the use of SpliceWiz. See [NxtIRFdata::example_bams] for
 #' a description of the provided BAM files. \cr\cr
-#' `NxtIRF_example_NxtSE()` retrieves a ready-made functioning
+#' `SpliceWiz_example_NxtSE()` retrieves a ready-made functioning
 #' \linkS4class{NxtSE} object. The steps to reproduce this object is shown
-#' in the example code in [MakeSE]
+#' in the example code in [makeSE]
 #'
 #' @return
 #' In `SpliceWiz_example_bams()`: returns a 2-column data frame containing
 #'   sample names and BAM paths of the example dataset.
 #'
-#' In `NxtIRF_example_NxtSE()`: returns a \linkS4class{NxtSE} object.
+#' In `SpliceWiz_example_NxtSE()`: returns a \linkS4class{NxtSE} object.
 #' @examples
 #'
 #' # returns a data frame with the first column as sample names, and the
@@ -23,7 +23,7 @@
 #' # Returns a NxtSE object created by the example bams aligned to the
 #' # mock NxtSE reference
 #'
-#' se <- NxtIRF_example_NxtSE()
+#' se <- SpliceWiz_example_NxtSE()
 #' @references
 #' Generation of the mappability files was performed using NxtIRF using
 #' a method analogous to that described in:
@@ -36,9 +36,9 @@
 #' \doi{10.1186/s13059-017-1184-4}
 #' @name example-NxtIRF-data
 #' @aliases
-#' SpliceWiz_example_bams NxtIRF_example_NxtSE
+#' SpliceWiz_example_bams SpliceWiz_example_NxtSE
 #' @keywords package
-#' @seealso [MakeSE]
+#' @seealso [makeSE]
 #' @md
 NULL
 
@@ -48,17 +48,17 @@ NULL
 SpliceWiz_example_bams <- function() {
     bams <- NxtIRFdata::example_bams()
     if (is.null(bams) || length(bams) != 6) stop("Example bam fetching failed")
-    return(Find_Bams(tempdir()))
+    return(findBAMS(tempdir()))
 }
 
 #' @describeIn example-NxtIRF-data Returns a (in-memory / realized) NxtSE object
 #' that was pre-generated using the NxtIRF example reference and example
 #' BAM files
 #' @export
-NxtIRF_example_NxtSE <- function() {
+SpliceWiz_example_NxtSE <- function() {
     se <- readRDS(system.file("extdata",
         "example_NxtSE.Rds", package = "SpliceWiz"))
-    covs <- Find_Samples(system.file("extdata", package = "SpliceWiz"), ".cov")
+    covs <- findSamples(system.file("extdata", package = "SpliceWiz"), ".cov")
     covfile(se) <- covs$path
     se
 }

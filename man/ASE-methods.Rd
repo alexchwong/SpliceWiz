@@ -2,13 +2,13 @@
 % Please edit documentation in R/ASE-methods.R
 \name{ASE-methods}
 \alias{ASE-methods}
-\alias{limma_ASE}
-\alias{DESeq_ASE}
-\alias{DoubleExpSeq_ASE}
+\alias{ASE_limma}
+\alias{ASE_DESeq}
+\alias{ASE_DoubleExpSeq}
 \title{Use Limma, DESeq2 or DoubleExpSeq to test for differential Alternative
 Splice Events}
 \usage{
-limma_ASE(
+ASE_limma(
   se,
   test_factor,
   test_nom,
@@ -19,7 +19,7 @@ limma_ASE(
   filter_antinear = FALSE
 )
 
-DESeq_ASE(
+ASE_DESeq(
   se,
   test_factor,
   test_nom,
@@ -31,7 +31,7 @@ DESeq_ASE(
   filter_antinear = FALSE
 )
 
-DoubleExpSeq_ASE(
+ASE_DoubleExpSeq(
   se,
   test_factor,
   test_nom,
@@ -41,9 +41,9 @@ DoubleExpSeq_ASE(
 )
 }
 \arguments{
-\item{se}{The \linkS4class{NxtSE} object created by \code{MakeSE()}. To reduce
+\item{se}{The \linkS4class{NxtSE} object created by \code{makeSE()}. To reduce
 runtime and avoid excessive multiple testing, consider filtering
-the object using \link{apply_filters}}
+the object using \link{applyFilters}}
 
 \item{test_factor}{The condition type which contains the
 contrasting variable}
@@ -70,11 +70,11 @@ A data table containing the following:
 \itemize{
 \item EventName: The name of the ASE event. This identifies each ASE
 in downstream functions including \link{make_diagonal}, \link{make_matrix},
-and \link{Plot_Coverage}
+and \link{plotCoverage}
 \item EventType: The type of event. See details section above.
 \item EventRegion: The genomic coordinates the event occupies. This spans the
 most upstream and most downstream splice junction involved in the ASE,
-and is use to guide the \link{Plot_Coverage} function.
+and is use to guide the \link{plotCoverage} function.
 \item NMD_direction: Indicates whether one isoform is a NMD substrate. +1 means
 included isoform is NMD, -1 means the excluded isoform is NMD, and 0
 means there is no change in NMD status (i.e. both / neither are NMD)
@@ -148,10 +148,10 @@ NB: NxtIRF separately considers known "RI" and novel "IR" events separately:
 \itemize{
 \item \strong{IR} novel events are calculated using the IRFinder method, whereby
 spliced transcripts are \strong{all} isoforms that do not retain the intron, as
-estimated via the \code{SpliceMax} and \code{SpliceOverMax} methods
+estimated via the \code{SpliceMax} and \code{SpliceOver} methods
 }
 \itemize{
-\item see \link{CollateData}.
+\item see \link{collateData}.
 }
 \itemize{
 \item \strong{RI} known retained introns are those that lie completely within a
@@ -187,32 +187,32 @@ Specifically, this means the included / excluded isoforms are as follows:\tabula
 }
 \section{Functions}{
 \itemize{
-\item \code{limma_ASE}: Use limma to perform differential ASE analysis of
+\item \code{ASE_limma}: Use limma to perform differential ASE analysis of
 a filtered NxtSE object
 
-\item \code{DESeq_ASE}: Use DESeq2 to perform differential ASE analysis of
+\item \code{ASE_DESeq}: Use DESeq2 to perform differential ASE analysis of
 a filtered NxtSE object
 
-\item \code{DoubleExpSeq_ASE}: Use DoubleExpSeq to perform differential ASE analysis
+\item \code{ASE_DoubleExpSeq}: Use DoubleExpSeq to perform differential ASE analysis
 of a filtered NxtSE object (uses double exponential beta-binomial model)
 to estimate group dispersions, followed by LRT
 }}
 
 \examples{
-# see ?MakeSE on example code of generating this NxtSE object
-se <- NxtIRF_example_NxtSE()
+# see ?makeSE on example code of generating this NxtSE object
+se <- SpliceWiz_example_NxtSE()
 
 colData(se)$treatment <- rep(c("A", "B"), each = 3)
 
 require("limma")
-res_limma <- limma_ASE(se, "treatment", "A", "B")
+res_limma <- ASE_limma(se, "treatment", "A", "B")
 
 require("DoubleExpSeq")
-res_DES <- DoubleExpSeq_ASE(se, "treatment", "A", "B")
+res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 \dontrun{
 
 require("DESeq2")
-res_DESeq <- DESeq_ASE(se, "treatment", "A", "B")
+res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")
 }
 }
 \references{

@@ -3,34 +3,34 @@
 \name{example-NxtIRF-data}
 \alias{example-NxtIRF-data}
 \alias{SpliceWiz_example_bams}
-\alias{NxtIRF_example_NxtSE}
+\alias{SpliceWiz_example_NxtSE}
 \title{NxtIRF Example BAMs and NxtSE Experiment Object}
 \usage{
 SpliceWiz_example_bams()
 
-NxtIRF_example_NxtSE()
+SpliceWiz_example_NxtSE()
 }
 \value{
 In \code{SpliceWiz_example_bams()}: returns a 2-column data frame containing
 sample names and BAM paths of the example dataset.
 
-In \code{NxtIRF_example_NxtSE()}: returns a \linkS4class{NxtSE} object.
+In \code{SpliceWiz_example_NxtSE()}: returns a \linkS4class{NxtSE} object.
 }
 \description{
 \code{SpliceWiz_example_bams()} is a wrapper function to obtain and make a local copy
 of 6 example files provided by the NxtIRFdata companion package to
 demonstrate the use of SpliceWiz. See \link[NxtIRFdata:NxtIRFdata-package]{NxtIRFdata::example_bams} for
 a description of the provided BAM files. \cr\cr
-\code{NxtIRF_example_NxtSE()} retrieves a ready-made functioning
+\code{SpliceWiz_example_NxtSE()} retrieves a ready-made functioning
 \linkS4class{NxtSE} object. The steps to reproduce this object is shown
-in the example code in \link{MakeSE}
+in the example code in \link{makeSE}
 }
 \section{Functions}{
 \itemize{
 \item \code{SpliceWiz_example_bams}: Returns a 2-column data frame, containing
 sample names and sample paths (in tempdir()) of example BAM files
 
-\item \code{NxtIRF_example_NxtSE}: Returns a (in-memory / realized) NxtSE object
+\item \code{SpliceWiz_example_NxtSE}: Returns a (in-memory / realized) NxtSE object
 that was pre-generated using the NxtIRF example reference and example
 BAM files
 }}
@@ -45,7 +45,7 @@ SpliceWiz_example_bams()
 # Returns a NxtSE object created by the example bams aligned to the
 # mock NxtSE reference
 
-se <- NxtIRF_example_NxtSE()
+se <- SpliceWiz_example_NxtSE()
 }
 \references{
 Generation of the mappability files was performed using NxtIRF using
@@ -59,6 +59,6 @@ Genome Biol. 2017 Mar 15;18(1):51.
 \doi{10.1186/s13059-017-1184-4}
 }
 \seealso{
-\link{MakeSE}
+\link{makeSE}
 }
 \keyword{package}

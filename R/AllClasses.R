@@ -3,7 +3,7 @@
 #' The NxtSE class
 #'
 #' The NxtSE class inherits from the \linkS4class{SummarizedExperiment} 
-#' class and is constructed from [MakeSE]. NxtSE extends SummarizedExperiment
+#' class and is constructed from [makeSE]. NxtSE extends SummarizedExperiment
 #' by housing additional assays pertaining to IR and splice junction counts.
 #' @param x A NxtSE object
 #' @param i,j Row and column subscripts to subset a NxtSE object.
@@ -34,13 +34,13 @@
 #'   output_path = file.path(tempdir(), "SpliceWiz_Output")
 #' )
 #' 
-#' expr <- Find_SpliceWiz_Output(file.path(tempdir(), "SpliceWiz_Output"))
-#' CollateData(expr, 
+#' expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
+#' collateData(expr, 
 #'   reference_path = file.path(tempdir(), "Reference"),
 #'   output_path = file.path(tempdir(), "NxtIRF_output")
 #' )
 #' 
-#' se <- MakeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
+#' se <- makeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
 #'
 #' # Coerce NxtSE -> SummarizedExperiment
 #' se_raw <- as(se, "SummarizedExperiment")
@@ -61,7 +61,7 @@
 #' # Get sample QC information
 #' sampleQC(se)
 #'
-#' # Get resource NxtIRF data (used internally for Plot_Coverage())
+#' # Get resource NxtIRF data (used internally for plotCoverage())
 #' cov_data <- ref(se)
 #' names(cov_data)
 #'
@@ -83,7 +83,7 @@
 #' identical(se_IRSE, subset(se, EventType %in% c("IR", "SE"))) # TRUE
 #'
 #' # Convert HDF5-based NxtSE to in-memory se
-#' # MakeSE() creates a HDF5-based NxtSE object where all assay data is stored
+#' # makeSE() creates a HDF5-based NxtSE object where all assay data is stored
 #' # as an h5 file instead of in-memory. All operations are performed as
 #' # delayed operations as per DelayedArray package.
 #' # To realize the NxtSE object as an in-memory object, use:
@@ -191,7 +191,7 @@ setClass("NxtSE",
 #'       are excluded. \cr\cr
 #'       We recommend testing IR events for > 90% coverage and AS
 #'       events for > 60% coverage as given in the default filters which can be
-#'       accessed using [get_default_filters]\cr\cr
+#'       accessed using [getDefaultFilters]\cr\cr
 #'    * **Consistency**: Skipped exons (SE) and mutually exclusive exons
 #'       (MXE) comprise reads aligned to two contiguous splice junctions. 
 #'       Most algorithms take the average counts from both junctions. This
@@ -215,7 +215,7 @@ setClass("NxtSE",
 #'     exon-intron spanning reads.
 #'
 #'   We highly recommend using the default filters, which can be acquired 
-#'     using [get_default_filters]
+#'     using [getDefaultFilters]
 #' @return A NxtFilter object with the specified parameters
 #' @examples
 #' # Create a NxtFilter that filters for protein-coding ASE
@@ -250,7 +250,7 @@ setClass("NxtSE",
 #'
 #' @name NxtFilter-class
 #' @aliases NxtFilter
-#' @seealso [Run_NxtIRF_Filters]
+#' @seealso [Run_SpliceWiz_Filters]
 #' @md
 #' @export
 setClass("NxtFilter",

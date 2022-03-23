@@ -119,7 +119,7 @@
 #' * `reference_path/settings.Rds`: An RDS file containing parameters used
 #'   to generate the SpliceWiz reference
 #' * `reference_path/SpliceWiz.ref.gz`: A gzipped text file containing collated
-#'   SpliceWiz reference files. This file is used by [IRFinder]
+#'   SpliceWiz reference files. This file is used by [processBAM]
 #' * `reference_path/fst/`: Contains fst files for subsequent easy access to
 #'   SpliceWiz generated references
 #' * `reference_path/cov_data.Rds`: An RDS file containing data required to

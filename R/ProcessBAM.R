@@ -79,7 +79,7 @@
 #'   output_path = file.path(tempdir(), "SpliceWiz_Output"),
 #'   n_threads = 2
 #' )
-#' @seealso [Build-Reference-methods] [collateData] [IsCOV]
+#' @seealso [Build-Reference-methods] [collateData] [isCOV]
 #' @name processBAM
 #' @md
 NULL

@@ -122,7 +122,7 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
         )
         return(txt)
     }
-    if (!IsCOV(cov_files)) {
+    if (!isCOV(cov_files)) {
         txt <- "Some coverage files are not validated"
         return(txt)
     }

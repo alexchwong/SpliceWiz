@@ -61,9 +61,9 @@ make_example_NxtSE <- function() {
     expr = findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
     collateData(expr, 
       reference_path = file.path(tempdir(), "Reference"),
-      output_path = file.path(tempdir(), "NxtIRF_output")
+      output_path = file.path(tempdir(), "Collated_output")
     )
-    se = makeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
+    se = makeSE(collate_path = file.path(tempdir(), "Collated_output"))
     
     # Save COV files
     file.copy(

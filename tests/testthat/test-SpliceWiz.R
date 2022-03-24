@@ -18,10 +18,10 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
     
     collateData(expr, 
         reference_path = file.path(tempdir(), "Reference"),
-        output_path = file.path(tempdir(), "NxtIRF_output")
+        output_path = file.path(tempdir(), "Collated_output")
     )
 
-    se <- makeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
+    se <- makeSE(collate_path = file.path(tempdir(), "Collated_output"))
     
     # Test identical assays
     se_realized = realize_NxtSE(se)

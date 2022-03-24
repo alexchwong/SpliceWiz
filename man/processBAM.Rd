@@ -132,5 +132,5 @@ processBAM(bams$path, bams$sample,
 )
 }
 \seealso{
-\link{Build-Reference-methods} \link{collateData} \link{IsCOV}
+\link{Build-Reference-methods} \link{collateData} \link{isCOV}
 }

@@ -65,9 +65,9 @@ filterModule_UI <- function(id, label = "Counter") {
 
 filterModule_server <- function(id, filterdata, conditionList) {
     moduleServer(id, function(input, output, session) {
-        #final <- reactiveValues(default = NxtFilter()) # initialize to defaults
+        #final <- reactiveValues(default = ASEFilter()) # initialize to defaults
         final <- reactiveVal(
-            value = NxtFilter(
+            value = ASEFilter(
                 filterClass = "(none)"
             )
         )
@@ -111,7 +111,7 @@ filterModule_server <- function(id, filterdata, conditionList) {
 
         # inputs from final -> UI
         observeEvent(filterdata(), {
-            if(is(filterdata(), "NxtFilter")) final(filterdata())
+            if(is(filterdata(), "ASEFilter")) final(filterdata())
 
             class_choices <- c("(none)", "Annotation", "Data")
             type_choices <- c("(none)")

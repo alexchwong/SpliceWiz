@@ -176,7 +176,7 @@ plotCoverage <- function(
 
     if ((missing(seqname) | missing(start) | missing(end)) &
         !missing(coordinates)) {
-        gr <- CoordToGR(coordinates)
+        gr <- coord2GR(coordinates)
         seqname <- as.character(seqnames(gr))
         start <- start(gr)
         end <- end(gr)
@@ -261,7 +261,7 @@ plotGenome <- function(se, reference_path,
     }
     if ((missing(seqname) | missing(start) | missing(end)) &
         !missing(coordinates)) {
-        gr <- CoordToGR(coordinates)
+        gr <- coord2GR(coordinates)
         seqname <- as.character(seqnames(gr))
         start <- BiocGenerics::start(gr)
         end <- BiocGenerics::end(gr)
@@ -544,7 +544,7 @@ getCoverageRegions <- function(file, regions,
     if (strandMode == "") strandMode <- "unstranded"
 
     if (!is(regions, "GRanges")) .log("regions must be a GRanges object")
-    if (!IsCOV(file)) .log("Given file is not of COV format")
+    if (!isCOV(file)) .log("Given file is not of COV format")
     seqlevels <- c_Cov_Seqnames(normalizePath(file))
 
     # trim regions by available seqlevels
@@ -591,7 +591,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     if (!is(region, "GRanges")) .log("region must be a GRanges object")
     region <- region[1]
     
-    if (!IsCOV(file)) .log("Given file is not of COV format")
+    if (!isCOV(file)) .log("Given file is not of COV format")
     seqlevels <- c_Cov_Seqnames(normalizePath(file))
     if(!(as.character(seqnames(region)) %in% seqlevels))
         .log("Given region is on a chromosome that is missing in COV file")
@@ -1068,7 +1068,7 @@ determine_compatible_events <- function(reduced.DT, highlight_events) {
 
     tr_filter <- c()
     if (length(highlight_events) == 1) {
-        gr <- CoordToGR(highlight_events[[1]])
+        gr <- coord2GR(highlight_events[[1]])
         introns.gr <- .grDT(introns)
         OL <- findOverlaps(gr, introns.gr)
         introns[OL@to, c("highlight") := 1]
@@ -1077,7 +1077,7 @@ determine_compatible_events <- function(reduced.DT, highlight_events) {
     } else if (length(highlight_events) == 2) {
         AS_count <- 1
         for (event in highlight_events) {
-            gr <- CoordToGR(event)
+            gr <- coord2GR(event)
             introns.gr <- .grDT(introns)
             OL <- findOverlaps(gr, introns.gr, type = "equal")
             introns[OL@to, c("highlight") := as.character(AS_count)]

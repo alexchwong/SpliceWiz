@@ -12,27 +12,27 @@
 #' `STAR_buildRef` requires [getResources] to be run to fetch the
 #' required genome and gene annotation files.
 #'
-#' `STAR_Mappability`, `STAR_align_experiment` and `STAR_align_fastq` requires a
+#' `STAR_mappability`, `STAR_alignExperiment` and `STAR_alignReads` requires a
 #' `STAR` genome, which can be built using `STAR_buildRef`
 #'
 #' **Function Description**
 #'
 #' For `STAR_buildRef`: this function
 #'   will create a `STAR` genome reference in the `STAR` subdirectory in the
-#'   path given by `reference_path`. Optionally, it will run [STAR_Mappability]
+#'   path given by `reference_path`. Optionally, it will run [STAR_mappability]
 #'   if `also_generate_mappability` is set to `TRUE`
 #'
-#' For `STAR_Mappability`: this function will first
-#'   will run [Mappability_GenReads], then use the given `STAR` genome to align
+#' For `STAR_mappability`: this function will first
+#'   will run [generateSyntheticReads], then use the given `STAR` genome to align
 #'   the synthetic reads using `STAR`. The aligned BAM file will then be
-#'   processed using [Mappability_CalculateExclusions] to calculate the
+#'   processed using [calculateMappability] to calculate the
 #'   lowly-mappable genomic regions,
 #'   producing the `MappabilityExclusion.bed.gz` output file.
 #'
-#' For `STAR_align_fastq`: aligns a single or pair of FASTQ files to the given
+#' For `STAR_alignReads`: aligns a single or pair of FASTQ files to the given
 #'   `STAR` genome using the `STAR` aligner.
 #'
-#' For `STAR_align_experiment`: aligns a set of FASTQ or paired FASTQ files
+#' For `STAR_alignExperiment`: aligns a set of FASTQ or paired FASTQ files
 #'   using the given
 #'   `STAR` genome using the `STAR` aligner.
 #'   A data.frame specifying sample names and corresponding FASTQ files are
@@ -61,25 +61,25 @@
 #'   sample names, forward-FASTQ and reverse-FASTQ files. This can be
 #'   conveniently generated using [findFASTQ]
 #' @param BAM_output_path The path under which STAR outputs the aligned BAM
-#'   files. In `STAR_align_experiment()`, STAR will output aligned
+#'   files. In `STAR_alignExperiment()`, STAR will output aligned
 #'   BAMS inside subdirectories of this folder, named by sample names. In
-#'   `STAR_align_fastq()`, STAR will output directly into this path.
+#'   `STAR_alignReads()`, STAR will output directly into this path.
 #' @param trim_adaptor The sequence of the Illumina adaptor to trim via STAR's
 #'   \code{--clip3pAdapterSeq} option
 #' @param two_pass Whether to use two-pass mapping. In
-#'   \code{STAR_align_experiment()}, STAR will first align every sample
+#'   \code{STAR_alignExperiment()}, STAR will first align every sample
 #'   and generate a list of splice junctions but not BAM files. The junctions
 #'   are then given to STAR to generate a temporary genome (contained within
 #'   \code{_STARgenome}) subdirectory within that of the first sample), using
 #'   these junctions to improve novel junction detection. In
-#'   \code{STAR_align_fastq()}, STAR will run \code{--twopassMode Basic}
-#' @param fastq_1,fastq_2 In STAR_align_fastq: character vectors giving the
+#'   \code{STAR_alignReads()}, STAR will run \code{--twopassMode Basic}
+#' @param fastq_1,fastq_2 In STAR_alignReads: character vectors giving the
 #'   path(s) of one or more FASTQ (or FASTA) files to be aligned.
 #'   If single reads are to be aligned, omit \code{fastq_2}
 #' @param memory_mode The parameter to be parsed to \code{--genomeLoad}; either
 #'   \code{NoSharedMemory} or \code{LoadAndKeep} are used.
 #' @param ... Additional arguments to be parsed into
-#'   \code{Mappability_GenReads()}. See \link{Mappability-methods}.
+#'   \code{generateSyntheticReads()}. See \link{Mappability-methods}.
 #' @return None. STAR will output files into the given output directories.
 #' @examples
 #' # 0) Check that STAR is installed and compatible with NxtIRF
@@ -141,7 +141,7 @@
 #'
 #' # 4a) Align a single sample using the STAR reference
 #'
-#' STAR_align_fastq(
+#' STAR_alignReads(
 #'     STAR_ref_path = file.path("Reference_FTP", "STAR"),
 #'     BAM_output_path = "./bams/sample1",
 #'     fastq_1 = "sample1_1.fastq", fastq_2 = "sample1_2.fastq",
@@ -158,7 +158,7 @@
 #'         c("sample_A_2.fastq", "sample_B_2.fastq"))
 #' )
 #'
-#' STAR_align_experiment(
+#' STAR_alignExperiment(
 #'     Experiment = Experiment,
 #'     STAR_ref_path = file.path("Reference_FTP", "STAR"),
 #'     BAM_output_path = "./bams",
@@ -168,7 +168,7 @@
 #' }
 #' @name STAR-methods
 #' @aliases
-#' STAR_buildRef STAR_align_experiment STAR_align_fastq
+#' STAR_buildRef STAR_alignExperiment STAR_alignReads
 #' @seealso
 #' [Build-Reference-methods] [findSamples] [Mappability-methods]\cr\cr
 #' [The latest STAR documentation](https://github.com/alexdobin/STAR/blob/master/doc/STARmanual.pdf)
@@ -224,7 +224,7 @@ STAR_buildRef <- function(reference_path,
     system2(command = "STAR", args = args)
 
     if (also_generate_mappability) {
-        STAR_Mappability(
+        STAR_mappability(
             reference_path = reference_path,
             STAR_ref_path = STAR_ref_path,
             map_depth_threshold = map_depth_threshold,
@@ -239,7 +239,7 @@ STAR_buildRef <- function(reference_path,
 
 #' @describeIn STAR-methods Calculates lowly-mappable genomic regions using STAR
 #' @export
-STAR_Mappability <- function(
+STAR_mappability <- function(
         reference_path,
         STAR_ref_path = file.path(reference_path, "STAR"),
         map_depth_threshold = 4,
@@ -251,13 +251,13 @@ STAR_Mappability <- function(
     STAR_ref_path <- .validate_STAR_reference(STAR_ref_path)
     mappability_reads_fasta <- file.path(
         reference_path, "Mappability", "Reads.fa")
-    Mappability_GenReads(reference_path, ...)
+    generateSyntheticReads(reference_path, ...)
 
     .log(paste("Aligning genome fragments back to the genome, from:",
         mappability_reads_fasta), type = "message")
     aligned_bam <- file.path(reference_path, "Mappability",
         "Aligned.out.bam")
-    STAR_align_fastq(
+    STAR_alignReads(
         fastq_1 = mappability_reads_fasta,
         fastq_2 = NULL,
         STAR_ref_path = STAR_ref_path,
@@ -276,7 +276,7 @@ STAR_Mappability <- function(
 
         .log(paste("Calculating Mappability from:", aligned_bam),
             type = "message")
-        Mappability_CalculateExclusions(
+        calculateMappability(
             reference_path = reference_path,
             aligned_bam = aligned_bam,
             threshold = map_depth_threshold,
@@ -298,7 +298,7 @@ STAR_Mappability <- function(
 #' @describeIn STAR-methods Aligns multiple sets of FASTQ files, belonging to
 #'   multiple samples
 #' @export
-STAR_align_experiment <- function(Experiment, STAR_ref_path, BAM_output_path,
+STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
         trim_adaptor = "AGATCGGAAG", two_pass = FALSE, n_threads = 4) {
 
     .validate_STAR_version()
@@ -376,7 +376,7 @@ STAR_align_experiment <- function(Experiment, STAR_ref_path, BAM_output_path,
             }
 
             .log(paste("Aligning", sample, "using STAR"), "message")
-            STAR_align_fastq(ref,
+            STAR_alignReads(ref,
                 BAM_output_path = file.path(BAM_output_path, sample),
                 fastq_1 = fastq_1, fastq_2 = fastq_2,
                 trim_adaptor = trim_adaptor,
@@ -404,7 +404,7 @@ STAR_align_experiment <- function(Experiment, STAR_ref_path, BAM_output_path,
 #' @describeIn STAR-methods Aligns a single sample (with single or paired FASTQ
 #'   or FASTA files)
 #' @export
-STAR_align_fastq <- function(
+STAR_alignReads <- function(
         fastq_1 = c("./sample_1.fastq"), fastq_2 = NULL,
         STAR_ref_path, BAM_output_path,
         two_pass = FALSE,

@@ -71,7 +71,7 @@ Collate: AllImports.R
 	RcppExports.R
 	AllClasses.R
 	AllGenerics.R
-	NxtFilter-methods.R
+	ASEFilter-methods.R
 	NxtSE-methods.R
 	globals.R
 	ggplot_themes.R

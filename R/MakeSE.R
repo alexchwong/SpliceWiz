@@ -73,10 +73,10 @@
 #' expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
 #' collateData(expr,
 #'   reference_path = file.path(tempdir(), "Reference"),
-#'   output_path = file.path(tempdir(), "NxtIRF_output")
+#'   output_path = file.path(tempdir(), "Collated_output")
 #' )
 #'
-#' se <- makeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
+#' se <- makeSE(collate_path = file.path(tempdir(), "Collated_output"))
 #'
 #' # "Realize" NxtSE object to load all H5 assays into memory:
 #'
@@ -256,7 +256,7 @@ makeSE <- function(
     se.IR <- se[rowData(se)$EventType == "IR", , drop = FALSE]
     se.coords <- rowData(se.IR)$EventRegion[
         rowData(se.IR)$EventRegion %in% rownames(junc_PSI)]
-    se.coords.gr = CoordToGR(se.coords)
+    se.coords.gr = coord2GR(se.coords)
     names(se.coords.gr) = se.coords
     
     if (length(se.coords.gr) > 0) {

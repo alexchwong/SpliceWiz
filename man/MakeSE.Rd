@@ -85,10 +85,10 @@ processBAM(bams$path, bams$sample,
 expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
 collateData(expr,
   reference_path = file.path(tempdir(), "Reference"),
-  output_path = file.path(tempdir(), "NxtIRF_output")
+  output_path = file.path(tempdir(), "Collated_output")
 )
 
-se <- makeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
+se <- makeSE(collate_path = file.path(tempdir(), "Collated_output"))
 
 # "Realize" NxtSE object to load all H5 assays into memory:
 

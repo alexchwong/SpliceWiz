@@ -65,7 +65,7 @@ server_vis_diag <- function(
             if(num_events < nrow(res)) {
                 res <- res[seq_len(num_events)]
             }
-            df.diag <- make_diagonal(
+            df.diag <- makeMeanPSI(
                 get_se(), res$EventName, 
                 input$variable_diag, input$nom_diag, input$denom_diag
             )
@@ -442,13 +442,13 @@ server_vis_heatmap <- function(
             colData <- as.data.frame(colData(get_se()))
 
             if(input$mode_heat == "PSI") {
-                mat <- make_matrix(get_se(), get_de()$EventName[selected],
+                mat <- makeMatrix(get_se(), get_de()$EventName[selected],
                 rownames(colData), "PSI")
             } else if(input$mode_heat == "Logit") {
-                mat <- make_matrix(get_se(), get_de()$EventName[selected],
+                mat <- makeMatrix(get_se(), get_de()$EventName[selected],
                 rownames(colData), "logit")
             } else {
-                mat <- make_matrix(get_se(), get_de()$EventName[selected],
+                mat <- makeMatrix(get_se(), get_de()$EventName[selected],
                 rownames(colData), "Z-score")
             }
 

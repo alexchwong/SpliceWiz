@@ -37,10 +37,10 @@
 #' expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
 #' collateData(expr, 
 #'   reference_path = file.path(tempdir(), "Reference"),
-#'   output_path = file.path(tempdir(), "NxtIRF_output")
+#'   output_path = file.path(tempdir(), "Collated_output")
 #' )
 #' 
-#' se <- makeSE(collate_path = file.path(tempdir(), "NxtIRF_output"))
+#' se <- makeSE(collate_path = file.path(tempdir(), "Collated_output"))
 #'
 #' # Coerce NxtSE -> SummarizedExperiment
 #' se_raw <- as(se, "SummarizedExperiment")
@@ -216,28 +216,28 @@ setClass("NxtSE",
 #'
 #'   We highly recommend using the default filters, which can be acquired 
 #'     using [getDefaultFilters]
-#' @return A NxtFilter object with the specified parameters
+#' @return A ASEFilter object with the specified parameters
 #' @examples
-#' # Create a NxtFilter that filters for protein-coding ASE
-#' f1 <- NxtFilter(filterClass = "Annotation", filterType = "Protein_Coding")
+#' # Create a ASEFilter that filters for protein-coding ASE
+#' f1 <- ASEFilter(filterClass = "Annotation", filterType = "Protein_Coding")
 #'
-#' # Create a NxtFilter that filters for Depth >= 20 in IR events
-#' f2 <- NxtFilter(
+#' # Create a ASEFilter that filters for Depth >= 20 in IR events
+#' f2 <- ASEFilter(
 #'     filterClass = "Data", filterType = "Depth",
 #'     minimum = 20, EventTypes = c("IR", "RI")
 #' )
 #'
-#' # Create a NxtFilter that filters for Coverage > 60% in splice events
+#' # Create a ASEFilter that filters for Coverage > 60% in splice events
 #' # that must be satisfied in at least 2 categories of condition "Genotype"
-#' f3 <- NxtFilter(
+#' f3 <- ASEFilter(
 #'     filterClass = "Data", filterType = "Coverage",
 #'     minimum = 60, EventTypes = c("MXE", "SE", "AFE", "ALE", "A3SS", "A5SS"),
 #'     condition = "Genotype", minCond = 2
 #' )
 #'
-#' # Create a NxtFilter that filters for Depth > 10 in all events
+#' # Create a ASEFilter that filters for Depth > 10 in all events
 #' # that must be satisfied in at least 50% of each gender
-#' f4 <- NxtFilter(
+#' f4 <- ASEFilter(
 #'     filterClass = "Data", filterType = "Depth",
 #'     minimum = 10, condition = "gender", pcTRUE = 50
 #' )
@@ -248,12 +248,12 @@ setClass("NxtSE",
 #' f3
 #' f4
 #'
-#' @name NxtFilter-class
-#' @aliases NxtFilter
+#' @name ASEFilter-class
+#' @aliases ASEFilter
 #' @seealso [Run_SpliceWiz_Filters]
 #' @md
 #' @export
-setClass("NxtFilter",
+setClass("ASEFilter",
     slots = c(
         filterClass = "character",
         filterType = "character",

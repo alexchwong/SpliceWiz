@@ -1,7 +1,7 @@
 #' Filtering for IR and Alternative Splicing Events
 #'
 #' This function implements filtering of IR or AS events based on customisable
-#' criteria. See [NxtFilter] for details.
+#' criteria. See [ASEFilter] for details.
 #'
 #' @details
 #' We highly recommend using the default filters, which are as follows:
@@ -31,13 +31,13 @@
 #'   isoforms) lower than 5 (`minDepth = 5`) are not assessed in filter #2, and
 #'   in #3 and #4 this threshold is (`minDepth = 20`).
 #'
-#' For an explanation of the various parameters mentioned here, see [NxtFilter]
+#' For an explanation of the various parameters mentioned here, see [ASEFilter]
 #'
 #' @param legacy (default `FALSE`) Set to `TRUE` to get the first four 
 #'   default filters introduced in the initial SpliceWiz release.
 #' @param se the \linkS4class{NxtSE} object to filter
-#' @param filterObj A single \linkS4class{NxtFilter} object.
-#' @param filters A vector or list of one or more NxtFilter objects. If left
+#' @param filterObj A single \linkS4class{ASEFilter} object.
+#' @param filters A vector or list of one or more ASEFilter objects. If left
 #'   blank, the NxtIRF default filters will be used.
 #' @return
 #' For `runFilter` and `applyFilters`: a vector of type `logical`,
@@ -67,8 +67,8 @@
 #' se.defaultFiltered <- se[applyFilters(se, getDefaultFilters()), ]
 #' @name Run_SpliceWiz_Filters
 #' @aliases getDefaultFilters applyFilters runFilter
-#' @seealso [NxtFilter] for details describing how to create and assign settings
-#'   to NxtFilter objects.
+#' @seealso [ASEFilter] for details describing how to create and assign settings
+#'   to ASEFilter objects.
 #' @md
 NULL
 
@@ -76,32 +76,32 @@ NULL
 #'   SpliceWiz filters
 #' @export
 getDefaultFilters <- function(legacy = FALSE) {
-    f1 <- NxtFilter("Data", "Depth", pcTRUE = 80, minimum = 20)
-    f2 <- NxtFilter("Data", "Coverage", pcTRUE = 80,
+    f1 <- ASEFilter("Data", "Depth", pcTRUE = 80, minimum = 20)
+    f2 <- ASEFilter("Data", "Coverage", pcTRUE = 80,
         minimum = 90, minDepth = 5, EventTypes = c("IR", "RI"))
-    f3 <- NxtFilter("Data", "Coverage", pcTRUE = 80,
+    f3 <- ASEFilter("Data", "Coverage", pcTRUE = 80,
         minimum = 60, minDepth = 20,
         EventTypes = c("MXE", "SE", "AFE", "ALE", "A5SS", "A3SS"))
-    f4 <- NxtFilter("Data", "Consistency", pcTRUE = 80,
+    f4 <- ASEFilter("Data", "Consistency", pcTRUE = 80,
         maximum = 2, minDepth = 20, EventTypes = c("MXE", "SE", "RI"))
-    f4_new <- NxtFilter("Data", "Consistency", pcTRUE = 80,
+    f4_new <- ASEFilter("Data", "Consistency", pcTRUE = 80,
         maximum = 1, minDepth = 20, EventTypes = c("MXE", "SE", "RI"))
-    f5 <- NxtFilter("Annotation", "Terminus")
-    f6 <- NxtFilter("Annotation", "ExclusiveMXE")
+    f5 <- ASEFilter("Annotation", "Terminus")
+    f6 <- ASEFilter("Annotation", "ExclusiveMXE")
     if(legacy) return(list(f1, f2, f3, f4))
     return(list(f1, f2, f3, f4_new, f5, f6))
 }
 
-#' @describeIn Run_SpliceWiz_Filters Run a vector or list of NxtFilter objects
+#' @describeIn Run_SpliceWiz_Filters Run a vector or list of ASEFilter objects
 #'   on a NxtSE object
 #' @export
 applyFilters <- function(se, filters = getDefaultFilters()) {
     if (!is.list(filters)) filters <- list(filters)
     if (length(filters) == 0) .log("No filters given")
     for (i in length(filters)) {
-        if (!is(filters[[i]], "NxtFilter")) {
+        if (!is(filters[[i]], "ASEFilter")) {
             stopmsg <- paste("Element", i,
-                "of `filters` is not a NxtFilter object")
+                "of `filters` is not a ASEFilter object")
             .log(stopmsg)
         }
     }
@@ -441,9 +441,9 @@ runFilter <- function(se, filterObj) {
 .runFilter_anno_mxe_gr_casette <- function(coord1, coord2) {
     if(length(coord1) != length(coord2))
         .log("INTERNAL ERROR: two MXE coord vectors must be of equal size")
-    gr1 = CoordToGR(coord1)
+    gr1 = coord2GR(coord1)
     gr1$ID <- as.character(seq_len(length(gr1)))
-    gr2 = CoordToGR(coord2)
+    gr2 = coord2GR(coord2)
     gr2$ID <- as.character(seq_len(length(gr2)))
     grbind <- c(gr1, gr2)
     return(unlist(

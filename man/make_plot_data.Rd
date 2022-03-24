@@ -2,12 +2,12 @@
 % Please edit documentation in R/make_plot_data.R
 \name{make_plot_data}
 \alias{make_plot_data}
-\alias{make_matrix}
-\alias{make_diagonal}
+\alias{makeMatrix}
+\alias{makeMeanPSI}
 \title{Construct data of percent-spliced-in (PSI) matrices and "diagonal" for
 heatmaps and scatter plots}
 \usage{
-make_matrix(
+makeMatrix(
   se,
   event_list,
   sample_list = colnames(se),
@@ -17,7 +17,7 @@ make_matrix(
   na.percent.max = 0.1
 )
 
-make_diagonal(
+makeMeanPSI(
   se,
   event_list = rownames(se),
   condition,
@@ -34,10 +34,10 @@ make_diagonal(
 (as given by the \code{EventName} column of differential ASE results table
 using \code{ASE_limma()} or \code{ASE_DESeq()})}
 
-\item{sample_list}{(default = \code{colnames(se)}) In \code{make_matrix()}, a list of
+\item{sample_list}{(default = \code{colnames(se)}) In \code{makeMatrix()}, a list of
 sample names in the given experiment to be included in the returned matrix}
 
-\item{method}{In \code{make_matrix()}, rhe values to be returned
+\item{method}{In \code{makeMatrix()}, rhe values to be returned
 (default = "PSI"). It can
 alternately be "logit" which returns logit-transformed PSI values, or
 "Z-score" which returns Z-score-transformed PSI values}
@@ -66,17 +66,17 @@ this error.}
 \code{denom_DE = "control"}}
 }
 \value{
-For \code{make_matrix}: A matrix of PSI (or alternate) values, with
+For \code{makeMatrix}: A matrix of PSI (or alternate) values, with
 columns as samples and rows as ASE events.
 
-For \code{make_diagonal}: A 3 column data frame, with the first column containing
+For \code{makeMeanPSI}: A 3 column data frame, with the first column containing
 \code{event_list} list of ASE events, and the last 2 columns containing the
 average PSI values of the nominator and denominator conditions.
 }
 \description{
-\code{make_matrix()} constructs a matrix of PSI values of the given alternative
+\code{makeMatrix()} constructs a matrix of PSI values of the given alternative
 splicing events (ASEs).\cr\cr
-\code{make_diagonal()} constructs a table of "average" PSI values, with samples
+\code{makeMeanPSI()} constructs a table of "average" PSI values, with samples
 grouped by two given conditions (e.g. "group A" and "group B") of a given
 condition category (e.g. condition "treatment"). See details below.\cr\cr
 }
@@ -100,14 +100,14 @@ and is equivalent to \link[stats:Logistic]{stats::qlogis}. Its inverse is equiva
 \link[stats:Logistic]{stats::plogis}.
 
 Users wishing to calculate arithmetic means of PSI are advised to use
-\link{make_matrix}, followed by \link{rowMeans} on subsetted sample columns.
+\link{makeMatrix}, followed by \link{rowMeans} on subsetted sample columns.
 }
 \section{Functions}{
 \itemize{
-\item \code{make_matrix}: constructs a matrix of PSI values of the given
+\item \code{makeMatrix}: constructs a matrix of PSI values of the given
 alternative splicing events (ASEs)
 
-\item \code{make_diagonal}: constructs a table of "average" PSI values
+\item \code{makeMeanPSI}: constructs a table of "average" PSI values
 }}
 
 \examples{
@@ -117,9 +117,9 @@ colData(se)$treatment <- rep(c("A", "B"), each = 3)
 
 event_list <- rowData(se)$EventName
 
-mat <- make_matrix(se, event_list[1:10])
+mat <- makeMatrix(se, event_list[1:10])
 
-diag_values <- make_diagonal(se, event_list,
+diag_values <- makeMeanPSI(se, event_list,
   condition = "treatment", nom_DE = "A", denom_DE = "B"
 )
 }

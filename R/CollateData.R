@@ -80,7 +80,7 @@
 #' expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
 #' collateData(expr,
 #'   reference_path = file.path(tempdir(), "Reference"),
-#'   output_path = file.path(tempdir(), "NxtIRF_output")
+#'   output_path = file.path(tempdir(), "Collated_output")
 #' )
 #' @seealso [processBAM], [makeSE]
 #' @md
@@ -231,7 +231,7 @@ collateData <- function(Experiment, reference_path, output_path,
     if (ncol(Experiment) > 2 && all(file.exists(Experiment[, 3]))) {
         coverage_files <- Experiment[, 3]
     }
-    if (!IsCOV(coverage_files)) {
+    if (!isCOV(coverage_files)) {
         message("Some coverage files do not exist or are corrupted")
         coverage_files <- ""
     }
@@ -1580,7 +1580,7 @@ collateData <- function(Experiment, reference_path, output_path,
     if(!is.null(coverage_files)) {
         covfiles_full <- normalizePath(file.path(norm_output_path, coverage_files))
         # Create barebones colData.Rds - save coverage files as well
-        if (length(coverage_files) == nrow(df.internal) & IsCOV(covfiles_full)) {
+        if (length(coverage_files) == nrow(df.internal) & isCOV(covfiles_full)) {
             df.files <- data.table(
                 sample = df.internal$sample,
                 bam_file = "",

@@ -19,10 +19,10 @@ default filters introduced in the initial SpliceWiz release.}
 
 \item{se}{the \linkS4class{NxtSE} object to filter}
 
-\item{filters}{A vector or list of one or more NxtFilter objects. If left
+\item{filters}{A vector or list of one or more ASEFilter objects. If left
 blank, the NxtIRF default filters will be used.}
 
-\item{filterObj}{A single \linkS4class{NxtFilter} object.}
+\item{filterObj}{A single \linkS4class{ASEFilter} object.}
 }
 \value{
 For \code{runFilter} and \code{applyFilters}: a vector of type \code{logical},
@@ -33,7 +33,7 @@ that should be parsed into \code{applyFilters}.
 }
 \description{
 This function implements filtering of IR or AS events based on customisable
-criteria. See \link{NxtFilter} for details.
+criteria. See \link{ASEFilter} for details.
 }
 \details{
 We highly recommend using the default filters, which are as follows:
@@ -67,14 +67,14 @@ Events with event read depth (reads supporting either included or excluded
 isoforms) lower than 5 (\code{minDepth = 5}) are not assessed in filter #2, and
 in #3 and #4 this threshold is (\code{minDepth = 20}).
 
-For an explanation of the various parameters mentioned here, see \link{NxtFilter}
+For an explanation of the various parameters mentioned here, see \link{ASEFilter}
 }
 \section{Functions}{
 \itemize{
 \item \code{getDefaultFilters}: Returns a vector of recommended default
 SpliceWiz filters
 
-\item \code{applyFilters}: Run a vector or list of NxtFilter objects
+\item \code{applyFilters}: Run a vector or list of ASEFilter objects
 on a NxtSE object
 
 \item \code{runFilter}: Run a single filter on a NxtSE object
@@ -102,6 +102,6 @@ se.depthfilter <- se[runFilter(se, filters[[1]]), ]
 se.defaultFiltered <- se[applyFilters(se, getDefaultFilters()), ]
 }
 \seealso{
-\link{NxtFilter} for details describing how to create and assign settings
-to NxtFilter objects.
+\link{ASEFilter} for details describing how to create and assign settings
+to ASEFilter objects.
 }

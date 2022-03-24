@@ -1,6 +1,6 @@
-#' @describeIn NxtFilter-class Constructs a NxtFilter object
+#' @describeIn ASEFilter-class Constructs a ASEFilter object
 #' @export
-NxtFilter <- function(
+ASEFilter <- function(
         filterClass = c("Data", "Annotation"),
         filterType = c(
             "Depth", "Coverage", "Consistency",
@@ -10,7 +10,7 @@ NxtFilter <- function(
         condition = "", minCond = -1,
         EventTypes = c("IR", "MXE", "SE", "A3SS", "A5SS", "AFE", "ALE", "RI")
 ) {
-    nfv <- new("NxtFilter",
+    nfv <- new("ASEFilter",
         filterClass = filterClass, filterType = filterType, pcTRUE = pcTRUE,
         minimum = minimum, maximum = maximum, minDepth = minDepth,
         condition = condition, minCond = minCond,
@@ -19,7 +19,7 @@ NxtFilter <- function(
     nfv
 }
 
-setMethod("initialize", "NxtFilter", function(.Object,
+setMethod("initialize", "ASEFilter", function(.Object,
         filterClass = c("Data", "Annotation"),
         filterType = c(
             "Depth", "Coverage", "Consistency",
@@ -87,14 +87,14 @@ setMethod("initialize", "NxtFilter", function(.Object,
     .Object
 })
 
-setMethod("show", "NxtFilter", function(object) {
-    .cat_NxtFilter_common(object)
-    .cat_NxtFilter_filterSpecific(object)
+setMethod("show", "ASEFilter", function(object) {
+    .cat_ASEFilter_common(object)
+    .cat_ASEFilter_filterSpecific(object)
 })
 
 # Describe class, type, and conditions filter will be applied across
-.cat_NxtFilter_common <- function(object) {
-    .nxtcat(paste0("NxtFilter Class: ", .colourise("%s\t", "red")),
+.cat_ASEFilter_common <- function(object) {
+    .nxtcat(paste0("ASEFilter Class: ", .colourise("%s\t", "red")),
         object@filterClass)
     .nxtcat(paste0("Type: ", .colourise("%s\n", "purple")),
         object@filterType)
@@ -121,7 +121,7 @@ setMethod("show", "NxtFilter", function(object) {
 }
 
 # Describe filter-specific functions
-.cat_NxtFilter_filterSpecific <- function(object) {
+.cat_ASEFilter_filterSpecific <- function(object) {
     if (object@filterType == "Depth") {
         .nxtcat(paste0("Minimum Event Depth: ",
             .colourise("%i\n", "red")), as.integer(object@minimum))

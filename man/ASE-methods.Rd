@@ -69,7 +69,7 @@ based analysis.}
 A data table containing the following:
 \itemize{
 \item EventName: The name of the ASE event. This identifies each ASE
-in downstream functions including \link{make_diagonal}, \link{make_matrix},
+in downstream functions including \link{makeMeanPSI}, \link{makeMatrix},
 and \link{plotCoverage}
 \item EventType: The type of event. See details section above.
 \item EventRegion: The genomic coordinates the event occupies. This spans the

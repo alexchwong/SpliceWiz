@@ -83,7 +83,7 @@
 #'   based analysis.
 #' @return A data table containing the following:
 #'   * EventName: The name of the ASE event. This identifies each ASE
-#'     in downstream functions including [make_diagonal], [make_matrix],
+#'     in downstream functions including [makeMeanPSI], [makeMatrix],
 #'     and [plotCoverage]
 #'   * EventType: The type of event. See details section above.
 #'   * EventRegion: The genomic coordinates the event occupies. This spans the
@@ -566,7 +566,7 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     rowData <- as.data.frame(rowData(se))
     rowData.DT <- as.data.table(rowData[,
         c("EventName","EventType","EventRegion", "NMD_direction")])
-    diag <- make_diagonal(se, res$EventName,
+    diag <- makeMeanPSI(se, res$EventName,
         test_factor, test_nom, test_denom)
     colnames(diag)[2:3] <- c(paste0("AvgPSI_", test_nom),
         paste0("AvgPSI_", test_denom))

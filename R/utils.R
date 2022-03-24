@@ -24,10 +24,10 @@
 #'
 #' coordinates <- rowData(se)$EventRegion
 #'
-#' gr <- CoordToGR(coordinates)
+#' gr <- coord2GR(coordinates)
 #' @md
 #' @export
-CoordToGR <- function(coordinates) {
+coord2GR <- function(coordinates) {
     stopmsg <- paste(
         "Coordinates must take the form chrN:X, chrN:X-Y,",
         "chrN:X-Y/+ or chrN:X-Y/-"
@@ -141,11 +141,11 @@ CoordToGR <- function(coordinates) {
 #'
 #' cov_files <- covfile(se)
 #'
-#' IsCOV(cov_files) # returns true if these are true COV files
+#' isCOV(cov_files) # returns true if these are true COV files
 #' @seealso [processBAM] [collateData]
 #' @md
 #' @export
-IsCOV <- function(coverage_files) {
+isCOV <- function(coverage_files) {
     for (i in coverage_files) {
         if (file.exists(i) && c_Check_Cov(normalizePath(i))) {
             # do nothing

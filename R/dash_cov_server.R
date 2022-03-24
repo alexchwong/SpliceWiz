@@ -23,7 +23,7 @@ server_cov <- function(
             
             se <- get_se()
             settings_Cov$event.ranges <- as.data.table(
-                CoordToGR(rowData(se)$EventRegion))
+                coord2GR(rowData(se)$EventRegion))
             settings_Cov$event.ranges$EventName <- rowData(se)$EventName
             
             .server_cov_refresh_tracks_cov(session, input$mode_cov, 

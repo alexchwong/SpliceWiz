@@ -244,6 +244,27 @@ server_vis_diag <- function(
     })
 }
 
+.get_volcano_data_FCunits <- function(res) {
+    if("log2FoldChange" %in% colnames(res)) {
+        return("log2FoldChange")
+    } else if("logFC" %in% colnames(res)) {
+        return("logFC")
+    } else if("MLE_LFC" %in% colnames(res)) {
+        return("MLE_LFC")
+    }
+}
+
+.get_unified_volcano_data <- function(res) {
+    units <- .get_volcano_data_FCunits(res)
+    df.volc <- data.frame(
+        EventName = res$EventName, 
+        EventType = res$EventType, 
+        NMD_direction = res$NMD_direction,
+        log2FoldChange = res[, get(units)]
+    )
+    return(df.volc)
+}
+
 server_vis_volcano <- function(
         id, refresh_tab, volumes, get_se, get_de,
         rows_all, rows_selected
@@ -255,6 +276,7 @@ server_vis_volcano <- function(
             req(refresh_tab())
         })
         observeEvent(rows_selected(), {
+            print(rows_selected())
             settings_Volc$selected <- rows_selected()
         })
 
@@ -313,12 +335,9 @@ server_vis_volcano <- function(
                 res <- res[seq_len(num_events)]
             }
 
-            df.volc <- data.frame(
-                EventName = res$EventName, 
-                EventType = res$EventType, 
-                NMD_direction = res$NMD_direction,
-                log2FoldChange = res$log2FoldChange
-            )
+            df.volc <- .get_unified_volcano_data(res)
+            volc_units <- .get_volcano_data_FCunits(res)
+            
             if("pvalue" %in% colnames(res)) {
                 df.volc$pvalue <- res$pvalue
                 df.volc$padj <- res$padj
@@ -358,10 +377,15 @@ server_vis_volcano <- function(
             if(input$facet_volc) {
                 p <- p + facet_wrap(vars(get("EventType")))
             }
-            if(input$NMD_volc) {
-                p <- p + labs(x = "Log2 Fold Change NMD substrate")
+            if(volc_units %in% c("log2FoldChange", "logFC")) {
+                formatted_units = "Log2 Fold Change"
             } else {
-                p <- p + labs(x = "Log2 Fold Change")            
+                formatted_units = "MLE Log2 Fold Change"
+            }
+            if(input$NMD_volc) {
+                p <- p + labs(x = paste(formatted_units, "NMD substrate"))
+            } else {
+                p <- p + labs(x = formatted_units)            
             }
             if(input$adjP_volc) {
                 p <- p + labs(y = "Adjusted P Value (-log10)")

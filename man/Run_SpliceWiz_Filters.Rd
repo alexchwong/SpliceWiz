@@ -20,7 +20,7 @@ default filters introduced in the initial SpliceWiz release.}
 \item{se}{the \linkS4class{NxtSE} object to filter}
 
 \item{filters}{A vector or list of one or more ASEFilter objects. If left
-blank, the NxtIRF default filters will be used.}
+blank, the SpliceWiz default filters will be used.}
 
 \item{filterObj}{A single \linkS4class{ASEFilter} object.}
 }
@@ -85,7 +85,7 @@ on a NxtSE object
 
 se <- SpliceWiz_example_NxtSE()
 
-# Get the list of NxtIRF recommended filters
+# Get the list of SpliceWiz recommended filters
 
 filters <- getDefaultFilters()
 

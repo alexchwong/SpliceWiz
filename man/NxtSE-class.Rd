@@ -201,7 +201,7 @@ covfile(se)
 # Get sample QC information
 sampleQC(se)
 
-# Get resource NxtIRF data (used internally for plotCoverage())
+# Get resource data (used internally for plotCoverage())
 cov_data <- ref(se)
 names(cov_data)
 

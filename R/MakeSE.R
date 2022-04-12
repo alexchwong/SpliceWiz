@@ -1,7 +1,7 @@
 #' Constructs a NxtSE object from the collated data
 #'
 #' Creates a \linkS4class{NxtSE} object from the data
-#' from IRFinder output collated using [collateData]. This object is used
+#' from [processBAM] output, collated using [collateData]. This object is used
 #' for downstream differential analysis of IR and alternative splicing events
 #' using [ASE-methods] as well as visualisation using [plotCoverage]
 #'
@@ -16,7 +16,7 @@
 #' object (e.g. subset by samples) before loading the data into memory (RAM) 
 #' using [realize_NxtSE]
 #' 
-#' It should be noted that downstream applications of NxtIRF, including
+#' It should be noted that downstream applications of SpliceWiz, including
 #' [ASE-methods], [plotCoverage], are much faster if the \linkS4class{NxtSE}
 #' is realized. It is recommended to realize the \linkS4class{NxtSE} object
 #' before extensive usage.
@@ -247,7 +247,7 @@ makeSE <- function(
     return(se)
 }
 
-# Iterates through IRFinder introns; removes overlapping minor introns
+# Iterates through introns; removes overlapping minor introns
 .makeSE_iterate_IR <- function(se, collate_path) {
 
     junc_PSI <- HDF5Array(file.path(normalizePath(collate_path),

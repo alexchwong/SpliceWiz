@@ -1,7 +1,7 @@
 # Miscellaneous internal wrappers to SpliceWiz.dll
 
 # Simple unzip function
-# To check gunzip produces same output using NxtIRF vs other utilities
+# To check gunzip produces same output using SpliceWiz vs other utilities
 run_Gunzip <- function(infile = "", outfile) {
     file_to_read <- normalizePath(infile)
     if (!file.exists(file_to_read)) {
@@ -17,7 +17,7 @@ run_Gunzip <- function(infile = "", outfile) {
 
 # Gets a specific data frame in a gzipped multi-tabular text file
 # If getting a small data frame situated at the beginning of a large file
-#   e.g. in IRFinder output, this is typically faster than data.table::fread
+#   e.g. in processBAM output, this is typically faster than data.table::fread
 get_multi_DT_from_gz <- function(infile = "",
         block_headers = c("Header1", "Header2")) {
     file_to_read <- normalizePath(infile)

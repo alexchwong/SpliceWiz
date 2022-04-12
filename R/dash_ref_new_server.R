@@ -1,4 +1,4 @@
-# Module for new NxtIRF reference
+# Module for new SpliceWiz reference
 server_ref_new <- function(id, refresh_tab, volumes) {
     moduleServer(id, function(input, output, session) {
         # Instantiate settings
@@ -118,7 +118,7 @@ server_ref_new <- function(id, refresh_tab, volumes) {
                 if(gt %in% valid_gt_options) {
                     settings_newref$newref_NPA <- getNonPolyARef(gt)
                     settings_newref$newref_mappa <- 
-                        .nxtIRF_get_mappa(gt)
+                        .sw_dash_get_mappa(gt)
                 } else if(gt == "(custom)") {
             # do nothing. This allows user to first select the default 
             #   and then change to user-defined files
@@ -376,7 +376,7 @@ server_ref_new <- function(id, refresh_tab, volumes) {
     test_gtf
 }
 
-.nxtIRF_get_mappa <- function(genome_type, path = tempdir()) {
+.sw_dash_get_mappa <- function(genome_type, path = tempdir()) {
     temp <- ""
     tryCatch({
         temp <- get_mappability_exclusion(

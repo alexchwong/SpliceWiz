@@ -161,34 +161,6 @@ dash_progress <- function(message = "", total_items = 1, add_msg = FALSE) {
     }
 }
 
-# Equivalent to shiny::withProgress with compatibility if shiny is missing.
-dash_withProgress <- function(expr, min = 0, max = 1,
-    value = min + (max - min) * 0.1,
-    message = NULL, detail = NULL,
-    # style = getShinyOption("progress.style", default = "notification"),
-    # session = getDefaultReactiveDomain(),
-    env = parent.frame(), quoted = FALSE
-) {
-
-    has_shiny <- .check_package_installed(
-        package = "shiny", returntype = "silent")
-    if (has_shiny) {
-        session <- shiny::getDefaultReactiveDomain()
-        if (!is.null(session)) {
-            shiny::withProgress(expr = expr, min = min, max = max,
-                value = value, message = message, detail = detail,
-                env = env, quoted = quoted
-            )
-        } else {
-            if (!quoted) expr <- substitute(expr)
-            eval(expr, env)
-        }
-    } else {
-        if (!quoted) expr <- substitute(expr)
-        eval(expr, env)
-    }
-}
-
 # GUI specific functions
 
 update_data_frame <- function(existing_df, new_df) {

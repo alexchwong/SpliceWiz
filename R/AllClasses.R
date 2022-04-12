@@ -61,7 +61,7 @@
 #' # Get sample QC information
 #' sampleQC(se)
 #'
-#' # Get resource NxtIRF data (used internally for plotCoverage())
+#' # Get resource data (used internally for plotCoverage())
 #' cov_data <- ref(se)
 #' names(cov_data)
 #'
@@ -123,7 +123,7 @@ setClass("NxtSE",
 )
 
 
-#' NxtIRF filters to remove low-abundance alternative splicing and intron
+#' SpliceWiz filters to remove low-abundance alternative splicing and intron
 #' retention events
 #'
 #' @param filterClass Must be either `"Data"` or `"Annotation"`. See details
@@ -183,9 +183,9 @@ setClass("NxtSE",
 #'       below `minimum` are filtered out.\cr\cr
 #'     For **Alternative Splicing**, Coverage refers to the percentage of all
 #'       splicing events observed across the genomic region that is compatible
-#'       with either the included or excluded event. This prevents NxtIRF from 
-#'       doing differential analysis between two minor isoforms. Instead of
-#'       IntronDepth, in AS events NxtIRF considers events where the spliced
+#'       with either the included or excluded event. This prevents SpliceWiz 
+#'       from doing differential analysis between two minor isoforms. Instead of
+#'       IntronDepth, in AS events SpliceWiz considers events where the spliced
 #'       reads from both exonic regions exceed `minDepth`.
 #'       Then, events with a splicing coverage below `minimum`
 #'       are excluded. \cr\cr

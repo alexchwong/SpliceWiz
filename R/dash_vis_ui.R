@@ -54,7 +54,7 @@ ui_vis_volcano <- function(id) {
                 shinyWidgets::switchInput(ns("facet_volc"), 
                     label = "Facet by Type", labelWidth = "150px"),
                 shinyWidgets::switchInput(ns("adjP_volc"), 
-                    label = "Multiple Tessting", 
+                    label = "Multiple Testing", 
                     value = TRUE, labelWidth = "100px"),
                 shinyWidgets::switchInput(ns("NMD_volc"), 
                     label = "NMD Mode", labelWidth = "100px"),

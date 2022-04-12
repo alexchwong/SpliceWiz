@@ -3,16 +3,15 @@
 \docType{package}
 \name{SpliceWiz-package}
 \alias{SpliceWiz-package}
-\title{SpliceWiz: a command line interface for NxtIRF - IRFinder-based
-differential Alternative Splicing and Intron Retention analysis}
+\title{SpliceWiz: efficient and precise alternative splicing analysis in R}
 \description{
-NxtIRF is a computationally efficient and user friendly workflow that
+SpliceWiz is a computationally efficient and user friendly workflow that
 analyses aligned short-read RNA sequencing for differential
 intron retention and alternative splicing. It utilises an improved
 IRFinder-based OpenMP/C++ algorithm. A streamlined downstream analysis
 pipeline allows for GLM-based differential IR and splicing analysis, suited
-for large datasets of up to hundreds of samples. Additionally NxtIRF provides
-a novel visualisation of per-nucleotide mean and variations of
+for large datasets of up to hundreds of samples. Additionally SpliceWiz
+provides a novel visualisation of per-nucleotide mean and variations of
 alignment coverage across splice and IR events, grouped by user-defined
 experimental conditions.
 }
@@ -29,33 +28,31 @@ distinction is important as partial IR is often confounded with
 novel alternate splice site usage, alternate transcription start site and
 intronic polyadenylation events.
 
-NxtIRF is a R/Bioconductor package that provides a user-friendly workflow
+SpliceWiz is a R/Bioconductor package that provides a user-friendly workflow
 using the IRFinder algorithm to perform both IR and
 alternative splicing analysis in large datasets. By incorporating the core
-C++ based IRFinder algorithm using Rcpp, NxtIRF is multi-platform and further
-improves computational efficiency using OpenMP-based multi-threading.
-Besides analysing IR, NxtIRF analyses other forms of
+C++ based IRFinder algorithm using Rcpp, SpliceWiz is multi-platform and
+further improves computational efficiency using OpenMP-based multi-threading.
+Besides analysing IR, SpliceWiz analyses other forms of
 alternative splicing events that depend on alternate splice site selection,
 including skipped exons, mutually exclusive exons, alternate 5'- and 3'-
 splice sites, alternate first exons and alternate last exons.
 
-Downstream, NxtIRF provides functions to collate individual NxtIRF/IRFinder
+Downstream, SpliceWiz provides functions to collate individual
 outputs of multiple samples in an experiment / dataset, and assembles
 these into a specialised \linkS4class{NxtSE} object that
 inherits the SummarizedExperiment class. Users can easily define experimental
 conditions, perform differential analysis and filter out lowly-expressed
 splice events.
 
-Finally, NxtIRF provides visualisation tools to illustrate alternative
+Finally, SpliceWiz provides visualisation tools to illustrate alternative
 splicing using coverage plots, including a novel method to normalise RNA-seq
 coverage grouped by experimental condition. This approach accounts for
-variations introduced by sequenced library size and gene expression. NxtIRF
-efficiently computes and visualises means and variations in per-nucleotide
-coverage depth across alternate exons in genomic loci.
+variations introduced by sequenced library size and gene expression.
+SpliceWiz efficiently computes and visualises means and variations in
+per-nucleotide coverage depth across alternate exons in genomic loci.
 
-SpliceWiz is the command line interface for R/Bioconductor. NxtIRF (coming
-soon) will feature an interactive graphical user interface with additional
-functions.
+SpliceWiz can be run via a graphical user interface via \link{spliceWiz}
 
 \strong{Features include:}
 \itemize{
@@ -63,7 +60,7 @@ functions.
 connectivity to the AnnotationHub repository for Ensembl-based genomes
 and gene annotations;
 \item OpenMP and BiocParallel-based multi-threaded support to process short-read
-BAM files using the IRFinder algorithm written in native C++;
+BAM files using the IRFinder-like algorithm written in native C++;
 \item Stores alignment coverage using the \emph{COV} format, which is a binary
 compressed and indexed format for rapid recall of RNA-seq coverage. In
 contrast to the \emph{BigWig} format, \emph{COV} files store coverage of unstranded
@@ -83,8 +80,8 @@ normalisation methods across samples grouped by conditions;
 The main functions are:
 \itemize{
 \item \link{Build-Reference-methods} - Prepares genome and gene annotation
-references from FASTA and GTF files, and synthesises the NxtIRF reference
-for the IRFinder engine and NxtIRF-based downstream analysis.
+references from FASTA and GTF files and synthesizes the SpliceWiz reference
+for processing BAM files, collating the \linkS4class{NxtSE} object.
 \item \link{STAR-methods} - (Optional) Provides wrapper functions to build the STAR
 genome reference and alignment of short-read FASTQ raw sequencing files.
 This functionality is only available on systems with STAR installed.
@@ -107,8 +104,8 @@ individual samples or across samples grouped by user-specified conditions
 }
 
 See the
-\href{../doc/NxtIRF.html}{NxtIRF vignette}
-for worked examples on how to use NxtIRF
+\href{../doc/SpliceWiz.html}{SpliceWiz vignette}
+for worked examples on how to use SpliceWiz
 }
 \references{
 Middleton R, Gao D, Thomas A, Singh B, Au A, Wong JJ, Bomane A, Cosson B,

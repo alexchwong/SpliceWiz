@@ -38,7 +38,7 @@
 #' @param se the \linkS4class{NxtSE} object to filter
 #' @param filterObj A single \linkS4class{ASEFilter} object.
 #' @param filters A vector or list of one or more ASEFilter objects. If left
-#'   blank, the NxtIRF default filters will be used.
+#'   blank, the SpliceWiz default filters will be used.
 #' @return
 #' For `runFilter` and `applyFilters`: a vector of type `logical`,
 #'   representing the rows of NxtSE that should be kept.
@@ -50,7 +50,7 @@
 #'
 #' se <- SpliceWiz_example_NxtSE()
 #'
-#' # Get the list of NxtIRF recommended filters
+#' # Get the list of SpliceWiz recommended filters
 #'
 #' filters <- getDefaultFilters()
 #'

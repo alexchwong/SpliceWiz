@@ -233,7 +233,7 @@ server_expr <- function(
                 settings_expr$collate_path)
         })
 
-        # Event when IRFinder output directory is set
+        # Event when processBAM output directory is set
         observeEvent(settings_expr$irf_path,{
             settings_expr$df.files <- Expr_Load_IRFs(
                 settings_expr$df.files, settings_expr$irf_path)
@@ -248,7 +248,7 @@ server_expr <- function(
                 settings_expr$df.files, settings_expr$anno_files)
         })
 
-        # Event when NxtIRF output directory is set
+        # Event when NxtSE output directory is set
         observeEvent(settings_expr$collate_path, {
             if(
                     is_valid(settings_expr$collate_path) && 
@@ -280,7 +280,7 @@ server_expr <- function(
                 settings_expr$collate_path)
         })
 
-        # Running IRFinder
+        # Running processBAM
         observeEvent(input$run_irf_expr,{
             req(input$run_irf_expr)
             settings_expr$selected_rows <- Expr_IRF_initiate_run(
@@ -321,7 +321,7 @@ server_expr <- function(
             if(Expr_collateData_Validate_Vars(
                     session, Experiment, reference_path, output_path
             )) {
-                withProgress(message = 'Collating IRFinder output', value = 0, {
+                withProgress(message = 'Collating processBAM output', value = 0, {
                     collateData(
                         Experiment, reference_path, output_path, 
                         n_threads = get_threads_reactive()
@@ -380,7 +380,7 @@ server_expr <- function(
     return(output)
 }
 
-# Check path contains valid NxtIRF reference
+# Check path contains valid SpliceWiz reference
 .server_expr_check_ref_path <- function(ref_path) {
     if(is_valid(ref_path)) {
         ref_settings_file <- file.path(ref_path, "settings.Rds")
@@ -433,7 +433,7 @@ server_expr <- function(
     }
 }
 
-# Load settings.Rds from NxtIRF reference to populate status boxes
+# Load settings.Rds from SpliceWiz reference to populate status boxes
 .server_expr_load_ref <- function(ref_settings, output) {
     ah <- ah_genome_record <- ah_gtf_record <- NULL
     fasta <- gtf <- mappa <- nonPA <- Black <- NULL
@@ -711,7 +711,7 @@ Expr_Load_IRFs <- function(df.files, irf_path) {
     return(df.files)
 }
 
-# Brings a prompt message asking do you really want to run IRFinder
+# Brings a prompt message asking do you really want to run processBAM
 Expr_IRF_initiate_run <- function(input, session, n_threads, settings_expr) {
     if(!is_valid(settings_expr$df.files)) {
         sendSweetAlert(session = session, type = "error",
@@ -728,7 +728,7 @@ Expr_IRF_initiate_run <- function(input, session, n_threads, settings_expr) {
     if(!is_valid(input$hot_files_expr_select$select$r)) {
         sendSweetAlert(session = session, type = "error",
             title = "No BAM files selected", 
-            text = "Please highlight cells of bam files to run IRFinder")
+            text = "Please highlight cells of bam files to run processBAM")
         return()        
     }
     selected_rows <- seq(input$hot_files_expr_select$select$r,
@@ -740,11 +740,11 @@ Expr_IRF_initiate_run <- function(input, session, n_threads, settings_expr) {
     if(!is_valid(settings_expr$ref_path)) {
         sendSweetAlert(session = session,
             title = "Missing Reference", type = "error",
-            text = "Please load Reference before running IRFinder")
+            text = "Please load Reference before running processBAM")
     } else if(!(bam_col %in% selected_cols)) {
         sendSweetAlert(session = session, type = "error",
             title = "No BAM files selected",
-            text = "Please highlight cells of bam files to run IRFinder")
+            text = "Please highlight cells of bam files to run processBAM")
     } else if(!all(file.exists(bam_files))) {
         sendSweetAlert(session = session,
             title = "Missing BAMs", type = "error",
@@ -752,29 +752,29 @@ Expr_IRF_initiate_run <- function(input, session, n_threads, settings_expr) {
     } else if(!file.exists(file.path(
             settings_expr$ref_path, "SpliceWiz.ref.gz"))) {
         sendSweetAlert(session = session, type = "error",
-            title = "Missing IRFinder Reference",
+            title = "Missing SpliceWiz Reference",
             text = "SpliceWiz.ref.gz is missing")
     } else if(
             !is_valid(settings_expr$irf_path) || 
             !dir.exists(settings_expr$irf_path)
     ) {
         sendSweetAlert(session = session, type = "error",
-            title = "Missing IRFinder output path",
-            text = "Please set IRFinder output path")
+            title = "Missing processBAM output path",
+            text = "Please set processBAM output path")
     } else {
         n_threads <- min(n_threads, length(selected_rows))
         if(n_threads < length(selected_rows)) {
             n_rounds <- ceiling(length(selected_rows) / n_threads)
             n_threads <- ceiling(length(selected_rows) / n_rounds)
         }
-        msg <- paste("Run IRFinder on", length(selected_rows), "samples?",
+        msg <- paste("Run processBAM on", length(selected_rows), "samples?",
             "Estimated runtime", 
                 10 * ceiling(length(selected_rows) / n_threads),
             "minutes using", n_threads, 
             "threads (10min per BAM @ 100 million reads per sample)"
         )
         ask_confirmation(inputId = "irf_confirm", type = "warning", 
-            title = msg, btn_labels = c("Cancel", "Run IRFinder"),
+            title = msg, btn_labels = c("Cancel", "Run processBAM"),
             btn_colors = c("#00BFFF", "#FE2E2E"))
         return(selected_rows)
     }
@@ -783,10 +783,10 @@ Expr_IRF_initiate_run <- function(input, session, n_threads, settings_expr) {
 # After user confirms, actually call IRFinder
 Expr_IRF_actually_run <- function(input, session, n_threads, settings_expr) {
 
-    withProgress(message = 'Running IRFinder', value = 0, {
+    withProgress(message = 'Running processBAM', value = 0, {
         i_done <- 0
         incProgress(0.001, 
-            message = paste('Running IRFinder',
+            message = paste('Running processBAM',
                 i_done, "of", length(settings_expr$selected_rows), "done")
         )
         for(i in settings_expr$selected_rows) {
@@ -809,7 +809,7 @@ Expr_IRF_actually_run <- function(input, session, n_threads, settings_expr) {
 
     sendSweetAlert(
         session = session,
-        title = "IRFinder run completed",
+        title = "processBAM run completed",
         type = "success"
     )
 }
@@ -935,7 +935,7 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
     } else if(is_valid(settings_expr$collate_path)) {
         output$se_expr_infobox <- renderUI(
             ui_infobox_expr(0,
-            submsg = "Run IRFinder and collateData via the Experiment tab"))
+            submsg = "Run processBAM and collateData via the Experiment tab"))
     } else {
         output$se_expr_infobox <- renderUI(
             ui_infobox_expr(0,
@@ -965,13 +965,13 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
             all(file.exists(settings_expr$df.files$irf_file))
     ) {
         output$se_expr_infobox <- renderUI(
-            ui_infobox_expr(2, "Ready to run NxtIRF-Collate"))
+            ui_infobox_expr(2, "Ready to collate experiment"))
     } else if(
             is_valid(settings_expr$collate_path) && 
             is_valid(settings_expr$df.files)
     ) {
         output$se_expr_infobox <- renderUI(
-            ui_infobox_expr(1, "IRFinder files incomplete"))
+            ui_infobox_expr(1, "processBAM output files incomplete"))
     } else if(is_valid(settings_expr$collate_path)) {
         output$se_expr_infobox <- renderUI(ui_infobox_expr(0,
             paste("Selected path:", settings_expr$collate_path)))
@@ -1018,32 +1018,32 @@ Expr_collateData_Validate_Vars <- function(
         sendSweetAlert(
             session = session,
             title = "Missing Reference",
-            text = "Please load Reference before running NxtIRF::collateData",
+            text = "Please load Reference before running collateData",
             type = "error"
         )
         return(FALSE)
     } else if(!is_valid(output_path)) {
         sendSweetAlert(
             session = session,
-            title = "Missing NxtIRF Path",
-            text = paste("Please select NxtIRF path before",
-                "running NxtIRF::collateData"),
+            title = "Missing NxtSE Path",
+            text = paste("Please select NxtSE path before",
+                "running collateData"),
             type = "error"
         )
         return(FALSE)
     } else if(!dir.exists(output_path)) {
         sendSweetAlert(
             session = session,
-            title = "Invalid NxtIRF Path",
-            text = "Please make sure NxtIRF output path exists",
+            title = "Invalid NxtSE Path",
+            text = "Please make sure NxtSE output path exists",
             type = "error"
         )
         return(FALSE)
     } else if(nrow(Experiment) == 0) {
         sendSweetAlert(
             session = session,
-            title = "No samples found to collate NxtIRF Experiment",
-            text = "Please load IRFinder output of some samples",
+            title = "No samples found to collate Experiment",
+            text = "Please load processBAM output of some samples",
             type = "error"
         )
         return(FALSE)
@@ -1068,7 +1068,7 @@ Expr_Update_colData <- function(
             if(post_collateData) {
                 sendSweetAlert(
                     session = session,
-                    title = "NxtIRF-Collate run completed",
+                    title = "collateData run completed",
                     type = "success"
                 )
             }
@@ -1076,7 +1076,7 @@ Expr_Update_colData <- function(
             if(post_collateData) {
                 sendSweetAlert(
                     session = session,
-                    title = "NxtIRF-Collate did not collate all samples",
+                    title = "collateData did not collate all samples",
                     type = "warning"
                 )
             }

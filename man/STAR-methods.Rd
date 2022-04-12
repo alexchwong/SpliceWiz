@@ -166,7 +166,7 @@ or FASTA files)
 }}
 
 \examples{
-# 0) Check that STAR is installed and compatible with NxtIRF
+# 0) Check that STAR is installed and compatible with SpliceWiz
 
 STAR_version()
 \dontrun{
@@ -174,7 +174,7 @@ STAR_version()
 # The below workflow illustrates
 # 1) Getting the reference resource
 # 2) Building the STAR Reference, including Mappability Exclusion calculation
-# 3) Building the NxtIRF Reference, using the Mappability Exclusion file
+# 3) Building the SpliceWiz Reference, using the Mappability Exclusion file
 # 4) Aligning (a) one or (b) multiple raw sequencing samples.
 
 
@@ -190,7 +190,7 @@ getResources(
         "Homo_sapiens.GRCh38.94.chr.gtf.gz")
 )
 
-# 2) Generates STAR genome within the NxtIRF reference. Also generates
+# 2) Generates STAR genome within the SpliceWiz reference. Also generates
 # mappability exclusion gzipped BED file inside the "Mappability/" sub-folder
 
 STAR_buildRef(
@@ -199,9 +199,10 @@ STAR_buildRef(
     also_generate_mappability = TRUE
 )
 
-# 2 alt) Generates STAR genome of the example NxtIRF genome.
-#     This demonstrates using custom STAR parameters, as the example NxtIRF
-#     genome is ~100k in length, so --genomeSAindexNbases needs to be
+# 2 alt) Generates STAR genome of the example SpliceWiz genome.
+#     This demonstrates using custom STAR parameters, as the example 
+#     SpliceWiz genome is ~100k in length, 
+#     so --genomeSAindexNbases needs to be
 #     adjusted to be min(14, log2(GenomeLength)/2 - 1)
 
 getResources(
@@ -217,7 +218,8 @@ STAR_buildRef(
     also_generate_mappability = TRUE
 )
 
-# 3) Build NxtIRF reference using the newly-generated Mappability exclusions
+# 3) Build SpliceWiz reference using the newly-generated 
+#    Mappability exclusions
 
 #' NB: also specifies to use the hg38 nonPolyA resource
 

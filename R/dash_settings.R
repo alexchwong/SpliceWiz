@@ -6,7 +6,7 @@ setreactive_system <- function() {
     )
 }
 
-# Settings for "Make New NxtIRF Reference"
+# Settings for "Make New SpliceWiz Reference"
 setreactive_newref <- function() {
     reactiveValues(
         newref_path = "",
@@ -29,7 +29,7 @@ setreactive_newref <- function() {
     )
 }
 
-# Settings for "Make New NxtIRF Experiment"
+# Settings for "Make New SpliceWiz Experiment"
 setreactive_expr <- function() {
     reactiveValues(
         ref_path = "",

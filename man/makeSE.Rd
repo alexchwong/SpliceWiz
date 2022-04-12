@@ -31,7 +31,7 @@ DelayedArrays pointing to the assay data contained in the given
 }
 \description{
 Creates a \linkS4class{NxtSE} object from the data
-from IRFinder output collated using \link{collateData}. This object is used
+from \link{processBAM} output, collated using \link{collateData}. This object is used
 for downstream differential analysis of IR and alternative splicing events
 using \link{ASE-methods} as well as visualisation using \link{plotCoverage}
 }
@@ -46,7 +46,7 @@ too much memory. In such cases, make a subset of the \linkS4class{NxtSE}
 object (e.g. subset by samples) before loading the data into memory (RAM)
 using \link{realize_NxtSE}
 
-It should be noted that downstream applications of NxtIRF, including
+It should be noted that downstream applications of SpliceWiz, including
 \link{ASE-methods}, \link{plotCoverage}, are much faster if the \linkS4class{NxtSE}
 is realized. It is recommended to realize the \linkS4class{NxtSE} object
 before extensive usage.

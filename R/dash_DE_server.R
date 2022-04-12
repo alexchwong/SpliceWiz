@@ -5,8 +5,6 @@ server_DE <- function(
     moduleServer(id, function(input, output, session) {
         settings_DE <- setreactive_DE()
 
-
-
         observeEvent(refresh_tab(), {
             output$warning_DE = renderText({
                 validate(need(get_se(), 
@@ -23,12 +21,15 @@ server_DE <- function(
             updateSelectInput(session = session, inputId = "batch2_DE", 
                 choices = c("(none)", colcat), selected = "(none)")
         })
+        
         observeEvent(input$DT_DE_rows_all, {
             settings_DE$DT_DE_rows_all = input$DT_DE_rows_all
         })
+        
         observeEvent(input$DT_DE_rows_selected, {
             settings_DE$DT_DE_rows_selected = input$DT_DE_rows_selected
         })
+        
         # Filter import
         observeEvent(get_filters(), {
             settings_DE$filters = get_filters()
@@ -284,13 +285,18 @@ server_DE <- function(
             req(input$DT_DE_rows_selected)
             settings_DE$command_selected = NULL
             DT::dataTableProxy("DT_DE") %>% DT::selectRows(NULL)
+            settings_DE$DT_DE_rows_selected = NULL
         })
+        
         observeEvent(get_selected_diag(), {
             settings_DE$command_selected <- get_selected_diag()
         })
+        
         observeEvent(get_selected_volc(), {
             settings_DE$command_selected <- get_selected_volc()
         })
+        
+        # Double check command_selected is refreshed in the table
         observeEvent(settings_DE$command_selected, {
             if(
                     is_valid(settings_DE$command_selected) && 
@@ -299,7 +305,10 @@ server_DE <- function(
             ) {
                 DT::dataTableProxy("DT_DE") %>% 
                     DT::selectRows(settings_DE$command_selected)        
-            } else {
+            } else if(
+                !identical(settings_DE$command_selected,
+                    input$DT_DE_rows_selected)
+            ) {
                 DT::dataTableProxy("DT_DE") %>% DT::selectRows(NULL)
             }
         })

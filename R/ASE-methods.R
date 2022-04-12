@@ -3,9 +3,9 @@
 #'
 #' @details
 #'
-#' Using **limma**, NxtIRF models included and excluded counts as log-normal
+#' Using **limma**, SpliceWiz models included and excluded counts as log-normal
 #' distributed, whereas
-#' using **DESeq2**, NxtIRF models included and excluded counts as negative
+#' using **DESeq2**, SpliceWiz models included and excluded counts as negative
 #' binomial distributed with dispersion shrinkage according to their mean count
 #' expressions.
 #' For **limma** and **DESeq2**, differential ASE are considered as the
@@ -27,7 +27,7 @@
 #' * `A3SS` = alternate 3'-splice site
 #' * `RI` = (known / annotated) intron retention.
 #'
-#' NB: NxtIRF separately considers known "RI" and novel "IR" events separately:
+#' NB: SpliceWiz separately considers known "RI" and novel "IR" events separately:
 #' * **IR** novel events are calculated using the IRFinder method, whereby
 #' spliced transcripts are **all** isoforms that do not retain the intron, as
 #' estimated via the `SpliceMax` and `SpliceOver` methods
@@ -45,9 +45,9 @@
 #' the IR-transcript's `transcript_biotype` must not be
 #' an `retained_intron` or `sense_intronic`.
 #'
-#' NxtIRF considers "included" counts as those that represent abundance of the
-#' "included" isoform, whereas "excluded" counts represent the abundance of the
-#' "excluded" isoform.
+#' SpliceWiz considers "included" counts as those that represent abundance of 
+#' the "included" isoform, whereas "excluded" counts represent the abundance of 
+#' the "excluded" isoform.
 #' For consistency, it applies a convention whereby
 #' the "included" transcript is one where its splice junctions
 #' are by definition shorter than those of "excluded" transcripts.

@@ -118,9 +118,9 @@ Use Limma, DESeq2 or DoubleExpSeq to test for differential Alternative
 Splice Events
 }
 \details{
-Using \strong{limma}, NxtIRF models included and excluded counts as log-normal
+Using \strong{limma}, SpliceWiz models included and excluded counts as log-normal
 distributed, whereas
-using \strong{DESeq2}, NxtIRF models included and excluded counts as negative
+using \strong{DESeq2}, SpliceWiz models included and excluded counts as negative
 binomial distributed with dispersion shrinkage according to their mean count
 expressions.
 For \strong{limma} and \strong{DESeq2}, differential ASE are considered as the
@@ -144,7 +144,7 @@ to estimate dispersion.
 \item \code{RI} = (known / annotated) intron retention.
 }
 
-NB: NxtIRF separately considers known "RI" and novel "IR" events separately:
+NB: SpliceWiz separately considers known "RI" and novel "IR" events separately:
 \itemize{
 \item \strong{IR} novel events are calculated using the IRFinder method, whereby
 spliced transcripts are \strong{all} isoforms that do not retain the intron, as
@@ -168,9 +168,9 @@ the IR-transcript's \code{transcript_biotype} must not be
 an \code{retained_intron} or \code{sense_intronic}.
 }
 
-NxtIRF considers "included" counts as those that represent abundance of the
-"included" isoform, whereas "excluded" counts represent the abundance of the
-"excluded" isoform.
+SpliceWiz considers "included" counts as those that represent abundance of
+the "included" isoform, whereas "excluded" counts represent the abundance of
+the "excluded" isoform.
 For consistency, it applies a convention whereby
 the "included" transcript is one where its splice junctions
 are by definition shorter than those of "excluded" transcripts.

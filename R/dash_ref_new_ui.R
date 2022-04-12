@@ -5,8 +5,8 @@ ui_ref_new <- function(id) {
         column(6,
             # h4("Select Reference Directory"),
             wellPanel(
-                tags$div(title = paste("Choose a directory for NxtIRF",
-                        "to create its IRFinder/NxtIRF reference"),
+                tags$div(title = paste("Choose a directory for SpliceWiz",
+                        "to create its reference"),
                     splitLayout(cellWidths = c("30%", "70%"), 
                         shinyDirButton(ns("dir_reference_path"), 
                             label = "Select Reference Directory", 
@@ -56,7 +56,7 @@ ui_ref_new <- function(id) {
         ),
         column(6,
             wellPanel(
-                tags$div(title = paste("NxtIRF will auto-populate default",
+                tags$div(title = paste("SpliceWiz will auto-populate default",
                         "mappability and non-polyA reference files for",
                         "hg38, hg19, mm10 and mm9 genomes"),
                     selectInput(ns('newref_genome_type'),
@@ -81,7 +81,7 @@ ui_ref_new <- function(id) {
                 ), br(),
             
                 tags$div(title = paste("Select Non-PolyA reference file.",
-                        "This is used by IRFinder",
+                        "This is used by processBAM",
                         "to calculate reads from known non-polyadenylated",
                         "transcripts to assess",
                         "quality of poly-A enrichment in sample QC"),
@@ -97,7 +97,7 @@ ui_ref_new <- function(id) {
                 tags$div(title = paste("Select Blacklist file.",
                         "This is typically a 3 columns of values",
                         "containing seqnames, start and end coordinates",
-                        "of regions to exclude from IRFinder analysis"),
+                        "of regions to exclude from processBAM analysis"),
                     shinyFilesButton(ns("file_bl"), 
                         label = "Choose blacklist BED file", 
                         title = "Choose blacklist BED file", 

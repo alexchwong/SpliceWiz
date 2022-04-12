@@ -154,7 +154,7 @@ flanking exons, is required. There is no established method for this
 normalisation, and can be confounded in situations where flanking elements
 are themselves alternatively spliced.
 
-NxtIRF performs this coverage normalisation using the same method as its
+SpliceWiz performs this coverage normalisation using the same method as its
 estimate of spliced / intronic transcript abundance using the \code{SpliceOver}
 method (see details section in \link{collateData}). This normalisation can be
 applied to correct for library size and gene expression differences between

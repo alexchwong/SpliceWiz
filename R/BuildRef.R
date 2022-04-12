@@ -69,8 +69,8 @@
 #'   `TRUE` will force the resource to be downloaded from the web. Set this to
 #'   `TRUE` only if the web resource has been updated since the last retrieval.
 #' @param chromosome_aliases (Highly optional) A 2-column data frame containing
-#'   chromosome name conversions. If this is set, allows IRFinder to parse BAM
-#'   files where alignments are made to a genome whose chromosomes are named
+#'   chromosome name conversions. If this is set, allows [processBAM] to parse
+#'   BAM alignments to a genome whose chromosomes are named
 #'   differently to the reference genome. The most common scenario is where
 #'   Ensembl genome typically use chromosomes "1", "2", ..., "X", "Y", whereas
 #'   UCSC/Gencode genome use "chr1", "chr2", ..., "chrX", "chrY". See example
@@ -80,8 +80,8 @@
 #'   `nonPolyARef` and `MappabilityRef` for selected genomes. Allowed options
 #'   are: `hg38`, `hg19`, `mm10`, and `mm9`.
 #' @param nonPolyARef (Optional) A BED file of regions defining known
-#'   non-polyadenylated transcripts. This file is used for QC analysis of
-#'   IRFinder-processed files to measure Poly-A enrichment quality of samples.
+#'   non-polyadenylated transcripts. This file is used for QC analysis 
+#'   to measure Poly-A enrichment quality of samples.
 #'   If omitted, and `genome_type` is defined, the default for the specified
 #'   genome will be used.
 #' @param MappabilityRef (Optional) A BED file of low mappability regions due to
@@ -334,8 +334,14 @@ buildRef <- function(
     gc()
 
     dash_progress("Annotating IR-NMD", N_steps)
-    dash_withProgress(message = "Determining NMD Transcripts", value = 0,
-        .gen_nmd(reference_path, reference_data$genome))
+    session <- shiny::getDefaultReactiveDomain()
+    if(!is.null(session)) {
+        shiny::withProgress(message = "Determining NMD Transcripts", {
+            .gen_nmd(reference_path, reference_data$genome)
+        })
+    } else {
+        .gen_nmd(reference_path, reference_data$genome)
+    }
 
     dash_progress("Annotating Splice Events", N_steps)
     .gen_splice(reference_path)
@@ -982,8 +988,10 @@ return(TRUE)
         cache <- tools::R_user_dir(package = "SpliceWiz", which = "cache")
         bfc <- BiocFileCache::BiocFileCache(cache, ask = FALSE)
         res <- BiocFileCache::bfcquery(bfc, url, "fpath", exact = TRUE)
-        if (nrow(res) > 0 & !force_download) return(res$rpath[nrow(res)])
+        if (nrow(res) > 0 & !force_download)
+            return(paste(cache, res$rpath[nrow(res)], sep = "/"))
 
+        # either force_download == TRUE or nrow(res) == 0
         path <- tryCatch(BiocFileCache::bfcadd(bfc, url),
             error = function(err) {
                 .log(paste("Web resource not accessible -", url), "message")
@@ -991,14 +999,16 @@ return(TRUE)
             }
         )
         if (identical(path, NA)) {
+            # fetch local copy if available
             if (nrow(res) == 0) return("")
             .log("Returning local copy from cache", "message")
-            return(res$rpath[nrow(res)]) # fetch local copy if available
+            return(paste(cache, res$rpath[nrow(res)], sep = "/"))
         }
         # remove prior versions from cache to remove glut
         res <- BiocFileCache::bfcquery(bfc, url, "fpath", exact = TRUE)
-        BiocFileCache::bfcremove(bfc, res$rid[-nrow(res)])
-        return(res$rpath[nrow(res)])
+        if(nrow(res) > 1)
+            BiocFileCache::bfcremove(bfc, res$rid[-nrow(res)])
+        return(paste(cache, res$rpath[nrow(res)], sep = "/"))
     } else if (!file.exists(file)) {
         .log(paste(file, "not found.", msg), type = "message")
         return("")
@@ -1011,7 +1021,7 @@ return(TRUE)
 }
 
 # Various GTF fixes
-# - fix gene / transcript names with '/' (which breaks IRFinder code)
+# - fix gene / transcript names with '/' (which breaks processBAM C++ code)
 # - also fix missing gene_name and transcript_names in newer Ensembl refs
 .fix_gtf <- function(gtf_gr) {
 

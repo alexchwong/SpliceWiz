@@ -76,8 +76,8 @@ to the web resource will fetch the local copy. Set \code{force_download} to
 \code{TRUE} only if the web resource has been updated since the last retrieval.}
 
 \item{chromosome_aliases}{(Highly optional) A 2-column data frame containing
-chromosome name conversions. If this is set, allows IRFinder to parse BAM
-files where alignments are made to a genome whose chromosomes are named
+chromosome name conversions. If this is set, allows \link{processBAM} to parse
+BAM alignments to a genome whose chromosomes are named
 differently to the reference genome. The most common scenario is where
 Ensembl genome typically use chromosomes "1", "2", ..., "X", "Y", whereas
 UCSC/Gencode genome use "chr1", "chr2", ..., "chrX", "chrY". See example
@@ -89,8 +89,8 @@ list of chromosome alias resources.}
 are: \code{hg38}, \code{hg19}, \code{mm10}, and \code{mm9}.}
 
 \item{nonPolyARef}{(Optional) A BED file of regions defining known
-non-polyadenylated transcripts. This file is used for QC analysis of
-IRFinder-processed files to measure Poly-A enrichment quality of samples.
+non-polyadenylated transcripts. This file is used for QC analysis
+to measure Poly-A enrichment quality of samples.
 If omitted, and \code{genome_type} is defined, the default for the specified
 genome will be used.}
 

@@ -109,8 +109,8 @@ collateData <- function(Experiment, reference_path, output_path,
         if (all(colnames(se) %in% df.internal$sample) &
             all(df.internal$sample %in% colnames(se))
         ) {
-            .log("NxtIRF already collated this experiment in given directory",
-                "message")
+            .log(paste("SpliceWiz already collated this experiment",
+                "in given directory"), "message")
             return()
         }
     }
@@ -143,8 +143,8 @@ collateData <- function(Experiment, reference_path, output_path,
     rm(junc.common, irf.common)
     gc()
 
-    dash_progress("Generating NxtIRF assays", N_steps)
-    .log("Generating NxtIRF assays", "message")
+    dash_progress("Generating NxtSE assays", N_steps)
+    .log("Generating NxtSE assays", "message")
 
     # Use 1 sample per job, with progress BPPARAM
     jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
@@ -180,8 +180,8 @@ collateData <- function(Experiment, reference_path, output_path,
     if (dir.exists(file.path(norm_output_path, "temp"))) {
         unlink(file.path(norm_output_path, "temp"), recursive = TRUE)
     }
-    dash_progress("NxtIRF Collation Finished", N_steps)
-    message("NxtIRF Collation Finished")
+    dash_progress("SpliceWiz (NxtSE) Collation Finished", N_steps)
+    message("SpliceWiz (NxtSE) Collation Finished")
 }
 
 
@@ -521,9 +521,9 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_stop_irf_mismatch <- function() {
     stopmsg <- paste(
         "Some processBAM outputs were generated",
-        "with a different NxtIRF reference.",
+        "with a different SpliceWiz reference.",
         "Suggest re-run processBAM on all sample files",
-        "using thesame reference"
+        "using the same reference"
     )
     .log(stopmsg)
 }

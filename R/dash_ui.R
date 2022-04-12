@@ -4,7 +4,8 @@ ui_sidebar <- function() {
             menuItem("About", tabName = "navTitle"),
             # menuItem("System", tabName = "navSystem"),
             menuItem("Build Reference", tabName = "navRef_New"),
-            menuItem("Run IRFinder / Collate Experiment", tabName = "navExpr"),
+            menuItem("Process Samples & Collate Experiment", 
+                tabName = "navExpr"),
             menuItem("Perform Analysis",
                 menuSubItem("Load Experiment", tabName = "navExprLoad"),
                 menuSubItem("Experiment QC", tabName = "navQC"),
@@ -28,7 +29,7 @@ ui_tab_title <- function() {
             tags$div(title = paste(
                 "Number of threads to run",
                 "computationally-intensive operations",
-                "such as IRFinder, NxtIRF-collate, and DESeq2"),
+                "such as processBAM, collateData, and DESeq2"),
                 radioGroupButtons(
                     inputId = "thread_option",
                     label = "Mode",
@@ -64,7 +65,7 @@ ui_tab_system <- function() {
             tags$div(title = paste(
                 "Number of threads to run",
                 "computationally-intensive operations",
-                "such as IRFinder, NxtIRF-collate, and DESeq2"),
+                "such as processBAM, collateData, and DESeq2"),
                 radioGroupButtons(
                     inputId = "thread_option",
                     label = "Mode",

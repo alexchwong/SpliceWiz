@@ -4,18 +4,23 @@
 \alias{spliceWiz}
 \title{Launches the SpliceWiz Graphics User Interface using Shiny Dashboard}
 \usage{
-spliceWiz(mode = c("dialog", "browser"), width = 1600, height = 900)
+spliceWiz(
+  mode = c("dialog", "browser"),
+  res = c("1080p", "720p", "960p", "1440p")
+)
 }
 \arguments{
-\item{mode}{(default \code{"dialog"}) \code{"dialog"} displays SpliceWiz in a dialog box
-with specified width and height. \code{"browser"} opens SpliceWiz in a browser-
-like resizable window.}
+\item{mode}{(default \code{"dialog"}) \code{"dialog"} displays SpliceWiz in a dialog
+box with specified width and height. \code{"browser"} opens SpliceWiz in a
+browser-like resizable window.}
 
-\item{width, height}{If \code{mode} is set to \code{"dialog"}, the specified width
-and height of the SpliceWiz app.}
+\item{res}{(default "1080p") Sets width and height of the app to pre-defined
+dimensions. Possible options are "720p, "960p", "1080p", "1440p", which
+specifies the height of the app. All are displayed in aspect ratio 16x9}
 }
 \value{
-An interactive shinydashboard SpliceWiz app runs.
+Runs an interactive shinydashboard SpliceWiz app with the specified
+mode.
 }
 \description{
 This function launches the SpliceWiz interactive app using Shiny Dashboard
@@ -24,7 +29,8 @@ This function launches the SpliceWiz interactive app using Shiny Dashboard
 if(interactive()) {
 
 # Launches interactive ShinyDashboard SpliceWiz app as fixed-size dialog box
-    spliceWiz(mode = "dialog", width = 1600, height = 900) 
+# 1080p = 1920 x 1080 pixels
+    spliceWiz(mode = "dialog", res = "1080p") 
 
 # Launches interactive ShinyDashboard SpliceWiz app as browser window
     spliceWiz(mode = "browser")

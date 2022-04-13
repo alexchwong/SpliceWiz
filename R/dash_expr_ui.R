@@ -5,7 +5,7 @@ ui_expr <- function(id) {
         fluidRow(
             uiOutput(ns("ref_expr_infobox")),
             uiOutput(ns("bam_expr_infobox")),
-            uiOutput(ns("irf_expr_infobox")),
+            uiOutput(ns("pb_expr_infobox")),
             uiOutput(ns("se_expr_infobox")),
         ),
         fluidRow(
@@ -18,18 +18,20 @@ ui_expr <- function(id) {
                             ">= 0"
                         ),
                         wellPanel(
-                            tags$h4("Annotation Columns"),
+                            tags$h4("Add or Remove Annotation Columns"),
                             uiOutput(ns("newcol_expr")), # done
                             div(class='row',
                                 div(class= "col-sm-6",
-                                    radioButtons(ns("type_newcol_expr"), "Type",
+                                    radioButtons(ns("type_newcol_expr"), 
+                                    "Data Type",
                                     c("character", "integer", "double"))
                                 ),
                                 div(class = "col-sm-6", 
-                                    actionButton(ns("addcolumn_expr"), "Add"),
-                                    br(),  # done
+                                    actionButton(ns("addcolumn_expr"), 
+                                        "Add Annotation Column"),
+                                    br(),
                                     actionButton(ns("removecolumn_expr"),
-                                        "Remove") # done
+                                        "Remove Annotation Column")
                                 )
                             )                                
                         )
@@ -37,7 +39,7 @@ ui_expr <- function(id) {
                     ui_ddb_project_dir(id, color = "default"), br(), # br(),
                     # ui_ddb_ref_load(id, color = "default"), br(), # br(),
                     # ui_ddb_bam_path(id, color = "default"), br(), # br(),
-                    ui_ddb_irf_path(id, color = "default"), br(), # br(),
+                    ui_ddb_sw_path(id, color = "default"), br(), # br(),
                     ui_ddb_build_annos(id, color = "default"), br(), # br(),                   
                     ui_ddb_build_expr(id, color = "default"), # br(), # br(),
                 )
@@ -167,10 +169,10 @@ ui_ddb_project_dir <- function(id, color = "danger") {
             title = "Select path containing BAM files"), br(), br(),
 
         tags$h4("processBAM Output"),       
-        shinyDirButton(ns("dir_irf_path_load"), 
+        shinyDirButton(ns("dir_sw_path_load"), 
             label = "Choose Folder (processBAM output)", 
             title = "Choose processBAM Output Directory"),
-        textOutput(ns("txt_irf_path_expr")), br(),
+        textOutput(ns("txt_sw_path_expr")), br(),
 
         tags$h4("Compiled Experiment (NxtSE)"),
         shinyDirButton(ns("dir_collate_path_load"), 
@@ -220,19 +222,19 @@ ui_ddb_bam_path <- function(id, color = "danger") {
     )    
 }
 
-ui_ddb_irf_path <- function(id, color = "danger") {
+ui_ddb_sw_path <- function(id, color = "danger") {
     ns <- NS(id)
     ui_toggle_wellPanel_modular(
-        inputId = "expr_ddb_irf_load",
+        inputId = "expr_ddb_pb_load",
         id = id,
         title = "Process BAM files",
         color = color,
         icon = icon("align-center", lib = "font-awesome"),
         
         tags$h4("Run processBAM on BAM files"),
-        actionButton(ns("run_irf_expr"), 
-            "processBAM()"),
-        textOutput(ns("txt_run_irf_expr"))
+        actionButton(ns("run_pb_expr"), 
+            "Run processBAM()"),
+        textOutput(ns("txt_run_pb_expr"))
     )      
 }
 
@@ -253,7 +255,7 @@ ui_ddb_build_annos <- function(id, color = "danger") {
         actionButton(ns("add_anno"), "Edit Interactively"),
         br(), br(),
         
-        tags$h4("Save / Load Annotations to NxtSE directory"),
+        tags$h4("Save / Load Experiment Annotations"),
         actionButton(ns("load_expr"), "Load Annotations"),
         actionButton(ns("save_expr"), "Save Annotations"),
         br(),br(),
@@ -270,7 +272,7 @@ ui_ddb_build_expr <- function(id, color = "danger") {
         icon = icon("flask", lib = "font-awesome"),
 
         tags$h4("Collate Experiment"),
-        actionButton(ns("run_collate_expr"), "collateData()"),
+        actionButton(ns("run_collate_expr"), "Run collateData()"),
         br(),br(),
         
         tags$h4("Clear Experiment"),
@@ -335,25 +337,25 @@ ui_infobox_bam <- function(bam_path, bam_files, escape = FALSE) {
     return(box1)
 }
 
-ui_infobox_irf <- function(irf_path, irf_files, escape = FALSE) {
+ui_infobox_pb <- function(sw_path, sw_files, escape = FALSE) {
     if(escape == TRUE) {
         box1 = infoBox(
-            title = "processBAM output", 
+            title = "SpliceWiz (processBAM) output", 
             value = "NOT REQUIRED",
             icon = icon("align-center", lib = "font-awesome"),
             color = "green"
         )
     } else {
-        ret = is_valid(irf_files) && all(file.exists(irf_files))
+        ret = is_valid(sw_files) && all(file.exists(sw_files))
         box1 =  infoBox(
-            title = "processBAM output", 
-            value = ifelse(!is_valid(irf_path),
+            title = "SpliceWiz (processBAM) output", 
+            value = ifelse(!is_valid(sw_path),
                 "MISSING", ifelse(ret == TRUE, 
                 "LOADED", "Some processBAM files missing")),
-            subtitle = ifelse(is_valid(irf_path),
-                irf_path, ""),
+            subtitle = ifelse(is_valid(sw_path),
+                sw_path, ""),
             icon = icon("align-center", lib = "font-awesome"),
-            color = ifelse(!is_valid(irf_path),
+            color = ifelse(!is_valid(sw_path),
             "red", ifelse(ret == TRUE, "green", "yellow"))
         )
     }
@@ -362,7 +364,7 @@ ui_infobox_irf <- function(irf_path, irf_files, escape = FALSE) {
 
 ui_infobox_expr <- function(status = 0, msg = "", submsg = "") {
     box1 =  infoBox(
-        title = "SummarizedExperiment Object", 
+        title = "NxtSE Object", 
         value = ifelse(status == 0,
             "MISSING", msg),
         subtitle  = submsg,

@@ -34,7 +34,7 @@ setreactive_expr <- function() {
     reactiveValues(
         ref_path = "",
         bam_path = "",
-        irf_path = "",
+        sw_path = "",
         anno_file = "",
         collate_path = "",
 

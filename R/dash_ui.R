@@ -3,10 +3,10 @@ ui_sidebar <- function() {
         sidebarMenu(id = "navSelection",
             menuItem("About", tabName = "navTitle"),
             # menuItem("System", tabName = "navSystem"),
-            menuItem("Build Reference", tabName = "navRef_New"),
-            menuItem("Process Samples & Collate Experiment", 
+            menuItem("Reference", tabName = "navRef_New"),
+            menuItem("Experiment", 
                 tabName = "navExpr"),
-            menuItem("Perform Analysis",
+            menuItem("Analysis",
                 menuSubItem("Load Experiment", tabName = "navExprLoad"),
                 menuSubItem("Experiment QC", tabName = "navQC"),
                 menuSubItem("Filters", tabName = "navFilter"),
@@ -14,10 +14,10 @@ ui_sidebar <- function() {
                     tabName = "navAnalyse")
             ),
             menuItem("Display",
-                menuSubItem("Diagonal", tabName = "navDiag"),
-                menuSubItem("Volcano", tabName = "navVolcano"),
+                menuSubItem("Scatter Plot", tabName = "navDiag"),
+                menuSubItem("Volcano Plot", tabName = "navVolcano"),
                 menuSubItem("Heatmap", tabName = "navHeatmap"),
-                menuSubItem("Coverage", tabName = "navCoverage")
+                menuSubItem("Coverage Plot", tabName = "navCoverage")
             )
         )
     )

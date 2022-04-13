@@ -128,9 +128,9 @@ collateData <- function(Experiment, reference_path, output_path,
     gc()
 
     dash_progress("Compiling Intron Retention List", N_steps)
-    irf.common <- .collateData_irf_merge(df.internal, jobs, BPPARAM_mod,
+    sw.common <- .collateData_sw_merge(df.internal, jobs, BPPARAM_mod,
         output_path, stranded)
-    # saveRDS(irf.common, file.path(output_path,"irf.common.Rds"))
+    # saveRDS(sw.common, file.path(output_path,"sw.common.Rds"))
     gc()
 
 # Reassign +/- based on junctions.fst annotation
@@ -138,9 +138,9 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Tidying up splice junctions and intron retentions", N_steps)
     .log("Tidying up splice junctions and intron retentions...", "message")
     .collateData_annotate(reference_path, norm_output_path,
-        junc.common, irf.common, stranded)
+        junc.common, sw.common, stranded)
     message("done\n")
-    rm(junc.common, irf.common)
+    rm(junc.common, sw.common)
     gc()
 
     dash_progress("Generating NxtSE assays", N_steps)
@@ -459,7 +459,7 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 # Assume all processBAM outputs are created from same ref. Checks this
-.collateData_irf_merge <- function(df.internal, jobs, BPPARAM_mod,
+.collateData_sw_merge <- function(df.internal, jobs, BPPARAM_mod,
         output_path, stranded) {
     # Check names of all introns are the same in all samples
     temp_output_path <- file.path(output_path, "temp")
@@ -467,7 +467,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
     .log("Compiling Intron Retention List...", "message", appendLF = FALSE)
 
-    irf.list <- BiocParallel::bplapply(seq_len(n_jobs),
+    sw.list <- BiocParallel::bplapply(seq_len(n_jobs),
         function(x, jobs, df.internal, temp_output_path, stranded) {
             suppressPackageStartupMessages({
                 requireNamespace("data.table")
@@ -475,50 +475,50 @@ collateData <- function(Experiment, reference_path, output_path,
             })
             work <- jobs[[x]]
             block <- df.internal[work]
-            irf.names <- c()
+            sw.names <- c()
             phrase <- ifelse(stranded, "Dir_Chr", "Nondir_Chr")
             for (i in seq_len(length(work))) {
 
                 data.list <- get_multi_DT_from_gz(
                     normalizePath(block$path[i]), phrase)
-                irf <- data.list[[phrase]]
+                sw <- data.list[[phrase]]
 
-                setnames(irf, c(phrase, "Start", "End", "Strand"),
+                setnames(sw, c(phrase, "Start", "End", "Strand"),
                     c("seqnames", "start", "end", "strand"))
-                if (is.null(irf.names)) {
-                    irf.names <- irf$Name
+                if (is.null(sw.names)) {
+                    sw.names <- sw$Name
                 } else {
-                    if (!identical(irf.names, irf$Name))
-                        .collateData_stop_irf_mismatch()
+                    if (!identical(sw.names, sw$Name))
+                        .collateData_stop_sw_mismatch()
                 }
-                fst::write.fst(as.data.frame(irf),
+                fst::write.fst(as.data.frame(sw),
                     file.path(temp_output_path,
-                        paste(block$sample[i], "irf.fst.tmp", sep = ".")))
+                        paste(block$sample[i], "sw.fst.tmp", sep = ".")))
             }
-            return(irf.names)
+            return(sw.names)
         }, jobs = jobs, df.internal = df.internal,
             temp_output_path = temp_output_path,
             stranded = stranded, BPPARAM = BPPARAM_mod
     )
     # Checks common columns are the same
-    if (length(irf.list) > 1) {
-        for (i in seq_len(length(irf.list))) {
-            if (!identical(irf.list[[i]], irf.list[[1]]))
-                .collateData_stop_irf_mismatch()
+    if (length(sw.list) > 1) {
+        for (i in seq_len(length(sw.list))) {
+            if (!identical(sw.list[[i]], sw.list[[1]]))
+                .collateData_stop_sw_mismatch()
         }
     }
     # Returns common columns
-    irf <- fst::read.fst(file.path(temp_output_path,
-        paste(df.internal$sample[1], "irf.fst.tmp", sep = ".")),
+    sw <- fst::read.fst(file.path(temp_output_path,
+        paste(df.internal$sample[1], "sw.fst.tmp", sep = ".")),
         as.data.table = TRUE)
-    irf.common <- irf[, seq_len(6), with = FALSE]
-    irf.common[, c("start") := get("start") + 1]
+    sw.common <- sw[, seq_len(6), with = FALSE]
+    sw.common[, c("start") := get("start") + 1]
 
     message("done")
-    return(irf.common)
+    return(sw.common)
 }
 
-.collateData_stop_irf_mismatch <- function() {
+.collateData_stop_sw_mismatch <- function() {
     stopmsg <- paste(
         "Some processBAM outputs were generated",
         "with a different SpliceWiz reference.",
@@ -533,7 +533,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Annotate processBAM introns and junctions according to given reference
 .collateData_annotate <- function(reference_path, norm_output_path,
-        junc.common, irf.common, stranded) {
+        junc.common, sw.common, stranded) {
 
     message("...annotating splice junctions")
     junc.common <- .collateData_junc_annotate(junc.common, reference_path)
@@ -541,19 +541,19 @@ collateData <- function(Experiment, reference_path, output_path,
     junc.common <- .collateData_junc_group(junc.common, reference_path)
 
     message("...grouping introns")
-    irf.common <- .collateData_irf_group(irf.common, reference_path, stranded)
-    irf.common[, c("EventRegion") :=
+    sw.common <- .collateData_sw_group(sw.common, reference_path, stranded)
+    sw.common[, c("EventRegion") :=
         paste0(get("seqnames"), ":", get("start"), "-",
             get("end"), "/", get("strand"))]
 
     message("...loading splice events")
-    Splice.Anno <- .collateData_splice_anno(reference_path, irf.common)
+    Splice.Anno <- .collateData_splice_anno(reference_path, sw.common)
 
     message("...saving annotations")
     # Save annotation
     write.fst(as.data.frame(junc.common),
         file.path(norm_output_path, "annotation", "Junc.fst"))
-    write.fst(as.data.frame(irf.common),
+    write.fst(as.data.frame(sw.common),
         file.path(norm_output_path, "annotation", "IR.fst"))
     write.fst(as.data.frame(Splice.Anno),
         file.path(norm_output_path, "annotation", "Splice.fst"))
@@ -563,7 +563,7 @@ collateData <- function(Experiment, reference_path, output_path,
     write.fst(junc_PSI, file.path(norm_output_path, "junc_PSI_index.fst"))
 
     message("...compiling rowEvents")
-    .collateData_rowEvent(irf.common, Splice.Anno,
+    .collateData_rowEvent(sw.common, Splice.Anno,
         norm_output_path, reference_path)
 }
 
@@ -687,8 +687,8 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 # Use Exon Groups file to designate flanking exon islands to ALL introns
-.collateData_irf_group <- function(
-        irf.common, reference_path, stranded = TRUE
+.collateData_sw_group <- function(
+        sw.common, reference_path, stranded = TRUE
 ) {
     # Use Exon Groups file to designate exon groups to all junctions
     Exon.Groups <- as.data.table(
@@ -697,29 +697,29 @@ collateData <- function(Experiment, reference_path, output_path,
     # Always calculate stranded for junctions
     Exon.Groups.S <- Exon.Groups[get("strand") != "*"]
 
-    irf.common <- .process_introns_group_overlap(
-        irf.common, Exon.Groups.S,
+    sw.common <- .process_introns_group_overlap(
+        sw.common, Exon.Groups.S,
         c("gene_group_up", "exon_group_up",
             "gene_group_down", "exon_group_down"),
         c("gene_group", "exon_group", "gene_group", "exon_group")
     )
-    irf.common <- .process_introns_group_fix_RI(
-        irf.common, Exon.Groups.S,
+    sw.common <- .process_introns_group_fix_RI(
+        sw.common, Exon.Groups.S,
         c("gene_group_up", "exon_group_up",
             "gene_group_down", "exon_group_down"),
         c("gene_group", "intron_number", "gene_group", "intron_number")
     )
-    irf.common[,
+    sw.common[,
         c("JG_up", "JG_down") := list(
             paste(get("gene_group_up"), get("exon_group_up"), sep = "_"),
             paste(get("gene_group_down"), get("exon_group_down"), sep = "_")
         )
     ]
 
-    irf.common$gene_group_up <- NULL
-    irf.common$gene_group_down <- NULL
-    irf.common$exon_group_up <- NULL
-    irf.common$exon_group_down <- NULL
+    sw.common$gene_group_up <- NULL
+    sw.common$gene_group_down <- NULL
+    sw.common$exon_group_up <- NULL
+    sw.common$exon_group_down <- NULL
 
     if (!stranded) {
         Exon.Groups.S <- Exon.Groups[get("strand") == "*"]
@@ -727,30 +727,30 @@ collateData <- function(Experiment, reference_path, output_path,
         Exon.Groups.S <- Exon.Groups[get("strand") != "*"]
     }
 
-    irf.common <- .process_introns_group_overlap(
-        irf.common, Exon.Groups.S,
+    sw.common <- .process_introns_group_overlap(
+        sw.common, Exon.Groups.S,
         c("gene_group_up", "exon_group_up",
             "gene_group_down", "exon_group_down"),
         c("gene_group", "exon_group", "gene_group", "exon_group")
     )
-    irf.common <- .process_introns_group_fix_RI(
-        irf.common, Exon.Groups.S,
+    sw.common <- .process_introns_group_fix_RI(
+        sw.common, Exon.Groups.S,
         c("gene_group_up", "exon_group_up",
             "gene_group_down", "exon_group_down"),
         c("gene_group", "intron_number", "gene_group", "intron_number")
     )
-    irf.common[,
+    sw.common[,
         c("IRG_up", "IRG_down") := list(
             paste(get("gene_group_up"), get("exon_group_up"), sep = "_"),
             paste(get("gene_group_down"), get("exon_group_down"), sep = "_")
         )
     ]
 
-    return(irf.common)
+    return(sw.common)
 }
 
 # Annotates splice junctions with ID's of flanking exon islands
-.collateData_splice_anno <- function(reference_path, irf.common) {
+.collateData_splice_anno <- function(reference_path, sw.common) {
     candidate.introns <- as.data.table(
         read.fst(file.path(reference_path, "fst", "junctions.fst")))
 
@@ -779,9 +779,9 @@ collateData <- function(Experiment, reference_path, output_path,
     Splice.Anno <- read.fst(file.path(reference_path, "fst", "Splice.fst"),
         as.data.table = TRUE)
 
-    # Remove retained introns not assayed in irf.common
+    # Remove retained introns not assayed in sw.common
     Splice.Anno <- Splice.Anno[
-        get("Event1a") %in% irf.common$EventRegion |
+        get("Event1a") %in% sw.common$EventRegion |
         get("EventType") != "RI"
     ]
 
@@ -811,9 +811,9 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 # Generate rowData annotations
-.collateData_rowEvent <- function(irf.common, Splice.Anno,
+.collateData_rowEvent <- function(sw.common, Splice.Anno,
         norm_output_path, reference_path) {
-    .collateData_rowEvent_brief(irf.common, Splice.Anno,
+    .collateData_rowEvent_brief(sw.common, Splice.Anno,
         norm_output_path)
     Splice.Options.Summary <- .collateData_rowEvent_splice_option(
         reference_path)
@@ -822,18 +822,18 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 # Truncated rowEvent, with EventName, EventType, EventRegion
-.collateData_rowEvent_brief <- function(irf.common, Splice.Anno,
+.collateData_rowEvent_brief <- function(sw.common, Splice.Anno,
         norm_output_path) {
     # make rowEvent brief here
-    irf.anno.brief <- irf.common[, c("Name", "EventRegion")]
-    setnames(irf.anno.brief, "Name", "EventName")
-    irf.anno.brief[, c("EventType") := "IR"]
-    irf.anno.brief <- irf.anno.brief[,
+    sw.anno.brief <- sw.common[, c("Name", "EventRegion")]
+    setnames(sw.anno.brief, "Name", "EventName")
+    sw.anno.brief[, c("EventType") := "IR"]
+    sw.anno.brief <- sw.anno.brief[,
         c("EventName", "EventType", "EventRegion")]
     splice.anno.brief <- Splice.Anno[,
         c("EventName", "EventType", "EventRegion")]
 
-    rowEvent <- rbind(irf.anno.brief, splice.anno.brief)
+    rowEvent <- rbind(sw.anno.brief, splice.anno.brief)
     write.fst(rowEvent, file.path(norm_output_path, "rowEvent.brief.fst"))
 }
 
@@ -968,7 +968,7 @@ collateData <- function(Experiment, reference_path, output_path,
         file.path(norm_output_path, "rowEvent.brief.fst")))
     junc.common <- as.data.table(read.fst(
         file.path(norm_output_path, "annotation", "Junc.fst")))
-    irf.common <- as.data.table(read.fst(
+    sw.common <- as.data.table(read.fst(
         file.path(norm_output_path, "annotation", "IR.fst")))
     Splice.Anno <- as.data.table(read.fst(
         file.path(norm_output_path, "annotation", "Splice.fst")))
@@ -984,24 +984,24 @@ collateData <- function(Experiment, reference_path, output_path,
             block$sample[i], block$strand[i],
             junc.common, norm_output_path)
 
-        irf <- .collateData_process_irf(
+        sw <- .collateData_process_sw(
             block$sample[i], block$strand[i], junc,
-            irf.common, norm_output_path)
+            sw.common, norm_output_path)
 
         splice <- .collateData_process_splice(
-            junc, irf, Splice.Anno)
+            junc, sw, Splice.Anno)
 
         splice <- .collateData_process_splice_depth(
-            splice, irf)
+            splice, sw)
 
         .collateData_process_assays_as_fst(.copy_DT(templates),
-            block$sample[i], junc, irf, splice, IRMode, norm_output_path)
+            block$sample[i], junc, sw, splice, IRMode, norm_output_path)
 
-        # remove temp files - raw extracted junc / IRF output from processBAM
+        # remove temp files - raw extracted junc / SW output from processBAM
         file.remove(file.path(norm_output_path, "temp",
             paste(block$sample[i], "junc.fst.tmp", sep = ".")))
         file.remove(file.path(norm_output_path, "temp",
-            paste(block$sample[i], "irf.fst.tmp", sep = ".")))
+            paste(block$sample[i], "sw.fst.tmp", sep = ".")))
     } # end FOR loop
     return(NULL)
 }
@@ -1113,51 +1113,51 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 # Imports processBAM data, calculates SpliceOver from junction counts
-.collateData_process_irf <- function(sample, strand, junc,
-        irf.common, norm_output_path) {
-    irf <- as.data.table(
+.collateData_process_sw <- function(sample, strand, junc,
+        sw.common, norm_output_path) {
+    sw <- as.data.table(
         read.fst(file.path(norm_output_path, "temp",
-            paste(sample, "irf.fst.tmp", sep = ".")))
+            paste(sample, "sw.fst.tmp", sep = ".")))
     )
 
-    irf[, c("start") := get("start") + 1]
-    irf <- irf[irf.common, on = colnames(irf.common)[seq_len(6)],
+    sw[, c("start") := get("start") + 1]
+    sw <- sw[sw.common, on = colnames(sw.common)[seq_len(6)],
         c("EventRegion") := get("i.EventRegion")]
 
     # Extra statistics:
-    irf[, c("SpliceMax") := 0]
-    irf[get("SpliceLeft") >= get("SpliceRight"),
+    sw[, c("SpliceMax") := 0]
+    sw[get("SpliceLeft") >= get("SpliceRight"),
         c("SpliceMax") := get("SpliceLeft")]
-    irf[get("SpliceLeft") < get("SpliceRight"),
+    sw[get("SpliceLeft") < get("SpliceRight"),
         c("SpliceMax") := get("SpliceRight")]
 
-    irf[junc, on = c("seqnames", "start", "end", "strand"),
+    sw[junc, on = c("seqnames", "start", "end", "strand"),
         c("SpliceOverLeft") := get("SO_L")]
-    irf[junc, on = c("seqnames", "start", "end", "strand"),
+    sw[junc, on = c("seqnames", "start", "end", "strand"),
         c("SpliceOverRight") := get("SO_R")]
-    irf[get("SpliceOverLeft") >= get("SpliceOverRight"),
+    sw[get("SpliceOverLeft") >= get("SpliceOverRight"),
         c("SpliceOver") := get("SpliceOverLeft")]
-    irf[get("SpliceOverLeft") < get("SpliceOverRight"),
+    sw[get("SpliceOverLeft") < get("SpliceOverRight"),
         c("SpliceOver") := get("SpliceOverRight")]
 
-    irf[, c("IROratio") := 0]
-    irf[get("IntronDepth") < 1 & get("IntronDepth") > 0 &
+    sw[, c("IROratio") := 0]
+    sw[get("IntronDepth") < 1 & get("IntronDepth") > 0 &
         (get("Coverage") + get("SpliceOver")) > 0,
         c("IROratio") := get("Coverage") / (
             get("Coverage") + get("SpliceOver"))]
-    irf[get("IntronDepth") >= 1,
+    sw[get("IntronDepth") >= 1,
         c("IROratio") := get("IntronDepth") /
             (get("IntronDepth") + get("SpliceOver"))]
 
-    irf[, c("TotalDepth") := get("IntronDepth") + get("SpliceOver")]
-    setnames(irf, "Name", "EventName")
-    return(irf)
+    sw[, c("TotalDepth") := get("IntronDepth") + get("SpliceOver")]
+    setnames(sw, "Name", "EventName")
+    return(sw)
 }
 
 # Calculates junction counts for each annotated splice event. Also calculates:
 # - participation: The proportion of junctions at the region for each ASE
 # - coverage: The total number of junctions covered at that ASE region
-.collateData_process_splice <- function(junc, irf, Splice.Anno) {
+.collateData_process_splice <- function(junc, sw, Splice.Anno) {
     splice <- copy(Splice.Anno)
 
     # Summarises counts for all splice events as defined by Event(1/2)(a/b)
@@ -1169,7 +1169,7 @@ collateData <- function(Experiment, reference_path, output_path,
         c("count_Event1a") := 0]
     splice[!is.na(get("Event1a")) & get("EventType") == "RI",
         c("count_Event1a") :=
-            irf$IntronDepth[match(get("Event1a"), irf$EventRegion)]
+            sw$IntronDepth[match(get("Event1a"), sw$EventRegion)]
     ]
 
     splice[!is.na(get("Event2a")),
@@ -1191,15 +1191,15 @@ collateData <- function(Experiment, reference_path, output_path,
     splice[get("EventType") == "RI" &
             tstrsplit(get("Event1a"), split = "/", fixed = TRUE)[[2]] == "+",
         c("count_Event2a", "count_Event2b") := list(
-            irf$ExonToIntronReadsLeft[match(get("Event1a"), irf$EventRegion)],
-            irf$ExonToIntronReadsRight[match(get("Event1a"), irf$EventRegion)]
+            sw$ExonToIntronReadsLeft[match(get("Event1a"), sw$EventRegion)],
+            sw$ExonToIntronReadsRight[match(get("Event1a"), sw$EventRegion)]
         )
     ]
     splice[get("EventType") == "RI" &
             tstrsplit(get("Event1a"), split = "/", fixed = TRUE)[[2]] == "-",
         c("count_Event2a", "count_Event2b") := list(
-            irf$ExonToIntronReadsRight[match(get("Event1a"), irf$EventRegion)],
-            irf$ExonToIntronReadsLeft[match(get("Event1a"), irf$EventRegion)]
+            sw$ExonToIntronReadsRight[match(get("Event1a"), sw$EventRegion)],
+            sw$ExonToIntronReadsLeft[match(get("Event1a"), sw$EventRegion)]
         )
     ]
 
@@ -1253,19 +1253,19 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Calculates TotalDepth which includes local IR levels.
 # - Used to normalize Coverage plots
-.collateData_process_splice_depth <- function(splice, irf) {
+.collateData_process_splice_depth <- function(splice, sw) {
 
     # Calculate depth for splicing where EventRegion doesn't cover a single
     #   intron or where processBAM has decided not to assess the intron
-    splice.no_region <- splice[!(get("EventRegion") %in% irf$EventRegion)]
+    splice.no_region <- splice[!(get("EventRegion") %in% sw$EventRegion)]
     splice.no_region[, c("Depth1a") :=
-        irf$TotalDepth[match(get("Event1a"), irf$EventRegion)]]
+        sw$TotalDepth[match(get("Event1a"), sw$EventRegion)]]
     splice.no_region[, c("Depth2a") :=
-        irf$TotalDepth[match(get("Event2a"), irf$EventRegion)]]
+        sw$TotalDepth[match(get("Event2a"), sw$EventRegion)]]
     splice.no_region[, c("Depth1b") :=
-        irf$TotalDepth[match(get("Event1b"), irf$EventRegion)]]
+        sw$TotalDepth[match(get("Event1b"), sw$EventRegion)]]
     splice.no_region[, c("Depth2b") :=
-        irf$TotalDepth[match(get("Event2b"), irf$EventRegion)]]
+        sw$TotalDepth[match(get("Event2b"), sw$EventRegion)]]
     splice.no_region[is.na(get("Depth1a")), c("Depth1a") := 0]
     splice.no_region[is.na(get("Depth1b")), c("Depth1b") := 0]
     splice.no_region[is.na(get("Depth2a")), c("Depth2a") := 0]
@@ -1296,7 +1296,7 @@ collateData <- function(Experiment, reference_path, output_path,
         c("Depth") := get("count_JG_down")]
 
     splice[, c("TotalDepth") := 0]
-    splice[irf, on = "EventRegion",
+    splice[sw, on = "EventRegion",
         c("TotalDepth") := get("i.TotalDepth")]
     splice[splice.no_region, on = "EventName",
         c("TotalDepth") := get("i.Depth")]
@@ -1306,7 +1306,7 @@ collateData <- function(Experiment, reference_path, output_path,
 # Compiles all the data as assays, write as temp FST files
 # - This acts as "on-disk memory" to avoid using too much memory
 .collateData_process_assays_as_fst <- function(templates,
-        sample, junc, irf, splice, IRMode, norm_output_path) {
+        sample, junc, sw, splice, IRMode, norm_output_path) {
 
     assay.todo <- c("Included", "Excluded", "Depth", "Coverage", "minDepth")
     inc.todo <- c("Up_Inc", "Down_Inc")
@@ -1315,21 +1315,21 @@ collateData <- function(Experiment, reference_path, output_path,
 
     # Included / Excluded counts for IR and splicing
     templates$assay[, c("Included") := c(
-        irf$IntronDepth,
+        sw$IntronDepth,
         0.5 * (splice$count_Event1a[splice$EventType %in% c("SE", "MXE")] +
             splice$count_Event2a[splice$EventType %in% c("SE", "MXE")]),
         splice$count_Event1a[!splice$EventType %in% c("SE", "MXE")]
     )]
     if (IRMode == "SpliceOver") {
         templates$assay[, c("Excluded") := c(
-            irf$SpliceOver,
+            sw$SpliceOver,
             0.5 * (splice$count_Event1b[splice$EventType %in% c("MXE")] +
                 splice$count_Event2b[splice$EventType %in% c("MXE")]),
             splice$count_Event1b[!splice$EventType %in% c("MXE")]
         )]
     } else {
         templates$assay[, c("Excluded") := c(
-            irf$SpliceMax,
+            sw$SpliceMax,
             0.5 * (splice$count_Event1b[splice$EventType %in% c("MXE")] +
                 splice$count_Event2b[splice$EventType %in% c("MXE")]),
             splice$count_Event1b[!splice$EventType %in% c("MXE")]
@@ -1337,15 +1337,15 @@ collateData <- function(Experiment, reference_path, output_path,
     }
 
     # Validity checking for IR, MXE, SE
-    irf[get("strand") == "+", c("Up_Inc") := get("ExonToIntronReadsLeft")]
-    irf[get("strand") == "-", c("Up_Inc") := get("ExonToIntronReadsRight")]
-    irf[get("strand") == "+", c("Down_Inc") := get("ExonToIntronReadsRight")]
-    irf[get("strand") == "-", c("Down_Inc") := get("ExonToIntronReadsLeft")]
-    templates$inc[, c("Up_Inc") := c(irf$Up_Inc,
+    sw[get("strand") == "+", c("Up_Inc") := get("ExonToIntronReadsLeft")]
+    sw[get("strand") == "-", c("Up_Inc") := get("ExonToIntronReadsRight")]
+    sw[get("strand") == "+", c("Down_Inc") := get("ExonToIntronReadsRight")]
+    sw[get("strand") == "-", c("Down_Inc") := get("ExonToIntronReadsLeft")]
+    templates$inc[, c("Up_Inc") := c(sw$Up_Inc,
             splice$count_Event1a[splice$EventType %in% c("MXE", "SE")],
             splice$count_Event2a[splice$EventType %in% c("RI")]
     )]
-    templates$inc[, c("Down_Inc") := c(irf$Down_Inc,
+    templates$inc[, c("Down_Inc") := c(sw$Down_Inc,
             splice$count_Event2a[splice$EventType %in% c("MXE", "SE")],
             splice$count_Event2b[splice$EventType %in% c("RI")]
     )]
@@ -1354,8 +1354,8 @@ collateData <- function(Experiment, reference_path, output_path,
     templates$exc[, c("Down_Exc") :=
         splice$count_Event2b[splice$EventType %in% c("MXE")]]
 
-    templates$assay[, c("Depth") := c(irf$TotalDepth, splice$TotalDepth)]
-    templates$assay[, c("Coverage") := c(irf$Coverage, splice$coverage)]
+    templates$assay[, c("Depth") := c(sw$TotalDepth, splice$TotalDepth)]
+    templates$assay[, c("Coverage") := c(sw$Coverage, splice$coverage)]
 
     splice[get("EventType") %in% c("MXE", "SE") &
         get("cov_up") < get("cov_down"),
@@ -1367,7 +1367,7 @@ collateData <- function(Experiment, reference_path, output_path,
         c("minDepth") := get("count_JG_up")]
     splice[get("EventType") %in% c("AFE", "A5SS"),
         c("minDepth") := get("count_JG_down")]
-    templates$assay[, c("minDepth") := c(irf$IntronDepth, splice$minDepth)]
+    templates$assay[, c("minDepth") := c(sw$IntronDepth, splice$minDepth)]
 
     junc[get("count") == 0, c("PSI") := 0]
     junc[get("SO_L") > get("SO_R"),
@@ -1584,14 +1584,14 @@ collateData <- function(Experiment, reference_path, output_path,
             df.files <- data.table(
                 sample = df.internal$sample,
                 bam_file = "",
-                irf_file = df.internal$path,
+                sw_file = df.internal$path,
                 cov_file = coverage_files
             )
         } else {
             df.files <- data.table(
                 sample = df.internal$sample,
                 bam_file = "",
-                irf_file = df.internal$path,
+                sw_file = df.internal$path,
                 cov_file = ""
             )
         }
@@ -1599,7 +1599,7 @@ collateData <- function(Experiment, reference_path, output_path,
         df.files <- data.table(
             sample = df.internal$sample,
             bam_file = "",
-            irf_file = df.internal$path,
+            sw_file = df.internal$path,
             cov_file = ""
         )    
     }

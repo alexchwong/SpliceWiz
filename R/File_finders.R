@@ -175,6 +175,6 @@ findBAMS <- function(sample_path, level = 0) {
 #' @export
 findSpliceWizOutput <- function(sample_path, level = 0) {
     DT <- findSamples(sample_path, c(".txt.gz", ".cov"), level = level)
-    colnames(DT) <- c("sample", "irf_file", "cov_file")
+    colnames(DT) <- c("sample", "sw_file", "cov_file")
     return(DT)
 }

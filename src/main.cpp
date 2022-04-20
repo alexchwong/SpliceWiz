@@ -683,16 +683,106 @@ int readReference(std::string &reference_file,
   return(0);
 }
 
+// SpliceWiz reference reader:
+int readReferenceToStrings(std::string &reference_file, 
+    std::vector<std::string> &ref_names, 
+    std::vector<std::string> &ref_alias,
+    std::vector<uint32_t> &ref_lengths,
+    std::string &CB_string,
+    std::string &SP_string,
+    std::string &ROI_string,
+    std::string &JC_string,
+    bool verbose
+) { 
+  (void)(verbose);
+
+  if(!see_if_file_exists(reference_file)) {
+    cout << "File " << reference_file << " does not exist!\n";
+    return(-1);
+  }
+
+  GZReader * gz_in = new GZReader;
+  int ret = gz_in->LoadGZ(reference_file, true);   // streamed mode
+  if(ret != 0) return(-1);
+  
+  // Allows reference blocks to be read in any order
+  std::string headerCover ("ref-cover.bed");
+  std::string headerSpans ("ref-read-continues.ref");
+  std::string headerROI ("ref-ROI.bed");
+  std::string headerSJ ("ref-sj.ref");
+  std::string headerChr ("ref-chrs.ref");
+  std::string headerEOF ("EOF");
+  
+  bool doneCover = false;
+  bool doneSpans = false;
+  bool doneROI = false;
+  bool doneSJ = false;
+  bool doneChrs = false;
+  
+  std::string myLine;
+  std::string myBuffer;
+  
+  getline(gz_in->iss, myLine, '#');    // discard anything before the first hash
+  getline(gz_in->iss, myLine, '\n');   // Get block name
+  
+  // Check non-empty ref block name
+  if(myLine.size() == 0) {
+    cout << "Invalid SpliceWiz reference detected\n";
+    return(-1);
+  }
+
+  while(myLine.find(headerEOF)==std::string::npos) {
+    // getline(gz_in->iss, myBuffer, '#');  // this is the data block
+
+    if(myLine.find(headerCover)!=std::string::npos && !doneCover) {
+      getline(gz_in->iss, CB_string, '#');
+      doneCover = true;
+    } else if(myLine.find(headerSpans)!=std::string::npos && !doneSpans) {
+      getline(gz_in->iss, SP_string, '#');
+      doneSpans = true;
+    } else if(myLine.find(headerROI)!=std::string::npos && !doneROI) {
+      getline(gz_in->iss, ROI_string, '#');
+      doneROI = true;
+    } else if(myLine.find(headerSJ)!=std::string::npos && !doneSJ) {
+      getline(gz_in->iss, JC_string, '#');
+      doneSJ = true;
+    } else if(myLine.find(headerChr)!=std::string::npos && !doneChrs) {
+      getline(gz_in->iss, myBuffer, '#');
+      std::istringstream inChrAlias;
+      inChrAlias.str(myBuffer);
+      ReadChrAlias(inChrAlias, ref_names, ref_alias, ref_lengths);
+      doneChrs = true;
+    } else {
+      cout << "Error: Invalid SpliceWiz reference block detected\n";
+      return(-1);
+    }
+    // Get next data block name
+    getline(gz_in->iss, myLine, '\n');
+  }
+
+  delete gz_in;
+  
+  if(!doneCover || !doneSpans || !doneROI || !doneSJ) {
+    cout << "Error: Incomplete SpliceWiz reference detected\n";
+    return(-1);
+  }
+  return(0);
+}
+
 // SpliceWiz core:
 int SpliceWizCore(std::string const &bam_file, 
     std::string const &s_output_txt, std::string const &s_output_cov,
     std::vector<std::string> &ref_names, 
     std::vector<std::string> &ref_alias,
     std::vector<uint32_t> &ref_lengths,
-    CoverageBlocksIRFinder const &CB_template, 
-    SpansPoint const &SP_template, 
-    FragmentsInROI const &ROI_template,
-    JunctionCount const &JC_template,
+    // CoverageBlocksIRFinder const &CB_template, 
+    // SpansPoint const &SP_template, 
+    // FragmentsInROI const &ROI_template,
+    // JunctionCount const &JC_template,
+    std::string &CB_string,
+    std::string &SP_string,
+    std::string &ROI_string,
+    std::string &JC_string,
     bool const verbose,
     int n_threads
 ) {
@@ -759,11 +849,11 @@ int SpliceWizCore(std::string const &bam_file,
   std::vector<BAM2blocks*> BBchild;
 
   for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    oCB.push_back(new CoverageBlocksIRFinder(CB_template));
-    oSP.push_back(new SpansPoint(SP_template));
-    oROI.push_back(new FragmentsInROI(ROI_template));
+    oCB.push_back(new CoverageBlocksIRFinder(CB_string));
+    oSP.push_back(new SpansPoint(SP_string));
+    oROI.push_back(new FragmentsInROI(ROI_string));
     oChr.push_back(new FragmentsInChr);
-    oJC.push_back(new JunctionCount(JC_template));
+    oJC.push_back(new JunctionCount(JC_string));
     oFM.push_back(new FragmentsMap);
     BBchild.push_back(new BAM2blocks(bam_chr_name, bam_chr_len));
 
@@ -985,10 +1075,14 @@ int SpliceWizMain(
       << "Reading reference file\n";
   }
 
-  CoverageBlocksIRFinder * CB_template = new CoverageBlocksIRFinder;
-  SpansPoint * SP_template = new SpansPoint;
-  FragmentsInROI * ROI_template = new FragmentsInROI;
-  JunctionCount * JC_template = new JunctionCount;
+  // CoverageBlocksIRFinder * CB_template = new CoverageBlocksIRFinder;
+  // SpansPoint * SP_template = new SpansPoint;
+  // FragmentsInROI * ROI_template = new FragmentsInROI;
+  // JunctionCount * JC_template = new JunctionCount;
+  std::string CB_string;
+  std::string SP_string;
+  std::string ROI_string;
+  std::string JC_string;
   
   std::vector<std::string> ref_names;
   std::vector<std::string> ref_alias;
@@ -996,8 +1090,8 @@ int SpliceWizMain(
   
   int ret = 0;
   
-  ret = readReference(s_ref, ref_names, ref_alias, ref_lengths,
-    *CB_template, *SP_template, *ROI_template, *JC_template, verbose
+  ret = readReferenceToStrings(s_ref, ref_names, ref_alias, ref_lengths,
+    CB_string, SP_string, ROI_string, JC_string, verbose
   );
   if(ret != 0) {
     cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid NxtIRF-generated SpliceWiz reference\n";
@@ -1006,14 +1100,14 @@ int SpliceWizMain(
   // main:
   ret = SpliceWizCore(s_bam, s_output_txt, s_output_cov,
     ref_names, ref_alias, ref_lengths,
-    *CB_template, *SP_template, *ROI_template, *JC_template, verbose, use_threads);
+    CB_string, SP_string, ROI_string, JC_string, verbose, use_threads);
     
   if(ret != 0) cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
   
-  delete CB_template;
-  delete SP_template;
-  delete ROI_template;
-  delete JC_template;
+  // delete CB_template;
+  // delete SP_template;
+  // delete ROI_template;
+  // delete JC_template;
   return(ret);
 }
 
@@ -1041,10 +1135,14 @@ int SpliceWizMain_multi(
   std::string s_ref = reference_file;
   cout << "Reading reference file\n";
   
-  CoverageBlocksIRFinder * CB_template = new CoverageBlocksIRFinder;
-  SpansPoint * SP_template = new SpansPoint;
-  FragmentsInROI * ROI_template = new FragmentsInROI;
-  JunctionCount * JC_template = new JunctionCount;
+  // CoverageBlocksIRFinder * CB_template = new CoverageBlocksIRFinder;
+  // SpansPoint * SP_template = new SpansPoint;
+  // FragmentsInROI * ROI_template = new FragmentsInROI;
+  // JunctionCount * JC_template = new JunctionCount;
+  std::string CB_string;
+  std::string SP_string;
+  std::string ROI_string;
+  std::string JC_string;
   
   std::vector<std::string> ref_names;
   std::vector<std::string> ref_alias;
@@ -1052,8 +1150,9 @@ int SpliceWizMain_multi(
   
   int ret = 0;
   
-  ret = readReference(s_ref, ref_names, ref_alias, ref_lengths,
-    *CB_template, *SP_template, *ROI_template, *JC_template, false);
+  ret = readReferenceToStrings(s_ref, ref_names, ref_alias, ref_lengths,
+    CB_string, SP_string, ROI_string, JC_string, verbose
+  );
   if(ret != 0) {
     cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid NxtIRF-generated SpliceWiz reference\n";
     return(ret);
@@ -1068,23 +1167,23 @@ int SpliceWizMain_multi(
     
     int ret2 = SpliceWizCore(s_bam, s_output_txt, s_output_cov,
       ref_names, ref_alias, ref_lengths,
-      *CB_template, *SP_template, *ROI_template, *JC_template, verbose, use_threads);
+      CB_string, SP_string, ROI_string, JC_string, verbose, use_threads);
     if(ret2 != 0) {
       cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
-      delete CB_template;
-      delete SP_template;
-      delete ROI_template;
-      delete JC_template;
+      // delete CB_template;
+      // delete SP_template;
+      // delete ROI_template;
+      // delete JC_template;
       return(ret);
     } else {
       cout << s_bam << " processed\n";
     }
 	}
 
-  delete CB_template;
-  delete SP_template;
-  delete ROI_template;
-  delete JC_template;
+  // delete CB_template;
+  // delete SP_template;
+  // delete ROI_template;
+  // delete JC_template;
   return(0);
 }
 

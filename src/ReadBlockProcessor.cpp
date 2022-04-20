@@ -24,6 +24,27 @@ SOFTWARE.  */
 
 #include "ReadBlockProcessor.h"
 
+// Constructors from strings:
+
+JunctionCount::JunctionCount(std::string &refString) {
+  std::istringstream inJuncCount;
+  inJuncCount.str(refString);
+  loadRef(inJuncCount);
+}
+
+SpansPoint::SpansPoint(std::string &refString) {
+  setSpanLength(5,4);
+  std::istringstream inSpansPoint;
+  inSpansPoint.str(refString);
+  loadRef(inSpansPoint);
+}
+
+FragmentsInROI::FragmentsInROI(std::string &refString) {
+  std::istringstream inFragmentsInROI;
+  inFragmentsInROI.str(refString);
+  loadRef(inFragmentsInROI);
+}
+
 //chrName_junc_count holds the data structure -- ChrName(string) -> Junc Start/End -> count.
 //chrID_junc_count holds the ChrID -> ...
 //  where the ChrID is the ChrID relating to the appropriate ChrName, as understood by the currently processed BAM file.

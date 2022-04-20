@@ -56,6 +56,7 @@ class JunctionCount : public ReadBlockProcessor {
 		std::vector<std::map<unsigned int,unsigned int[2]>*> chrID_juncRight_count;
 		  //chrID_... stores a fast access pointer to the appropriate structure in chrName_... 
 	public:
+    JunctionCount(std::string &refString);
 		void Combine(const JunctionCount &child);
 		void ProcessBlocks(const FragmentBlocks &fragblock);
 		void ChrMapUpdate(const std::vector<chr_entry> &chrmap);
@@ -88,6 +89,7 @@ class SpansPoint : public ReadBlockProcessor {
 		char overhangTotal;
 		//chrID_... stores a fast access pointer to the appropriate structure in chrName_... 
 	public:
+    SpansPoint(std::string &refString);
 		void Combine(const SpansPoint &child);
 		void setSpanLength(unsigned int overhang_left, unsigned int overhang_right);
 		void loadRef(std::istringstream &IN);
@@ -128,6 +130,7 @@ class FragmentsInROI : public ReadBlockProcessor {
 		//   if pre-sorted, it may be easier to check for no overlapping blocks on read .. or can do this immediately after read with a single nested-walk.
 		std::map<string, std::vector<string>> chrName_ROI_text;
 	public:
+    FragmentsInROI(std::string &refString);
 		void Combine(const FragmentsInROI &child);
 		void ProcessBlocks(const FragmentBlocks &blocks);
 		void ChrMapUpdate(const std::vector<chr_entry> &chrmap);

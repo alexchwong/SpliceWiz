@@ -92,11 +92,17 @@
 #'   See details.
 #' @param BlacklistRef A BED file of regions to be otherwise excluded from IR
 #'   analysis. If omitted, a blacklist is not used (this is the default).
-#' @param UseExtendedTranscripts (default `TRUE`) Should non-protein-coding
+#' @param useExtendedTranscripts (default `TRUE`) Should non-protein-coding
 #'   transcripts such as anti-sense and lincRNA transcripts be included in
 #'   searching for IR / AS events? Setting `FALSE` (vanilla IRFinder) will
 #'   exclude transcripts other than `protein_coding` and
 #'   `processed_transcript` transcripts from IR analysis.
+#' @param lowMemoryMode (default `TRUE`) By default, SpliceWiz converts FASTA
+#'   files to TwoBit, then uses the TwoBit file to fetch genome sequences. In
+#'   most cases, this method uses less memory and is faster, but can be very
+#'   slow on some systems. Set this option to `FALSE` (which will convert the
+#'   TwoBit file back to FASTA) if you experience
+#'   very slow genome fetching (e.g. when annotating splice motifs).
 #' @param n_threads The number of threads used to generate the STAR reference
 #'   and mappability calculations. Multi-threading is not used for SpliceWiz
 #'   reference generation (but multiple cores are utilised in data-table
@@ -293,10 +299,12 @@ getResources <- function(
 #' @export
 buildRef <- function(
         reference_path = "./Reference",
-        fasta = "", gtf = "", overwrite = FALSE, force_download = FALSE,
+        fasta = "", gtf = "", 
+        overwrite = FALSE, force_download = FALSE,
         chromosome_aliases = NULL, genome_type = "",
         nonPolyARef = "", MappabilityRef = "", BlacklistRef = "",
-        UseExtendedTranscripts = TRUE
+        useExtendedTranscripts = TRUE, lowMemoryMode = TRUE
+        
     ) {
     .validate_path(reference_path)
     if (!overwrite && 
@@ -316,7 +324,7 @@ buildRef <- function(
         reference_path = reference_path,
         fasta = fasta, gtf = gtf, verbose = TRUE,
         overwrite = overwrite, force_download = force_download,
-        pseudo_fetch = FALSE)
+        pseudo_fetch = lowMemoryMode)
 
     dash_progress("Processing gtf file", N_steps)
     reference_data$gtf_gr <- .validate_gtf_chromosomes(
@@ -330,7 +338,7 @@ buildRef <- function(
     dash_progress("Processing introns", N_steps)
     chromosomes <- .convert_chromosomes(chromosome_aliases)
     .process_introns(reference_path, reference_data$genome,
-        UseExtendedTranscripts)
+        useExtendedTranscripts)
 
     dash_progress("Generating SpliceWiz Reference", N_steps)
     .gen_irf(reference_path, extra_files, reference_data$genome, chromosomes)
@@ -368,7 +376,7 @@ buildRef <- function(
     settings.list$nonPolyARef <- nonPolyARef
     settings.list$MappabilityRef <- MappabilityRef
     settings.list$BlacklistRef <- BlacklistRef
-    settings.list$UseExtendedTranscripts <- UseExtendedTranscripts
+    settings.list$useExtendedTranscripts <- useExtendedTranscripts
     settings.list$BuildVersion <- buildref_version
 
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
@@ -387,7 +395,7 @@ buildFullRef <- function(
         use_STAR_mappability = FALSE,
         nonPolyARef = getNonPolyARef(genome_type),
         BlacklistRef = "",
-        UseExtendedTranscripts = TRUE,
+        useExtendedTranscripts = TRUE,
         n_threads = 4
 ) {
     if (!overwrite && 
@@ -411,7 +419,7 @@ buildFullRef <- function(
         nonPolyARef = nonPolyARef,
         BlacklistRef = BlacklistRef,
         chromosome_aliases = chromosome_aliases,
-        UseExtendedTranscripts = UseExtendedTranscripts)
+        useExtendedTranscripts = useExtendedTranscripts)
 }
 
 
@@ -1388,12 +1396,12 @@ return(TRUE)
 # Sub
 
 .process_introns <- function(reference_path, genome,
-        UseExtendedTranscripts = TRUE) {
+        useExtendedTranscripts = TRUE) {
     .log("Processing introns...", "message")
 
     message("...data")
     data <- .process_introns_data(reference_path, genome, 
-        UseExtendedTranscripts)
+        useExtendedTranscripts)
     gc()
     data[["candidate.introns"]] <- .process_introns_annotate(
         data[["candidate.introns"]], data[["Transcripts"]], genome,
@@ -1412,7 +1420,7 @@ return(TRUE)
 
 # Import data for intron processing; create list of candidate.introns
 .process_introns_data <- function(reference_path, genome,
-        UseExtendedTranscripts = TRUE) {
+        useExtendedTranscripts = TRUE) {
     Exons <- as.data.table(
         read.fst(file.path(reference_path, "fst", "Exons.fst")),
     )
@@ -1428,7 +1436,7 @@ return(TRUE)
     Exons_group.stranded <- Exons_group[get("strand") != "*"]
     Exons_group.unstranded <- Exons_group[get("strand") == "*"]
 
-    if (UseExtendedTranscripts == FALSE) {
+    if (useExtendedTranscripts == FALSE) {
         candidate.transcripts <- Exons[get("transcript_biotype") %in%
             c("processed_transcript", "protein_coding")]
     } else {

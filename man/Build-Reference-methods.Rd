@@ -27,7 +27,8 @@ buildRef(
   nonPolyARef = "",
   MappabilityRef = "",
   BlacklistRef = "",
-  UseExtendedTranscripts = TRUE
+  useExtendedTranscripts = TRUE,
+  lowMemoryMode = TRUE
 )
 
 buildFullRef(
@@ -41,7 +42,7 @@ buildFullRef(
   use_STAR_mappability = FALSE,
   nonPolyARef = getNonPolyARef(genome_type),
   BlacklistRef = "",
-  UseExtendedTranscripts = TRUE,
+  useExtendedTranscripts = TRUE,
   n_threads = 4
 )
 
@@ -104,11 +105,18 @@ See details.}
 \item{BlacklistRef}{A BED file of regions to be otherwise excluded from IR
 analysis. If omitted, a blacklist is not used (this is the default).}
 
-\item{UseExtendedTranscripts}{(default \code{TRUE}) Should non-protein-coding
+\item{useExtendedTranscripts}{(default \code{TRUE}) Should non-protein-coding
 transcripts such as anti-sense and lincRNA transcripts be included in
 searching for IR / AS events? Setting \code{FALSE} (vanilla IRFinder) will
 exclude transcripts other than \code{protein_coding} and
 \code{processed_transcript} transcripts from IR analysis.}
+
+\item{lowMemoryMode}{(default \code{TRUE}) By default, SpliceWiz converts FASTA
+files to TwoBit, then uses the TwoBit file to fetch genome sequences. In
+most cases, this method uses less memory and is faster, but can be very
+slow on some systems. Set this option to \code{FALSE} (which will convert the
+TwoBit file back to FASTA) if you experience
+very slow genome fetching (e.g. when annotating splice motifs).}
 
 \item{use_STAR_mappability}{(default FALSE) In \code{buildFullRef()},
 whether to run \link{STAR_mappability} to calculate low-mappability regions.

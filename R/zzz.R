@@ -1,4 +1,4 @@
-.onLoad <- function(libname, pkgname) {
+.onAttach <- function(libname, pkgname) {
 	SW_threads <- setSWthreads(0)
 	packageStartupMessage("SpliceWiz package loaded with ", SW_threads, 
         " threads")

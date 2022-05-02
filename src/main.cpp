@@ -931,6 +931,7 @@ int SpliceWizCore(std::string const &bam_file,
   // Combine BB's and process spares
     for(unsigned int i = 1; i < n_threads_to_use; i++) {
       BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0)->processStats(*BBchild.at(i));
       delete BBchild.at(i);
     }
   // Combine objects:
@@ -1390,6 +1391,7 @@ int c_GenerateMappabilityRegions(
   // Combine BB's and process spares
     for(unsigned int i = 1; i < n_threads_to_use; i++) {
       BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0)->processStats(*BBchild.at(i));
       delete BBchild.at(i);
     }
   // Combine objects:
@@ -1507,6 +1509,7 @@ int c_BAM2COV(
   // Combine BB's and process spares
     for(unsigned int i = 1; i < n_threads_to_use; i++) {
       BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0)->processStats(*BBchild.at(i));
       delete BBchild.at(i);
     }
   // Combine objects:

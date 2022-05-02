@@ -48,9 +48,9 @@
 #'   'splice abundance' in IR quantification.
 #'  Valid options are `SpliceOver` and `SpliceMax`.
 #'  See details
-#' @param samples_per_block (default `16`) How many samples to process per
-#'    thread, maximum. Setting this to a lower value may help in
-#'    memory-constrained systems.
+#' @param lowMemoryMode (default `TRUE`) `collateData()` will perform
+#'   optimizations to conserve memory if this is set to `TRUE`. Otherwise,
+#'   will prioritise performance.
 #' @param n_threads (default `1`) The number of threads to use. On low
 #'   memory systems, reduce the number of `n_threads` and `samples_per_block`
 #' @param overwrite (default `FALSE`) If `collateData()` has previously been run
@@ -88,7 +88,8 @@
 collateData <- function(Experiment, reference_path, output_path,
         IRMode = c("SpliceOver", "SpliceMax"),
         overwrite = FALSE, n_threads = 1,
-        samples_per_block = 16
+		lowMemoryMode = TRUE
+        # samples_per_block = 16
 ) {
     IRMode <- match.arg(IRMode)
     if (IRMode == "")
@@ -114,6 +115,8 @@ collateData <- function(Experiment, reference_path, output_path,
             return()
         }
     }
+	samples_per_block <- 4
+	if(lowMemoryMode) samples_per_block <- 16
     jobs <- .collateData_jobs(nrow(df.internal), BPPARAM_mod, samples_per_block)
 
     dash_progress("Compiling Sample Stats", N_steps)
@@ -147,22 +150,29 @@ collateData <- function(Experiment, reference_path, output_path,
     .log("Generating NxtSE assays", "message")
 
     # Use 1 sample per job, with progress BPPARAM
-    jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
-        nrow(df.internal))
-    BPPARAM_mod_progress <- .validate_threads(n_threads, progressbar = TRUE,
-        tasks = nrow(df.internal))
-    agg.list <- BiocParallel::bplapply(
-        seq_len(nrow(df.internal)),
-        .collateData_compile_agglist,
+    jobs_2 <- .split_vector(seq_len(nrow(df.internal)), 1)
+		
+    # BPPARAM_mod_progress <- .validate_threads(n_threads, progressbar = TRUE,
+        # tasks = nrow(df.internal))
+    # agg.list <- BiocParallel::bplapply(
+        # seq_len(nrow(df.internal)),
+        # .collateData_compile_agglist,
+        # jobs = jobs_2, df.internal = df.internal,
+        # norm_output_path = norm_output_path, IRMode = IRMode,
+        # BPPARAM = BPPARAM_mod_progress
+    # )
+	agg.list <- .collateData_compile_agglist(1,
         jobs = jobs_2, df.internal = df.internal,
         norm_output_path = norm_output_path, IRMode = IRMode,
-        BPPARAM = BPPARAM_mod_progress
+		useProgressBar = TRUE
     )
     gc()
 
     dash_progress("Building Final SummarizedExperiment Object", N_steps)
     message("Building Final SummarizedExperiment Object")
 
+	samples_per_block <- 64
+	if(lowMemoryMode) samples_per_block <- 16
     assays <- .collateData_compile_assays_from_fst(df.internal,
         norm_output_path, samples_per_block)
 
@@ -533,10 +543,13 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Annotate processBAM introns and junctions according to given reference
 .collateData_annotate <- function(reference_path, norm_output_path,
-        junc.common, sw.common, stranded) {
+        junc.common, sw.common, stranded,
+		lowMemoryMode = TRUE
+) {
 
     message("...annotating splice junctions")
-    junc.common <- .collateData_junc_annotate(junc.common, reference_path)
+    junc.common <- .collateData_junc_annotate(junc.common, reference_path,
+		lowMemoryMode)
     message("...grouping splice junctions")
     junc.common <- .collateData_junc_group(junc.common, reference_path)
 
@@ -570,7 +583,10 @@ collateData <- function(Experiment, reference_path, output_path,
 ################################################################################
 
 # Annotate junction splice motifs
-.collateData_junc_annotate <- function(junc.common, reference_path) {
+.collateData_junc_annotate <- function(
+		junc.common, reference_path,
+		lowMemoryMode = TRUE
+) {
     junc.strand <- read.fst(
         path = file.path(reference_path, "fst", "junctions.fst"),
         columns = c("seqnames", "start", "end", "strand", "splice_motif"),
@@ -596,17 +612,23 @@ collateData <- function(Experiment, reference_path, output_path,
     # Determine strandedness based on splice junction motif
     if (nrow(junc.common.unanno) != 0) {
 
-        genome <- Get_Genome(reference_path, as_DNAStringSet = TRUE)
-
+        genome <- Get_Genome(reference_path, as_DNAStringSet = !lowMemoryMode)
+		seqinfo <- as.data.frame(seqinfo(genome))
+		
+		# Test 2bit inefficiency
+		genome <- .check_2bit_performance(reference_path, genome)	
+		
         # Filter unanno by available sequences
-        junc.common.unanno <- junc.common.unanno[seqnames %in% names(genome)]
+        junc.common.unanno <- junc.common.unanno[
+			seqnames %in% rownames(seqinfo)]
         
         # sanity check: remove unannotated junctions that lie outside genome
-        junc.common.unanno.gr <- makeGRangesFromDataFrame(junc.common.unanno)
-        seqinfo <- as.data.frame(seqinfo(genome))
-        seqinfo.gr <- GRanges(rownames(seqinfo), IRanges(1, seqinfo$seqlengths), "*")
+        junc.common.unanno.gr <- .grDT(junc.common.unanno)
+        seqinfo.gr <- as(seqinfo(genome), "GenomicRanges")
+
         OL <- findOverlaps(junc.common.unanno.gr, seqinfo.gr, type = "within")
-        junc.common.unanno <- junc.common.unanno[unique(from(OL)), which = FALSE]
+        junc.common.unanno <- junc.common.unanno[
+			unique(from(OL)), which = FALSE]
 
         # Create left and right motif GRanges
         left.gr <- with(junc.common.unanno,
@@ -961,7 +983,8 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Collates data from junction counts and processBAM coverage
 .collateData_compile_agglist <- function(x, jobs, df.internal,
-        norm_output_path, IRMode) {
+        norm_output_path, IRMode,
+		useProgressBar = TRUE) {
 
     # Load dataframe headers (left-most columns containing annotations)
     rowEvent <- as.data.table(read.fst(
@@ -979,6 +1002,11 @@ collateData <- function(Experiment, reference_path, output_path,
     block <- df.internal[work]
     templates <- .collateData_seed_init(rowEvent, junc_PSI) # list of DT
 
+	pb <- NULL
+	if(useProgressBar) 
+		pb <- progress_bar$new(
+			format = " generating arrays [:bar] :percent eta: :eta",
+			total = length(work), clear = FALSE, width= 100)
     for (i in seq_len(length(work))) {
         junc <- .collateData_process_junc(
             block$sample[i], block$strand[i],
@@ -994,7 +1022,7 @@ collateData <- function(Experiment, reference_path, output_path,
         splice <- .collateData_process_splice_depth(
             splice, sw)
 
-        .collateData_process_assays_as_fst(.copy_DT(templates),
+        .collateData_process_assays_as_fst(templates,
             block$sample[i], junc, sw, splice, IRMode, norm_output_path)
 
         # remove temp files - raw extracted junc / SW output from processBAM
@@ -1002,6 +1030,7 @@ collateData <- function(Experiment, reference_path, output_path,
             paste(block$sample[i], "junc.fst.tmp", sep = ".")))
         file.remove(file.path(norm_output_path, "temp",
             paste(block$sample[i], "sw.fst.tmp", sep = ".")))
+		pb$tick()
     } # end FOR loop
     return(NULL)
 }
@@ -1305,14 +1334,15 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Compiles all the data as assays, write as temp FST files
 # - This acts as "on-disk memory" to avoid using too much memory
-.collateData_process_assays_as_fst <- function(templates,
+.collateData_process_assays_as_fst <- function(templates_orig,
         sample, junc, sw, splice, IRMode, norm_output_path) {
 
     assay.todo <- c("Included", "Excluded", "Depth", "Coverage", "minDepth")
     inc.todo <- c("Up_Inc", "Down_Inc")
     exc.todo <- c("Up_Exc", "Down_Exc")
     junc.todo <- c("junc_PSI", "junc_counts")
-
+	templates <- .copy_DT(templates_orig)
+	
     # Included / Excluded counts for IR and splicing
     templates$assay[, c("Included") := c(
         sw$IntronDepth,
@@ -1520,9 +1550,12 @@ collateData <- function(Experiment, reference_path, output_path,
         matrices[[stuff]] <- list()
     }
     buf_i <- 0 # Counts the number of in-memory samples
-    pb <- txtProgressBar(max = nrow(df.internal), style = 3)
+	
+	pb <- progress_bar$new(
+		format = " finalising H5 database [:bar] :percent eta: :eta",
+		total = nrow(df.internal), clear = FALSE, width= 100)
     for (i in seq_len(nrow(df.internal))) {
-        setTxtProgressBar(pb, i)
+								
         sample <- df.internal$sample[i]
         buf_i <- buf_i + 1
 
@@ -1559,9 +1592,10 @@ collateData <- function(Experiment, reference_path, output_path,
             buf_i <- 0
             gc()
         }
+		pb$tick()
     }
-    setTxtProgressBar(pb, i)
-    close(pb)
+							
+			 
 }
 
 ################################################################################

@@ -39,6 +39,7 @@ Imports:
 	GenomicRanges,
 	HDF5Array,
 	IRanges,
+	progress,
 	plotly,
 	R.utils,
 	rhdf5,
@@ -69,6 +70,7 @@ LinkingTo:
 SystemRequirements: C++11
 Collate: AllImports.R
 	RcppExports.R
+	zzz.R
 	AllClasses.R
 	AllGenerics.R
 	ASEFilter-methods.R

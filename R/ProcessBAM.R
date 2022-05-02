@@ -278,7 +278,7 @@ processBAM <- function(
         # Simple FOR loop:
         for (i in seq_len(length(s_bam))) {
             .BAM2COV_run_single(s_bam[i], output_file_prefixes[i],
-                n_threads, verbose = verbose)
+                n_threads, verbose, overwrite)
         }
     } else {
         # Use BiocParallel
@@ -294,7 +294,7 @@ processBAM <- function(
             )
             BiocParallel::bplapply(selected_rows_subset,
                 function(i, s_bam, output_files, verbose, overwrite) {
-                    .BAM2COV_run_single(s_bam[i], output_files[i],
+                    .BAM2COV_run_single(s_bam[i], output_files[i], 1,
                         verbose, overwrite)
                 },
                 s_bam = s_bam,
@@ -338,12 +338,12 @@ processBAM <- function(
 
 # Call C++/BAM2COV on a single sample. Used for BiocParallel
 .BAM2COV_run_single <- function(
-    bam, out, verbose, overwrite
+    bam, out, n_threads, verbose, overwrite
 ) {
     file_cov <- paste0(out, ".cov")
     bam_short <- file.path(basename(dirname(bam)), basename(bam))
     if (overwrite || !(file.exists(file_cov))) {
-        ret <- c_BAM2COV(bam, file_cov, verbose, 1)
+        ret <- c_BAM2COV(bam, file_cov, verbose, n_threads)
         # Check BAM2COV returns all files successfully
         if (ret != 0) {
             .log(paste(

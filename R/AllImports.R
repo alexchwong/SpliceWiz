@@ -10,7 +10,7 @@
 #' @importFrom R.utils gzip
 #' @importFrom Rcpp evalCpp
 #' @import data.table
-#' @importFrom fst read.fst write.fst
+#' @importFrom fst read.fst write.fst threads_fst
 #' @import ggplot2
 #' @importFrom AnnotationHub AnnotationHub cache
 #' @importFrom BiocFileCache BiocFileCache bfcrpath bfcquery
@@ -33,6 +33,7 @@
 #' @importFrom GenomicRanges strand<- seqnames<-
 #' @importFrom HDF5Array HDF5Array writeHDF5Array h5writeDimnames 
 #' @importFrom IRanges IRanges Views RleList
+#' @importFrom progress progress_bar
 #' @importFrom plotly config layout plotlyOutput event_data ggplotly 
 #' @importFrom plotly plotlyProxy plotlyProxyInvoke renderPlotly subplot 
 #' @importFrom plotly highlight orca

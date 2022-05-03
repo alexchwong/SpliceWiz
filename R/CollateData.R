@@ -159,7 +159,7 @@ collateData <- function(Experiment, reference_path, output_path,
     } else {
         n_threads_collate_assays <- ceiling(min(
             nrow(df.internal) / samples_per_block, n_threads
-        )
+        ))
         jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
             n_threads_collate_assays)
         BPPARAM_mod_progress <- .validate_threads(

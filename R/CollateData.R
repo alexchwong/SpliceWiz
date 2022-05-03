@@ -161,10 +161,9 @@ collateData <- function(Experiment, reference_path, output_path,
             nrow(df.internal) / samples_per_block, n_threads
         ))
         jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
-            n_threads_collate_assays)
+            nrow(df.internal))
         BPPARAM_mod_progress <- .validate_threads(
-            n_threads_collate_assays, 
-            progressbar = TRUE,
+            n_threads_collate_assays, progressbar = TRUE,
             tasks = nrow(df.internal))
         agg.list <- BiocParallel::bplapply(
             seq_len(nrow(df.internal)),

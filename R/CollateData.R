@@ -149,23 +149,32 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Generating NxtSE assays", N_steps)
     .log("Generating NxtSE assays", "message")
 
-    # Use 1 sample per job, with progress BPPARAM
-    jobs_2 <- .split_vector(seq_len(nrow(df.internal)), 1)
-		
-    # BPPARAM_mod_progress <- .validate_threads(n_threads, progressbar = TRUE,
-        # tasks = nrow(df.internal))
-    # agg.list <- BiocParallel::bplapply(
-        # seq_len(nrow(df.internal)),
-        # .collateData_compile_agglist,
-        # jobs = jobs_2, df.internal = df.internal,
-        # norm_output_path = norm_output_path, IRMode = IRMode,
-        # BPPARAM = BPPARAM_mod_progress
-    # )
-	agg.list <- .collateData_compile_agglist(1,
-        jobs = jobs_2, df.internal = df.internal,
-        norm_output_path = norm_output_path, IRMode = IRMode,
-		useProgressBar = TRUE
-    )
+    if(lowMemoryMode) {
+        jobs_2 <- .split_vector(seq_len(nrow(df.internal)), 1)
+        agg.list <- .collateData_compile_agglist(1,
+            jobs = jobs_2, df.internal = df.internal,
+            norm_output_path = norm_output_path, IRMode = IRMode,
+            useProgressBar = TRUE
+        )
+    } else {
+        n_threads_collate_assays <- ceiling(
+            min(nrow(df.internal) / samples_per_block),
+            n_threads
+        )
+        jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
+            n_threads_collate_assays)
+        BPPARAM_mod_progress <- .validate_threads(
+            n_threads_collate_assays, 
+            progressbar = TRUE,
+            tasks = nrow(df.internal))
+        agg.list <- BiocParallel::bplapply(
+            seq_len(nrow(df.internal)),
+            .collateData_compile_agglist,
+            jobs = jobs_2, df.internal = df.internal,
+            norm_output_path = norm_output_path, IRMode = IRMode,
+            BPPARAM = BPPARAM_mod_progress
+        )
+    }
     gc()
 
     dash_progress("Building Final SummarizedExperiment Object", N_steps)

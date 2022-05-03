@@ -41,6 +41,9 @@
 #'   saved to `"main.FC.Rds` in the `output_path` directory as a list object.
 #' @param verbose (default `FALSE`) Set to `TRUE` to allow `processBAM()` to 
 #'   output progress bars and messages
+#' @param multiRead (default `FALSE`) Whether to use multiple threads to read
+#'   files. Set to `TRUE` to use multiple threads (improves performance if
+#'   files are already cached into memory.
 #' @return `processBAM()` output will be saved to `output_path`. Output files 
 #'   will be named using the given sample names.
 #'   * sample.txt.gz: The main output file containing the quantitation
@@ -93,7 +96,8 @@ BAM2COV <- function(
         output_path = "./cov_folder",
         n_threads = 1, Use_OpenMP = TRUE,
         overwrite = FALSE,
-        verbose = FALSE
+        verbose = FALSE,
+        multiRead = FALSE
 ) {
     # Check args
     if (length(bamfiles) != length(sample_names)) 
@@ -128,7 +132,7 @@ BAM2COV <- function(
             output_file_prefixes = s_output[!already_exist],
             max_threads = n_threads, Use_OpenMP = Use_OpenMP,
             overwrite = overwrite,
-            verbose = verbose
+            verbose = verbose, multiRead = multiRead
         )
     } else {
         .log("BAM2COV has already been run on given BAM files", "message")
@@ -151,7 +155,8 @@ processBAM <- function(
         n_threads = 1, Use_OpenMP = TRUE,
         overwrite = FALSE,
         run_featureCounts = FALSE,
-        verbose = FALSE
+        verbose = FALSE,
+        multiRead = FALSE
 ) {
     # Check args
     if (length(bamfiles) != length(sample_names)) .log(paste("In processBAM(),",
@@ -187,7 +192,7 @@ processBAM <- function(
             output_files = s_output[!already_exist],
             max_threads = n_threads, Use_OpenMP = Use_OpenMP,
             overwrite_SpliceWiz_Output = overwrite,
-            verbose = verbose
+            verbose = verbose, multiRead = multiRead
         )
     } else {
         .log("processBAM has already been run on given BAM files", "message")
@@ -215,7 +220,7 @@ processBAM <- function(
         max_threads = max(parallel::detectCores(), 1),
         Use_OpenMP = TRUE,
         overwrite_SpliceWiz_Output = FALSE,
-        verbose = TRUE
+        verbose = TRUE, multiRead = FALSE
     ) {
     .validate_reference(reference_path) # Check valid SpliceWiz reference
     s_bam <- normalizePath(bamfiles) # Clean path name for C++
@@ -228,7 +233,7 @@ processBAM <- function(
     .log("Running SpliceWiz processBAM", "message")
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & Use_OpenMP) {
-        SpliceWizMain_multi(ref_file, s_bam, output_files, n_threads, verbose)
+        SpliceWizMain_multi(ref_file, s_bam, output_files, n_threads, verbose, multiRead)
     } else {
         # Use BiocParallel
         n_rounds <- ceiling(length(s_bam) / floor(max_threads))
@@ -266,7 +271,8 @@ processBAM <- function(
         max_threads = max(parallel::detectCores(), 1),
         Use_OpenMP = TRUE,
         overwrite = FALSE,
-        verbose = TRUE
+        verbose = TRUE,
+        multiRead = FALSE
     ) {
     s_bam <- normalizePath(bamfiles) # Clean path name for C++
     # Check args
@@ -278,7 +284,7 @@ processBAM <- function(
         # Simple FOR loop:
         for (i in seq_len(length(s_bam))) {
             .BAM2COV_run_single(s_bam[i], output_file_prefixes[i],
-                n_threads, verbose, overwrite)
+                n_threads, verbose, overwrite, multiRead)
         }
     } else {
         # Use BiocParallel
@@ -338,12 +344,12 @@ processBAM <- function(
 
 # Call C++/BAM2COV on a single sample. Used for BiocParallel
 .BAM2COV_run_single <- function(
-    bam, out, n_threads, verbose, overwrite
+    bam, out, n_threads, verbose, overwrite, multiRead = FALSE
 ) {
     file_cov <- paste0(out, ".cov")
     bam_short <- file.path(basename(dirname(bam)), basename(bam))
     if (overwrite || !(file.exists(file_cov))) {
-        ret <- c_BAM2COV(bam, file_cov, verbose, n_threads)
+        ret <- c_BAM2COV(bam, file_cov, verbose, n_threads, multiRead)
         # Check BAM2COV returns all files successfully
         if (ret != 0) {
             .log(paste(

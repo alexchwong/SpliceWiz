@@ -781,7 +781,8 @@ int SpliceWizCore(std::string const &bam_file,
     std::string &ROI_string,
     std::string &JC_string,
     bool const verbose,
-    int n_threads
+    int n_threads,
+    bool const multithreadedRead
 ) {
   unsigned int n_threads_to_use = (unsigned int)n_threads;   // Should be sorted out in calling function
  
@@ -792,7 +793,7 @@ int SpliceWizCore(std::string const &bam_file,
  
 	if(verbose) cout << "Processing BAM file " << bam_file << "\n";
   
-  pbam_in inbam((size_t)5e8, (size_t)1e9, 5);
+  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multithreadedRead);
 
   inbam.openFile(bam_file, n_threads_to_use);
   
@@ -1055,7 +1056,7 @@ int SpliceWizCore(std::string const &bam_file,
 // [[Rcpp::export]]
 int SpliceWizMain(
     std::string bam_file, std::string reference_file, std::string output_file,
-    bool verbose, int n_threads
+    bool verbose, int n_threads, bool multiRead
 ) {
   
   std::string s_output_txt = output_file + ".txt.gz";
@@ -1117,7 +1118,7 @@ int SpliceWizMain(
   // main:
   ret = SpliceWizCore(s_bam, s_output_txt, s_output_cov,
     ref_names, ref_alias, ref_lengths,
-    CB_string, SP_string, ROI_string, JC_string, verbose, use_threads);
+    CB_string, SP_string, ROI_string, JC_string, verbose, use_threads, multiRead);
     
   if(ret == -2) cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
   if(ret == -1) cout << "Error encountered processing " << s_bam << '\n';
@@ -1129,7 +1130,7 @@ int SpliceWizMain(
 // [[Rcpp::export]]
 int SpliceWizMain_multi(
     std::string reference_file, StringVector bam_files, StringVector output_files,
-    int max_threads, bool verbose
+    int max_threads, bool verbose, bool multiRead
 ){
 	
 	int use_threads = Set_Threads(max_threads);
@@ -1179,7 +1180,7 @@ int SpliceWizMain_multi(
     auto check = start;
     int ret2 = SpliceWizCore(s_bam, s_output_txt, s_output_cov,
       ref_names, ref_alias, ref_lengths,
-      CB_string, SP_string, ROI_string, JC_string, verbose, use_threads);
+      CB_string, SP_string, ROI_string, JC_string, verbose, use_threads, multiRead);
     if(ret2 == -2) {
       cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
       // delete CB_template;
@@ -1448,7 +1449,7 @@ int c_GenerateMappabilityRegions(
 // [[Rcpp::export]]
 int c_BAM2COV(
     std::string bam_file, std::string output_file, 
-    bool verbose, int n_threads
+    bool verbose, int n_threads, bool multiRead
 ){
   
 #else
@@ -1471,7 +1472,7 @@ int c_BAM2COV(
   std::string myLine;
 	if(verbose) cout << "Creating COV file from " << bam_file << "\n";
 
-  pbam_in inbam((size_t)5e8, (size_t)1e9, 5);
+  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multiRead);
   inbam.openFile(bam_file, n_threads_to_use);
 
   // Assign children:

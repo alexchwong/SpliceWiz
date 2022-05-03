@@ -12,7 +12,8 @@ BAM2COV(
   n_threads = 1,
   Use_OpenMP = TRUE,
   overwrite = FALSE,
-  verbose = FALSE
+  verbose = FALSE,
+  multiRead = FALSE
 )
 
 processBAM(
@@ -24,7 +25,8 @@ processBAM(
   Use_OpenMP = TRUE,
   overwrite = FALSE,
   run_featureCounts = FALSE,
-  verbose = FALSE
+  verbose = FALSE,
+  multiRead = FALSE
 )
 }
 \arguments{
@@ -46,6 +48,10 @@ overwrite gene counts of previous run unless \code{overwrite} is \code{TRUE}.}
 
 \item{verbose}{(default \code{FALSE}) Set to \code{TRUE} to allow \code{processBAM()} to
 output progress bars and messages}
+
+\item{multiRead}{(default \code{FALSE}) Whether to use multiple threads to read
+files. Set to \code{TRUE} to use multiple threads (improves performance if
+files are already cached into memory.}
 
 \item{reference_path}{The directory containing the SpliceWiz reference}
 

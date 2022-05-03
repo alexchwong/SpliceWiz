@@ -104,8 +104,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // SpliceWizMain
-int SpliceWizMain(std::string bam_file, std::string reference_file, std::string output_file, bool verbose, int n_threads);
-RcppExport SEXP _SpliceWiz_SpliceWizMain(SEXP bam_fileSEXP, SEXP reference_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP) {
+int SpliceWizMain(std::string bam_file, std::string reference_file, std::string output_file, bool verbose, int n_threads, bool multiRead);
+RcppExport SEXP _SpliceWiz_SpliceWizMain(SEXP bam_fileSEXP, SEXP reference_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP multiReadSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -114,13 +114,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(SpliceWizMain(bam_file, reference_file, output_file, verbose, n_threads));
+    Rcpp::traits::input_parameter< bool >::type multiRead(multiReadSEXP);
+    rcpp_result_gen = Rcpp::wrap(SpliceWizMain(bam_file, reference_file, output_file, verbose, n_threads, multiRead));
     return rcpp_result_gen;
 END_RCPP
 }
 // SpliceWizMain_multi
-int SpliceWizMain_multi(std::string reference_file, StringVector bam_files, StringVector output_files, int max_threads, bool verbose);
-RcppExport SEXP _SpliceWiz_SpliceWizMain_multi(SEXP reference_fileSEXP, SEXP bam_filesSEXP, SEXP output_filesSEXP, SEXP max_threadsSEXP, SEXP verboseSEXP) {
+int SpliceWizMain_multi(std::string reference_file, StringVector bam_files, StringVector output_files, int max_threads, bool verbose, bool multiRead);
+RcppExport SEXP _SpliceWiz_SpliceWizMain_multi(SEXP reference_fileSEXP, SEXP bam_filesSEXP, SEXP output_filesSEXP, SEXP max_threadsSEXP, SEXP verboseSEXP, SEXP multiReadSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -129,7 +130,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< StringVector >::type output_files(output_filesSEXP);
     Rcpp::traits::input_parameter< int >::type max_threads(max_threadsSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(SpliceWizMain_multi(reference_file, bam_files, output_files, max_threads, verbose));
+    Rcpp::traits::input_parameter< bool >::type multiRead(multiReadSEXP);
+    rcpp_result_gen = Rcpp::wrap(SpliceWizMain_multi(reference_file, bam_files, output_files, max_threads, verbose, multiRead));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -165,8 +167,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // c_BAM2COV
-int c_BAM2COV(std::string bam_file, std::string output_file, bool verbose, int n_threads);
-RcppExport SEXP _SpliceWiz_c_BAM2COV(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP) {
+int c_BAM2COV(std::string bam_file, std::string output_file, bool verbose, int n_threads, bool multiRead);
+RcppExport SEXP _SpliceWiz_c_BAM2COV(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP multiReadSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -174,7 +176,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(c_BAM2COV(bam_file, output_file, verbose, n_threads));
+    Rcpp::traits::input_parameter< bool >::type multiRead(multiReadSEXP);
+    rcpp_result_gen = Rcpp::wrap(c_BAM2COV(bam_file, output_file, verbose, n_threads, multiRead));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -200,11 +203,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SpliceWiz_c_RLEList_From_Cov", (DL_FUNC) &_SpliceWiz_c_RLEList_From_Cov, 2},
     {"_SpliceWiz_c_gunzip_DF", (DL_FUNC) &_SpliceWiz_c_gunzip_DF, 2},
     {"_SpliceWiz_c_gunzip", (DL_FUNC) &_SpliceWiz_c_gunzip, 2},
-    {"_SpliceWiz_SpliceWizMain", (DL_FUNC) &_SpliceWiz_SpliceWizMain, 5},
-    {"_SpliceWiz_SpliceWizMain_multi", (DL_FUNC) &_SpliceWiz_SpliceWizMain_multi, 5},
+    {"_SpliceWiz_SpliceWizMain", (DL_FUNC) &_SpliceWiz_SpliceWizMain, 6},
+    {"_SpliceWiz_SpliceWizMain_multi", (DL_FUNC) &_SpliceWiz_SpliceWizMain_multi, 6},
     {"_SpliceWiz_c_GenerateMappabilityReads", (DL_FUNC) &_SpliceWiz_c_GenerateMappabilityReads, 5},
     {"_SpliceWiz_c_GenerateMappabilityRegions", (DL_FUNC) &_SpliceWiz_c_GenerateMappabilityRegions, 6},
-    {"_SpliceWiz_c_BAM2COV", (DL_FUNC) &_SpliceWiz_c_BAM2COV, 4},
+    {"_SpliceWiz_c_BAM2COV", (DL_FUNC) &_SpliceWiz_c_BAM2COV, 5},
     {"_SpliceWiz_idxstats_pbam", (DL_FUNC) &_SpliceWiz_idxstats_pbam, 2},
     {NULL, NULL, 0}
 };

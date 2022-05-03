@@ -141,7 +141,7 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Tidying up splice junctions and intron retentions", N_steps)
     .log("Tidying up splice junctions and intron retentions...", "message")
     .collateData_annotate(reference_path, norm_output_path,
-        junc.common, sw.common, stranded)
+        junc.common, sw.common, stranded, lowMemoryMode)
     message("done\n")
     rm(junc.common, sw.common)
     gc()
@@ -611,7 +611,6 @@ collateData <- function(Experiment, reference_path, output_path,
 
     # Determine strandedness based on splice junction motif
     if (nrow(junc.common.unanno) != 0) {
-
         genome <- Get_Genome(reference_path, as_DNAStringSet = !lowMemoryMode)
 		seqinfo <- as.data.frame(seqinfo(genome))
 		
@@ -661,6 +660,10 @@ collateData <- function(Experiment, reference_path, output_path,
             c("splice_motif") := splice_motifs$seqs[match(
                 get("splice_motif"), splice_motifs$seqs_r)]]
         junc.final <- rbindlist(list(junc.common.anno, junc.common.unanno))
+        
+        # Cleanup memory:
+        rm(genome)
+        gc()
     } else {
         junc.final <- junc.common.anno
     }

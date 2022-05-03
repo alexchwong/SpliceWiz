@@ -163,7 +163,9 @@ collateData <- function(Experiment, reference_path, output_path,
         jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
             nrow(df.internal))
         BPPARAM_mod_progress <- .validate_threads(
-            n_threads_collate_assays, progressbar = TRUE,
+            n_threads_collate_assays,
+            useSnowParam = TRUE,
+            progressbar = TRUE,
             tasks = nrow(df.internal))
         agg.list <- BiocParallel::bplapply(
             seq_len(nrow(df.internal)),
@@ -995,6 +997,13 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_compile_agglist <- function(x, jobs, df.internal,
         norm_output_path, IRMode,
 		useProgressBar = TRUE) {
+
+    suppressPackageStartupMessages({
+        requireNamespace("data.table")
+        requireNamespace("fst")
+        requireNamespace("progress")
+        requireNamespace("stats")
+    })
 
     # Load dataframe headers (left-most columns containing annotations)
     rowEvent <- as.data.table(read.fst(

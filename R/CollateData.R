@@ -998,13 +998,6 @@ collateData <- function(Experiment, reference_path, output_path,
         norm_output_path, IRMode,
 		useProgressBar = TRUE) {
 
-    suppressPackageStartupMessages({
-        requireNamespace("data.table")
-        requireNamespace("fst")
-        requireNamespace("progress")
-        requireNamespace("stats")
-    })
-
     # Load dataframe headers (left-most columns containing annotations)
     rowEvent <- as.data.table(read.fst(
         file.path(norm_output_path, "rowEvent.brief.fst")))

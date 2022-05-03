@@ -26,6 +26,7 @@ Imports:
 	data.table,
 	fst,
 	ggplot2,
+	ompBAM
 	AnnotationHub, 
 	BiocFileCache,
 	BiocGenerics,
@@ -60,8 +61,6 @@ Imports:
 Suggests: 
     knitr, rmarkdown, pheatmap, openssl, crayon, egg,
     DESeq2, limma, DoubleExpSeq, Rsubread, testthat (>= 3.0.0)
-Remotes:
-	alexchwong/ompBAM
 LinkingTo: 
     ompBAM,
     Rcpp,

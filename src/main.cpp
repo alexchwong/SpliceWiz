@@ -22,6 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.  */
 
+#include <chrono>
 #include "main.h"
 
 // [[Rcpp::export]]
@@ -775,16 +776,13 @@ int SpliceWizCore(std::string const &bam_file,
     std::vector<std::string> &ref_names, 
     std::vector<std::string> &ref_alias,
     std::vector<uint32_t> &ref_lengths,
-    // CoverageBlocksIRFinder const &CB_template, 
-    // SpansPoint const &SP_template, 
-    // FragmentsInROI const &ROI_template,
-    // JunctionCount const &JC_template,
     std::string &CB_string,
     std::string &SP_string,
     std::string &ROI_string,
     std::string &JC_string,
     bool const verbose,
-    int n_threads
+    int n_threads,
+    bool const multithreadedRead
 ) {
   unsigned int n_threads_to_use = (unsigned int)n_threads;   // Should be sorted out in calling function
  
@@ -793,10 +791,9 @@ int SpliceWizCore(std::string const &bam_file,
     return(-1);
   } 
  
-  std::string myLine;
 	if(verbose) cout << "Processing BAM file " << bam_file << "\n";
   
-  pbam_in inbam((size_t)5e8, (size_t)1e9, 5);
+  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multithreadedRead);
 
   inbam.openFile(bam_file, n_threads_to_use);
   
@@ -904,6 +901,11 @@ int SpliceWizCore(std::string const &bam_file,
     }
     
     if(error_detected) break;
+
+    // combine unpaired reads after each fillReads / processAlls
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+    }
   }
 
 #ifdef SPLICEWIZ
@@ -922,7 +924,11 @@ int SpliceWizCore(std::string const &bam_file,
       delete oFM.at(i);
       delete BBchild.at(i);
     }
-    return(-1);
+    if(error_detected) {
+      return(-1);
+    }
+	// Process aborted; stop processBAM for all requests
+    return(-2);
   }
 
 
@@ -931,6 +937,7 @@ int SpliceWizCore(std::string const &bam_file,
   // Combine BB's and process spares
     for(unsigned int i = 1; i < n_threads_to_use; i++) {
       BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0)->processStats(*BBchild.at(i));
       delete BBchild.at(i);
     }
   // Combine objects:
@@ -956,7 +963,7 @@ int SpliceWizCore(std::string const &bam_file,
   ofCOV.open(s_output_cov, std::ofstream::binary);
   covWriter outCOV;
   outCOV.SetOutputHandle(&ofCOV);
-  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);     
+  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
   ofCOV.close();
 
 // Write output to file:  
@@ -967,19 +974,30 @@ int SpliceWizCore(std::string const &bam_file,
   GZWriter outGZ;                               
   outGZ.SetOutputHandle(&out); // GZ compression
 
-// Write stats here:
-  BBchild.at(0)->WriteOutput(myLine);
-  // If first write failed, then output error and fail early
   int outret = outGZ.writeline("BAM_report\tValue"); 
   if(outret != Z_OK) {
     cout << "Error writing gzip-compressed output file\n";
     out.close();
+    delete oJC.at(0);
+    delete oChr.at(0);
+    delete oSP.at(0);
+    delete oROI.at(0);
+    delete oCB.at(0);
+    delete oFM.at(0);
+    delete BBchild.at(0);
     return(-1);
   }
+
+  // Output stuff here
+
+// Write stats here:
+  std::string myLine;
+  BBchild.at(0)->WriteOutput(myLine);
   outGZ.writestring(myLine); outGZ.writeline("");
 
   int directionality = oJC.at(0)->Directional(myLine);
-  outGZ.writeline("Directionality\tValue"); outGZ.writestring(myLine); outGZ.writeline("");
+  outGZ.writeline("Directionality\tValue"); 
+  outGZ.writestring(myLine); outGZ.writeline("");
 
   // Generate output but save this to strings:
   std::string myLine_ROI;
@@ -1038,7 +1056,7 @@ int SpliceWizCore(std::string const &bam_file,
 // [[Rcpp::export]]
 int SpliceWizMain(
     std::string bam_file, std::string reference_file, std::string output_file,
-    bool verbose, int n_threads
+    bool verbose, int n_threads, bool multiRead
 ) {
   
   std::string s_output_txt = output_file + ".txt.gz";
@@ -1100,14 +1118,11 @@ int SpliceWizMain(
   // main:
   ret = SpliceWizCore(s_bam, s_output_txt, s_output_cov,
     ref_names, ref_alias, ref_lengths,
-    CB_string, SP_string, ROI_string, JC_string, verbose, use_threads);
+    CB_string, SP_string, ROI_string, JC_string, verbose, use_threads, multiRead);
     
-  if(ret != 0) cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
+  if(ret == -2) cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
+  if(ret == -1) cout << "Error encountered processing " << s_bam << '\n';
   
-  // delete CB_template;
-  // delete SP_template;
-  // delete ROI_template;
-  // delete JC_template;
   return(ret);
 }
 
@@ -1115,7 +1130,7 @@ int SpliceWizMain(
 // [[Rcpp::export]]
 int SpliceWizMain_multi(
     std::string reference_file, StringVector bam_files, StringVector output_files,
-    int max_threads, bool verbose
+    int max_threads, bool verbose, bool multiRead
 ){
 	
 	int use_threads = Set_Threads(max_threads);
@@ -1135,10 +1150,6 @@ int SpliceWizMain_multi(
   std::string s_ref = reference_file;
   cout << "Reading reference file\n";
   
-  // CoverageBlocksIRFinder * CB_template = new CoverageBlocksIRFinder;
-  // SpansPoint * SP_template = new SpansPoint;
-  // FragmentsInROI * ROI_template = new FragmentsInROI;
-  // JunctionCount * JC_template = new JunctionCount;
   std::string CB_string;
   std::string SP_string;
   std::string ROI_string;
@@ -1164,26 +1175,28 @@ int SpliceWizMain_multi(
     std::string s_bam = v_bam.at(z);
 		std::string s_output_txt = v_out.at(z) + ".txt.gz";
 		std::string s_output_cov = v_out.at(z) + ".cov";
-    
+
+    auto start = chrono::steady_clock::now();
+    auto check = start;
     int ret2 = SpliceWizCore(s_bam, s_output_txt, s_output_cov,
       ref_names, ref_alias, ref_lengths,
-      CB_string, SP_string, ROI_string, JC_string, verbose, use_threads);
-    if(ret2 != 0) {
+      CB_string, SP_string, ROI_string, JC_string, verbose, use_threads, multiRead);
+    if(ret2 == -2) {
       cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
       // delete CB_template;
       // delete SP_template;
       // delete ROI_template;
       // delete JC_template;
-      return(ret);
+      return(ret2);
+    } else if(ret2 == -1) {
+      cout << "Error encountered processing " << s_bam << "\n";
     } else {
-      cout << s_bam << " processed\n";
+      check = chrono::steady_clock::now();
+      auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
+      cout << s_bam << " processed (" << time_sec << " seconds)\n";
     }
-	}
+  }
 
-  // delete CB_template;
-  // delete SP_template;
-  // delete ROI_template;
-  // delete JC_template;
   return(0);
 }
 
@@ -1370,6 +1383,10 @@ int c_GenerateMappabilityRegions(
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
       BBchild.at(i)->processAll(i, true);
     }
+
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+    }
   }
 
 #ifdef SPLICEWIZ
@@ -1390,6 +1407,7 @@ int c_GenerateMappabilityRegions(
   // Combine BB's and process spares
     for(unsigned int i = 1; i < n_threads_to_use; i++) {
       BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0)->processStats(*BBchild.at(i));
       delete BBchild.at(i);
     }
   // Combine objects:
@@ -1431,7 +1449,7 @@ int c_GenerateMappabilityRegions(
 // [[Rcpp::export]]
 int c_BAM2COV(
     std::string bam_file, std::string output_file, 
-    bool verbose, int n_threads
+    bool verbose, int n_threads, bool multiRead
 ){
   
 #else
@@ -1454,7 +1472,7 @@ int c_BAM2COV(
   std::string myLine;
 	if(verbose) cout << "Creating COV file from " << bam_file << "\n";
 
-  pbam_in inbam((size_t)5e8, (size_t)1e9, 5);
+  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multiRead);
   inbam.openFile(bam_file, n_threads_to_use);
 
   // Assign children:
@@ -1487,6 +1505,10 @@ int c_BAM2COV(
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
       BBchild.at(i)->processAll(i);
     }
+
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+    }
   }
 
 #ifdef SPLICEWIZ
@@ -1507,6 +1529,7 @@ int c_BAM2COV(
   // Combine BB's and process spares
     for(unsigned int i = 1; i < n_threads_to_use; i++) {
       BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0)->processStats(*BBchild.at(i));
       delete BBchild.at(i);
     }
   // Combine objects:

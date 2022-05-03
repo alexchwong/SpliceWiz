@@ -80,6 +80,7 @@ class BAM2blocks {
 
   	int processAll(unsigned int thread_number = 0, bool mappability_mode = false);
   	int processSpares(BAM2blocks& other);
+  	int processStats(BAM2blocks& other);
 
   	int WriteOutput(std::string& output);
 

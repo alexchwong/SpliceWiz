@@ -381,12 +381,13 @@ pbam1_t *  BAM2blocks::SupplyRead(std::string& read_name) {
   read_name = it->first;
   pbam1_t * read = it->second;
   spare_reads->erase(it);
+  cErrorReads -= 1;
   return(read);
 }
 
-// Tries to match reads between other BB and self
-int BAM2blocks::processSpares(BAM2blocks& other) {
-  // Combines two BB's, and processes any matching paired reads
+// Summates statistics from child BB's
+int BAM2blocks::processStats(BAM2blocks& other) {
+															   
   cReadsProcessed += other.cReadsProcessed;
   totalNucleotides += other.totalNucleotides;
     
@@ -399,6 +400,23 @@ int BAM2blocks::processSpares(BAM2blocks& other) {
   cSkippedReads += other.cSkippedReads;
   cChimericReads += other.cChimericReads;
   
+  other.cReadsProcessed = 0;
+  other.totalNucleotides = 0;
+    
+  other.cShortPairs = 0;
+  other.cIntersectPairs = 0;
+  other.cLongPairs = 0;
+  other.cSingleReads = 0;
+  other.cPairedReads = 0;
+  other.cErrorReads = 0;
+  other.cSkippedReads = 0;
+  other.cChimericReads = 0;
+  return(0);
+}
+
+// Tries to match reads between other BB and self
+int BAM2blocks::processSpares(BAM2blocks& other) {
+  // Combines two BB's, and processes any matching paired reads
   pbam1_t * spare_read;
   std::string read_name;
   while(1) {
@@ -424,7 +442,7 @@ int BAM2blocks::processSpares(BAM2blocks& other) {
       delete (it_read->second);
       spare_reads->erase(read_name);
       delete spare_read;
-      cErrorReads-=2;
+      cErrorReads-=1;
     } else {
       spare_reads->insert({read_name, spare_read});
     }
@@ -461,11 +479,12 @@ int BAM2blocks::processAll(unsigned int thread_number, bool mappability_mode) {
   auto check = start;
   while(1) {
     check = chrono::steady_clock::now();
-    if(chrono::duration_cast<chrono::seconds>(check - start).count() > 15) {
+    if(chrono::duration_cast<chrono::seconds>(check - start).count() > 60) {
       cout << "Error: read processing appears very sluggish in thread " << thread_number
         << ". Suggest sort the BAM file by read name and try again\n"
         << "  e.g. use `samtools collate` or `sambamba sort -n`.\n"
         << "Alternatively, try to run NxtIRF/IRFinder using `n_threads = 1`\n";
+      realizeSpareReads();
       return(-1);
     }
     
@@ -517,6 +536,7 @@ int BAM2blocks::processAll(unsigned int thread_number, bool mappability_mode) {
           auto it_read = spare_reads->find(read_name_s);
           
           if(it_read != spare_reads->end()){
+            // Process matched read
             cPairedReads ++;
             if (reads[k].refID() != it_read->second->refID()) {
               cChimericReads += 1;
@@ -531,6 +551,7 @@ int BAM2blocks::processAll(unsigned int thread_number, bool mappability_mode) {
               spare_reads->erase(read_name_s);
             }
           } else {
+            // Bank unmatched read
             store_read = new pbam1_t;
             *(store_read) = reads[k];
             spare_reads->insert({read_name_s, store_read});

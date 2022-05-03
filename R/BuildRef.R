@@ -289,7 +289,7 @@ getResources <- function(
         fasta = fasta, gtf = gtf,
         verbose = TRUE,
         overwrite = overwrite, force_download = force_download,
-        pseudo_fetch = TRUE
+        pseudo_fetch_fasta = TRUE, pseudo_fetch_gtf = TRUE
     )
 }
 
@@ -324,7 +324,7 @@ buildRef <- function(
         reference_path = reference_path,
         fasta = fasta, gtf = gtf, verbose = TRUE,
         overwrite = overwrite, force_download = force_download,
-        pseudo_fetch = lowMemoryMode)
+        pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
 
     dash_progress("Processing gtf file", N_steps)
     reference_data$gtf_gr <- .validate_gtf_chromosomes(
@@ -334,6 +334,10 @@ buildRef <- function(
     extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
     reference_data$gtf_gr <- NULL # To save memory, remove original gtf
     gc()
+
+	# Check here whether fetching from TwoBitFile is problematic
+	reference_data$genome <- .check_2bit_performance(reference_path,
+		reference_data$genome)		
 
     dash_progress("Processing introns", N_steps)
     chromosomes <- .convert_chromosomes(chromosome_aliases)
@@ -656,7 +660,7 @@ return(TRUE)
 
 .get_reference_data <- function(reference_path, fasta, gtf,
         verbose = TRUE, overwrite = FALSE, force_download = FALSE,
-        pseudo_fetch = FALSE
+        pseudo_fetch_fasta = FALSE, pseudo_fetch_gtf = FALSE
 ) {
 
     # Checks fasta or gtf files exist if omitted, or are valid URLs
@@ -687,13 +691,13 @@ return(TRUE)
         reference_path = reference_path,
         fasta = fasta_use, ah_genome = ah_genome_use,
         verbose = verbose, overwrite = overwrite,
-        force_download = force_download, pseudo_fetch = pseudo_fetch
+        force_download = force_download, pseudo_fetch = pseudo_fetch_fasta
     )
 	fetch_gtf_args <- list(
         gtf = gtf_use, ah_transcriptome = ah_gtf_use,
         reference_path = reference_path,
         verbose = verbose, overwrite = overwrite,
-        force_download = force_download, pseudo_fetch = pseudo_fetch
+        force_download = force_download, pseudo_fetch = pseudo_fetch_gtf
     )
 	genome <- gtf_gr <- NULL
 	
@@ -1390,6 +1394,32 @@ return(TRUE)
         ]
     }
     return(tmp.Exons_group)
+}
+
+# Fetch first and last 1000 exon sequences, then evaluates the ratio of times
+#   taken to fetch. A ratio of > 3 is evidence there is position-dependent
+#   loading lag (which is observed on some systems)
+.check_2bit_performance <- function(reference_path, genome) {
+	if(is(genome, "TwoBitFile")) {
+		Exons <- as.data.table(
+			read.fst(file.path(reference_path, "fst", "Exons.fst")),
+		)
+		if(nrow(Exons) > 1000) {
+			gr_start <- .grDT(Exons[seq_len(1000)])
+			gr_end <- .grDT(Exons[seq(nrow(Exons) - 999, nrow(Exons))])
+			bench_start <- system.time(getSeq(genome, gr_start))
+			bench_end <- system.time(getSeq(genome, gr_end))
+			# message("TwoBit fetch benchmark start: ", unname(bench_start[3]), 
+				# ", end: ", unname(bench_end[3]))
+			if(bench_start[3] > 0 && bench_end[3] / bench_start[3] > 3) {
+				.log(paste("SpliceWiz detected inefficient TwoBit retrieval,",
+					" importing genome as DNAStringSet"),
+					"message")
+				return(rtracklayer::import(genome))
+			}
+		}
+	}
+	return(genome)
 }
 
 ################################################################################

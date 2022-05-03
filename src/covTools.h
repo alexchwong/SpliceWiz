@@ -105,8 +105,8 @@ class covReader {
 // Body buffer for CovWriter
 class buffer_out_chunk {
   private:
-    char * buffer;
-    char * compressed_buffer;
+    char * buffer = NULL;
+    char * compressed_buffer = NULL;
     
     // current write position of buffer
     unsigned int buffer_pos = 0;

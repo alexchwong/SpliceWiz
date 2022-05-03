@@ -33,12 +33,12 @@ c_gunzip <- function(s_in, s_out) {
     .Call(`_SpliceWiz_c_gunzip`, s_in, s_out)
 }
 
-SpliceWizMain <- function(bam_file, reference_file, output_file, verbose, n_threads) {
-    .Call(`_SpliceWiz_SpliceWizMain`, bam_file, reference_file, output_file, verbose, n_threads)
+SpliceWizMain <- function(bam_file, reference_file, output_file, verbose, n_threads, multiRead) {
+    .Call(`_SpliceWiz_SpliceWizMain`, bam_file, reference_file, output_file, verbose, n_threads, multiRead)
 }
 
-SpliceWizMain_multi <- function(reference_file, bam_files, output_files, max_threads, verbose) {
-    .Call(`_SpliceWiz_SpliceWizMain_multi`, reference_file, bam_files, output_files, max_threads, verbose)
+SpliceWizMain_multi <- function(reference_file, bam_files, output_files, max_threads, verbose, multiRead) {
+    .Call(`_SpliceWiz_SpliceWizMain_multi`, reference_file, bam_files, output_files, max_threads, verbose, multiRead)
 }
 
 c_GenerateMappabilityReads <- function(genome_file, out_fa, read_len, read_stride, error_pos) {
@@ -49,8 +49,8 @@ c_GenerateMappabilityRegions <- function(bam_file, output_file, threshold, inclu
     .Call(`_SpliceWiz_c_GenerateMappabilityRegions`, bam_file, output_file, threshold, includeCov, verbose, n_threads)
 }
 
-c_BAM2COV <- function(bam_file, output_file, verbose, n_threads) {
-    .Call(`_SpliceWiz_c_BAM2COV`, bam_file, output_file, verbose, n_threads)
+c_BAM2COV <- function(bam_file, output_file, verbose, n_threads, multiRead) {
+    .Call(`_SpliceWiz_c_BAM2COV`, bam_file, output_file, verbose, n_threads, multiRead)
 }
 
 idxstats_pbam <- function(bam_file, n_threads_to_use = 1L) {

@@ -26,6 +26,7 @@ Imports:
 	data.table,
 	fst,
 	ggplot2,
+	ompBAM,
 	AnnotationHub, 
 	BiocFileCache,
 	BiocGenerics,
@@ -39,6 +40,7 @@ Imports:
 	GenomicRanges,
 	HDF5Array,
 	IRanges,
+	progress,
 	plotly,
 	R.utils,
 	rhdf5,
@@ -59,8 +61,6 @@ Imports:
 Suggests: 
     knitr, rmarkdown, pheatmap, openssl, crayon, egg,
     DESeq2, limma, DoubleExpSeq, Rsubread, testthat (>= 3.0.0)
-Remotes:
-	alexchwong/ompBAM
 LinkingTo: 
     ompBAM,
     Rcpp,
@@ -69,6 +69,7 @@ LinkingTo:
 SystemRequirements: C++11
 Collate: AllImports.R
 	RcppExports.R
+	zzz.R
 	AllClasses.R
 	AllGenerics.R
 	ASEFilter-methods.R

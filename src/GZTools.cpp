@@ -164,7 +164,7 @@ int GZReader::LoadGZ(std::string s_filename, bool asStream, bool lazymode) {
 	return(0);
 }
 
-// Operations to read gzip as if it was ifstream object. Not used in IRFinder
+// Operations to read gzip as if it was ifstream object. Not used in SpliceWiz
 
 void GZReader::read(char * dest, const unsigned long len) {
   memcpy(dest, &buffer[bufferPos], len);
@@ -210,7 +210,7 @@ int GZWriter::writestring(const std::string& s_src) {
   return(ret);
 }
 
-// Writes from given char* src buffer of given length len. Used internally in IRFinder
+// Writes from given char* src buffer of given length len. Used internally in SpliceWiz
 int GZWriter::writebuffer(const char * src, unsigned int len) {
   unsigned int bytesremaining = len;
   unsigned int srcpos = 0;

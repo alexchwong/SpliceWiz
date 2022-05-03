@@ -71,23 +71,24 @@ int SpliceWizCore(std::string const &bam_file,
     std::vector<std::string> &ref_names, 
     std::vector<std::string> &ref_alias,
     std::vector<uint32_t> &ref_lengths,
-    CoverageBlocksIRFinder const &CB_template, 
-    SpansPoint const &SP_template, 
-    FragmentsInROI const &ROI_template,
-    JunctionCount const &JC_template,
+    std::string &CB_string,
+    std::string &SP_string,
+    std::string &ROI_string,
+    std::string &JC_string,
     bool const verbose,
-    int n_threads = 1
+    int n_threads = 1,
+    bool const multithreadedRead = false
 );
 
 #ifdef SPLICEWIZ
   int SpliceWizMain(
       std::string bam_file, std::string reference_file, std::string output_file, 
-      bool verbose = true, int n_threads = 1
+      bool verbose = true, int n_threads = 1, bool multiRead = false
   );
 
   int SpliceWizMain_multi(
       std::string reference_file, StringVector bam_files, StringVector output_files,
-      int max_threads = 1, bool verbose = true
+      int max_threads = 1, bool verbose = true, bool multiRead = false
   );
 
   int c_GenerateMappabilityReads(
@@ -103,7 +104,7 @@ int SpliceWizCore(std::string const &bam_file,
 
   int c_BAM2COV(
     std::string bam_file, std::string output_file, 
-    bool verbose = true, int n_threads = 1
+    bool verbose = true, int n_threads = 1, bool multiRead = false
   );
 
 #else
@@ -123,7 +124,7 @@ int SpliceWizCore(std::string const &bam_file,
   );	
 
   int c_BAM2COV(
-    std::string bam_file, std::string output_file, int n_threads = 1
+    std::string bam_file, std::string output_file, int n_threads = 1, bool multiRead = false
   );
 
   int main(int argc, char * argv[]);

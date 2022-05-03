@@ -57,7 +57,10 @@ is_valid <- function(x) {
     cat(sprintf(...))
 }
 
-.validate_threads <- function(n_threads, as_BPPARAM = TRUE, ...) {
+.validate_threads <- function(n_threads, as_BPPARAM = TRUE, 
+        useSnowParam = FALSE,
+        ...
+) {
     n_threads_to_use <- as.numeric(n_threads)
     if (is.na(n_threads_to_use)) {
         .log("n_threads must be a numeric value")
@@ -66,7 +69,7 @@ is_valid <- function(x) {
         n_threads_to_use <- max(1, parallel::detectCores())
     }
     if (as_BPPARAM) {
-        if (Sys.info()["sysname"] == "Windows") {
+        if (useSnowParam || Sys.info()["sysname"] == "Windows") {
             BPPARAM_mod <- BiocParallel::SnowParam(n_threads_to_use, ...)
             .log(paste("Using SnowParam", BPPARAM_mod$workers, "threads"),
                 "message")

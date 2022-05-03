@@ -11,7 +11,7 @@ collateData(
   IRMode = c("SpliceOver", "SpliceMax"),
   overwrite = FALSE,
   n_threads = 1,
-  samples_per_block = 16
+  lowMemoryMode = TRUE
 )
 }
 \arguments{
@@ -41,9 +41,9 @@ set to \code{TRUE}.}
 \item{n_threads}{(default \code{1}) The number of threads to use. On low
 memory systems, reduce the number of \code{n_threads} and \code{samples_per_block}}
 
-\item{samples_per_block}{(default \code{16}) How many samples to process per
-thread, maximum. Setting this to a lower value may help in
-memory-constrained systems.}
+\item{lowMemoryMode}{(default \code{TRUE}) \code{collateData()} will perform
+optimizations to conserve memory if this is set to \code{TRUE}. Otherwise,
+will prioritise performance.}
 }
 \value{
 \code{collateData()} writes to the directory given by \code{output_path}.

@@ -164,7 +164,7 @@ collateData <- function(Experiment, reference_path, output_path,
             nrow(df.internal))
         BPPARAM_mod_progress <- .validate_threads(
             n_threads_collate_assays,
-            useSnowParam = TRUE,
+            # useSnowParam = TRUE,
             progressbar = TRUE,
             tasks = nrow(df.internal))
         agg.list <- BiocParallel::bplapply(

@@ -91,15 +91,17 @@ collateData <- function(Experiment, reference_path, output_path,
 		lowMemoryMode = TRUE
         # samples_per_block = 16
 ) {
+    # Checks for abnormalities, allow fail early if errors
     IRMode <- match.arg(IRMode)
-    if (IRMode == "")
-        .log(paste("In collateData(),",
-            "IRMode must be either 'SpliceOver' (default) or 'SpliceMax'"))
+    if (IRMode == "") .log(paste("In collateData(),",
+        "IRMode must be either 'SpliceOver' (default) or 'SpliceMax'"))
+    originalSWthreads <- .getSWthreads()
+    setSWthreads(1) # try this to prevent memory leak
+    BPPARAM_mod <- .validate_threads(n_threads)
 
     N_steps <- 8
     dash_progress("Validating Experiment; checking COV files...", N_steps)
     .log("Validating Experiment; checking COV files...", "message")
-    BPPARAM_mod <- .validate_threads(n_threads)
     norm_output_path <- .collateData_validate(Experiment,
         reference_path, output_path)
     coverage_files <- .make_path_relative(
@@ -112,9 +114,16 @@ collateData <- function(Experiment, reference_path, output_path,
         ) {
             .log(paste("SpliceWiz already collated this experiment",
                 "in given directory"), "message")
+            .restore_threads(originalSWthreads)
             return()
         }
     }
+
+    # Phase 1:
+    # - Opens processBAM output files
+    # - extracts stats
+    # - extracts juncs and IRs and outputs as temp files for easier access later
+    # - compiles a unified junction list
 	samples_per_block <- 4
 	if(lowMemoryMode) samples_per_block <- 16
     jobs <- .collateData_jobs(nrow(df.internal), BPPARAM_mod, samples_per_block)
@@ -127,55 +136,72 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Compiling Junction List", N_steps)
     junc.common <- .collateData_junc_merge(df.internal, jobs, BPPARAM_mod,
         output_path)
-    # saveRDS(junc.common, file.path(output_path,"junc.common.Rds"))
+    write.fst(as.data.frame(junc.common), file.path(norm_output_path, 
+        "annotation", "junc.common.fst"))
+    rm(junc.common)
     gc()
 
     dash_progress("Compiling Intron Retention List", N_steps)
     sw.common <- .collateData_sw_merge(df.internal, jobs, BPPARAM_mod,
         output_path, stranded)
-    # saveRDS(sw.common, file.path(output_path,"sw.common.Rds"))
+    write.fst(as.data.frame(sw.common), file.path(norm_output_path, 
+        "annotation", "sw.common.fst"))
+    rm(sw.common)
     gc()
 
-# Reassign +/- based on junctions.fst annotation
-    # Annotate junctions
+    # Phase 2:
+    # - Annotates unified junction and IR lists
     dash_progress("Tidying up splice junctions and intron retentions", N_steps)
     .log("Tidying up splice junctions and intron retentions...", "message")
-    .collateData_annotate(reference_path, norm_output_path,
-        junc.common, sw.common, stranded, lowMemoryMode)
+    .collateData_annotate(reference_path, norm_output_path, 
+        stranded, lowMemoryMode)
     message("done\n")
-    rm(junc.common, sw.common)
-    gc()
 
+    # Phase 3:
+    # - Generate second step assay files based on annotated lists
     dash_progress("Generating NxtSE assays", N_steps)
     .log("Generating NxtSE assays", "message")
 
     if(lowMemoryMode) {
-        jobs_2 <- .split_vector(seq_len(nrow(df.internal)), 1)
-        agg.list <- .collateData_compile_agglist(1,
-            jobs = jobs_2, df.internal = df.internal,
-            norm_output_path = norm_output_path, IRMode = IRMode,
-            useProgressBar = TRUE
-        )
+        n_threads_collate_assays <- 1
     } else {
         n_threads_collate_assays <- ceiling(min(
             nrow(df.internal) / samples_per_block, n_threads
         ))
-        jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
-            nrow(df.internal))
-        BPPARAM_mod_progress <- .validate_threads(
-            n_threads_collate_assays,
-            # useSnowParam = TRUE,
-            progressbar = TRUE,
-            tasks = nrow(df.internal))
-        agg.list <- BiocParallel::bplapply(
-            seq_len(nrow(df.internal)),
-            .collateData_compile_agglist,
-            jobs = jobs_2, df.internal = df.internal,
-            norm_output_path = norm_output_path, IRMode = IRMode,
-            BPPARAM = BPPARAM_mod_progress
-        )
     }
+    
+    jobs_2 <- .split_vector(seq_len(nrow(df.internal)), nrow(df.internal))
+    BPPARAM_mod_progress <- .validate_threads(
+        n_threads_collate_assays,
+        progressbar = TRUE,
+        tasks = nrow(df.internal))
+        
+    BiocParallel::bplapply(
+        seq_len(nrow(df.internal)),
+        .collateData_assays_phase1,
+        jobs = jobs_2, df.internal = df.internal,
+        norm_output_path = norm_output_path, IRMode = IRMode,
+        useProgressBar = FALSE,
+        BPPARAM = BPPARAM_mod_progress
+    )
+    BiocParallel::bplapply(
+        seq_len(nrow(df.internal)),
+        .collateData_assays_phase2,
+        jobs = jobs_2, df.internal = df.internal,
+        norm_output_path = norm_output_path, IRMode = IRMode,
+        useProgressBar = FALSE,
+        BPPARAM = BPPARAM_mod_progress
+    )
+    BiocParallel::bplapply(
+        seq_len(nrow(df.internal)),
+        .collateData_assays_phase3,
+        jobs = jobs_2, df.internal = df.internal,
+        norm_output_path = norm_output_path, IRMode = IRMode,
+        useProgressBar = FALSE,
+        BPPARAM = BPPARAM_mod_progress
+    )
     gc()
+    .restore_threads(originalSWthreads)
 
     dash_progress("Building Final SummarizedExperiment Object", N_steps)
     message("Building Final SummarizedExperiment Object")
@@ -201,6 +227,8 @@ collateData <- function(Experiment, reference_path, output_path,
     }
     dash_progress("SpliceWiz (NxtSE) Collation Finished", N_steps)
     message("SpliceWiz (NxtSE) Collation Finished")
+    
+    .restore_threads(originalSWthreads)
 }
 
 
@@ -452,7 +480,7 @@ collateData <- function(Experiment, reference_path, output_path,
                         junc[, seq_len(4), with = FALSE], all = TRUE)
                 }
                 # Write temp file
-                fst::write.fst(as.data.frame(junc),
+                write.fst(as.data.frame(junc),
                     file.path(temp_output_path, paste(block$sample[i],
                     "junc.fst.tmp", sep = ".")))
             }
@@ -510,7 +538,7 @@ collateData <- function(Experiment, reference_path, output_path,
                     if (!identical(sw.names, sw$Name))
                         .collateData_stop_sw_mismatch()
                 }
-                fst::write.fst(as.data.frame(sw),
+                write.fst(as.data.frame(sw),
                     file.path(temp_output_path,
                         paste(block$sample[i], "sw.fst.tmp", sep = ".")))
             }
@@ -552,48 +580,36 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Annotate processBAM introns and junctions according to given reference
 .collateData_annotate <- function(reference_path, norm_output_path,
-        junc.common, sw.common, stranded,
-		lowMemoryMode = TRUE
+        stranded, lowMemoryMode = TRUE
 ) {
 
+    # junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
+        # "annotation", "junc.common.fst")))
+    # sw.common <- as.data.table(read.fst(file.path(norm_output_path, 
+        # "annotation", "sw.common.fst")))
+
     message("...annotating splice junctions")
-    junc.common <- .collateData_junc_annotate(junc.common, reference_path,
+    .collateData_junc_annotate(reference_path, norm_output_path,
 		lowMemoryMode)
     message("...grouping splice junctions")
-    junc.common <- .collateData_junc_group(junc.common, reference_path)
+    .collateData_junc_group(reference_path, norm_output_path)
 
     message("...grouping introns")
-    sw.common <- .collateData_sw_group(sw.common, reference_path, stranded)
-    sw.common[, c("EventRegion") :=
-        paste0(get("seqnames"), ":", get("start"), "-",
-            get("end"), "/", get("strand"))]
+    .collateData_sw_group(reference_path,  
+        norm_output_path, stranded)
 
     message("...loading splice events")
-    Splice.Anno <- .collateData_splice_anno(reference_path, sw.common)
-
-    message("...saving annotations")
-    # Save annotation
-    write.fst(as.data.frame(junc.common),
-        file.path(norm_output_path, "annotation", "Junc.fst"))
-    write.fst(as.data.frame(sw.common),
-        file.path(norm_output_path, "annotation", "IR.fst"))
-    write.fst(as.data.frame(Splice.Anno),
-        file.path(norm_output_path, "annotation", "Splice.fst"))
-
-    # Write junc_PSI index
-    junc_PSI <- junc.common[, c("seqnames", "start", "end", "strand")]
-    write.fst(junc_PSI, file.path(norm_output_path, "junc_PSI_index.fst"))
+    .collateData_splice_anno(reference_path, norm_output_path)
 
     message("...compiling rowEvents")
-    .collateData_rowEvent(sw.common, Splice.Anno,
-        norm_output_path, reference_path)
+    .collateData_rowEvent(reference_path, norm_output_path)
+
 }
 
 ################################################################################
 
 # Annotate junction splice motifs
-.collateData_junc_annotate <- function(
-		junc.common, reference_path,
+.collateData_junc_annotate <- function(reference_path, norm_output_path,
 		lowMemoryMode = TRUE
 ) {
     junc.strand <- read.fst(
@@ -602,6 +618,9 @@ collateData <- function(Experiment, reference_path, output_path,
         as.data.table = TRUE
     )
     junc.strand <- unique(junc.strand)
+
+    junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "junc.common.fst")))
 
     # Determine strand of junc.common junctions
     junc.common[, c("strand") := NULL]
@@ -679,11 +698,20 @@ collateData <- function(Experiment, reference_path, output_path,
     # Assign region names to junctions:
     junc.final[, c("Event") := paste0(get("seqnames"), ":",
         get("start"), "-", get("end"), "/", get("strand"))]
-    return(junc.final)
+
+    write.fst(as.data.frame(junc.final), file.path(norm_output_path, 
+        "annotation", "junc.common.annotated.fst"))
+    
+    if(exists("junc.common.unanno")) rm(junc.common.unanno)
+    rm(junc.final, junc.common.anno, junc.common, junc.strand)
+    gc()
 }
 
 # Use Exon Groups file to designate flanking exon islands to ALL junctions
-.collateData_junc_group <- function(junc.common, reference_path) {
+.collateData_junc_group <- function(reference_path, norm_output_path) {
+
+    junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "junc.common.annotated.fst")))
 
     Exon.Groups <- as.data.table(
         read.fst(file.path(reference_path, "fst", "Exons.Group.fst"))
@@ -716,14 +744,25 @@ collateData <- function(Experiment, reference_path, output_path,
     junc.common$gene_group_down <- NULL
     junc.common$exon_group_up <- NULL
     junc.common$exon_group_down <- NULL
-
-    return(junc.common)
+    
+    write.fst(as.data.frame(junc.common), file.path(norm_output_path, 
+        "annotation", "Junc.fst"))
+        
+    junc_PSI <- junc.common[, c("seqnames", "start", "end", "strand")]
+    write.fst(as.data.frame(junc_PSI), 
+        file.path(norm_output_path, "junc_PSI_index.fst"))
+    
+    rm(junc.common, Exon.Groups, Exon.Groups.S, junc_PSI)
+    gc()
 }
 
 # Use Exon Groups file to designate flanking exon islands to ALL introns
 .collateData_sw_group <- function(
-        sw.common, reference_path, stranded = TRUE
+        reference_path, norm_output_path, stranded = TRUE
 ) {
+    sw.common <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "sw.common.fst")))
+
     # Use Exon Groups file to designate exon groups to all junctions
     Exon.Groups <- as.data.table(
         read.fst(file.path(reference_path, "fst", "Exons.Group.fst")))
@@ -780,13 +819,24 @@ collateData <- function(Experiment, reference_path, output_path,
         )
     ]
 
-    return(sw.common)
+    sw.common[, c("EventRegion") :=
+        paste0(get("seqnames"), ":", get("start"), "-",
+            get("end"), "/", get("strand"))]
+
+    write.fst(as.data.frame(sw.common),
+        file.path(norm_output_path, "annotation", "IR.fst"))
+    
+    rm(sw.common, Exon.Groups, Exon.Groups.S)
+    gc()
 }
 
 # Annotates splice junctions with ID's of flanking exon islands
-.collateData_splice_anno <- function(reference_path, sw.common) {
+.collateData_splice_anno <- function(reference_path, norm_output_path) {
     candidate.introns <- as.data.table(
         read.fst(file.path(reference_path, "fst", "junctions.fst")))
+
+    sw.common <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "IR.fst")))
 
     # Order introns by importance (WHY?)
     candidate.introns[, c("transcript_biotype_2") := get("transcript_biotype")]
@@ -841,24 +891,28 @@ collateData <- function(Experiment, reference_path, output_path,
     Splice.Anno$down_2a <- NULL
     Splice.Anno[, c("strand") :=
         tstrsplit(get("Event1a"), split = "/")[[2]]]
-    return(Splice.Anno)
+    
+    write.fst(as.data.frame(Splice.Anno),
+        file.path(norm_output_path, "annotation", "Splice.fst"))
+    rm(Splice.Anno, candidate.introns, sw.common)
+    gc()
 }
 
 # Generate rowData annotations
-.collateData_rowEvent <- function(sw.common, Splice.Anno,
-        norm_output_path, reference_path) {
-    .collateData_rowEvent_brief(sw.common, Splice.Anno,
-        norm_output_path)
-    Splice.Options.Summary <- .collateData_rowEvent_splice_option(
-        reference_path)
-    .collateData_rowEvent_full(Splice.Options.Summary, Splice.Anno,
-        norm_output_path, reference_path)
+.collateData_rowEvent <- function(reference_path, norm_output_path) {
+    .collateData_rowEvent_brief(norm_output_path)
+    .collateData_rowEvent_splice_option(reference_path, norm_output_path)
+    .collateData_rowEvent_full(reference_path, norm_output_path)
 }
 
 # Truncated rowEvent, with EventName, EventType, EventRegion
-.collateData_rowEvent_brief <- function(sw.common, Splice.Anno,
-        norm_output_path) {
+.collateData_rowEvent_brief <- function(norm_output_path) {
     # make rowEvent brief here
+    sw.common <- as.data.table(read.fst(
+        file.path(norm_output_path, "annotation", "IR.fst")))
+    Splice.Anno <- as.data.table(read.fst(
+        file.path(norm_output_path, "annotation", "Splice.fst")))
+
     sw.anno.brief <- sw.common[, c("Name", "EventRegion")]
     setnames(sw.anno.brief, "Name", "EventName")
     sw.anno.brief[, c("EventType") := "IR"]
@@ -868,11 +922,17 @@ collateData <- function(Experiment, reference_path, output_path,
         c("EventName", "EventType", "EventRegion")]
 
     rowEvent <- rbind(sw.anno.brief, splice.anno.brief)
-    write.fst(rowEvent, file.path(norm_output_path, "rowEvent.brief.fst"))
+    write.fst(as.data.frame(rowEvent), 
+        file.path(norm_output_path, "rowEvent.brief.fst"))
+    
+    rm(sw.common, Splice.Anno, sw.anno.brief, splice.anno.brief)
+    gc()
 }
 
 # Generate annotation based on importance of involved transcripts
-.collateData_rowEvent_splice_option <- function(reference_path) {
+.collateData_rowEvent_splice_option <- function(
+        reference_path, norm_output_path
+) {
     Splice.Options <- as.data.table(read.fst(
         file.path(reference_path, "fst", "Splice.options.fst")))
     Transcripts <- as.data.table(read.fst(
@@ -895,15 +955,25 @@ collateData <- function(Experiment, reference_path, output_path,
     Splice.Options.Summary[,
         c("all_is_NMD") := all(grepl("decay", get("transcript_biotype"))),
         by = c("EventID", "isoform")]
-    return(Splice.Options.Summary)
+
+    write.fst(as.data.frame(Splice.Options.Summary),
+        file.path(norm_output_path, "annotation", "Splice.Options.Summary.fst"))
+    rm(Splice.Options.Summary, Splice.Options, Transcripts, Splice.Anno.Brief)
+    gc()
 }
 
 # Annotate full rowEvent. Includes:
 # - whether Inc/Exc is a protein coding splicing event
 # - whether Inc/Exc represent an event causing NMD
 # - the highest-ranking TSL for each alternative (A/B) of event
-.collateData_rowEvent_full <- function(Splice.Options.Summary, Splice.Anno,
-        norm_output_path, reference_path) {
+.collateData_rowEvent_full <- function(reference_path, norm_output_path) {
+
+    Splice.Options.Summary <- as.data.table(read.fst(
+        file.path(norm_output_path, "annotation", 
+        "Splice.Options.Summary.fst")))
+    Splice.Anno <- as.data.table(read.fst(
+        file.path(norm_output_path, "annotation", "Splice.fst")))
+
     rowEvent.Extended <- read.fst(
         file.path(norm_output_path, "rowEvent.brief.fst"),
         as.data.table = TRUE)
@@ -987,62 +1057,91 @@ collateData <- function(Experiment, reference_path, output_path,
     
     rowEvent.Extended[get("EventType") %in% c("MXE", "SE"),
         c("is_always_first_intron", "is_always_last_intron") := list(NA,NA)]
-    write.fst(rowEvent.Extended, file.path(norm_output_path, "rowEvent.fst"))
+    write.fst(as.data.frame(rowEvent.Extended), 
+        file.path(norm_output_path, "rowEvent.fst"))
+
+    rm(rowEvent.Extended, candidate.introns, IR_NMD,
+        Splice.Options.Summary, Splice.Anno)
+    gc()
 }
 
 ################################################################################
 # Sub
 
-# Collates data from junction counts and processBAM coverage
-.collateData_compile_agglist <- function(x, jobs, df.internal,
+# Compile second step assays as fst
+.collateData_assays_phase1 <- function(x, jobs, df.internal,
         norm_output_path, IRMode,
-		useProgressBar = TRUE) {
-
-    # Load dataframe headers (left-most columns containing annotations)
-    rowEvent <- as.data.table(read.fst(
-        file.path(norm_output_path, "rowEvent.brief.fst")))
-    junc.common <- as.data.table(read.fst(
-        file.path(norm_output_path, "annotation", "Junc.fst")))
-    sw.common <- as.data.table(read.fst(
-        file.path(norm_output_path, "annotation", "IR.fst")))
-    Splice.Anno <- as.data.table(read.fst(
-        file.path(norm_output_path, "annotation", "Splice.fst")))
-    junc_PSI <- as.data.table(read.fst(
-        file.path(norm_output_path, "junc_PSI_index.fst")))
-
+		useProgressBar = TRUE
+) {
     work <- jobs[[x]]
     block <- df.internal[work]
-    templates <- .collateData_seed_init(rowEvent, junc_PSI) # list of DT
 
-	pb <- NULL
+	ret <- pb <- NULL
 	if(useProgressBar) 
 		pb <- progress_bar$new(
 			format = " generating arrays [:bar] :percent eta: :eta",
 			total = length(work), clear = FALSE, width= 100)
     for (i in seq_len(length(work))) {
-        junc <- .collateData_process_junc(
-            block$sample[i], block$strand[i],
-            junc.common, norm_output_path)
+		if(!is.null(pb)) pb$tick()
+        
+        ret <- .collateData_process_junc(
+            block$sample[i], block$strand[i], norm_output_path)
+        if(ret != 0) next
+        
+        ret <- .collateData_process_sw(
+            block$sample[i], block$strand[i], norm_output_path)
+        if(ret != 0) next
+        
+        ret <- .collateData_process_splice(block$sample[i], norm_output_path)
+        if(ret != 0) next
+        
+        ret <- .collateData_process_splice_depth(
+            block$sample[i], norm_output_path)
+        if(ret != 0) next
+    }
+}
 
-        sw <- .collateData_process_sw(
-            block$sample[i], block$strand[i], junc,
-            sw.common, norm_output_path)
+# Write H5-like assays as fst
+.collateData_assays_phase2 <- function(x, jobs, df.internal,
+        norm_output_path, IRMode,
+		useProgressBar = TRUE
+) {
+    work <- jobs[[x]]
+    block <- df.internal[work]
+    
+    .collateData_process_assays_as_fst(
+        block$sample[seq_len(length(work))], 
+        IRMode, norm_output_path
+    )
+}
 
-        splice <- .collateData_process_splice(
-            junc, sw, Splice.Anno)
+# Cleanup only
+.collateData_assays_phase3 <- function(x, jobs, df.internal,
+        norm_output_path, IRMode,
+		useProgressBar = TRUE) {
 
-        splice <- .collateData_process_splice_depth(
-            splice, sw)
+    work <- jobs[[x]]
+    block <- df.internal[work]
 
-        .collateData_process_assays_as_fst(templates,
-            block$sample[i], junc, sw, splice, IRMode, norm_output_path)
+    # Cleanup
+    for (i in seq_len(length(work))) {
+        j1 <- file.path(norm_output_path, "temp",
+            paste(block$sample[i], "junc.fst.tmp", sep = "."))
+        j2 <- file.path(norm_output_path, "temp",
+            paste(block$sample[i], "junc2.fst.tmp", sep = "."))
+        sw1 <- file.path(norm_output_path, "temp",
+            paste(block$sample[i], "sw.fst.tmp", sep = "."))
+        sw2 <- file.path(norm_output_path, "temp",
+            paste(block$sample[i], "sw2.fst.tmp", sep = "."))
+        spl1 <- file.path(norm_output_path, "temp",
+            paste(block$sample[i], "splice.fst.tmp", sep = "."))
+        spl2 <- file.path(norm_output_path, "temp",
+            paste(block$sample[i], "splice2.fst.tmp", sep = "."))
 
-        # remove temp files - raw extracted junc / SW output from processBAM
-        file.remove(file.path(norm_output_path, "temp",
-            paste(block$sample[i], "junc.fst.tmp", sep = ".")))
-        file.remove(file.path(norm_output_path, "temp",
-            paste(block$sample[i], "sw.fst.tmp", sep = ".")))
-		pb$tick()
+        # remove temp files
+        for(fname in c(j1, j2, sw1, sw2, spl1, spl2)) {
+            if(file.exists(fname)) file.remove(fname)
+        }
     } # end FOR loop
     return(NULL)
 }
@@ -1067,15 +1166,24 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Collates junction counts, given sample strandedness and junction strand anno
 # - calculates SpliceLeft, SpliceRight, SpliceOver sums
-.collateData_process_junc <- function(sample, strand,
-        junc.common, norm_output_path) {
-    junc <- as.data.table(
-        read.fst(file.path(norm_output_path, "temp",
-            paste(sample, "junc.fst.tmp", sep = ".")))
-    )
+.collateData_process_junc <- function(sample, strand, norm_output_path) {
+    jc_file <- file.path(norm_output_path, "annotation", "Junc.fst")
+    j_file <- file.path(norm_output_path, "temp",
+        paste(sample, "junc.fst.tmp", sep = "."))
+    jo_file <- file.path(norm_output_path, "temp",
+        paste(sample, "junc2.fst.tmp", sep = "."))
+
+    if(!file.exists(jc_file)) .log(paste(jc_file, "is missing"))
+    if(!file.exists(j_file)) {
+        .log(paste(jc_file, "is missing"), "message")
+        return(-1)
+    }
+    
+    junc.common <- as.data.table(read.fst(jc_file))
+    junc <- as.data.table(read.fst(j_file))
+    
     junc[, c("start") := get("start") + 1]
     junc$strand <- NULL # Use strand from junc.common
-
     junc <- junc[junc.common, on = colnames(junc.common)[c(1, 2, 3)]]
     if (strand == 0) {
         junc$count <- junc$total
@@ -1118,7 +1226,7 @@ collateData <- function(Experiment, reference_path, output_path,
         c("SO_L") := sum(get("count")), by = "JG_down"]
 
     # Then use a simple overlap method to account for the remainder
-
+    
     # Filter for same-island junctions
     junc.subset <- junc[get("JG_up") == get("JG_down") &
         get("JG_up") != "" & get("JG_down") != ""]
@@ -1150,16 +1258,34 @@ collateData <- function(Experiment, reference_path, output_path,
         junc[get("SO_R") < get("SR"), c("SO_R") := get("SR")]
         junc[, c("SO_I") := NULL]
     }
-    return(junc)
+    
+    write.fst(as.data.frame(junc), jo_file)
+    rm(junc, junc.common, junc.subset, splice.overlaps.DT, splice.summa, OL)
+    gc()
+    return(0)
 }
 
 # Imports processBAM data, calculates SpliceOver from junction counts
-.collateData_process_sw <- function(sample, strand, junc,
-        sw.common, norm_output_path) {
-    sw <- as.data.table(
-        read.fst(file.path(norm_output_path, "temp",
-            paste(sample, "sw.fst.tmp", sep = ".")))
-    )
+.collateData_process_sw <- function(sample, strand, norm_output_path) {
+    swc_file <- file.path(norm_output_path, "annotation", "IR.fst")
+    sw_file <- file.path(norm_output_path, "temp",
+        paste(sample, "sw.fst.tmp", sep = "."))
+    ji_file <- file.path(norm_output_path, "temp",
+        paste(sample, "junc2.fst.tmp", sep = "."))
+    swo_file <- file.path(norm_output_path, "temp",
+        paste(sample, "sw2.fst.tmp", sep = "."))
+
+    if(!file.exists(swc_file)) .log(paste(swc_file, "is missing"))
+    for(fname in c(sw_file, ji_file)) {
+        if(!file.exists(fname)) {
+            .log(paste(fname, "is missing"), "message")
+            return(-1)
+        }
+    }
+
+    sw.common <- as.data.table(read.fst(swc_file))
+    sw <- as.data.table(read.fst(sw_file))
+    junc <- as.data.table(read.fst(ji_file))
 
     sw[, c("start") := get("start") + 1]
     sw <- sw[sw.common, on = colnames(sw.common)[seq_len(6)],
@@ -1192,14 +1318,36 @@ collateData <- function(Experiment, reference_path, output_path,
 
     sw[, c("TotalDepth") := get("IntronDepth") + get("SpliceOver")]
     setnames(sw, "Name", "EventName")
-    return(sw)
+    
+    write.fst(as.data.frame(sw), swo_file)
+    rm(sw, junc, sw.common)
+    gc()
+    return(0)
 }
 
 # Calculates junction counts for each annotated splice event. Also calculates:
 # - participation: The proportion of junctions at the region for each ASE
 # - coverage: The total number of junctions covered at that ASE region
-.collateData_process_splice <- function(junc, sw, Splice.Anno) {
-    splice <- copy(Splice.Anno)
+.collateData_process_splice <- function(sample, norm_output_path) {
+    sa_file <- file.path(norm_output_path, "annotation", "Splice.fst")
+    ji_file <- file.path(norm_output_path, "temp",
+        paste(sample, "junc2.fst.tmp", sep = "."))
+    swi_file <- file.path(norm_output_path, "temp",
+        paste(sample, "sw2.fst.tmp", sep = "."))
+    splo_file <- file.path(norm_output_path, "temp",
+        paste(sample, "splice.fst.tmp", sep = "."))
+
+    if(!file.exists(sa_file)) .log(paste(sa_file, "is missing"))
+    for(fname in c(ji_file, swi_file)) {
+        if(!file.exists(fname)) {
+            .log(paste(fname, "is missing"), "message")
+            return(-1)
+        }
+    }
+    
+    splice <- as.data.table(read.fst(sa_file))
+    junc <- as.data.table(read.fst(ji_file))
+    sw <- as.data.table(read.fst(swi_file))
 
     # Summarises counts for all splice events as defined by Event(1/2)(a/b)
     splice[, c("count_Event1a", "count_Event2a",
@@ -1289,12 +1437,30 @@ collateData <- function(Experiment, reference_path, output_path,
     splice[get("EventType") %in% c("AFE", "A5SS"),
         c("coverage") := get("cov_down")]
 
-    return(splice)
+    write.fst(as.data.frame(splice), splo_file)
+    rm(sw, junc, splice)
+    gc()
+    return(0)
 }
 
 # Calculates TotalDepth which includes local IR levels.
 # - Used to normalize Coverage plots
-.collateData_process_splice_depth <- function(splice, sw) {
+.collateData_process_splice_depth <- function(sample, norm_output_path) {
+    swi_file <- file.path(norm_output_path, "temp",
+        paste(sample, "sw2.fst.tmp", sep = "."))
+    spli_file <- file.path(norm_output_path, "temp",
+        paste(sample, "splice.fst.tmp", sep = "."))
+    splo_file <- file.path(norm_output_path, "temp",
+        paste(sample, "splice2.fst.tmp", sep = "."))
+        
+    for(fname in c(swi_file, spli_file)) {
+        if(!file.exists(fname)) {
+            .log(paste(fname, "is missing"), "message")
+            return(-1)
+        }
+    }
+    splice <- as.data.table(read.fst(spli_file))
+    sw <- as.data.table(read.fst(swi_file))
 
     # Calculate depth for splicing where EventRegion doesn't cover a single
     #   intron or where processBAM has decided not to assess the intron
@@ -1341,96 +1507,137 @@ collateData <- function(Experiment, reference_path, output_path,
         c("TotalDepth") := get("i.TotalDepth")]
     splice[splice.no_region, on = "EventName",
         c("TotalDepth") := get("i.Depth")]
-    return(splice)
+
+    write.fst(as.data.frame(splice), splo_file)
+    rm(sw, splice, splice.no_region)
+    gc()
+    return(0)
 }
 
 # Compiles all the data as assays, write as temp FST files
 # - This acts as "on-disk memory" to avoid using too much memory
-.collateData_process_assays_as_fst <- function(templates_orig,
-        sample, junc, sw, splice, IRMode, norm_output_path) {
+.collateData_process_assays_as_fst <- function(
+        samples, IRMode, norm_output_path,
+        useProgressBar = TRUE
+) {
 
     assay.todo <- c("Included", "Excluded", "Depth", "Coverage", "minDepth")
     inc.todo <- c("Up_Inc", "Down_Inc")
     exc.todo <- c("Up_Exc", "Down_Exc")
     junc.todo <- c("junc_PSI", "junc_counts")
-	templates <- .copy_DT(templates_orig)
-	
-    # Included / Excluded counts for IR and splicing
-    templates$assay[, c("Included") := c(
-        sw$IntronDepth,
-        0.5 * (splice$count_Event1a[splice$EventType %in% c("SE", "MXE")] +
-            splice$count_Event2a[splice$EventType %in% c("SE", "MXE")]),
-        splice$count_Event1a[!splice$EventType %in% c("SE", "MXE")]
-    )]
-    if (IRMode == "SpliceOver") {
-        templates$assay[, c("Excluded") := c(
-            sw$SpliceOver,
-            0.5 * (splice$count_Event1b[splice$EventType %in% c("MXE")] +
-                splice$count_Event2b[splice$EventType %in% c("MXE")]),
-            splice$count_Event1b[!splice$EventType %in% c("MXE")]
+
+    rowEvent <- as.data.table(read.fst(
+        file.path(norm_output_path, "rowEvent.brief.fst")))
+    junc_PSI <- as.data.table(read.fst(
+        file.path(norm_output_path, "junc_PSI_index.fst")))
+    templates_orig <- .collateData_seed_init(rowEvent, junc_PSI)
+
+    pb <- NULL
+	if(useProgressBar) 
+		pb <- progress_bar$new(
+			format = " saving assays as fst [:bar] :percent eta: :eta",
+			total = length(samples), clear = FALSE, width= 100)
+    for(sample in samples) {
+        ji_file <- file.path(norm_output_path, "temp",
+            paste(sample, "junc2.fst.tmp", sep = "."))
+        swi_file <- file.path(norm_output_path, "temp",
+            paste(sample, "sw2.fst.tmp", sep = "."))
+        spli_file <- file.path(norm_output_path, "temp",
+            paste(sample, "splice2.fst.tmp", sep = "."))
+
+        for(fname in c(swi_file, spli_file)) {
+            if(!file.exists(fname)) {
+                .log(paste(fname, "is missing"), "message")
+                if(!is.null(pb)) pb$tick()
+                next
+            }
+        }
+
+        templates <- .copy_DT(templates_orig)
+        junc <- as.data.table(read.fst(ji_file))
+        sw <- as.data.table(read.fst(swi_file))
+        splice <- as.data.table(read.fst(spli_file))
+
+        # Included / Excluded counts for IR and splicing
+        templates$assay[, c("Included") := c(
+            sw$IntronDepth,
+            0.5 * (splice$count_Event1a[splice$EventType %in% c("SE", "MXE")] +
+                splice$count_Event2a[splice$EventType %in% c("SE", "MXE")]),
+            splice$count_Event1a[!splice$EventType %in% c("SE", "MXE")]
         )]
-    } else {
-        templates$assay[, c("Excluded") := c(
-            sw$SpliceMax,
-            0.5 * (splice$count_Event1b[splice$EventType %in% c("MXE")] +
-                splice$count_Event2b[splice$EventType %in% c("MXE")]),
-            splice$count_Event1b[!splice$EventType %in% c("MXE")]
+        if (IRMode == "SpliceOver") {
+            templates$assay[, c("Excluded") := c(
+                sw$SpliceOver,
+                0.5 * (splice$count_Event1b[splice$EventType %in% c("MXE")] +
+                    splice$count_Event2b[splice$EventType %in% c("MXE")]),
+                splice$count_Event1b[!splice$EventType %in% c("MXE")]
+            )]
+        } else {
+            templates$assay[, c("Excluded") := c(
+                sw$SpliceMax,
+                0.5 * (splice$count_Event1b[splice$EventType %in% c("MXE")] +
+                    splice$count_Event2b[splice$EventType %in% c("MXE")]),
+                splice$count_Event1b[!splice$EventType %in% c("MXE")]
+            )]
+        }
+
+        # Validity checking for IR, MXE, SE
+        sw[get("strand") == "+", c("Up_Inc") := get("ExonToIntronReadsLeft")]
+        sw[get("strand") == "-", c("Up_Inc") := get("ExonToIntronReadsRight")]
+        sw[get("strand") == "+", c("Down_Inc") := get("ExonToIntronReadsRight")]
+        sw[get("strand") == "-", c("Down_Inc") := get("ExonToIntronReadsLeft")]
+        templates$inc[, c("Up_Inc") := c(sw$Up_Inc,
+                splice$count_Event1a[splice$EventType %in% c("MXE", "SE")],
+                splice$count_Event2a[splice$EventType %in% c("RI")]
         )]
+        templates$inc[, c("Down_Inc") := c(sw$Down_Inc,
+                splice$count_Event2a[splice$EventType %in% c("MXE", "SE")],
+                splice$count_Event2b[splice$EventType %in% c("RI")]
+        )]
+        templates$exc[, c("Up_Exc") :=
+            splice$count_Event1b[splice$EventType %in% c("MXE")]]
+        templates$exc[, c("Down_Exc") :=
+            splice$count_Event2b[splice$EventType %in% c("MXE")]]
+
+        templates$assay[, c("Depth") := c(sw$TotalDepth, splice$TotalDepth)]
+        templates$assay[, c("Coverage") := c(sw$Coverage, splice$coverage)]
+
+        splice[get("EventType") %in% c("MXE", "SE") &
+            get("cov_up") < get("cov_down"),
+            c("minDepth") := get("count_JG_up")]
+        splice[get("EventType") %in% c("MXE", "SE") &
+            get("cov_up") >= get("cov_down"),
+            c("minDepth") := get("count_JG_down")]
+        splice[get("EventType") %in% c("ALE", "A3SS", "RI"),
+            c("minDepth") := get("count_JG_up")]
+        splice[get("EventType") %in% c("AFE", "A5SS"),
+            c("minDepth") := get("count_JG_down")]
+        templates$assay[, c("minDepth") := c(sw$IntronDepth, splice$minDepth)]
+
+        junc[get("count") == 0, c("PSI") := 0]
+        junc[get("SO_L") > get("SO_R"),
+            c("PSI") := get("count") / get("SO_L")]
+        junc[get("SO_R") >= get("SO_L") & get("SO_R") > 0,
+            c("PSI") := get("count") / get("SO_R")]
+        templates$junc[junc, on = c("seqnames", "start", "end", "strand"),
+            c("junc_PSI", "junc_counts") := list(get("i.PSI"), get("i.count"))]
+
+        write.fst(as.data.frame(templates$assay[, assay.todo, with = FALSE]),
+            file.path(norm_output_path, "temp",
+                    paste("assays", sample, "fst.tmp", sep = ".")))
+        write.fst(as.data.frame(templates$inc[, inc.todo, with = FALSE]),
+            file.path(norm_output_path, "temp",
+                    paste("included", sample, "fst.tmp", sep = ".")))
+        write.fst(as.data.frame(templates$exc[, exc.todo, with = FALSE]),
+            file.path(norm_output_path, "temp",
+                    paste("excluded", sample, "fst.tmp", sep = ".")))
+        write.fst(as.data.frame(templates$junc[, junc.todo, with = FALSE]),
+            file.path(norm_output_path, "temp",
+                    paste("junc_psi", sample, "fst.tmp", sep = ".")))
+        rm(templates, junc, sw, splice)
+        gc()
+        if(!is.null(pb)) pb$tick()
     }
-
-    # Validity checking for IR, MXE, SE
-    sw[get("strand") == "+", c("Up_Inc") := get("ExonToIntronReadsLeft")]
-    sw[get("strand") == "-", c("Up_Inc") := get("ExonToIntronReadsRight")]
-    sw[get("strand") == "+", c("Down_Inc") := get("ExonToIntronReadsRight")]
-    sw[get("strand") == "-", c("Down_Inc") := get("ExonToIntronReadsLeft")]
-    templates$inc[, c("Up_Inc") := c(sw$Up_Inc,
-            splice$count_Event1a[splice$EventType %in% c("MXE", "SE")],
-            splice$count_Event2a[splice$EventType %in% c("RI")]
-    )]
-    templates$inc[, c("Down_Inc") := c(sw$Down_Inc,
-            splice$count_Event2a[splice$EventType %in% c("MXE", "SE")],
-            splice$count_Event2b[splice$EventType %in% c("RI")]
-    )]
-    templates$exc[, c("Up_Exc") :=
-        splice$count_Event1b[splice$EventType %in% c("MXE")]]
-    templates$exc[, c("Down_Exc") :=
-        splice$count_Event2b[splice$EventType %in% c("MXE")]]
-
-    templates$assay[, c("Depth") := c(sw$TotalDepth, splice$TotalDepth)]
-    templates$assay[, c("Coverage") := c(sw$Coverage, splice$coverage)]
-
-    splice[get("EventType") %in% c("MXE", "SE") &
-        get("cov_up") < get("cov_down"),
-        c("minDepth") := get("count_JG_up")]
-    splice[get("EventType") %in% c("MXE", "SE") &
-        get("cov_up") >= get("cov_down"),
-        c("minDepth") := get("count_JG_down")]
-    splice[get("EventType") %in% c("ALE", "A3SS", "RI"),
-        c("minDepth") := get("count_JG_up")]
-    splice[get("EventType") %in% c("AFE", "A5SS"),
-        c("minDepth") := get("count_JG_down")]
-    templates$assay[, c("minDepth") := c(sw$IntronDepth, splice$minDepth)]
-
-    junc[get("count") == 0, c("PSI") := 0]
-    junc[get("SO_L") > get("SO_R"),
-        c("PSI") := get("count") / get("SO_L")]
-    junc[get("SO_R") >= get("SO_L") & get("SO_R") > 0,
-        c("PSI") := get("count") / get("SO_R")]
-    templates$junc[junc, on = c("seqnames", "start", "end", "strand"),
-        c("junc_PSI", "junc_counts") := list(get("i.PSI"), get("i.count"))]
-
-    fst::write.fst(as.data.frame(templates$assay[, assay.todo, with = FALSE]),
-        file.path(norm_output_path, "temp",
-                paste("assays", sample, "fst.tmp", sep = ".")))
-    fst::write.fst(as.data.frame(templates$inc[, inc.todo, with = FALSE]),
-        file.path(norm_output_path, "temp",
-                paste("included", sample, "fst.tmp", sep = ".")))
-    fst::write.fst(as.data.frame(templates$exc[, exc.todo, with = FALSE]),
-        file.path(norm_output_path, "temp",
-                paste("excluded", sample, "fst.tmp", sep = ".")))
-    fst::write.fst(as.data.frame(templates$junc[, junc.todo, with = FALSE]),
-        file.path(norm_output_path, "temp",
-                paste("junc_psi", sample, "fst.tmp", sep = ".")))
 }
 
 ################################################################################

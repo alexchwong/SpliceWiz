@@ -1174,11 +1174,12 @@ collateData <- function(Experiment, reference_path, output_path,
         !grepl("NA_NA", get("JG_down")))]
 
     if (nrow(junc.subset) > 0) {
-        OL <- findOverlaps(.grDT(junc.subset), .grDT(junc))
+        subject <- junc[get("count") > 0]
+        OL <- findOverlaps(.grDT(junc.subset), .grDT(subject))
 
         splice.overlaps.DT <- data.table(from = from(OL), to = to(OL))
         splice.overlaps.DT[,
-            c("count") := junc$count[to(OL)]]
+            c("count") := subject$count[to(OL)]]
         splice.overlaps.DT[,
             c("count_sum") := sum(get("count")), by = "from"]
         splice.summa <- unique(
@@ -1197,6 +1198,8 @@ collateData <- function(Experiment, reference_path, output_path,
         junc[get("SO_L") < get("SL"), c("SO_L") := get("SL")]
         junc[get("SO_R") < get("SR"), c("SO_R") := get("SR")]
         junc[, c("SO_I") := NULL]
+        rm(OL, subject, junc.subset)
+        gc()
     }
     return(junc)
 }

@@ -73,6 +73,8 @@ is_valid <- function(x) {
             BPPARAM_mod <- BiocParallel::SnowParam(n_threads_to_use, ...)
             .log(paste("Using SnowParam", BPPARAM_mod$workers, "threads"),
                 "message")
+            setSWthreads(1) 
+            # SnowParam doesn't count as a fork for data.table or fst          
         } else {
             BPPARAM_mod <- BiocParallel::MulticoreParam(n_threads_to_use, ...)
             .log(paste("Using MulticoreParam", BPPARAM_mod$workers, "threads"),
@@ -82,6 +84,10 @@ is_valid <- function(x) {
     } else {
         return(n_threads_to_use)
     }
+}
+
+.restore_threads <- function(n_threads) {
+    setSWthreads(n_threads)
 }
 
 .split_vector <- function(vector = "", n_workers = 1) {

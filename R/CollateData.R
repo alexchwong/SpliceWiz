@@ -156,31 +156,26 @@ collateData <- function(Experiment, reference_path, output_path,
     .log("Generating NxtSE assays", "message")
 
     if(lowMemoryMode) {
-        jobs_2 <- .split_vector(seq_len(nrow(df.internal)), 1)
-        agg.list <- .collateData_compile_agglist(1,
-            jobs = jobs_2, df.internal = df.internal,
-            norm_output_path = norm_output_path, IRMode = IRMode,
-            useProgressBar = TRUE
-        )
+        n_threads_collate_assays <- 1
     } else {
         n_threads_collate_assays <- ceiling(min(
             nrow(df.internal) / samples_per_block, n_threads
-        ))
-        jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
-            nrow(df.internal))
-        BPPARAM_mod_progress <- .validate_threads(
-            n_threads_collate_assays,
-            # useSnowParam = TRUE,
-            progressbar = TRUE,
-            tasks = nrow(df.internal))
-        agg.list <- BiocParallel::bplapply(
-            seq_len(nrow(df.internal)),
-            .collateData_compile_agglist,
-            jobs = jobs_2, df.internal = df.internal,
-            norm_output_path = norm_output_path, IRMode = IRMode,
-            BPPARAM = BPPARAM_mod_progress
-        )
+        ))    
     }
+    jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
+        nrow(df.internal))
+    BPPARAM_mod_progress <- .validate_threads(
+        n_threads_collate_assays,
+        progressbar = TRUE,
+        tasks = nrow(df.internal))
+    agg.list <- BiocParallel::bplapply(
+        seq_len(nrow(df.internal)),
+        .collateData_compile_agglist,
+        jobs = jobs_2, df.internal = df.internal,
+        norm_output_path = norm_output_path, IRMode = IRMode,
+        useProgressBar = FALSE,
+        BPPARAM = BPPARAM_mod_progress
+    )
     gc()
 
     dash_progress("Building Final SummarizedExperiment Object", N_steps)
@@ -1090,7 +1085,7 @@ collateData <- function(Experiment, reference_path, output_path,
             paste(block$sample[i], "junc.fst.tmp", sep = ".")))
         file.remove(file.path(norm_output_path, "temp",
             paste(block$sample[i], "sw.fst.tmp", sep = ".")))
-		pb$tick()
+		if(!is.null(pb)) pb$tick()
     } # end FOR loop
     return(NULL)
 }

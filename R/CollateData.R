@@ -148,8 +148,22 @@ collateData <- function(Experiment, reference_path, output_path,
     # Annotate junctions
     dash_progress("Tidying up splice junctions and intron retentions", N_steps)
     .log("Tidying up splice junctions and intron retentions...", "message")
-    .collateData_annotate(reference_path, norm_output_path, 
-        stranded, lowMemoryMode)
+    BPPARAM_annotate <- .validate_threads(1)
+    if(n_threads == 1) {
+        .collateData_annotate(1, reference_path, norm_output_path, 
+            stranded, lowMemoryMode)
+    } else {
+        # perform task inside child thread, so we can dump the memory later
+        tmp <- BiocParallel::bplapply(
+            seq_len(1),
+            .collateData_annotate,
+            reference_path = reference_path, 
+            norm_output_path = norm_output_path,
+            stranded = stranded, 
+            lowMemoryMode = lowMemoryMode,
+            BPPARAM = BPPARAM_annotate
+        )
+    }
     message("done\n")
 
     dash_progress("Generating NxtSE assays", N_steps)
@@ -553,7 +567,7 @@ collateData <- function(Experiment, reference_path, output_path,
 # Sub
 
 # Annotate processBAM introns and junctions according to given reference
-.collateData_annotate <- function(reference_path, norm_output_path,
+.collateData_annotate <- function(placeholder, reference_path, norm_output_path,
         stranded, lowMemoryMode = TRUE
 ) {
     message("...annotating splice junctions")
@@ -1045,9 +1059,13 @@ collateData <- function(Experiment, reference_path, output_path,
     rowEvent <- as.data.table(read.fst(
         file.path(norm_output_path, "rowEvent.brief.fst")))
     junc.common <- as.data.table(read.fst(
-        file.path(norm_output_path, "annotation", "Junc.fst")))
+        file.path(norm_output_path, "annotation", "Junc.fst"),
+        columns = c("seqnames", "start", "end", "strand", 
+			"Event", "JG_up", "JG_down")))
     sw.common <- as.data.table(read.fst(
-        file.path(norm_output_path, "annotation", "IR.fst")))
+        file.path(norm_output_path, "annotation", "IR.fst"),
+        columns = c("seqnames", "start", "end", "Name", "Null", "strand",
+		"EventRegion")))
     Splice.Anno <- as.data.table(read.fst(
         file.path(norm_output_path, "annotation", "Splice.fst")))
     junc_PSI <- as.data.table(read.fst(

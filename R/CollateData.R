@@ -148,14 +148,14 @@ collateData <- function(Experiment, reference_path, output_path,
     # Annotate junctions
     dash_progress("Tidying up splice junctions and intron retentions", N_steps)
     .log("Tidying up splice junctions and intron retentions...", "message")
-    BPPARAM_annotate <- .validate_threads(1)
+    BPPARAM_annotate <- .validate_threads(2)
     if(n_threads == 1) {
-        .collateData_annotate(1, reference_path, norm_output_path, 
+        .collateData_annotate(2, reference_path, norm_output_path, 
             stranded, lowMemoryMode)
     } else {
         # perform task inside child thread, so we can dump the memory later
         tmp <- BiocParallel::bplapply(
-            seq_len(1),
+            seq_len(2),
             .collateData_annotate,
             reference_path = reference_path, 
             norm_output_path = norm_output_path,
@@ -570,22 +570,24 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_annotate <- function(placeholder, reference_path, norm_output_path,
         stranded, lowMemoryMode = TRUE
 ) {
-    message("...annotating splice junctions")
-    .collateData_junc_annotate(reference_path, norm_output_path,
-		lowMemoryMode)
-    message("...grouping splice junctions")
-    .collateData_junc_group(reference_path, norm_output_path)
+    # Only use thread #2 for processing; ensures child thread memory dumped
+    if(placeholder == 2) {
+        message("...annotating splice junctions")
+        .collateData_junc_annotate(reference_path, norm_output_path,
+            lowMemoryMode)
+        message("...grouping splice junctions")
+        .collateData_junc_group(reference_path, norm_output_path)
 
-    message("...grouping introns")
-    .collateData_sw_group(reference_path,  
-        norm_output_path, stranded)
+        message("...grouping introns")
+        .collateData_sw_group(reference_path,  
+            norm_output_path, stranded)
 
-    message("...loading splice events")
-    .collateData_splice_anno(reference_path, norm_output_path)
+        message("...loading splice events")
+        .collateData_splice_anno(reference_path, norm_output_path)
 
-    message("...compiling rowEvents")
-    .collateData_rowEvent(reference_path, norm_output_path)
-
+        message("...compiling rowEvents")
+        .collateData_rowEvent(reference_path, norm_output_path)
+    }
 }
 
 ################################################################################

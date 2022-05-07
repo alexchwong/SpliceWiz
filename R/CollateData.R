@@ -150,20 +150,12 @@ collateData <- function(Experiment, reference_path, output_path,
     .log("Tidying up splice junctions and intron retentions...", "message")
     
     if(n_threads == 1) {
-        .collateData_annotate(2, reference_path, norm_output_path, 
+        .collateData_annotate(reference_path, norm_output_path, 
             stranded, lowMemoryMode)
     } else {
         # perform task inside child thread, so we can dump the memory later
-        BPPARAM_annotate <- .validate_threads(2)
-        tmp <- BiocParallel::bplapply(
-            seq_len(2),
-            .collateData_annotate,
-            reference_path = reference_path, 
-            norm_output_path = norm_output_path,
-            stranded = stranded, 
-            lowMemoryMode = lowMemoryMode,
-            BPPARAM = BPPARAM_annotate
-        )
+        .collateData_annotate_BPPARAM(reference_path, norm_output_path, 
+            stranded, lowMemoryMode)
     }
     message("done\n")
 
@@ -568,35 +560,88 @@ collateData <- function(Experiment, reference_path, output_path,
 # Sub
 
 # Annotate processBAM introns and junctions according to given reference
-.collateData_annotate <- function(placeholder, reference_path, norm_output_path,
+.collateData_annotate <- function(reference_path, norm_output_path,
         stranded, lowMemoryMode = TRUE
 ) {
-    # Only use thread #2 for processing; ensures child thread memory dumped
-    if(placeholder == 2) {
-        message("...annotating splice junctions")
-        .collateData_junc_annotate(reference_path, norm_output_path,
-            lowMemoryMode)
-        message("...grouping splice junctions")
-        .collateData_junc_group(reference_path, norm_output_path)
+    message("...annotating splice junctions")
+    .collateData_junc_annotate(2, reference_path, norm_output_path,
+        lowMemoryMode)
+    message("...grouping splice junctions")
+    .collateData_junc_group(2, reference_path, norm_output_path)
 
-        message("...grouping introns")
-        .collateData_sw_group(reference_path,  
-            norm_output_path, stranded)
+    message("...grouping introns")
+    .collateData_sw_group(2, reference_path, norm_output_path, stranded)
 
-        message("...loading splice events")
-        .collateData_splice_anno(reference_path, norm_output_path)
+    message("...loading splice events")
+    .collateData_splice_anno(2, reference_path, norm_output_path)
 
-        message("...compiling rowEvents")
-        .collateData_rowEvent(reference_path, norm_output_path)
-    }
+    message("...compiling rowEvents")
+    .collateData_rowEvent(2, reference_path, norm_output_path)
+}
+
+.collateData_annotate_BPPARAM <- function(reference_path, norm_output_path,
+        stranded, lowMemoryMode = TRUE
+) {
+    BPPARAM_annotate <- .validate_threads(2)
+    message("...annotating splice junctions")
+    tmp <- BiocParallel::bplapply(
+        seq_len(2),
+        .collateData_junc_annotate,
+        reference_path = reference_path, 
+        norm_output_path = norm_output_path,
+        # stranded = stranded, 
+        lowMemoryMode = lowMemoryMode,
+        BPPARAM = BPPARAM_annotate
+    )
+    message("...grouping splice junctions")
+    tmp <- BiocParallel::bplapply(
+        seq_len(2),
+        .collateData_junc_group,
+        reference_path = reference_path, 
+        norm_output_path = norm_output_path,
+        # stranded = stranded, 
+        lowMemoryMode = lowMemoryMode,
+        BPPARAM = BPPARAM_annotate
+    )
+    message("...grouping introns")
+    tmp <- BiocParallel::bplapply(
+        seq_len(2),
+        .collateData_sw_group,
+        reference_path = reference_path, 
+        norm_output_path = norm_output_path,
+        stranded = stranded, 
+        lowMemoryMode = lowMemoryMode,
+        BPPARAM = BPPARAM_annotate
+    )
+    message("...loading splice events")
+    tmp <- BiocParallel::bplapply(
+        seq_len(2),
+        .collateData_splice_anno,
+        reference_path = reference_path, 
+        norm_output_path = norm_output_path,
+        # stranded = stranded, 
+        lowMemoryMode = lowMemoryMode,
+        BPPARAM = BPPARAM_annotate
+    )
+    message("...compiling rowEvents")
+    tmp <- BiocParallel::bplapply(
+        seq_len(2),
+        .collateData_rowEvent,
+        reference_path = reference_path, 
+        norm_output_path = norm_output_path,
+        # stranded = stranded, 
+        lowMemoryMode = lowMemoryMode,
+        BPPARAM = BPPARAM_annotate
+    )
 }
 
 ################################################################################
 
 # Annotate junction splice motifs
-.collateData_junc_annotate <- function(reference_path, norm_output_path,
+.collateData_junc_annotate <- function(threadID, reference_path, norm_output_path,
 		lowMemoryMode = TRUE
 ) {
+    if(threadID != 2) return()
     junc.strand <- read.fst(
         path = file.path(reference_path, "fst", "junctions.fst"),
         columns = c("seqnames", "start", "end", "strand", "splice_motif"),
@@ -693,8 +738,10 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 # Use Exon Groups file to designate flanking exon islands to ALL junctions
-.collateData_junc_group <- function(reference_path, norm_output_path) {
-
+.collateData_junc_group <- function(
+        threadID, reference_path, norm_output_path
+) {
+    if(threadID != 2) return()
     junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "junc.common.annotated.fst")))
 
@@ -742,9 +789,10 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 # Use Exon Groups file to designate flanking exon islands to ALL introns
-.collateData_sw_group <- function(
+.collateData_sw_group <- function(threadID,
         reference_path, norm_output_path, stranded = TRUE
 ) {
+    if(threadID != 2) return()
     sw.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "sw.common.fst")))
 
@@ -816,7 +864,10 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 # Annotates splice junctions with ID's of flanking exon islands
-.collateData_splice_anno <- function(reference_path, norm_output_path) {
+.collateData_splice_anno <- function(threadID,
+        reference_path, norm_output_path
+) {
+    if(threadID != 2) return()
     candidate.introns <- as.data.table(
         read.fst(file.path(reference_path, "fst", "junctions.fst")))
 
@@ -884,7 +935,8 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 # Generate rowData annotations
-.collateData_rowEvent <- function(reference_path, norm_output_path) {
+.collateData_rowEvent <- function(threadID, reference_path, norm_output_path) {
+    if(threadID != 2) return()
     .collateData_rowEvent_brief(norm_output_path)
     .collateData_rowEvent_splice_option(reference_path, norm_output_path)
     .collateData_rowEvent_full(reference_path, norm_output_path)
@@ -1098,6 +1150,20 @@ collateData <- function(Experiment, reference_path, output_path,
         splice <- .collateData_process_splice_depth(
             splice, sw)
 
+        # Dump unneeded columns to preserve memory
+        junc <- junc[, c("seqnames", "start", "end", "strand",
+            "count", "SO_L", "SO_R")]
+        if (IRMode == "SpliceOver") {
+            sw <- sw[, c("strand", "IntronDepth", "SpliceOver",
+                "ExonToIntronReadsLeft", "ExonToIntronReadsRight",
+                "TotalDepth", "Coverage")]
+        } else {
+            sw <- sw[, c("strand", "IntronDepth", "SpliceMax",
+                "ExonToIntronReadsLeft", "ExonToIntronReadsRight",
+                "TotalDepth", "Coverage")]
+        }
+        gc()
+            
         .collateData_process_assays_as_fst(rowEvent, junc_PSI,
             block$sample[i], junc, sw, splice, IRMode, norm_output_path)
 

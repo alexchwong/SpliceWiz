@@ -1553,7 +1553,8 @@ collateData <- function(Experiment, reference_path, output_path,
     # templates$junc[junc, on = c("seqnames", "start", "end", "strand"),
         # c("junc_PSI", "junc_counts") := list(get("i.PSI"), get("i.count"))]
     templates$junc <- junc[, c("seqnames", "start", "end", "strand", 
-        "junc_PSI", "junc_counts")]
+        "PSI", "count")]
+    colnames(templates$junc)[c(5,6)] <- c("junc_PSI", "junc_counts")
 
     fst::write.fst(as.data.frame(templates$assay[, assay.todo, with = FALSE]),
         file.path(norm_output_path, "temp",

@@ -148,12 +148,13 @@ collateData <- function(Experiment, reference_path, output_path,
     # Annotate junctions
     dash_progress("Tidying up splice junctions and intron retentions", N_steps)
     .log("Tidying up splice junctions and intron retentions...", "message")
-    BPPARAM_annotate <- .validate_threads(2)
+    
     if(n_threads == 1) {
         .collateData_annotate(2, reference_path, norm_output_path, 
             stranded, lowMemoryMode)
     } else {
         # perform task inside child thread, so we can dump the memory later
+        BPPARAM_annotate <- .validate_threads(2)
         tmp <- BiocParallel::bplapply(
             seq_len(2),
             .collateData_annotate,
@@ -1097,7 +1098,7 @@ collateData <- function(Experiment, reference_path, output_path,
         splice <- .collateData_process_splice_depth(
             splice, sw)
 
-        .collateData_process_assays_as_fst(templates,
+        .collateData_process_assays_as_fst(rowEvent, junc_PSI,
             block$sample[i], junc, sw, splice, IRMode, norm_output_path)
 
         # remove temp files - raw extracted junc / SW output from processBAM
@@ -1412,14 +1413,14 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Compiles all the data as assays, write as temp FST files
 # - This acts as "on-disk memory" to avoid using too much memory
-.collateData_process_assays_as_fst <- function(templates_orig,
+.collateData_process_assays_as_fst <- function(rowEvent, junc_PSI,
         sample, junc, sw, splice, IRMode, norm_output_path) {
 
     assay.todo <- c("Included", "Excluded", "Depth", "Coverage", "minDepth")
     inc.todo <- c("Up_Inc", "Down_Inc")
     exc.todo <- c("Up_Exc", "Down_Exc")
     junc.todo <- c("junc_PSI", "junc_counts")
-	templates <- .copy_DT(templates_orig)
+	templates <- .collateData_seed_init(rowEvent, junc_PSI)
 	
     # Included / Excluded counts for IR and splicing
     templates$assay[, c("Included") := c(

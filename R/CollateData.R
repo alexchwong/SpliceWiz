@@ -1165,7 +1165,7 @@ collateData <- function(Experiment, reference_path, output_path,
         gc()
             
         .collateData_process_assays_as_fst(rowEvent, junc_PSI, block$sample[i], 
-            junc_tmp3, sw, splice, IRMode, norm_output_path)
+            junc, sw, splice, IRMode, norm_output_path)
 
         # remove temp files - raw extracted junc / SW output from processBAM
         file.remove(file.path(norm_output_path, "temp",

@@ -589,7 +589,6 @@ collateData <- function(Experiment, reference_path, output_path,
         .collateData_junc_annotate,
         reference_path = reference_path, 
         norm_output_path = norm_output_path,
-        # stranded = stranded, 
         lowMemoryMode = lowMemoryMode,
         BPPARAM = BPPARAM_annotate
     )
@@ -599,8 +598,6 @@ collateData <- function(Experiment, reference_path, output_path,
         .collateData_junc_group,
         reference_path = reference_path, 
         norm_output_path = norm_output_path,
-        # stranded = stranded, 
-        lowMemoryMode = lowMemoryMode,
         BPPARAM = BPPARAM_annotate
     )
     message("...grouping introns")
@@ -609,8 +606,7 @@ collateData <- function(Experiment, reference_path, output_path,
         .collateData_sw_group,
         reference_path = reference_path, 
         norm_output_path = norm_output_path,
-        stranded = stranded, 
-        lowMemoryMode = lowMemoryMode,
+        stranded = stranded,
         BPPARAM = BPPARAM_annotate
     )
     message("...loading splice events")
@@ -619,8 +615,6 @@ collateData <- function(Experiment, reference_path, output_path,
         .collateData_splice_anno,
         reference_path = reference_path, 
         norm_output_path = norm_output_path,
-        # stranded = stranded, 
-        lowMemoryMode = lowMemoryMode,
         BPPARAM = BPPARAM_annotate
     )
     message("...compiling rowEvents")
@@ -629,8 +623,6 @@ collateData <- function(Experiment, reference_path, output_path,
         .collateData_rowEvent,
         reference_path = reference_path, 
         norm_output_path = norm_output_path,
-        # stranded = stranded, 
-        lowMemoryMode = lowMemoryMode,
         BPPARAM = BPPARAM_annotate
     )
 }

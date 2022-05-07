@@ -1132,12 +1132,20 @@ collateData <- function(Experiment, reference_path, output_path,
             block$sample[i], block$strand[i],
             junc.common, norm_output_path)
 
+        junc_tmp <- junc[sw.common, 
+            on = c("seqnames", "start", "end", "strand"),
+            c("seqnames", "start", "end", "strand", "SO_L", "SO_R")]
+
         sw <- .collateData_process_sw(
-            block$sample[i], block$strand[i], junc,
-            sw.common, norm_output_path)
+            block$sample[i], block$strand[i], 
+            junc_tmp, sw.common, norm_output_path)
+
+        junc_tmp2 <- junc[get("Event") %in%
+            c(Splice.Anno$Event1a, Splice.Anno$Event1b,
+            Splice.Anno$Event2a, Splice.Anno$Event2b)]
 
         splice <- .collateData_process_splice(
-            junc, sw, Splice.Anno)
+            junc_tmp2, sw, Splice.Anno)
 
         splice <- .collateData_process_splice_depth(
             splice, sw)
@@ -1156,8 +1164,8 @@ collateData <- function(Experiment, reference_path, output_path,
         }
         gc()
             
-        .collateData_process_assays_as_fst(rowEvent, junc_PSI,
-            block$sample[i], junc, sw, splice, IRMode, norm_output_path)
+        .collateData_process_assays_as_fst(rowEvent, junc_PSI, block$sample[i], 
+            junc_tmp3, sw, splice, IRMode, norm_output_path)
 
         # remove temp files - raw extracted junc / SW output from processBAM
         file.remove(file.path(norm_output_path, "temp",
@@ -1275,6 +1283,7 @@ collateData <- function(Experiment, reference_path, output_path,
         rm(OL, subject, junc.subset)
         gc()
     }
+
     return(junc)
 }
 
@@ -1541,8 +1550,10 @@ collateData <- function(Experiment, reference_path, output_path,
         c("PSI") := get("count") / get("SO_L")]
     junc[get("SO_R") >= get("SO_L") & get("SO_R") > 0,
         c("PSI") := get("count") / get("SO_R")]
-    templates$junc[junc, on = c("seqnames", "start", "end", "strand"),
-        c("junc_PSI", "junc_counts") := list(get("i.PSI"), get("i.count"))]
+    # templates$junc[junc, on = c("seqnames", "start", "end", "strand"),
+        # c("junc_PSI", "junc_counts") := list(get("i.PSI"), get("i.count"))]
+    templates$junc <- junc[, c("seqnames", "start", "end", "strand", 
+        "junc_PSI", "junc_counts")]
 
     fst::write.fst(as.data.frame(templates$assay[, assay.todo, with = FALSE]),
         file.path(norm_output_path, "temp",

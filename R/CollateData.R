@@ -186,10 +186,10 @@ collateData <- function(Experiment, reference_path, output_path,
     gc()
 
     dash_progress("Building Final SummarizedExperiment Object", N_steps)
-    message("Building Final SummarizedExperiment Object")
+    .log("Building Final SummarizedExperiment Object", "message")
 
-	samples_per_block <- 64
-	if(lowMemoryMode) samples_per_block <- 16
+	samples_per_block <- 16
+	if(lowMemoryMode) samples_per_block <- 4
     assays <- .collateData_compile_assays_from_fst(df.internal,
         norm_output_path, samples_per_block)
 
@@ -205,10 +205,10 @@ collateData <- function(Experiment, reference_path, output_path,
 
     .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.rds"))
     if (dir.exists(file.path(norm_output_path, "temp"))) {
-        unlink(file.path(norm_output_path, "temp"), recursive = TRUE)
+        # unlink(file.path(norm_output_path, "temp"), recursive = TRUE)
     }
     dash_progress("SpliceWiz (NxtSE) Collation Finished", N_steps)
-    message("SpliceWiz (NxtSE) Collation Finished")
+    .log("SpliceWiz (NxtSE) Collation Finished", "message")
     .restore_threads(originalSWthreads)
 }
 

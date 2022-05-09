@@ -1606,6 +1606,12 @@ collateData <- function(Experiment, reference_path, output_path,
             h5filename, exc)
         assays[[exc]] <- HDF5Array(h5filename, exc)
     }
+    
+    if(length(rowname_lists$junc_rownames) > 1000000)
+        .log(paste(
+            "Please ignore any messages below about compression and chunking;",
+            "The H5 file chunk size is already optimized."
+        ), "message")
     for (junc in junc.todo) {
         h5writeDimnames(list(rowname_lists$junc_rownames, df.internal$sample),
             h5filename, junc)

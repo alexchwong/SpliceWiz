@@ -1,4 +1,4 @@
-/* ReadBlockProcessor_CoverageBlocks.h Reads coverage blocks and fragment coverage
+/* ReadBlockProcessor_CoverageBlocks.h Reads coverage blocks
 
 Copyright (C) 2021 Alex Chit Hei Wong
 Copyright (C) 2016 William Ritchie
@@ -25,19 +25,8 @@ SOFTWARE.  */
 #ifndef CODE_READBLOCKPROCESSOR_COVERAGEBLOCKS
 #define CODE_READBLOCKPROCESSOR_COVERAGEBLOCKS
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+#include "ReadBlockProcessor_FragmentsMap.h"
 
-#include "ReadBlockProcessor.h"
-#include "covTools.h"
-#include "FragmentBlocks.h"
-
-#include "SpliceWiz.h"
-
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 struct BEDrecord {
 	std::string chrName;
@@ -47,33 +36,6 @@ struct BEDrecord {
 	bool direction;
 	
 	std::vector<std::pair<unsigned int,unsigned int>> blocks;
-};
-
-class FragmentsMap : public ReadBlockProcessor {
-  // Counts mappability.
-private:
-  // 0 = -, 1 = +, 2 = both
-  std::vector< std::vector< std::pair<unsigned int, int> > > chrName_vec_final[3];
-  std::vector< std::vector< std::pair<unsigned int, int> > > chrName_vec_new[3];
-  std::vector< std::vector< std::pair<unsigned int, int> > > temp_chrName_vec_new[3];
-
-  uint32_t frag_count = 0;
-	int sort_and_collapse_temp();
-
-	bool final_is_sorted = false;
-  
-  vector<chr_entry> chrs;
-public:
-	void Combine(FragmentsMap &child);
-	
-  int sort_and_collapse_final(bool verbose);
-
-  void ProcessBlocks(const FragmentBlocks &blocks);
-  void ChrMapUpdate(const std::vector<chr_entry> &chrmap);
-  int WriteOutput(std::ostream *os, int threshold = 4, bool verbose = false) ;
-  int WriteBinary(covWriter *os, bool verbose = false, unsigned int n_threads_to_use = 1) ;
-  
-  void updateCoverageHist(std::map<unsigned int,unsigned int> &hist, unsigned int start, unsigned int end, unsigned int dir, const unsigned int &refID, bool debug = false) const;
 };
 
 class CoverageBlocks : public ReadBlockProcessor {

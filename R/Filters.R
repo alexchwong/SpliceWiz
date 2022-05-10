@@ -14,9 +14,6 @@
 #'  mutually exclusive exon events, each junction must comprise at least 1/(2^2)
 #'  = 1/4 of all reads associated with each isoform).
 #'  For retained introns, the exon-intron overhangs must not differ by 1/4
-#'
-#' Also, in SpliceWiz version 1.1.1 and above, we introduced two
-#'   annotation-based filters:
 #' * (5) Terminus filter: In alternate first exons, the splice junction must
 #'   not be shared with another transcript for which it is not its first
 #'   intron. For alternative last exons, the splice junction must not be

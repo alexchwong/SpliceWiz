@@ -41,7 +41,7 @@
 #' abundance is calculated exclusively by splice reads mapped to the
 #' specific intron boundaries. Known retained introns are those where the
 #' intron retaining transcript is an **annotated** transcript.
-#' In SpliceWiz `version < 1.1.1`, 
+#' In SpliceWiz, 
 #' the IR-transcript's `transcript_biotype` must not be
 #' an `retained_intron` or `sense_intronic`.
 #'

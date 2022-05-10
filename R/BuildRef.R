@@ -81,7 +81,8 @@
 #'   are: `hg38`, `hg19`, `mm10`, and `mm9`.
 #' @param nonPolyARef (Optional) A BED file of regions defining known
 #'   non-polyadenylated transcripts. This file is used for QC analysis 
-#'   to measure Poly-A enrichment quality of samples.
+#'   to measure Poly-A enrichment quality of samples. An RDS file (openable
+#'   using `readRDS()`) of a GRanges object is acceptable.
 #'   If omitted, and `genome_type` is defined, the default for the specified
 #'   genome will be used.
 #' @param MappabilityRef (Optional) A BED file of low mappability regions due to
@@ -89,9 +90,11 @@
 #'   [calculateMappability()] will be used where available, and if
 #'   this is not, the default file for the specified `genome_type` will be used.
 #'   If `genome_type` is not specified, `MappabilityRef` is not used.
+#'   An RDS file (openable using `readRDS()`) of a GRanges object is acceptable.
 #'   See details.
 #' @param BlacklistRef A BED file of regions to be otherwise excluded from IR
 #'   analysis. If omitted, a blacklist is not used (this is the default).
+#'   An RDS file (openable using `readRDS()`) of a GRanges object is acceptable.
 #' @param useExtendedTranscripts (default `TRUE`) Should non-protein-coding
 #'   transcripts such as anti-sense and lincRNA transcripts be included in
 #'   searching for IR / AS events? Setting `FALSE` (vanilla IRFinder) will
@@ -271,6 +274,11 @@
 #' [Mappability-methods] for methods to calculate low mappability regions\cr\cr
 #' [STAR-methods] for a list of STAR wrapper functions\cr\cr
 #' \link[AnnotationHub]{AnnotationHub}\cr\cr
+#' <https://github.com/alexchwong/SpliceWizResources> for RDS files of
+#' Mappability Exclusion GRanges objects (for hg38, hg19, mm10 and mm9)
+#' that can be use as input files for `MappabilityRef` in `buildRef()`.
+#' These resources are intended for SpliceWiz users on older Bioconductor
+#' versions (3.13 or earlier)
 #' @name Build-Reference-methods
 #' @md
 NULL
@@ -605,11 +613,24 @@ return(TRUE)
     } else if (file.exists(map_file)) {
         MappabilityFile <- .parse_valid_file(map_file)
     } else if (genome_type %in% c("hg38", "hg19", "mm9", "mm10")) {
-        map.gz <- get_mappability_exclusion(
-            genome_type, as_type = "bed.gz", path = map_path, overwrite = TRUE)
+        # Attempt to fetch resource from AnnotationHub
+        map.gz <- NULL
+        tryCatch({
+                map.gz <- get_mappability_exclusion(
+                    genome_type, as_type = "bed.gz", 
+                    path = map_path, overwrite = TRUE
+                )
+            }, error = function(e) NULL
+        )
         if(!is.null(map.gz)) {
             MappabilityFile <- .parse_valid_file(map.gz)
         } else {
+            .log(paste(
+                "Could not find Mappability Exclusion annotation from",
+                "AnnotationHub. Please ensure Bioconductor is updated to",
+                "version 3.14 or above. Alternatively, type",
+                "?buildRef for a link to the github repository containing",
+                "the required resource."))
             MappabilityFile <- ""
         }
     } else {
@@ -622,9 +643,9 @@ return(TRUE)
             force_download = force_download)
 
     # Check files are valid BED files; fail early if not
-    .check_is_BED(nonPolyAFile)
-    .check_is_BED(MappabilityFile)
-    .check_is_BED(BlacklistFile)
+    .check_is_BED_or_RDS(nonPolyAFile)
+    .check_is_BED_or_RDS(MappabilityFile)
+    .check_is_BED_or_RDS(BlacklistFile)
 
     final <- list(
         nonPolyAFile = nonPolyAFile, MappabilityFile = MappabilityFile,
@@ -641,6 +662,43 @@ return(TRUE)
         })
     }
     return()
+}
+
+.check_is_BED_or_RDS <- function(filename) {
+    if (is_valid(filename)) {
+        is_RDS <- FALSE
+        tryCatch({
+                readRDS(filename)
+                is_RDS <- TRUE
+            }, error = function(e) NULL
+        )
+        if(!is_RDS) {
+            tryCatch(
+                rtracklayer::import.bed(filename, "bed"),
+                error = function(x) .log(paste(filename, "is not a BED file"))
+            )
+        }
+    }
+    return()
+}
+
+.convert_BED_or_RDS_to_GRanges <- function(filename) {
+    gr <- NULL
+    if(is_valid(filename) && file.exists(filename)) {
+        tryCatch(
+            gr <- rtracklayer::import.bed(filename, "bed"),
+            error = function(x) NULL
+        )
+        if(!is.null(gr)) return(gr)
+        tryCatch({
+                gr <- readRDS(filename)
+            }, error = function(e) NULL
+        )
+        if(!is.null(gr)) return(gr)
+    }
+    if(is.null(gr)) .log(paste(
+        filename, "is not a valid BED or RDS file!"
+    ))
 }
 
 .convert_chromosomes <- function(chromosome_aliases) {
@@ -1926,7 +1984,7 @@ return(TRUE)
     if (extra_files$MappabilityFile != "") {
         exclude.omnidirectional <- c(exclude.omnidirectional,
             .gen_irf_convert_seqnames(
-                rtracklayer::import(extra_files$MappabilityFile, "bed"),
+                .convert_BED_or_RDS_to_GRanges(extra_files$MappabilityFile),
                 extra_files$genome_style
             )
         )
@@ -1934,7 +1992,7 @@ return(TRUE)
     if (extra_files$BlacklistFile != "") {
         exclude.omnidirectional <- c(exclude.omnidirectional,
             .gen_irf_convert_seqnames(
-                rtracklayer::import(extra_files$BlacklistFile, "bed"),
+                .convert_BED_or_RDS_to_GRanges(extra_files$BlacklistFile),
                 extra_files$genome_style
             )
         )
@@ -2210,7 +2268,7 @@ return(TRUE)
     # List of nonPolyA regions
     if (extra_files$nonPolyAFile != "") {
         nonPolyA <- .gen_irf_convert_seqnames(
-            rtracklayer::import(extra_files$nonPolyAFile, "bed"),
+            .convert_BED_or_RDS_to_GRanges(extra_files$nonPolyAFile),
             extra_files$genome_style
         )
 

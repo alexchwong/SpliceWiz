@@ -210,7 +210,8 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
         filter_antiover = TRUE, filter_antinear = FALSE) {
     .check_package_installed("DESeq2", "1.30.0")
     .ASE_check_args(colData(se), test_factor,
-        test_nom, test_denom, batch1, batch2)
+        test_nom, test_denom, batch1, batch2,
+        modeDESeq2 = TRUE)
     BPPARAM_mod <- .validate_threads(n_threads)
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear)
@@ -245,7 +246,10 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
             get("i.stat"), get("i.pvalue"), get("i.padj"))]
     res.ASE <- res.ASE[!is.na(get("pvalue"))]
     setorder(res.ASE, "pvalue")
-    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, test_nom, test_denom)
+    if(is_valid(test_nom)) {
+        res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
+            test_nom, test_denom)    
+    }
     return(res.ASE)
 }
 
@@ -295,17 +299,21 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
 # Check arguments are valid
 .ASE_check_args <- function(colData, test_factor,
-        test_nom, test_denom, batch1, batch2, n_threads) {
-    if(!is_valid(test_factor) | !is_valid(test_nom) | !is_valid(test_denom)) {
-        .log("test_factor, test_nom, test_denom must be defined")
+        test_nom, test_denom, batch1, batch2, 
+        modeDESeq2 = FALSE
+) {
+    if(!is_valid(test_factor)) {
+        .log("test_factor must be defined")
+    } else if (!modeDESeq2 & (!is_valid(test_nom) | !is_valid(test_denom))) {
+        .log("test_nom, test_denom must be defined")
     }
     if(!(test_factor %in% colnames(colData))) {
         .log("test_factor is not a condition in colData")
     }
-    if(!any(colData[, test_factor] == test_nom)) {
+    if(is_valid(test_nom) && !any(colData[, test_factor] == test_nom)) {
         .log("test_nom is not found in any samples")
     }
-    if(!any(colData[, test_factor] == test_denom)) {
+    if(is_valid(test_denom) && !any(colData[, test_factor] == test_denom)) {
         .log("test_denom is not found in any samples")
     }
     if(batch1 != "") {
@@ -459,13 +467,17 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         dds_formula <- paste0("~", paste(
             batch1, batch2, test_factor,
             sep="+"))
-
+        dds_formula_reduced <- paste0("~", paste(
+            batch1, batch2, sep="+"))
     } else if(batch1 != "") {
         dds_formula <- paste0("~", paste(
             batch1, test_factor,
             sep="+"))
+        dds_formula_reduced <- paste0("~", paste(
+            batch1, sep="+"))
     } else {
         dds_formula <- paste0("~", test_factor)
+        dds_formula_reduced <- paste0("~1")
     }
 
     countData <- as.matrix(countData)
@@ -477,11 +489,20 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     )
     message("ASE_DESeq: Profiling expression of Included and Excluded counts")
 
-    dds <- DESeq2::DESeq(dds, parallel = TRUE, BPPARAM = BPPARAM)
-    res <- as.data.frame(DESeq2::results(dds,
-        contrast = c(test_factor, test_nom, test_denom),
-        parallel = TRUE, BPPARAM = BPPARAM)
-    )
+    if(!is_valid(test_nom) | !is_valid(test_denom)) {
+        dds <- DESeq2::DESeq(dds, test = "LRT", 
+            reduced = as.formula(dds_formula_reduced),
+            parallel = TRUE, BPPARAM = BPPARAM)
+        res <- as.data.frame(DESeq2::results(dds,
+            parallel = TRUE, BPPARAM = BPPARAM)
+        )        
+    } else {
+        dds <- DESeq2::DESeq(dds, parallel = TRUE, BPPARAM = BPPARAM)
+        res <- as.data.frame(DESeq2::results(dds,
+            contrast = c(test_factor, test_nom, test_denom),
+            parallel = TRUE, BPPARAM = BPPARAM)
+        )    
+    }
     res$EventName <- rownames(res)
     return(as.data.table(res))
 }
@@ -506,15 +527,27 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
             batch1, batch2, test_factor,
                 paste0(test_factor, ":ASE"),
             sep="+"))
+        dds_formula_reduced <- paste0("~", paste(
+            batch1, batch2, test_factor,
+                # paste0(test_factor, ":ASE"),
+            sep="+"))
     } else if(batch1 != "") {
         dds_formula <- paste0("~", paste(
             batch1, test_factor,
             paste0(test_factor, ":ASE"),
             sep="+"))
+        dds_formula_reduced <- paste0("~", paste(
+            batch1, test_factor,
+            # paste0(test_factor, ":ASE"),
+            sep="+"))
     } else {
         dds_formula <- paste0("~", paste(
             test_factor,
             paste0(test_factor, ":ASE"),
+            sep="+"))
+        dds_formula_reduced <- paste0("~", paste(
+            test_factor,
+            # paste0(test_factor, ":ASE"),
             sep="+"))
     }
     countData <- as.matrix(countData)
@@ -525,15 +558,24 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         design = as.formula(dds_formula)
     )
     message("ASE_DESeq: Profiling differential ASE")
+    if(!is_valid(test_nom) | !is_valid(test_denom)) {
+        dds <- DESeq2::DESeq(dds, test = "LRT",
+            reduced = as.formula(dds_formula_reduced),
+            parallel = TRUE, BPPARAM = BPPARAM)
+        res <- as.data.frame(DESeq2::results(dds,
+            parallel = TRUE, BPPARAM = BPPARAM)
+        )
+    } else {
+        dds <- DESeq2::DESeq(dds, parallel = TRUE, BPPARAM = BPPARAM)
+        res <- as.data.frame(DESeq2::results(dds,
+            list(
+                paste0(test_factor, test_nom, ".ASEIncluded"),
+                paste0(test_factor, test_denom, ".ASEIncluded")
+            ),
+            parallel = TRUE, BPPARAM = BPPARAM)
+        )
+    }
 
-    dds <- DESeq2::DESeq(dds, parallel = TRUE, BPPARAM = BPPARAM)
-    res <- as.data.frame(DESeq2::results(dds,
-        list(
-            paste0(test_factor, test_nom, ".ASEIncluded"),
-            paste0(test_factor, test_denom, ".ASEIncluded")
-        ),
-        parallel = TRUE, BPPARAM = BPPARAM)
-    )
     res$EventName <- rownames(res)
     return(as.data.table(res))
 }

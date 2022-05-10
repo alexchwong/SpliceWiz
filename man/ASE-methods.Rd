@@ -163,7 +163,7 @@ spliced intron as a binary event paired with its retention. The spliced
 abundance is calculated exclusively by splice reads mapped to the
 specific intron boundaries. Known retained introns are those where the
 intron retaining transcript is an \strong{annotated} transcript.
-In SpliceWiz \verb{version < 1.1.1},
+In SpliceWiz,
 the IR-transcript's \code{transcript_biotype} must not be
 an \code{retained_intron} or \code{sense_intronic}.
 }

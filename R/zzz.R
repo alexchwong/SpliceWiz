@@ -42,3 +42,9 @@ setSWthreads <- function(threads = 0) {
 	threads_fst(SW_threads)
 	return(SW_threads)
 }
+
+.getSWthreads <- function() {
+	DT_threads <- getDTthreads()
+	FST_threads <- threads_fst()
+    return(min(DT_threads, FST_threads))
+}

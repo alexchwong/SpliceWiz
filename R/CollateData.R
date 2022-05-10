@@ -1153,14 +1153,13 @@ collateData <- function(Experiment, reference_path, output_path,
         # Dump unneeded columns to preserve memory
         junc <- junc[, c("seqnames", "start", "end", "strand",
             "count", "SO_L", "SO_R")]
+        sw_cols_keep <- c("EventRegion", "strand", "IntronDepth", 
+                "ExonToIntronReadsLeft", "ExonToIntronReadsRight",
+                "TotalDepth", "Coverage")
         if (IRMode == "SpliceOver") {
-            sw <- sw[, c("strand", "IntronDepth", "SpliceOver",
-                "ExonToIntronReadsLeft", "ExonToIntronReadsRight",
-                "TotalDepth", "Coverage")]
+            sw <- sw[, c(sw_cols_keep, "SpliceOver"), with = FALSE]
         } else {
-            sw <- sw[, c("strand", "IntronDepth", "SpliceMax",
-                "ExonToIntronReadsLeft", "ExonToIntronReadsRight",
-                "TotalDepth", "Coverage")]
+            sw <- sw[, c(sw_cols_keep, "SpliceMax"), with = FALSE]
         }
         gc()
             
@@ -1381,17 +1380,91 @@ collateData <- function(Experiment, reference_path, output_path,
     # Calculates total splice events that participates from the up/down
     #   stream exon islands
     splice[, c("count_JG_up", "count_JG_down") := list(0, 0)]
-    splice[!is.na(get("JG_up")) & get("strand") == "+",
-        c("count_JG_up") := junc$SO_L[match(get("JG_up"), junc$JG_up)]]
-    splice[!is.na(get("JG_up")) & get("strand") == "-",
-        c("count_JG_up") := junc$SO_R[match(get("JG_up"), junc$JG_up)]]
-    splice[is.na(get("count_JG_up")), c("count_JG_up") := 0]
-    splice[!is.na(get("JG_down")) & get("strand") == "-",
-        c("count_JG_down") := junc$SO_L[match(get("JG_down"), junc$JG_down)]]
-    splice[!is.na(get("JG_down")) & get("strand") == "+",
-        c("count_JG_down") := junc$SO_R[match(get("JG_down"), junc$JG_down)]]
-    splice[is.na(get("count_JG_down")), c("count_JG_down") := 0]
+    # splice[!is.na(get("JG_up")) & get("strand") == "+",
+        # c("count_JG_up") := junc$SO_L[match(get("JG_up"), junc$JG_up)]]
+    # splice[!is.na(get("JG_up")) & get("strand") == "-",
+        # c("count_JG_up") := junc$SO_R[match(get("JG_up"), junc$JG_up)]]
+    # splice[is.na(get("count_JG_up")), c("count_JG_up") := 0]
+    # splice[!is.na(get("JG_down")) & get("strand") == "-",
+        # c("count_JG_down") := junc$SO_L[match(get("JG_down"), junc$JG_down)]]
+    # splice[!is.na(get("JG_down")) & get("strand") == "+",
+        # c("count_JG_down") := junc$SO_R[match(get("JG_down"), junc$JG_down)]]
+    # splice[is.na(get("count_JG_down")), c("count_JG_down") := 0]
+    
+    # New method of determing depths
+    # Use Event1b's SO_L and SO_R for single events
+    # Use Event1a's SO_L and SO_R for IR/RI
+    # For SE, use Event1a and Event2a's SO
+    # For MXE, use Event1a and Event2b's SO
 
+    single_events <- c("AFE", "ALE", "A5SS", "A3SS")
+    splice[get("strand") == "+", 
+        c("count_JG_up_1") := junc$SO_L[match(get("Event1a"), junc$Event)]]
+    splice[get("strand") == "-", 
+        c("count_JG_up_1") := junc$SO_R[match(get("Event1a"), junc$Event)]]
+    splice[get("strand") == "+" & !is.na(get("Event1b")), 
+        c("count_JG_up_2") := junc$SO_L[match(get("Event1b"), junc$Event)]]
+    splice[get("strand") == "-" & !is.na(get("Event1b")), 
+        c("count_JG_up_2") := junc$SO_R[match(get("Event1b"), junc$Event)]]
+    splice[get("strand") == "+" & is.na(get("Event1b")), 
+        c("count_JG_up_2") := junc$SO_L[match(get("Event1a"), junc$Event)]]
+    splice[get("strand") == "-" & is.na(get("Event1b")), 
+        c("count_JG_up_2") := junc$SO_R[match(get("Event1a"), junc$Event)]]
+    splice[get("count_JG_up_1") >= get("count_JG_up_2"),
+        c("count_JG_up") := get("count_JG_up_1")]
+    splice[get("count_JG_up_1") < get("count_JG_up_2"),
+        c("count_JG_up") := get("count_JG_up_2")]
+
+    splice[get("strand") == "+" & is.na(get("Event2a")), 
+        c("count_JG_down_1") := junc$SO_R[match(get("Event1a"), junc$Event)]]
+    splice[get("strand") == "-" & is.na(get("Event2a")), 
+        c("count_JG_down_1") := junc$SO_L[match(get("Event1a"), junc$Event)]]
+    splice[get("strand") == "+" & !is.na(get("Event2a")), 
+        c("count_JG_down_1") := junc$SO_R[match(get("Event2a"), junc$Event)]]
+    splice[get("strand") == "-" & !is.na(get("Event2a")), 
+        c("count_JG_down_1") := junc$SO_L[match(get("Event2a"), junc$Event)]]
+    splice[get("strand") == "+" & is.na(get("Event2b")), 
+        c("count_JG_down_2") := junc$SO_R[match(get("Event1b"), junc$Event)]]
+    splice[get("strand") == "-" & is.na(get("Event2b")), 
+        c("count_JG_down_2") := junc$SO_L[match(get("Event1b"), junc$Event)]]
+    splice[get("strand") == "+" & !is.na(get("Event2b")), 
+        c("count_JG_down_2") := junc$SO_R[match(get("Event2b"), junc$Event)]]
+    splice[get("strand") == "-" & !is.na(get("Event2b")), 
+        c("count_JG_down_2") := junc$SO_L[match(get("Event2b"), junc$Event)]]
+    splice[get("count_JG_down_1") >= get("count_JG_down_2"),
+        c("count_JG_down") := get("count_JG_down_1")]
+    splice[get("count_JG_down_1") < get("count_JG_down_2"),
+        c("count_JG_down") := get("count_JG_down_2")]
+
+    splice$count_JG_up_1 <- splice$count_JG_up_2 <- NULL
+    splice$count_JG_down_1 <- splice$count_JG_down_2 <- NULL
+        
+    splice[get("strand") == "+" & !(get("EventType") %in% single_events), 
+        c("count_JG_up") := junc$SO_L[match(get("Event1a"), junc$Event)]]
+    splice[get("strand") == "-" & !(get("EventType") %in% single_events), 
+        c("count_JG_up") := junc$SO_R[match(get("Event1a"), junc$Event)]]
+    splice[get("strand") == "+" & get("EventType") %in% single_events, 
+        c("count_JG_up") := junc$SO_L[match(get("Event1b"), junc$Event)]]
+    splice[get("strand") == "-" & get("EventType") %in% single_events, 
+        c("count_JG_up") := junc$SO_R[match(get("Event1b"), junc$Event)]]
+        
+    splice[get("strand") == "+" & get("EventType") %in% c("IR", "RI"), 
+        c("count_JG_down") := junc$SO_R[match(get("Event1a"), junc$Event)]]
+    splice[get("strand") == "-" & get("EventType") %in% c("IR", "RI"), 
+        c("count_JG_down") := junc$SO_L[match(get("Event1a"), junc$Event)]]
+    splice[get("strand") == "+" & get("EventType") %in% single_events, 
+        c("count_JG_down") := junc$SO_R[match(get("Event1b"), junc$Event)]]
+    splice[get("strand") == "-" & get("EventType") %in% single_events, 
+        c("count_JG_down") := junc$SO_L[match(get("Event1b"), junc$Event)]]
+    splice[get("strand") == "+" & get("EventType") == "SE", 
+        c("count_JG_down") := junc$SO_R[match(get("Event2a"), junc$Event)]]
+    splice[get("strand") == "-" & get("EventType") == "SE", 
+        c("count_JG_down") := junc$SO_L[match(get("Event2a"), junc$Event)]]
+    splice[get("strand") == "+" & get("EventType") == "MXE", 
+        c("count_JG_down") := junc$SO_R[match(get("Event2b"), junc$Event)]]
+    splice[get("strand") == "-" & get("EventType") == "MXE", 
+        c("count_JG_down") := junc$SO_L[match(get("Event2b"), junc$Event)]]
+        
     # Splice participation
     # - this calculates the number of events that participates in splicing
     #   across the upstream / downstream exon island that belong to
@@ -1532,6 +1605,10 @@ collateData <- function(Experiment, reference_path, output_path,
 
     templates$assay[, c("Depth") := c(sw$TotalDepth, splice$TotalDepth)]
     templates$assay[, c("Coverage") := c(sw$Coverage, splice$coverage)]
+    
+    # copy RI's coverage from corresponding IR's coverage
+    templates$assay[get("EventType") == "RI",
+        c("Coverage") := sw$Coverage[match(get("EventRegion"), sw$EventRegion)]]
 
     splice[get("EventType") %in% c("MXE", "SE") &
         get("cov_up") < get("cov_down"),

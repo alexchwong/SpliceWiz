@@ -73,12 +73,12 @@ No additional parameters required.
 predicted NMD substrate.
 \item \strong{TSL}: filters for events in which both
 isoforms have a TSL level below or equal to \code{minimum}
-\item \strong{Terminus} (New as of version 1.1.1):
+\item \strong{Terminus}:
 In alternate first exons, the splice junction must
 not be shared with another transcript for which it is not its first
 intron. For alternative last exons, the splice junction must not be
 shared with another transcript for which it is not its last intron
-\item \strong{ExclusiveMXE} (New as of version 1.1.1):
+\item \strong{ExclusiveMXE}:
 For MXE events, the two alternate
 casette exons must not overlap in their genomic regions
 }

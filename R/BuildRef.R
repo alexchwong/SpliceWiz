@@ -613,7 +613,7 @@ return(TRUE)
     } else if (file.exists(map_file)) {
         MappabilityFile <- .parse_valid_file(map_file)
     } else if (genome_type %in% c("hg38", "hg19", "mm9", "mm10")) {
-        # Attempt to fetch resource from AnnotationHub
+        # Attempt to fetch resource from ExperimentHub
         map.gz <- NULL
         tryCatch({
                 map.gz <- get_mappability_exclusion(
@@ -627,7 +627,7 @@ return(TRUE)
         } else {
             .log(paste(
                 "Could not find Mappability Exclusion annotation from",
-                "AnnotationHub. Please ensure Bioconductor is updated to",
+                "ExperimentHub. Please ensure Bioconductor is updated to",
                 "version 3.14 or above. Alternatively, type",
                 "?buildRef for a link to the github repository containing",
                 "the required resource."))

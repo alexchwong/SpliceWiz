@@ -8,26 +8,15 @@ output:
         toc: true
         toc_float: true
 abstract:
-    Intron Retention (IR) is a form of alternative splicing whereby the intron 
-    is retained (i.e. not spliced) in final messenger RNA. Although many 
-    bioinformatics tools are available to quantitate other forms of alternative
-    splicing, dedicated tools to quantify Intron Retention are limited. 
-    Quantifying IR requires not only measurement of spliced transcripts (often 
-    using mapped splice junction reads), but also measurement of the coverage of
-    the putative retained intron. The latter requires adjustment for the fact 
-    that many introns contain repetitive regions as well as other RNA expressing
-    elements. IRFinder corrects for many of these complexities; however its 
-    dependencies on Linux and STAR limits its wider usage. Also, IRFinder does
-    not calculate other forms of splicing besides IR. Finally, IRFinder 
-    produces text-based output, requiring an established understanding of the
-    data produced in order to interpret its results.
-    
-    SpliceWiz overcomes the above limitations. Firstly, SpliceWiz incorporates 
-    the IRFinder C++ routines, allowing users to run the IRFinder algorithm in
-    the R/Bioconductor environment on multiple platforms. SpliceWiz is a full 
-    pipeline that quantifies IR (and other alternative splicing) events, organises
-    the data and produces relevant visualisation. Additionally, SpliceWiz offers
-    an interactive graphical interface that allows users to explore the data.
+    SpliceWiz is an ultra-fast pipeline that quantifies splicing events using
+    isoform-specific alignments. Alignment file processing is accelerated by its
+    companion package ompBAM, a C++ library that automates OpenMP-based 
+    multi-threaded file processing. Filtering of low confidence splicing events 
+    enhances accuracy. Novel group-averaged sequencing coverage plots creates 
+    powerful visualization of differential splicing between experimental groups.
+    SpliceWiz is ideal for efficient exploration of alternative splicing in 
+    large datasets, whereas ompBAM enables developers to create computationally
+    efficient R packages to read alignment files.
     
     Version `r packageVersion("SpliceWiz")`
 vignette: >
@@ -55,7 +44,7 @@ datasets, refer to chapter 3: "SpliceWiz cookbook"
 
 ### Installation
 
-To install SpliceWiz, start R (version "4.1") and enter: 
+To install SpliceWiz, start R (version "4.2") and enter: 
 
 ```{r eval=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -96,7 +85,7 @@ chrZ_genome()
 chrZ_gtf()
 ```
 
-Using these two files, we construct a SpliceWiz reference as follows:
+Using these two files, we construct an example SpliceWiz reference as follows:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 ref_path = file.path(tempdir(), "Reference")
@@ -107,7 +96,7 @@ buildRef(
 )
 ```
 
-### Running IRFinder
+### Processing BAM files
 
 SpliceWiz provides an example set of 6 BAM files to demonstrate its use via this
 vignette.
@@ -121,57 +110,81 @@ bams = SpliceWiz_example_bams()
 bams
 ```
 
-Finally, run SpliceWiz/IRFinder as follows:
+Finally, run `processBAM()` as follows:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
-irf_path = file.path(tempdir(), "SpliceWiz_Output")
+pb_path = file.path(tempdir(), "pb_output")
 processBAM(
     bamfiles = bams$path,
     sample_names = bams$sample,
     reference_path = ref_path,
-    output_path = irf_path
+    output_path = pb_path
 )
 ```
 
-### Collate individual IRFinder runs to build a SpliceWiz Experiment
+### Collating processBAM output files into a SpliceWiz Experiment
 
-First, collate the IRFinder output files using the helper function
+First, collate the `processBAM()` output files using the helper function
 `findSpliceWizOutput()`
 
 ```{r}
-expr = findSpliceWizOutput(irf_path)
+expr = findSpliceWizOutput(pb_path)
 ```
 
-This creates a 3-column data frame with sample name, IRFinder gzipped text
+This creates a 3-column data frame with sample name, gzipped text
 output, and COV files. Compile these output files into a single experiment:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
-nxtirf_path = file.path(tempdir(), "Collated_output")
+nxtse_path = file.path(tempdir(), "NxtSE_output")
 collateData(
     Experiment = expr,
     reference_path = ref_path,
-    output_path = nxtirf_path
+    output_path = nxtse_path
 )
 ```
 
+The `collateData()` function creates arrays of junction read counts and intron
+depths (depth of intron coverages). It creates an H5 dataset and Rds files
+that enable import of the NxtSE object (see next section).
+
 ### Importing the collated data as a NxtSE object:
 
-The `NxtSE` is a data structure that inherits `SummarizedExperiment`
+The `NxtSE` is a data structure that inherits `SummarizedExperiment`. It
+contains a number of assays that contain junction counts pertaining to each
+splice event.
+
+After running `collateData()`, importing the data into the R session is done
+using the `makeSE()` function:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
-se = makeSE(nxtirf_path)
+se = makeSE(nxtse_path)
 ```
 
 ### Set some experimental conditions:
 
+An experiment is a collection of samples in a dataset. Differential analysis
+is all about comparing differences in splicing between differential experimental
+groups. We can define these experimental conditions just like how it is done
+using the `SummarizedExperiment` object (since `NxtSE` inherits this object).
+
+Assign some example conditions to the NxtSE object and view these conditions
+using the following:
+
 ```{r}
 colData(se)$condition = rep(c("A", "B"), each = 3)
 colData(se)$batch = rep(c("K", "L", "M"), 2)
+colData(se)
 ```
 
 ### Perform differential alternative splicing
 
-The code below will contrast condition:B in respect to condition:A
+The `ASE` family of functions perform differential expression of alternative
+splicing events (ASEs). Counts can be modeled either using log-normal
+distribution (using limma), negative binomial distribution with moderated
+dispersions (using DESeq2), or beta-binomial distribution using DoubleExpSeq.
+
+We find that for large experiments, DESeq2 is more computationally expensive. It
+may be more expedient to use limma or DoubleExpSeq in these situations.
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 # Requires limma to be installed:
@@ -204,19 +217,46 @@ res_DES = ASE_DoubleExpSeq(
 
 ### Visualise a Coverage plot of a differential IR event:
 
-Filter by visibly-different events:
+Now that we have a list of differential events, we can view the top events like
+so:
+
+```{r}
+head(res_limma, 10)
+```
+
+Differential expression is often performed using log-fold change differences
+which relies on a logarithmic scale. Often, many of these events have PSI's
+that are very close to `0` or `1`. To obtain a list of differential events with
+meaningful changes in PSI (on the linear scale), it is useful to apply an
+additional filter requiring the delta-PSI to be greater than `0.05`:
 
 ```{r}
 res_limma.filtered = subset(res_limma, abs(AvgPSI_A - AvgPSI_B) > 0.05)
 ```
 
-Plot individual samples:
+#### Plotting a list (upto 4) of individual samples
 
 ```{r, fig.width = 8, fig.height = 6}
 p = plotCoverage(
     se = se,
     Event = res_limma.filtered$EventName[1],
     tracks = colnames(se)[c(1,2,4,5)],
+)
+as_ggplot_cov(p)
+```
+
+Notice that the genomic axis can sometimes look crowded. To display only a
+select number of transcripts, we can use the `selected_transcripts` argument
+of the `plotCoverage()` function:
+
+```{r, fig.width = 8, fig.height = 6}
+p = plotCoverage(
+    se = se,
+    Event = res_limma.filtered$EventName[1],
+    tracks = colnames(se)[c(1,2,4,5)],
+    selected_transcripts = c(
+        "NSUN5-201", "NSUN5-203", "NSUN5-206"
+    )
 )
 as_ggplot_cov(p)
 ```
@@ -228,7 +268,13 @@ Display the plotly interactive version of the coverage plot (not shown here)
 p$final_plot
 ```
 
-Plot by condition:
+#### Plotting condition-averaged coverage plots
+
+We can combine the coverages of individual samples. SpliceWiz does this by
+normalizing the coverage depths of individual samples by their 
+`transcript depth` (which is the sum of splice junction counts and retained 
+intron estimates). The `tracks` argument is used to specify the condition names,
+and the `condition` argument specifies the category name of the condition.
 
 ```{r, fig.width = 8, fig.height = 6}
 p = plotCoverage(
@@ -373,12 +419,12 @@ columns as the sample names and paths of all the BAM files found. We use this to
 run IRFinder on all the BAM files using the following:
 
 ```{r, eval = FALSE}
-irf_path = file.path(tempdir(), "SpliceWiz_Output")
+pb_path = file.path(tempdir(), "pb_output")
 processBAM(
     bamfiles = bams$path,
     sample_names = bams$sample,
     reference_path = ref_path,
-    output_path = irf_path,
+    output_path = pb_path,
     n_threads = 2,
     overwrite = FALSE,
     run_featureCounts = FALSE
@@ -404,14 +450,14 @@ processBAM(
     bamfiles = bams$path,
     sample_names = bams$sample,
     reference_path = ref_path,
-    output_path = irf_path,
+    output_path = pb_path,
     n_threads = 2,
     overwrite = FALSE,
     run_featureCounts = TRUE
 )
 
 # Load gene counts
-gene_counts <- readRDS(file.path(irf_path, "main.FC.Rds"))
+gene_counts <- readRDS(file.path(pb_path, "main.FC.Rds"))
 
 # Access gene counts:
 gene_counts$counts
@@ -435,7 +481,7 @@ this data using the collateData() function. Again, we use a convenience function
 to generate a list of IRFinder output files:
 
 ```{r, eval = FALSE}
-expr <- findSpliceWizOutput(irf_path)
+expr <- findSpliceWizOutput(pb_path)
 ```
 
 `expr` is a 3-column data frame. The first two columns contain the sample 
@@ -457,12 +503,12 @@ Now that we have an organised list of IRFinder output files, we parse this into
 `collateData()`
 
 ```{r, eval = FALSE}
-nxtirf_path = file.path(tempdir(), "Collated_output")
+nxtse_path = file.path(tempdir(), "NxtSE_output")
 
 collateData(
     Experiment = expr,
     reference_path = ref_path,
-    output_path = nxtirf_path,
+    output_path = nxtse_path,
     IRMode = "SpliceOver",
     n_threads = 1
 )
@@ -490,7 +536,7 @@ Now that `collateData()` has created the unified data in the \code{"NxtSE"}
 directory, we can retrieve the data as a NxtSE object:
 
 ```{r, eval = FALSE}
-se = makeSE(nxtirf_path, RemoveOverlapping = TRUE)
+se = makeSE(nxtse_path, RemoveOverlapping = TRUE)
 ```
 
 Two things of note:
@@ -504,7 +550,7 @@ the `colData` parameter as shown:
 ```{r, eval = FALSE}
 subset_samples = colnames(se)[1:4]
 df = data.frame(sample = subset_samples)
-se_small = makeSE(nxtirf_path, colData = df, RemoveOverlapping = TRUE)
+se_small = makeSE(nxtse_path, colData = df, RemoveOverlapping = TRUE)
 ```
 
 (2) In complex transcriptomes including those of human and mouse, alternative
@@ -1112,7 +1158,7 @@ processBAM(
     bamfiles = bams$path,
     sample_names = bams$sample,
     reference_path = ref_path,
-    output_path = "./SpliceWiz_Output",
+    output_path = "./pb_output",
     n_threads = 4,
     Use_OpenMP = TRUE
 )
@@ -1133,7 +1179,7 @@ reference:
 BAM2COV(
     bamfiles = bams$path,
     sample_names = bams$sample,
-    output_path = "./SpliceWiz_Output",
+    output_path = "./pb_output",
     n_threads = 4,
     Use_OpenMP = TRUE
 )
@@ -1146,7 +1192,7 @@ in the previous section, use the convenience function `findSpliceWizOutput()`
 to tabulate a list of samples and their corresponding IRFinder outputs:
 
 ```{r eval=FALSE}
-expr = findSpliceWizOutput("./SpliceWiz_Output")
+expr = findSpliceWizOutput("./pb_output")
 ```
 
 This data.frame can be directly used to run `collateData`:
@@ -1155,7 +1201,7 @@ This data.frame can be directly used to run `collateData`:
 collateData(
     Experiment = expr,
     reference_path = ref_path,
-    output_path = "./Collated_output"
+    output_path = "./NxtSE_output"
 )
 ```
 
@@ -1164,7 +1210,7 @@ that inherits `SummarizedExperiment` and has specialized containers to hold
 additional data required by NxtIRF.
 
 ```{r eval = FALSE}
-se = makeSE("./Collated_output")
+se = makeSE("./NxtSE_output")
 ```
 
 ## Downstream analysis using SpliceWiz

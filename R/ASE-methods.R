@@ -13,6 +13,12 @@
 #'  See [this vignette](https://rpubs.com/mikelove/ase) for an explanation of
 #' how this is done.
 #'
+#' Time series are supported by SpliceWiz to a limited extent. Time series
+#' analysis is only performed via DESeq2 (using its "LRT" mode). To activate
+#' time series differential analysis, run `ASE_DESeq()` specifying `test_factor`
+#' as the column of numeric values containing time series data. The `test_nom`
+#' and `test_denom` parameters must be left blank. See example below.
+#'
 #' Using **DoubleExpSeq**, included and excluded counts are modelled using
 #' the generalized beta prime distribution, using empirical Bayes shrinkage
 #' to estimate dispersion.
@@ -134,7 +140,14 @@
 #'
 #' require("DESeq2")
 #' res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")
+#' 
+#' # Time series example
+#'
+#' colData(se)$timepoint <- rep(c(1,2,3), each = 2)
+#' colData(se)$batch <- rep(c("1", "2"), 3)
+#' res_DESeq_timeseries <- ASE_DESeq(se, "timepoint")
 #' }
+#' 
 #' @name ASE-methods
 #' @references
 #' Ritchie ME, Phipson B, Wu D, Hu Y, Law CW, Shi W, Smyth GK (2015).
@@ -197,7 +210,8 @@ ASE_limma <- function(se, test_factor, test_nom, test_denom,
         list(get("i.logFC"), get("i.AveExpr"), get("i.t"),
             get("i.P.Value"), get("i.adj.P.Val"), get("i.B"))]
     setorderv(res.ASE, "B", order = -1)
-    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, test_nom, test_denom)
+    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
+        lisst(test_nom, test_denom))
     return(res.ASE)
 }
 
@@ -248,7 +262,13 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
     setorder(res.ASE, "pvalue")
     if(is_valid(test_nom)) {
         res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
-            test_nom, test_denom)    
+            list(test_nom, test_denom))
+    } else {
+        condlist <- as.list(sort(unique(
+            unlist(colData(se)[, test_factor]
+        ))))
+        if(length(condlist) > 6) condlist <- condlist[seq_len(6)]
+        res.ASE <- .ASE_add_diag_multi(res.ASE, se_use, test_factor, condlist)
     }
     return(res.ASE)
 }
@@ -290,7 +310,8 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
     res.ASE <- res.ASE[!is.na(get("P.Value"))]
     setorderv(res.ASE, "P.Value")
-    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, test_nom, test_denom)
+    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
+        list(test_nom, test_denom))
     return(res.ASE)
 }
 
@@ -609,12 +630,33 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     rowData.DT <- as.data.table(rowData[,
         c("EventName","EventType","EventRegion", "NMD_direction")])
     diag <- makeMeanPSI(se, res$EventName,
-        test_factor, test_nom, test_denom)
+        test_factor, list(test_nom, test_denom))
     colnames(diag)[2:3] <- c(paste0("AvgPSI_", test_nom),
         paste0("AvgPSI_", test_denom))
     res <- cbind(
         res[,c("EventName")],
         as.data.table(diag[,2:3]),
+        res[,-c("EventName")]
+    )
+    res <- rowData.DT[res, on = "EventName"]
+    return(res)
+}
+
+.ASE_add_diag_multi <- function(
+        res, se, test_factor, 
+        conditionList
+) {
+    rowData <- as.data.frame(rowData(se))
+    rowData.DT <- as.data.table(rowData[,
+        c("EventName","EventType","EventRegion", "NMD_direction")])
+    diag <- makeMeanPSI(se, res$EventName,
+        test_factor, conditionList)
+    for(i in seq_len(length(conditionList))) {
+        colnames(diag)[i+1] <- paste0("AvgPSI_", conditionList[i])
+    }
+    res <- cbind(
+        res[,c("EventName")],
+        as.data.table(diag[,-1]),
         res[,-c("EventName")]
     )
     res <- rowData.DT[res, on = "EventName"]

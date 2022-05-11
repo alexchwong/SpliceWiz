@@ -211,7 +211,7 @@ ASE_limma <- function(se, test_factor, test_nom, test_denom,
             get("i.P.Value"), get("i.adj.P.Val"), get("i.B"))]
     setorderv(res.ASE, "B", order = -1)
     res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
-        list(test_nom, test_denom))
+        test_nom, test_denom)
     return(res.ASE)
 }
 
@@ -262,7 +262,7 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
     setorder(res.ASE, "pvalue")
     if(is_valid(test_nom)) {
         res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
-            list(test_nom, test_denom))
+            test_nom, test_denom)
     } else {
         condlist <- as.list(sort(unique(
             unlist(colData(se)[, test_factor]
@@ -311,7 +311,7 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     res.ASE <- res.ASE[!is.na(get("P.Value"))]
     setorderv(res.ASE, "P.Value")
     res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
-        list(test_nom, test_denom))
+        test_nom, test_denom)
     return(res.ASE)
 }
 

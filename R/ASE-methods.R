@@ -211,7 +211,7 @@ ASE_limma <- function(se, test_factor, test_nom, test_denom,
             get("i.P.Value"), get("i.adj.P.Val"), get("i.B"))]
     setorderv(res.ASE, "B", order = -1)
     res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
-        lisst(test_nom, test_denom))
+        list(test_nom, test_denom))
     return(res.ASE)
 }
 
@@ -225,7 +225,7 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
     .check_package_installed("DESeq2", "1.30.0")
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, batch1, batch2,
-        modeDESeq2 = TRUE)
+        allowTimeSeries = TRUE)
     BPPARAM_mod <- .validate_threads(n_threads)
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear)
@@ -321,12 +321,19 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 # Check arguments are valid
 .ASE_check_args <- function(colData, test_factor,
         test_nom, test_denom, batch1, batch2, 
-        modeDESeq2 = FALSE
+        allowTimeSeries = FALSE
 ) {
     if(!is_valid(test_factor)) {
         .log("test_factor must be defined")
-    } else if (!modeDESeq2 & (!is_valid(test_nom) | !is_valid(test_denom))) {
+    } else if (!allowTimeSeries & 
+            (!is_valid(test_nom) | !is_valid(test_denom))) {
         .log("test_nom, test_denom must be defined")
+    } else if(allowTimeSeries & !is_valid(test_nom)) {
+        if(!is.numeric(colData[, test_factor])) {
+            .log(paste(
+                test_factor, "must be numeric for time series analysis"
+            ))
+        }
     }
     if(!(test_factor %in% colnames(colData))) {
         .log("test_factor is not a condition in colData")

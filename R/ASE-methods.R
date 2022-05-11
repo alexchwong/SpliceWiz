@@ -13,6 +13,12 @@
 #'  See [this vignette](https://rpubs.com/mikelove/ase) for an explanation of
 #' how this is done.
 #'
+#' Time series are supported by SpliceWiz to a limited extent. Time series
+#' analysis is only performed via DESeq2 (using its "LRT" mode). To activate
+#' time series differential analysis, run `ASE_DESeq()` specifying `test_factor`
+#' as the column of numeric values containing time series data. The `test_nom`
+#' and `test_denom` parameters must be left blank. See example below.
+#'
 #' Using **DoubleExpSeq**, included and excluded counts are modelled using
 #' the generalized beta prime distribution, using empirical Bayes shrinkage
 #' to estimate dispersion.
@@ -134,7 +140,14 @@
 #'
 #' require("DESeq2")
 #' res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")
+#' 
+#' # Time series example
+#'
+#' colData(se)$timepoint <- rep(c(1,2,3), each = 2)
+#' colData(se)$batch <- rep(c("1", "2"), 3)
+#' res_DESeq_timeseries <- ASE_DESeq(se, "timepoint")
 #' }
+#' 
 #' @name ASE-methods
 #' @references
 #' Ritchie ME, Phipson B, Wu D, Hu Y, Law CW, Shi W, Smyth GK (2015).
@@ -197,7 +210,8 @@ ASE_limma <- function(se, test_factor, test_nom, test_denom,
         list(get("i.logFC"), get("i.AveExpr"), get("i.t"),
             get("i.P.Value"), get("i.adj.P.Val"), get("i.B"))]
     setorderv(res.ASE, "B", order = -1)
-    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, test_nom, test_denom)
+    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
+        test_nom, test_denom)
     return(res.ASE)
 }
 
@@ -210,7 +224,8 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
         filter_antiover = TRUE, filter_antinear = FALSE) {
     .check_package_installed("DESeq2", "1.30.0")
     .ASE_check_args(colData(se), test_factor,
-        test_nom, test_denom, batch1, batch2)
+        test_nom, test_denom, batch1, batch2,
+        allowTimeSeries = TRUE)
     BPPARAM_mod <- .validate_threads(n_threads)
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear)
@@ -245,7 +260,16 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
             get("i.stat"), get("i.pvalue"), get("i.padj"))]
     res.ASE <- res.ASE[!is.na(get("pvalue"))]
     setorder(res.ASE, "pvalue")
-    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, test_nom, test_denom)
+    if(is_valid(test_nom)) {
+        res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
+            test_nom, test_denom)
+    } else {
+        condlist <- as.list(sort(unique(
+            unlist(colData(se)[, test_factor]
+        ))))
+        if(length(condlist) > 6) condlist <- condlist[seq_len(6)]
+        res.ASE <- .ASE_add_diag_multi(res.ASE, se_use, test_factor, condlist)
+    }
     return(res.ASE)
 }
 
@@ -286,7 +310,8 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
     res.ASE <- res.ASE[!is.na(get("P.Value"))]
     setorderv(res.ASE, "P.Value")
-    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, test_nom, test_denom)
+    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
+        test_nom, test_denom)
     return(res.ASE)
 }
 
@@ -295,17 +320,28 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
 # Check arguments are valid
 .ASE_check_args <- function(colData, test_factor,
-        test_nom, test_denom, batch1, batch2, n_threads) {
-    if(!is_valid(test_factor) | !is_valid(test_nom) | !is_valid(test_denom)) {
-        .log("test_factor, test_nom, test_denom must be defined")
+        test_nom, test_denom, batch1, batch2, 
+        allowTimeSeries = FALSE
+) {
+    if(!is_valid(test_factor)) {
+        .log("test_factor must be defined")
+    } else if (!allowTimeSeries & 
+            (!is_valid(test_nom) | !is_valid(test_denom))) {
+        .log("test_nom, test_denom must be defined")
+    } else if(allowTimeSeries & !is_valid(test_nom)) {
+        if(!is.numeric(colData[, test_factor])) {
+            .log(paste(
+                test_factor, "must be numeric for time series analysis"
+            ))
+        }
     }
     if(!(test_factor %in% colnames(colData))) {
         .log("test_factor is not a condition in colData")
     }
-    if(!any(colData[, test_factor] == test_nom)) {
+    if(is_valid(test_nom) && !any(colData[, test_factor] == test_nom)) {
         .log("test_nom is not found in any samples")
     }
-    if(!any(colData[, test_factor] == test_denom)) {
+    if(is_valid(test_denom) && !any(colData[, test_factor] == test_denom)) {
         .log("test_denom is not found in any samples")
     }
     if(batch1 != "") {
@@ -459,13 +495,17 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         dds_formula <- paste0("~", paste(
             batch1, batch2, test_factor,
             sep="+"))
-
+        dds_formula_reduced <- paste0("~", paste(
+            batch1, batch2, sep="+"))
     } else if(batch1 != "") {
         dds_formula <- paste0("~", paste(
             batch1, test_factor,
             sep="+"))
+        dds_formula_reduced <- paste0("~", paste(
+            batch1, sep="+"))
     } else {
         dds_formula <- paste0("~", test_factor)
+        dds_formula_reduced <- paste0("~1")
     }
 
     countData <- as.matrix(countData)
@@ -477,11 +517,20 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     )
     message("ASE_DESeq: Profiling expression of Included and Excluded counts")
 
-    dds <- DESeq2::DESeq(dds, parallel = TRUE, BPPARAM = BPPARAM)
-    res <- as.data.frame(DESeq2::results(dds,
-        contrast = c(test_factor, test_nom, test_denom),
-        parallel = TRUE, BPPARAM = BPPARAM)
-    )
+    if(!is_valid(test_nom) | !is_valid(test_denom)) {
+        dds <- DESeq2::DESeq(dds, test = "LRT", 
+            reduced = as.formula(dds_formula_reduced),
+            parallel = TRUE, BPPARAM = BPPARAM)
+        res <- as.data.frame(DESeq2::results(dds,
+            parallel = TRUE, BPPARAM = BPPARAM)
+        )        
+    } else {
+        dds <- DESeq2::DESeq(dds, parallel = TRUE, BPPARAM = BPPARAM)
+        res <- as.data.frame(DESeq2::results(dds,
+            contrast = c(test_factor, test_nom, test_denom),
+            parallel = TRUE, BPPARAM = BPPARAM)
+        )    
+    }
     res$EventName <- rownames(res)
     return(as.data.table(res))
 }
@@ -506,15 +555,27 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
             batch1, batch2, test_factor,
                 paste0(test_factor, ":ASE"),
             sep="+"))
+        dds_formula_reduced <- paste0("~", paste(
+            batch1, batch2, test_factor,
+                # paste0(test_factor, ":ASE"),
+            sep="+"))
     } else if(batch1 != "") {
         dds_formula <- paste0("~", paste(
             batch1, test_factor,
             paste0(test_factor, ":ASE"),
             sep="+"))
+        dds_formula_reduced <- paste0("~", paste(
+            batch1, test_factor,
+            # paste0(test_factor, ":ASE"),
+            sep="+"))
     } else {
         dds_formula <- paste0("~", paste(
             test_factor,
             paste0(test_factor, ":ASE"),
+            sep="+"))
+        dds_formula_reduced <- paste0("~", paste(
+            test_factor,
+            # paste0(test_factor, ":ASE"),
             sep="+"))
     }
     countData <- as.matrix(countData)
@@ -525,15 +586,24 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         design = as.formula(dds_formula)
     )
     message("ASE_DESeq: Profiling differential ASE")
+    if(!is_valid(test_nom) | !is_valid(test_denom)) {
+        dds <- DESeq2::DESeq(dds, test = "LRT",
+            reduced = as.formula(dds_formula_reduced),
+            parallel = TRUE, BPPARAM = BPPARAM)
+        res <- as.data.frame(DESeq2::results(dds,
+            parallel = TRUE, BPPARAM = BPPARAM)
+        )
+    } else {
+        dds <- DESeq2::DESeq(dds, parallel = TRUE, BPPARAM = BPPARAM)
+        res <- as.data.frame(DESeq2::results(dds,
+            list(
+                paste0(test_factor, test_nom, ".ASEIncluded"),
+                paste0(test_factor, test_denom, ".ASEIncluded")
+            ),
+            parallel = TRUE, BPPARAM = BPPARAM)
+        )
+    }
 
-    dds <- DESeq2::DESeq(dds, parallel = TRUE, BPPARAM = BPPARAM)
-    res <- as.data.frame(DESeq2::results(dds,
-        list(
-            paste0(test_factor, test_nom, ".ASEIncluded"),
-            paste0(test_factor, test_denom, ".ASEIncluded")
-        ),
-        parallel = TRUE, BPPARAM = BPPARAM)
-    )
     res$EventName <- rownames(res)
     return(as.data.table(res))
 }
@@ -567,12 +637,33 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     rowData.DT <- as.data.table(rowData[,
         c("EventName","EventType","EventRegion", "NMD_direction")])
     diag <- makeMeanPSI(se, res$EventName,
-        test_factor, test_nom, test_denom)
+        test_factor, list(test_nom, test_denom))
     colnames(diag)[2:3] <- c(paste0("AvgPSI_", test_nom),
         paste0("AvgPSI_", test_denom))
     res <- cbind(
         res[,c("EventName")],
         as.data.table(diag[,2:3]),
+        res[,-c("EventName")]
+    )
+    res <- rowData.DT[res, on = "EventName"]
+    return(res)
+}
+
+.ASE_add_diag_multi <- function(
+        res, se, test_factor, 
+        conditionList
+) {
+    rowData <- as.data.frame(rowData(se))
+    rowData.DT <- as.data.table(rowData[,
+        c("EventName","EventType","EventRegion", "NMD_direction")])
+    diag <- makeMeanPSI(se, res$EventName,
+        test_factor, conditionList)
+    for(i in seq_len(length(conditionList))) {
+        colnames(diag)[i+1] <- paste0("AvgPSI_", conditionList[i])
+    }
+    res <- cbind(
+        res[,c("EventName")],
+        as.data.table(diag[,-1]),
         res[,-c("EventName")]
     )
     res <- rowData.DT[res, on = "EventName"]

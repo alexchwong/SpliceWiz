@@ -21,10 +21,9 @@ makeMeanPSI(
   se,
   event_list = rownames(se),
   condition,
-  nom_DE,
-  denom_DE,
+  conditionList,
   depth_threshold = 10,
-  logit_max = 5
+  logit_max = 10
 )
 }
 \arguments{
@@ -60,10 +59,8 @@ this error.}
 \item{condition}{The name of the column containing the condition values in
 \code{colData(se)}}
 
-\item{nom_DE}{The condition to be contrasted, e.g. \code{nom_DE = "treatment"}}
-
-\item{denom_DE}{The condition to be contrasted against, e.g.
-\code{denom_DE = "control"}}
+\item{conditionList}{A list of condition values of which to calculate mean
+PSIs}
 }
 \value{
 For \code{makeMatrix}: A matrix of PSI (or alternate) values, with
@@ -120,6 +117,7 @@ event_list <- rowData(se)$EventName
 mat <- makeMatrix(se, event_list[1:10])
 
 diag_values <- makeMeanPSI(se, event_list,
-  condition = "treatment", nom_DE = "A", denom_DE = "B"
+  condition = "treatment", 
+  conditionList = list("A", "B")
 )
 }

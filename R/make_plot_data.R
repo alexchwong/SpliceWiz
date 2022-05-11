@@ -51,9 +51,8 @@
 #'   this error.
 #' @param condition The name of the column containing the condition values in
 #'   `colData(se)`
-#' @param nom_DE The condition to be contrasted, e.g. `nom_DE = "treatment"`
-#' @param denom_DE The condition to be contrasted against, e.g.
-#'   `denom_DE = "control"`
+#' @param conditionList A list of condition values of which to calculate mean
+#'   PSIs
 #' @return
 #' For `makeMatrix`: A matrix of PSI (or alternate) values, with
 #' columns as samples and rows as ASE events.
@@ -71,7 +70,8 @@
 #' mat <- makeMatrix(se, event_list[1:10])
 #'
 #' diag_values <- makeMeanPSI(se, event_list,
-#'   condition = "treatment", nom_DE = "A", denom_DE = "B"
+#'   condition = "treatment", 
+#'   conditionList = list("A", "B")
 #' )
 #' @name make_plot_data
 #' @aliases makeMatrix makeMeanPSI
@@ -120,8 +120,10 @@ makeMatrix <- function(
 #' @export
 makeMeanPSI <- function(
         se, event_list = rownames(se),
-        condition, nom_DE, denom_DE,
-        depth_threshold = 10, logit_max = 5
+        condition, 
+        conditionList,
+        # nom_DE, denom_DE,
+        depth_threshold = 10, logit_max = 10
 ) {
     if (!any(event_list %in% rownames(se))) .log(
         "None of events in event_list matches those in the NxtSE object")
@@ -132,18 +134,19 @@ makeMeanPSI <- function(
     mat[inc + exc < depth_threshold] <- NA
 
     # use logit method to calculate geometric mean
-
-    mat.nom <- qlogis(mat[, colData(se)[, condition] == nom_DE])
-    mat.denom <- qlogis(mat[, colData(se)[, condition] == denom_DE])
-
-    mat.nom[mat.nom > logit_max] <- logit_max
-    mat.denom[mat.denom > logit_max] <- logit_max
-    mat.nom[mat.nom < -logit_max] <- -logit_max
-    mat.denom[mat.denom < -logit_max] <- -logit_max
-
-    df <- data.frame(EventName = event_list,
-        nom = plogis(rowMeans(mat.nom, na.rm = TRUE)),
-        denom = plogis(rowMeans(mat.denom, na.rm = TRUE)))
-
+    df <- data.frame(EventName = event_list)
+    for(cond in conditionList) {
+        if(cond %in% colData(se)[, condition]) {
+            mat.cond <- qlogis(mat[, colData(se)[, condition] == cond])
+            mat.cond[mat.cond > logit_max] <- logit_max
+            mat.cond[mat.cond < -logit_max] <- -logit_max
+            df$newcond <- plogis(rowMeans(mat.cond, na.rm = TRUE))
+            colnames(df)[ncol(df)] <- paste(condition, cond, sep = "_")
+        } else {
+            .log(paste(
+                cond, "not found in", condition, "-", cond, "ignored"
+            ), "message")
+        }
+    }
     return(df)
 }

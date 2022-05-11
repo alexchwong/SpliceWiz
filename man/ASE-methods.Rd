@@ -128,6 +128,12 @@ For \strong{limma} and \strong{DESeq2}, differential ASE are considered as the
 See \href{https://rpubs.com/mikelove/ase}{this vignette} for an explanation of
 how this is done.
 
+Time series are supported by SpliceWiz to a limited extent. Time series
+analysis is only performed via DESeq2 (using its "LRT" mode). To activate
+time series differential analysis, run \code{ASE_DESeq()} specifying \code{test_factor}
+as the column of numeric values containing time series data. The \code{test_nom}
+and \code{test_denom} parameters must be left blank. See example below.
+
 Using \strong{DoubleExpSeq}, included and excluded counts are modelled using
 the generalized beta prime distribution, using empirical Bayes shrinkage
 to estimate dispersion.
@@ -213,7 +219,14 @@ res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 
 require("DESeq2")
 res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")
+
+# Time series example
+
+colData(se)$timepoint <- rep(c(1,2,3), each = 2)
+colData(se)$batch <- rep(c("1", "2"), 3)
+res_DESeq_timeseries <- ASE_DESeq(se, "timepoint")
 }
+
 }
 \references{
 Ritchie ME, Phipson B, Wu D, Hu Y, Law CW, Shi W, Smyth GK (2015).

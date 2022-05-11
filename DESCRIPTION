@@ -20,6 +20,7 @@ Description: Reads and fragments aligned to splice junctions can be used to
 License: MIT + file LICENSE
 Depends: NxtIRFdata
 Imports:
+    ompBAM,
 	methods, stats, utils, tools, parallel,
 	magrittr,
 	Rcpp (>= 1.0.5),

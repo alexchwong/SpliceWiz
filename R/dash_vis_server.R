@@ -66,10 +66,10 @@ server_vis_diag <- function(
                 res <- res[seq_len(num_events)]
             }
             df.diag <- makeMeanPSI(
-                get_se(), res$EventName, 
-                input$variable_diag, input$nom_diag, input$denom_diag
+                get_se(), res$EventName, input$variable_diag, 
+                list(input$nom_diag, input$denom_diag)
             )
-
+            colnames(df.diag)[seq(2,3)] <- c("nom", "denom")
             if(is_valid(settings_Diag$selected)) {
                 df.diag$selected <- 
                     (df.diag$EventName %in% get_de()$EventName[selected])

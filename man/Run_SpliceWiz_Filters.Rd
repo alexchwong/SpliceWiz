@@ -7,22 +7,22 @@
 \alias{runFilter}
 \title{Filtering for IR and Alternative Splicing Events}
 \usage{
-getDefaultFilters(legacy = FALSE)
+getDefaultFilters()
 
 applyFilters(se, filters = getDefaultFilters())
 
 runFilter(se, filterObj)
 }
 \arguments{
-\item{legacy}{(default \code{FALSE}) Set to \code{TRUE} to get the first four
-default filters introduced in the initial SpliceWiz release.}
-
 \item{se}{the \linkS4class{NxtSE} object to filter}
 
 \item{filters}{A vector or list of one or more ASEFilter objects. If left
 blank, the SpliceWiz default filters will be used.}
 
 \item{filterObj}{A single \linkS4class{ASEFilter} object.}
+
+\item{legacy}{(default \code{FALSE}) Set to \code{TRUE} to get the first four
+default filters introduced in the initial SpliceWiz release.}
 }
 \value{
 For \code{runFilter} and \code{applyFilters}: a vector of type \code{logical},
@@ -39,8 +39,8 @@ criteria. See \link{ASEFilter} for details.
 We highly recommend using the default filters, which are as follows:
 \itemize{
 \item (1) Depth filter of 20,
-\item (2) Coverage filter requiring 90\% coverage in IR events.
-\item (3) Coverage filter requiring 60\% coverage in AS events
+\item (2) Participation filter requiring 70\% coverage in IR events.
+\item (3) Participation filter requiring 40\% coverage in AS events
 (i.e. Included + Excluded isoforms must cover at least 60\% of all junction
 events across the given region)
 \item (4) Consistency filter requring log difference of 2 (for skipped exon and

@@ -21,8 +21,9 @@ filterModule_UI <- function(id, label = "Counter") {
                 selected = 1)
         ),
         conditionalPanel(ns = ns,
-            condition = "['Coverage'].indexOf(input.filterType) >= 0",
-            sliderInput(ns("slider_cov_min"), "Percent Coverage", 
+            condition = "['Participation'].indexOf(input.filterType) >= 0",
+            sliderInput(ns("slider_cov_min"), 
+                "Percent Coverage (Participation)", 
                 min = 0, max = 100, value = 80)
         ),
         conditionalPanel(ns = ns,
@@ -32,7 +33,8 @@ filterModule_UI <- function(id, label = "Counter") {
                 selected = 20),
         ),
         conditionalPanel(ns = ns,
-            condition = "['Depth', 'Coverage'].indexOf(input.filterType) >= 0",
+            condition = 
+                "['Depth', 'Participation'].indexOf(input.filterType) >= 0",
             tagList(
                 shinyWidgets::sliderTextInput(ns("slider_mincond"), 
                     "Minimum Conditions Satisfy Criteria", 
@@ -46,7 +48,7 @@ filterModule_UI <- function(id, label = "Counter") {
             )
         ),
         conditionalPanel(ns = ns,
-            condition = paste0("['Coverage', 'Consistency'].",
+            condition = paste0("['Participation', 'Consistency'].",
                 "indexOf(input.filterType) >= 0"),
             shinyWidgets::sliderTextInput(ns("slider_minDepth"), 
                 "Signal Threshold to apply criteria", 
@@ -122,7 +124,7 @@ filterModule_server <- function(id, filterdata, conditionList) {
                     type_choices <- c("Protein_Coding", "NMD", "TSL", 
                         "Terminus", "ExclusiveMXE")
                 } else if(fClass == "Data") {
-                    type_choices <- c("Depth", "Coverage", "Consistency")
+                    type_choices <- c("Depth", "Participation", "Consistency")
                 }
                 updateSelectInput(session = session, 
                     inputId = "filterClass", choices = class_choices, 
@@ -169,7 +171,7 @@ filterModule_server <- function(id, filterdata, conditionList) {
                 shinyWidgets::updateSliderTextInput(
                     session = session, inputId = "slider_depth_min", 
                     selected = fMin)
-            } else if(final()@filterType == "Coverage"){
+            } else if(final()@filterType == "Participation"){
                 updateSliderInput(session = session, 
                     inputId = "slider_cov_min", 
                     value = fMin)
@@ -222,7 +224,7 @@ filterModule_server <- function(id, filterdata, conditionList) {
                 type_choices <- c("Protein_Coding", "NMD", "TSL", 
                     "Terminus", "ExclusiveMXE")
             } else if(input$filterClass == "Data") {
-                type_choices <- c("Depth", "Coverage", "Consistency")
+                type_choices <- c("Depth", "Participation", "Consistency")
             } else {
                 type_choices <- "(none)"
             }
@@ -252,7 +254,7 @@ filterModule_server <- function(id, filterdata, conditionList) {
                 shinyWidgets::updateSliderTextInput(
                     session = session, inputId = "slider_depth_min", 
                     selected = fMin)
-            } else if(fType == "Coverage"){
+            } else if(fType == "Participation"){
                 updateSliderInput(session = session, 
                     inputId = "slider_cov_min", 
                     value = fMin)
@@ -272,7 +274,7 @@ filterModule_server <- function(id, filterdata, conditionList) {
         })
         observeEvent(input$slider_cov_min, {
             obj <- final()
-            if(obj@filterType == "Coverage"){
+            if(obj@filterType == "Participation"){
                 obj@minimum = as.numeric(input$slider_cov_min)
             }
             final(obj)

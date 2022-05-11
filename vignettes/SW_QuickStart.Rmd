@@ -1,0 +1,302 @@
+---
+title: 'SpliceWiz: Quick Start'
+author: "Alex CH Wong"
+date: "`r format(Sys.Date(), '%m/%d/%Y')`"
+output:
+    rmarkdown::html_document:
+        highlight: pygments
+        toc: true
+        toc_float: true
+abstract:
+    This Quick-Start is a runnable example showing the functionalities of the
+    SpliceWiz workflow.
+    
+    Version `r packageVersion("SpliceWiz")`
+vignette: >
+    %\VignetteIndexEntry{SpliceWiz: Quick Start using a fully working example dataset}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+    collapse = TRUE,
+    comment = "#>"
+)
+```
+
+# Introduction
+
+This vignette is a runnable working example of the SpliceWiz workflow. The
+purpose is to quickly demonstrate the basic functionalities of SpliceWiz.
+
+For detailed explanation of each step of the workflow, 
+please refer to the vignette: `SpliceWiz: Workflow Explained`. 
+For a list of ready-made "recipes" for typical-use SpliceWiz in real datasets, 
+refer to the vignette: `SpliceWiz: Cookbook`.
+
+# Workflow from a glance
+
+The basic steps of SpliceWiz are as follows:
+
+* Building the SpliceWiz reference
+* Process BAM files using SpliceWiz
+* Collate results of individual samples into an experiment
+* Importing the collated experiment as an NxtSE object
+* Alternative splicing event filtering
+* Differential ASE analysis
+* Visualization
+
+# Quick-Start
+
+### Installation
+
+To install SpliceWiz, start R (version "4.2") and enter: 
+
+```{r eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("SpliceWiz")
+```
+
+(Optional) For **MacOS** users, make sure OpenMP libraries are installed 
+correctly. We recommend users follow this 
+[guide](https://mac.r-project.org/openmp/), but the
+quickest way to get started is to install `libomp` via brew:
+
+```{bash eval=FALSE}
+brew install libomp
+```
+
+### Loading SpliceWiz
+
+```{r}
+library(SpliceWiz)
+```
+
+### Building the SpliceWiz reference
+
+The helper functions `chrZ_genome()` and `chrZ_gtf()` returns the paths to the 
+example genome (FASTA) and transcriptome (GTF) file included with the 
+`NxtIRFdata` package that contains the working example used by SpliceWiz:
+
+```{r}
+# Provides the path to the example genome:
+chrZ_genome()
+
+# Provides the path to the example gene annotation:
+chrZ_gtf()
+```
+
+Using the example FASTA and GTF files, use the `buildRef()` function to build
+the SpliceWiz reference:
+
+```{r, results='hide', message = FALSE, warning = FALSE}
+ref_path <- file.path(tempdir(), "Reference")
+buildRef(
+    reference_path = ref_path,
+    fasta = chrZ_genome(),
+    gtf = chrZ_gtf()
+)
+```
+
+### Process BAM files using SpliceWiz
+
+The function `SpliceWiz_example_bams()` retrieves 6 example BAM files from
+ExperimentHub and places a copy of these in the temporary directory.
+
+```{r}
+bams <- SpliceWiz_example_bams()
+bams
+```
+
+Process these BAM files using SpliceWiz:
+
+```{r, results='hide', message = FALSE, warning = FALSE}
+pb_path <- file.path(tempdir(), "pb_output")
+processBAM(
+    bamfiles = bams$path,
+    sample_names = bams$sample,
+    reference_path = ref_path,
+    output_path = pb_path
+)
+```
+
+### Collate results of individual samples into an experiment
+
+The helper function `findSpliceWizOutput()` organises the output files of
+SpliceWiz's `processBAM()` function:
+
+```{r}
+expr <- findSpliceWizOutput(pb_path)
+expr
+```
+
+Using this data frame, collate the experiment using `collateData()`. We name
+the output directory as `NxtSE_output` as this folder will contain the data
+needed to import the NxtSE object:
+
+```{r, results='hide', message = FALSE, warning = FALSE}
+nxtse_path <- file.path(tempdir(), "NxtSE_output")
+collateData(
+    Experiment = expr,
+    reference_path = ref_path,
+    output_path = nxtse_path
+)
+```
+
+### Importing the collated experiment as an NxtSE object
+
+The `NxtSE` is a data structure that inherits `SummarizedExperiment`. It
+contains a number of assays that contain junction counts pertaining to each
+splice event.
+
+After running `collateData()`, importing the data into the R session is done
+using the `makeSE()` function:
+
+```{r, results='hide', message = FALSE, warning = FALSE}
+se <- makeSE(nxtse_path)
+```
+
+### Differential ASE analysis
+
+First, annotate the experiment as follows:
+
+```{r}
+colData(se)$condition = rep(c("A", "B"), each = 3)
+colData(se)$batch = rep(c("K", "L", "M"), 2)
+colData(se)
+```
+
+SpliceWiz offers default filters to identify and remove low confidence
+alternative splice events (ASEs). Run the default filter using the following:
+
+```{r}
+se.filtered <- se[applyFilters(se),]
+```
+
+Using the limma wrapper `ASE_limma()`, perform differential ASE analysis between
+conditions "A" and "B":
+
+```{r, results='hide', message = FALSE, warning = FALSE}
+# Requires limma to be installed:
+require("limma")
+res_limma = ASE_limma(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A",
+)
+```
+
+### Visualization
+
+#### Scatter plots
+
+Scatter plots are useful for showing splicing levels (percent-spliced-in, PSI)
+between two conditions. The results from differential analysis contains these
+values and can be plotted:
+
+```{r, fig.width = 7, fig.height = 5}
+library(ggplot2)
+
+ggplot(res_limma, aes(x = 100 * AvgPSI_B, y = 100 * AvgPSI_A)) + 
+    geom_point() + xlim(0, 100) + ylim(0, 100) +
+    labs(title = "PSI values across conditions",
+         x = "PSI of condition B", y = "PSI of condition A")
+```
+
+#### Volcano plots
+
+Volcano plots show changes in PSI levels (log fold change, x axis) against
+statistical significance (-log10 p values, y axis):
+
+```{r, fig.width = 7, fig.height = 5}
+ggplot(res_limma,
+        aes(x = logFC, y = -log10(adj.P.Val))) + 
+    geom_point() +
+    labs(title = "Differential analysis - B vs A",
+         x = "Log2-fold change", y = "BH-adjusted P values (-log10)")
+```
+
+#### Heatmaps
+
+Heatmaps are useful for visualizing differential expression of individual 
+samples, as well as potential patterns of expression.
+
+First, obtain a matrix of PSI values:
+
+```{r}
+# Create a matrix of values of the top 10 differentially expressed events:
+mat = makeMatrix(
+    se.filtered,
+    event_list = res_limma$EventName[1:10],
+    method = "PSI"
+)
+```
+
+Plot this matrix of values in a heatmap:
+
+```{r, fig.width = 8, fig.height = 6}
+library(pheatmap)
+
+pheatmap(mat, annotation_col = as.data.frame(colData(se.filtered)))
+```
+
+#### SpliceWiz Coverage Plots
+
+Coverage plots visualize RNA-seq coverage in individual samples. SpliceWiz uses
+its coverage normalization algorithm to visualize group differences in PSIs.
+
+First, obtain a list of differential events with delta PSI > 5%:
+
+```{r}
+res_limma.filtered = subset(res_limma, abs(AvgPSI_A - AvgPSI_B) > 0.05)
+```
+
+Plot up to 4 individual samples using `plotCoverage()`:
+
+```{r, fig.width = 8, fig.height = 6}
+p = plotCoverage(
+    se = se,
+    Event = res_limma.filtered$EventName[1],
+    tracks = colnames(se)[c(1,2,4,5)],
+)
+
+if(interactive()) {
+    # Display as plotly object
+    p$final_plot
+} else {
+    # Display as ggplot
+    as_ggplot_cov(p)
+}
+
+```
+
+Plot condition averaged coverage plots using the following:
+
+```{r, fig.width = 8, fig.height = 6}
+p = plotCoverage(
+    se = se,
+    Event = res_limma.filtered$EventName[1],
+    tracks = c("A", "B"),
+    condition = "condition",
+    stack_tracks = TRUE,
+    t_test = TRUE,
+)
+
+if(interactive()) {
+    # Display as plotly object
+    p$final_plot
+} else {
+    # Display as ggplot
+    as_ggplot_cov(p)
+}
+```
+
+# SessionInfo
+
+```{r}
+sessionInfo()
+```

@@ -6,8 +6,8 @@
 #' @details
 #' We highly recommend using the default filters, which are as follows:
 #' * (1) Depth filter of 20,
-#' * (2) Coverage filter requiring 90% coverage in IR events.
-#' * (3) Coverage filter requiring 60% coverage in AS events
+#' * (2) Participation filter requiring 70% coverage in IR events.
+#' * (3) Participation filter requiring 40% coverage in AS events
 #'   (i.e. Included + Excluded isoforms must cover at least 60% of all junction
 #'   events across the given region)
 #' * (4) Consistency filter requring log difference of 2 (for skipped exon and
@@ -72,21 +72,18 @@ NULL
 #' @describeIn Run_SpliceWiz_Filters Returns a vector of recommended default
 #'   SpliceWiz filters
 #' @export
-getDefaultFilters <- function(legacy = FALSE) {
+getDefaultFilters <- function() {
     f1 <- ASEFilter("Data", "Depth", pcTRUE = 80, minimum = 20)
-    f2 <- ASEFilter("Data", "Coverage", pcTRUE = 80,
-        minimum = 90, minDepth = 5, EventTypes = c("IR", "RI"))
-    f3 <- ASEFilter("Data", "Coverage", pcTRUE = 80,
-        minimum = 60, minDepth = 20,
-        EventTypes = c("MXE", "SE", "AFE", "ALE", "A5SS", "A3SS"))
+    f2 <- ASEFilter("Data", "Participation", pcTRUE = 80,
+        minimum = 70, minDepth = 5, EventTypes = c("IR", "RI"))
+    f3 <- ASEFilter("Data", "Participation", pcTRUE = 80,
+        minimum = 40, minDepth = 20,
+        EventTypes = c("SE", "A5SS", "A3SS"))
     f4 <- ASEFilter("Data", "Consistency", pcTRUE = 80,
-        maximum = 2, minDepth = 20, EventTypes = c("MXE", "SE", "RI"))
-    f4_new <- ASEFilter("Data", "Consistency", pcTRUE = 80,
         maximum = 1, minDepth = 20, EventTypes = c("MXE", "SE", "RI"))
     f5 <- ASEFilter("Annotation", "Terminus")
     f6 <- ASEFilter("Annotation", "ExclusiveMXE")
-    if(legacy) return(list(f1, f2, f3, f4))
-    return(list(f1, f2, f3, f4_new, f5, f6))
+    return(list(f1, f2, f3, f4, f5, f6))
 }
 
 #' @describeIn Run_SpliceWiz_Filters Run a vector or list of ASEFilter objects
@@ -123,8 +120,8 @@ runFilter <- function(se, filterObj) {
         if (filterObj@filterType == "Depth") {
             message("Running Depth filter")
             return(.runFilter_data_depth(se, filterObj))
-        } else if (filterObj@filterType == "Coverage") {
-            message("Running Coverage filter")
+        } else if (filterObj@filterType == "Participation") {
+            message("Running Participation filter")
             return(.runFilter_data_coverage(se, filterObj))
         } else if (filterObj@filterType == "Consistency") {
             message("Running Consistency filter")

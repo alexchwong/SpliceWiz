@@ -9,8 +9,8 @@ retention events}
 \usage{
 ASEFilter(
   filterClass = c("Data", "Annotation"),
-  filterType = c("Depth", "Coverage", "Consistency", "Protein_Coding", "NMD", "TSL",
-    "Terminus", "ExclusiveMXE"),
+  filterType = c("Depth", "Participation", "Consistency", "Protein_Coding", "NMD",
+    "TSL", "Terminus", "ExclusiveMXE"),
   pcTRUE = 100,
   minimum = 20,
   maximum = 1,
@@ -24,7 +24,8 @@ ASEFilter(
 \item{filterClass}{Must be either \code{"Data"} or \code{"Annotation"}. See details}
 
 \item{filterType}{If \code{filterClass = "Data"}, then must be one of
-\code{c("Depth", "Coverage", "Consistency")}. If \code{filterClass = "Annotation"},
+\code{c("Depth", "Participation", "Consistency")}.
+If \code{filterClass = "Annotation"},
 must be one of \code{c("Protein_Coding", "NMD", "TSL")}. See details}
 
 \item{pcTRUE}{If conditions are set, what percentage of all samples in each
@@ -89,18 +90,18 @@ casette exons must not overlap in their genomic regions
 that are "expressed" with adequate \code{Depth} as calculated by the
 sum of all splicing and IR reads spanning the event. Events with
 \code{Depth} below \code{minimum} are filtered out
-\item \strong{Coverage}: Coverage means different things to IR and alternative
-splicing.\cr\cr
-For \strong{IR}, Coverage refers to the percentage of the measured intron
+\item \strong{Participation}: Participation means different things to IR
+and alternative splicing.\cr\cr
+For \strong{IR}, Participation refers to the percentage of the measured intron
 covered with reads. Introns of samples with an IntronDepth above
 \code{minDepth} are assessed, with introns with coverage
 below \code{minimum} are filtered out.\cr\cr
-For \strong{Alternative Splicing}, Coverage refers to the percentage of all
-splicing events observed across the genomic region that is compatible
-with either the included or excluded event. This prevents SpliceWiz
-from doing differential analysis between two minor isoforms. Instead of
-IntronDepth, in AS events SpliceWiz considers events where the spliced
-reads from both exonic regions exceed \code{minDepth}.
+For \strong{Alternative Splicing}, Participation refers to the percentage of
+all splicing events observed across the genomic region that is
+compatible with either the included or excluded event. This prevents
+SpliceWiz from doing differential analysis between two minor isoforms.
+Instead od IntronDepth, in AS events SpliceWiz considers events where
+the spliced reads from both exonic regions exceed \code{minDepth}.
 Then, events with a splicing coverage below \code{minimum}
 are excluded. \cr\cr
 We recommend testing IR events for > 90\% coverage and AS
@@ -147,10 +148,10 @@ f2 <- ASEFilter(
     minimum = 20, EventTypes = c("IR", "RI")
 )
 
-# Create a ASEFilter that filters for Coverage > 60\% in splice events
+# Create a ASEFilter that filters for Participation > 60\% in splice events
 # that must be satisfied in at least 2 categories of condition "Genotype"
 f3 <- ASEFilter(
-    filterClass = "Data", filterType = "Coverage",
+    filterClass = "Data", filterType = "Participation",
     minimum = 60, EventTypes = c("MXE", "SE", "AFE", "ALE", "A3SS", "A5SS"),
     condition = "Genotype", minCond = 2
 )

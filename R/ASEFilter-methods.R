@@ -3,7 +3,7 @@
 ASEFilter <- function(
         filterClass = c("Data", "Annotation"),
         filterType = c(
-            "Depth", "Coverage", "Consistency",
+            "Depth", "Participation", "Consistency",
             "Protein_Coding", "NMD", "TSL", "Terminus", "ExclusiveMXE"
         ),
         pcTRUE = 100, minimum = 20, maximum = 1, minDepth = 5,
@@ -22,7 +22,7 @@ ASEFilter <- function(
 setMethod("initialize", "ASEFilter", function(.Object,
         filterClass = c("Data", "Annotation"),
         filterType = c(
-            "Depth", "Coverage", "Consistency",
+            "Depth", "Participation", "Consistency",
             "Protein_Coding", "NMD", "TSL", "Terminus", "ExclusiveMXE"
         ),
         pcTRUE = 100, minimum = 20, maximum = 1, minDepth = 5,
@@ -34,7 +34,7 @@ setMethod("initialize", "ASEFilter", function(.Object,
     # filterClass <- match.arg(filterClass)
     # filterType <- match.arg(filterType)
 
-    data_methods <- c("Depth", "Coverage", "Consistency")
+    data_methods <- c("Depth", "Participation", "Consistency")
     annotation_methods <- c("Protein_Coding", "NMD", "TSL",
         "Terminus", "ExclusiveMXE")
     
@@ -126,10 +126,10 @@ setMethod("show", "ASEFilter", function(object) {
         .nxtcat(paste0("Minimum Event Depth: ",
             .colourise("%i\n", "red")), as.integer(object@minimum))
         .cat_filter_info("minDepth")
-    } else if (object@filterType == "Coverage") {
-        .nxtcat(paste0("Minimum Coverage Percentage: ",
+    } else if (object@filterType == "Participation") {
+        .nxtcat(paste0("Minimum Coverage (Participation) Percentage: ",
             .colourise("%.1f\n", "red")), object@minimum)
-        .cat_filter_info("Coverage minimum", object@EventTypes)
+        .cat_filter_info("Coverage (Participation) minimum", object@EventTypes)
         .nxtcat(paste0("Event Depth below ", .colourise("%i", "purple"),
             " are ignored\n"), as.integer(object@minDepth))
         .cat_filter_info("minDepth")
@@ -164,13 +164,14 @@ setMethod("show", "ASEFilter", function(object) {
     if (mode == "minDepth") {
         cat("Event Depth refers to number of aligned splice reads plus ")
         cat("effective depth of their introns\n")
-    } else if (mode == "Coverage minimum") {
+    } else if (mode == "Coverage (Participation) minimum") {
         if (any(EventTypes %in% c("IR", "RI"))) {
-            cat("In retained introns, coverage refers to the proportion of the")
-            cat(" measured intron that is covered by at least 1 alignment\n")
+            cat("In retained introns, participation refers to the proportion ")
+            cat("of the measured intron that is covered by at least ")
+            cat("1 alignment\n")
         }
         if (any(EventTypes %in% c("MXE", "SE", "ALE", "AFE", "A3SS", "A5SS"))) {
-            cat("In splice events, coverage refers to the proportion of ")
+            cat("In splice events, participation refers to the proportion of ")
             cat("junction reads that belong to either the included or excluded")
             cat(" isoforms of the given event\n")
         }

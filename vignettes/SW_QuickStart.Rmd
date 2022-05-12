@@ -13,7 +13,7 @@ abstract:
     
     Version `r packageVersion("SpliceWiz")`
 vignette: >
-    %\VignetteIndexEntry{SpliceWiz: Quick Start using a fully working example dataset}
+    %\VignetteIndexEntry{SpliceWiz: Quick Start}
     %\VignetteEngine{knitr::rmarkdown}
     %\VignetteEncoding{UTF-8}
 ---

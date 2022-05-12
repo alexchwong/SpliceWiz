@@ -7,7 +7,7 @@
 #' We highly recommend using the default filters, which are as follows:
 #' * (1) Depth filter of 20,
 #' * (2) Participation filter requiring 70% coverage in IR events.
-#' * (3) Participation filter requiring 40% coverage in AS events
+#' * (3) Participation filter requiring 40% coverage in SE, A5SS and A3SS events
 #'   (i.e. Included + Excluded isoforms must cover at least 60% of all junction
 #'   events across the given region)
 #' * (4) Consistency filter requring log difference of 2 (for skipped exon and
@@ -30,8 +30,6 @@
 #'
 #' For an explanation of the various parameters mentioned here, see [ASEFilter]
 #'
-#' @param legacy (default `FALSE`) Set to `TRUE` to get the first four 
-#'   default filters introduced in the initial SpliceWiz release.
 #' @param se the \linkS4class{NxtSE} object to filter
 #' @param filterObj A single \linkS4class{ASEFilter} object.
 #' @param filters A vector or list of one or more ASEFilter objects. If left

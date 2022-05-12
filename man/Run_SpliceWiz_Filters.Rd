@@ -20,9 +20,6 @@ runFilter(se, filterObj)
 blank, the SpliceWiz default filters will be used.}
 
 \item{filterObj}{A single \linkS4class{ASEFilter} object.}
-
-\item{legacy}{(default \code{FALSE}) Set to \code{TRUE} to get the first four
-default filters introduced in the initial SpliceWiz release.}
 }
 \value{
 For \code{runFilter} and \code{applyFilters}: a vector of type \code{logical},
@@ -40,7 +37,7 @@ We highly recommend using the default filters, which are as follows:
 \itemize{
 \item (1) Depth filter of 20,
 \item (2) Participation filter requiring 70\% coverage in IR events.
-\item (3) Participation filter requiring 40\% coverage in AS events
+\item (3) Participation filter requiring 40\% coverage in SE, A5SS and A3SS events
 (i.e. Included + Excluded isoforms must cover at least 60\% of all junction
 events across the given region)
 \item (4) Consistency filter requring log difference of 2 (for skipped exon and

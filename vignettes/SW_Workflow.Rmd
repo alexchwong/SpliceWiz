@@ -177,7 +177,7 @@ the chrZ reference using STAR.
 First, we download the example bam files using the following convenience 
 function:
 
-```{r, eval = FALSE}
+```{r}
 bam_path = file.path(tempdir(), "bams")
 
 # Copies SpliceWiz example BAM files to `bam_path` subdirectory
@@ -194,7 +194,7 @@ and tries to ascertain sample names. Often sample names can be gleaned when:
 labeled by their sample names, e.g. "sample1/Unsorted.bam", 
 "sample2/Unsorted.bam". In this case, `level = 1`
 
-```{r,  eval = FALSE}
+```{r}
 # as BAM file names denote their sample names
 bams = findBAMS(bam_path, level = 0) 
 

@@ -27,7 +27,6 @@ Imports:
 	data.table,
 	fst,
 	ggplot2,
-	ompBAM,
 	AnnotationHub, 
 	BiocFileCache,
 	BiocGenerics,

@@ -1,5 +1,6 @@
 #' @useDynLib SpliceWiz, .registration = TRUE
 #' @import NxtIRFdata
+#' @import ompBAM
 #' @importFrom methods as is coerce callNextMethod new
 #' @importFrom parallel detectCores
 #' @importFrom stats as.formula model.matrix qt runif na.omit prcomp aggregate

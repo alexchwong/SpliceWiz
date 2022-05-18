@@ -3,7 +3,7 @@ SpliceWiz is an R package for exploring differential alternative splicing events
 
 ## Installation 
 
-### On R (v4.2.0) using Bioconductor version 3.1.5
+### On R (version >= 4.2.0) using Bioconductor version 3.1.5
 
 ```
 if (!requireNamespace("BiocManager", quietly=TRUE))
@@ -15,7 +15,7 @@ library("devtools")
 install_github("alexchwong/SpliceWiz", dependencies=TRUE, build_vignettes=TRUE)
 ```
 
-### On R (v4.1.0 and below)
+### On R (version < 4.2.0)
 
 ```
 library("devtools")

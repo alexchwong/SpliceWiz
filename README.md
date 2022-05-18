@@ -8,7 +8,7 @@ SpliceWiz is an R package for exploring differential alternative splicing events
 ```
 if (!requireNamespace("BiocManager", quietly=TRUE))
     install.packages("BiocManager")
-BiocManager::install(version = "3.1.5")
+BiocManager::install(version = "3.15")
 BiocManager::valid()              # checks for out of date packages
 
 library("devtools")

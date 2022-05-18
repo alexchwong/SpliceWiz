@@ -27,7 +27,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r eval = FALSE}
+# Loading SpliceWiz
+
+For instructions on installing and configuring SpliceWiz, please see the
+Quick-Start vignette.
+
+```{r}
 library(SpliceWiz)
 ```
 

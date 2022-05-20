@@ -25,67 +25,52 @@ ui_sidebar <- function() {
 
 ui_tab_title <- function() {
     tabItem(tabName = "navTitle",
-        box(
+		fluidRow(
+            column(4,
             tags$div(title = paste(
-                "Number of threads to run",
+                "These options set the number of threads to run",
                 "computationally-intensive operations",
-                "such as processBAM, collateData, and DESeq2"),
+                "such as processBAM, collateData, and DESeq2.",
+				"Also, set memory mode here."),
+				h3("Thread and memory options"),
+				shinyWidgets::pickerInput(
+				   inputId = "thread_number",
+				   label = "Number of threads to use", 
+					choices = c(1, 2, 4, 6, 8, 12, 16, "custom")
+				),
+                conditionalPanel(
+                    condition = "['custom'].indexOf(input.thread_number) >= 0",
+                    numericInput("cores_numeric", "# Threads", min = 1, 
+                        max = parallel::detectCores(), value = 1)
+                ),
                 radioGroupButtons(
-                    inputId = "thread_option",
-                    label = "Mode",
+                    inputId = "memory_option",
+                    label = "Memory Usage",
                     choices = c( 
-                        "Multi-Thread (High)",
-                        "Multi-Thread (Low)", 
-                        "Single-Thread", "Custom"
+                        "Low",
+                        "High"
                     ),
                     justified = TRUE,
                     checkIcon = list(
                         yes = icon("ok", lib = "glyphicon")
                     )
-                ),
-                conditionalPanel(
-                    condition = "['Custom'].indexOf(input.thread_option) >= 0",
-                    numericInput("cores_numeric", "# Threads", min = 1, 
-                        max = parallel::detectCores(), value = 1)
-                )                
-            )
-        ), br(),
-        img(src=paste0(
-            "https://pbs.twimg.com/",
-            "profile_images/",
-            "1310789966293655553/",
-            "7HawCItY_400x400.jpg"
-        ))
-    )
-}
-
-ui_tab_system <- function() {
-    tabItem(tabName = "navSystem",
-        box(
-            tags$div(title = paste(
-                "Number of threads to run",
-                "computationally-intensive operations",
-                "such as processBAM, collateData, and DESeq2"),
-                radioGroupButtons(
-                    inputId = "thread_option",
-                    label = "Mode",
-                    choices = c( 
-                        "Multi-Thread (High)",
-                        "Multi-Thread (Low)", 
-                        "Single-Thread", "Custom"
-                    ),
-                    justified = TRUE,
-                    checkIcon = list(
-                        yes = icon("ok", lib = "glyphicon")
-                    )
-                ),
-                conditionalPanel(
-                    condition = "['Custom'].indexOf(input.thread_option) >= 0",
-                    numericInput("cores_numeric", "# Threads", min = 1, 
-                        max = parallel::detectCores(), value = 1)
-                )                
-            )
-        )
+                ), br(),
+				h4("Estimated memory usage for reference generation"),
+				textOutput("txt_mem_buildRef"), br(),
+				h4("Estimated memory usage for BAM processing"),
+				textOutput("txt_mem_processBAM"), br(),
+				h4("Estimated memory usage for data collation"),
+				textOutput("txt_mem_collateData"), br()
+            )),
+			column(8,
+				img(src=paste0(
+					"https://pbs.twimg.com/",
+					"profile_images/",
+					"1310789966293655553/",
+					"7HawCItY_400x400.jpg"
+				))
+			)
+		)
     )
 }
 

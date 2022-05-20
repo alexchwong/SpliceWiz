@@ -1,5 +1,5 @@
 # Module for new SpliceWiz reference
-server_ref_new <- function(id, refresh_tab, volumes) {
+server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
     moduleServer(id, function(input, output, session) {
         # Instantiate settings
         settings_newref <- setreactive_newref()
@@ -238,7 +238,7 @@ server_ref_new <- function(id, refresh_tab, volumes) {
                     if(file.exists(new_mappa_file)) 
                         args$MappabilityRef <- new_mappa_file
                 }
-
+				args$lowMemoryMode <- get_memmode_reactive()
                 withProgress(message = 'Building Reference', value = 0, {
                     do.call(buildRef, args)
                 })

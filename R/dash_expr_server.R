@@ -1,5 +1,7 @@
 server_expr <- function(
-        id, refresh_tab, volumes, get_threads_reactive, limited = FALSE
+        id, refresh_tab, volumes, get_threads_reactive, 
+		get_memmode_reactive,
+		limited = FALSE
 ) {
     moduleServer(id, function(input, output, session) {
         ns = NS(id)
@@ -327,7 +329,8 @@ server_expr <- function(
                 {
                     collateData(
                         Experiment, reference_path, output_path, 
-                        n_threads = get_threads_reactive()
+                        n_threads = get_threads_reactive(),
+						lowMemoryMode = get_memmode_reactive()
                     )
                 })
                 Expr_Update_colData(

@@ -166,8 +166,8 @@ ui_ddb_project_dir <- function(id, color = "danger") {
         tags$h4("BAM files"),
         shinyDirButton(ns("dir_bam_path_load"), 
             label = "Choose Folder (BAM files)", 
-            title = "Select path containing BAM files"), br(), br(),
-        textOutput(ns("txt_reference_path_load")),br(),
+            title = "Select path containing BAM files"),
+        textOutput(ns("txt_bam_path_load")), br(),
 		
         tags$h4("processBAM Output"),       
         shinyDirButton(ns("dir_sw_path_load"), 

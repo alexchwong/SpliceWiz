@@ -233,8 +233,13 @@ ui_ddb_sw_path <- function(id, color = "danger") {
         icon = icon("align-center", lib = "font-awesome"),
         
         tags$h4("Run processBAM on BAM files"),
-        actionButton(ns("run_pb_expr"), 
-            "Run processBAM()"),
+		tags$div(
+			title = paste("Select the cells",
+				"containing the paths to the BAM files",
+				"that you wish to process"),
+			actionButton(ns("run_pb_expr"), 
+				"Run processBAM()")
+		),
         textOutput(ns("txt_run_pb_expr"))
     )      
 }

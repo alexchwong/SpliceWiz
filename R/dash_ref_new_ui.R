@@ -5,6 +5,7 @@ ui_ref_new <- function(id) {
         column(6,
             # h4("Select Reference Directory"),
             wellPanel(
+                h4("Create / Select Directory for the Reference"),
                 tags$div(title = paste("Choose a directory for SpliceWiz",
                         "to create its reference"),
                     splitLayout(cellWidths = c("30%", "70%"), 
@@ -17,7 +18,7 @@ ui_ref_new <- function(id) {
                 )
             ), br(),
             wellPanel(
-                h4("Select Ensembl Reference"),
+                h4("Source Ensembl Reference"),
                 selectInput(ns('release'), 'Select Release', width = '100%',
                     choices = c("")),
                 selectInput(ns('species'), 'Select Species', width = '100%',
@@ -28,7 +29,7 @@ ui_ref_new <- function(id) {
                     choices = c(""))
             ),
             wellPanel(
-                h4("or select Reference from File"),
+                h4("Source FASTA / GTF Files"),
                 tags$div(title = "Choose a user-supplied genome fasta file",
                     splitLayout(cellWidths = c("35%", "65%"), 
                         shinyFilesButton(ns("file_genome"), 
@@ -56,6 +57,7 @@ ui_ref_new <- function(id) {
         ),
         column(6,
             wellPanel(
+                h4("Additional Files"),
                 tags$div(title = paste("SpliceWiz will auto-populate default",
                         "mappability and non-polyA reference files for",
                         "hg38, hg19, mm10 and mm9 genomes"),
@@ -109,6 +111,7 @@ ui_ref_new <- function(id) {
                 )
             ),
             wellPanel(
+                h4("Start Building Reference"),
                 tags$div(
                     shinyWidgets::actionBttn(ns("buildRef"), 
                         "Build Reference", 

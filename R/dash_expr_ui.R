@@ -118,8 +118,8 @@ ui_expr_limited <- function(id) {
                             )                                
                         )
                     ),
-                    ui_ddb_build_annos(id, color = "default"), br(), # br(),                   
-                    ui_ddb_load_expr(id, color = "default"),
+                    ui_ddb_load_expr(id, color = "default"), br(),
+                    ui_ddb_build_annos(id, color = "default"),          
                 )
             ),
             column(8,
@@ -302,6 +302,8 @@ ui_ddb_load_expr <- function(id, color = "danger") {
         ),
         br(), br(),
         actionButton(ns("build_expr"), "Load NxtSE object"),
+        actionButton(ns("build_expr_update_anno"), 
+			"Update NxtSE with annotations"),
     )
 }
 

@@ -374,6 +374,17 @@ server_expr <- function(
             }
         })
 
+        observeEvent(input$build_expr_update_anno, {
+            if(
+                    is_valid(settings_expr$se) &&
+					is_valid(settings_expr$df.anno) &&
+                    is(settings_expr$se, "NxtSE")
+            ) {
+                colData(settings_expr$se) <- 
+					as.data.table(settings_expr$df.anno)
+            }
+        })
+
     # End of Server function
         return(settings_expr)
     })

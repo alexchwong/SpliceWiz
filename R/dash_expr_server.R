@@ -468,10 +468,10 @@ server_expr <- function(
                 which(names(ah) == ref_settings[["ah_transcriptome"]])])
         }, error = function(e) NULL)
     }
-    if(is.null(ah_genome_record) && "fasta" %in% names(ref_settings)) {
+    if(is.null(ah_genome_record) && "fasta_file" %in% names(ref_settings)) {
         fasta <- basename(ref_settings[["fasta_file"]])
     }
-    if(is.null(ah_gtf_record) && "gtf" %in% names(ref_settings)) {
+    if(is.null(ah_gtf_record) && "gtf_file" %in% names(ref_settings)) {
         gtf <- basename(ref_settings[["gtf_file"]])
     }
     if("MappabilityRef" %in% names(ref_settings)) {

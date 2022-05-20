@@ -198,6 +198,7 @@ server_expr <- function(
             output <- .server_expr_clear_ref(output)   
         })
         observeEvent(input$clear_expr, {
+			settings_expr$ref_path = ""
             settings_expr$bam_path = ""
             settings_expr$sw_path = ""
             settings_expr$anno_file = ""
@@ -233,6 +234,8 @@ server_expr <- function(
             output$bam_expr_infobox <- Expr_BAM_update_status(
                 settings_expr$df.files, settings_expr$bam_path,
                 settings_expr$collate_path)
+            output$txt_bam_path_load <- renderText(
+                settings_expr$bam_path)
         })
 
         # Event when processBAM output directory is set
@@ -241,6 +244,8 @@ server_expr <- function(
                 settings_expr$df.files, settings_expr$sw_path)
             output <- .server_expr_check_sw_path(settings_expr$df.files, 
                 settings_expr$sw_path, output)
+            output$txt_sw_path_expr <- renderText(
+                settings_expr$sw_path)
         })
 
         # Event when Annotation file is set
@@ -464,10 +469,10 @@ server_expr <- function(
         }, error = function(e) NULL)
     }
     if(is.null(ah_genome_record) && "fasta" %in% names(ref_settings)) {
-        fasta <- basename(ref_settings[["fasta"]])
+        fasta <- basename(ref_settings[["fasta_file"]])
     }
     if(is.null(ah_gtf_record) && "gtf" %in% names(ref_settings)) {
-        gtf <- basename(ref_settings[["gtf"]])
+        gtf <- basename(ref_settings[["gtf_file"]])
     }
     if("MappabilityRef" %in% names(ref_settings)) {
         mappa <- basename(ref_settings[["MappabilityRef"]])

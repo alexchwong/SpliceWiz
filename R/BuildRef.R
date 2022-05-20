@@ -863,7 +863,7 @@ return(TRUE)
         fasta_file <- .parse_valid_file(fasta, force_download = force_download)
         if (!file.exists(fasta_file))
             .log(paste("In .fetch_fasta(),",
-                "Given genome fasta file", fasta, "not found"))
+                "Given genome fasta file", fasta_file, "not found"))
 
 		dash_progress("Loading genome into memory", N_steps)
         genome <- .fetch_fasta_file(fasta_file)
@@ -1109,6 +1109,14 @@ return(TRUE)
     bfc
 }
 
+.get_cache_file_path <- function(cache, rpath) {
+	if(grepl(cache, rpath, fixed = TRUE)) {
+		return(rpath)
+	} else {
+		return(paste(cache, rpath, sep = "/"))
+	}
+}
+
 .parse_valid_file <- function(file, msg = "", force_download = FALSE) {
     if (!is_valid(file)) {
         .log(msg, type = "message")
@@ -1120,7 +1128,7 @@ return(TRUE)
         bfc <- BiocFileCache::BiocFileCache(cache, ask = FALSE)
         res <- BiocFileCache::bfcquery(bfc, url, "fpath", exact = TRUE)
         if (nrow(res) > 0 & !force_download)
-            return(paste(cache, res$rpath[nrow(res)], sep = "/"))
+            return(.get_cache_file_path(cache, res$rpath[nrow(res)]))
 
         # either force_download == TRUE or nrow(res) == 0
         path <- tryCatch(BiocFileCache::bfcadd(bfc, url),
@@ -1133,13 +1141,13 @@ return(TRUE)
             # fetch local copy if available
             if (nrow(res) == 0) return("")
             .log("Returning local copy from cache", "message")
-            return(paste(cache, res$rpath[nrow(res)], sep = "/"))
+            return(.get_cache_file_path(cache, res$rpath[nrow(res)]))
         }
         # remove prior versions from cache to remove glut
         res <- BiocFileCache::bfcquery(bfc, url, "fpath", exact = TRUE)
         if(nrow(res) > 1)
             BiocFileCache::bfcremove(bfc, res$rid[-nrow(res)])
-        return(paste(cache, res$rpath[nrow(res)], sep = "/"))
+        return(.get_cache_file_path(cache, res$rpath[nrow(res)]))
     } else if (!file.exists(file)) {
         .log(paste(file, "not found.", msg), type = "message")
         return("")

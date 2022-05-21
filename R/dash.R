@@ -40,9 +40,7 @@ spliceWiz <- function(
         dashboardBody(
             tabItems(
                 ui_tab_title(),     # "navTitle"
-                
-                # ui_tab_system(),    # "navSystem"
-                
+
                 ui_tab_ref_new(),   # "navRef_New"    
 
                 ui_tab_expr(),      # "navExpr"

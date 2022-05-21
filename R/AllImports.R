@@ -35,6 +35,7 @@
 #' @importFrom HDF5Array HDF5Array writeHDF5Array h5writeDimnames 
 #' @importFrom IRanges IRanges Views RleList
 #' @importFrom progress progress_bar
+#' @importFrom pheatmap pheatmap
 #' @importFrom plotly config layout plotlyOutput event_data ggplotly 
 #' @importFrom plotly plotlyProxy plotlyProxyInvoke renderPlotly subplot 
 #' @importFrom plotly highlight orca

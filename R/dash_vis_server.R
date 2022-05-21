@@ -511,11 +511,18 @@ server_vis_heatmap <- function(
                     is_valid(input$anno_col_heat) && 
                     all(input$anno_col_heat %in% colnames(colData))
             ) {
+                settings_Heat$ggplot <- pheatmap(
+                    mat, color = color, 
+                    annotation_col = colData[, input$anno_col_heat, drop=FALSE]
+                )
                 settings_Heat$final_plot <- heatmaply::heatmaply(
                     mat, color = color, 
                     col_side_colors = colData[, input$anno_col_heat, drop=FALSE]
                 )
             } else {
+                settings_Heat$ggplot <- pheatmap(
+                    mat, color = color
+                )
                 settings_Heat$final_plot <- heatmaply::heatmaply(
                     mat, color = color)
             }      
@@ -538,6 +545,9 @@ server_vis_heatmap <- function(
             # plotly::orca(obj, 
                 # .make_path_relative(getwd(), selectedfile$datapath))
         # })
-        
+        observeEvent(input$output_plot_heat, {
+            req(settings_Heat$ggplot)
+            print(settings_Heat$ggplot)
+        })
     })
 }

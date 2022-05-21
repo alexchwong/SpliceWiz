@@ -14,8 +14,8 @@ ui_sidebar <- function() {
                     tabName = "navAnalyse")
             ),
             menuItem("Display",
-                menuSubItem("Scatter Plot", tabName = "navDiag"),
                 menuSubItem("Volcano Plot", tabName = "navVolcano"),
+                menuSubItem("Scatter Plot", tabName = "navDiag"),
                 menuSubItem("Heatmap", tabName = "navHeatmap"),
                 menuSubItem("Coverage Plot", tabName = "navCoverage")
             )

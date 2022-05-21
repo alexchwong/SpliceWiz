@@ -106,7 +106,8 @@ ui_vis_heatmap <- function(id) {
                 ),
                 # shinySaveButton(ns("saveplot_heat"), 
                     # "Save Plot as PDF", "Save Plot as PDF...", 
-                    # filetype = list(PDF = "pdf"))                
+                    # filetype = list(PDF = "pdf"))
+                actionButton(ns("output_plot_heat"), "Generate ggplot"),
             ),
             column(9, 
                 textOutput(ns("warning_heat")),

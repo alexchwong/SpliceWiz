@@ -28,6 +28,8 @@ ui_filters <- function(id) {
                 textOutput(ns("current_ref_Filters")), br(),
                 actionButton(ns("loadDefault_Filters"), "Load Default Filters"),
                 br(), br(),
+                actionButton(ns("refresh_filters_Filters"), "Apply Filters"),
+                br(), br(),
                 shinySaveButton(ns("saveAnalysis_Filters"), "Save Filters", 
                     "Save Filters as...", filetype = list(RDS = "Rds")),
                 shinyFilesButton(ns("loadAnalysis_Filters"), 
@@ -36,7 +38,6 @@ ui_filters <- function(id) {
                 plotlyOutput(ns("plot_filtered_Events")),
                 selectInput(ns('graphscale_Filters'), 'Y-axis Scale', 
                     width = '100%', choices = c("linear", "log10")), 
-                actionButton(ns("refresh_filters_Filters"), "Apply Filters"),
             )
         )
     )

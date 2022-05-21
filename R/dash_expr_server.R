@@ -380,8 +380,17 @@ server_expr <- function(
 					is_valid(settings_expr$df.anno) &&
                     is(settings_expr$se, "NxtSE")
             ) {
+                colData <- settings_expr$df.anno
+                colData <- colData[
+                    colData$sample %in% colnames(settings_expr$se),]
+                settings_expr$df.anno <- colData
+                if(all(colData$sample %in% colnames(settings_expr$se))) {
+                    settings_expr$se <- settings_expr$se[, colData$sample]
+                }
+                colData_use <- colData[, -1, drop = FALSE]
+                rownames(colData_use) <- colData$sample
                 colData(settings_expr$se) <- 
-					as.data.frame(settings_expr$df.anno)
+					as(colData_use, "DataFrame")
             }
         })
 

@@ -296,12 +296,17 @@ ui_ddb_load_expr <- function(id, color = "danger") {
         color = color,
         icon = icon("flask", lib = "font-awesome"),
 
+        h4("Choose Folder containing compiled experiment"),
         shinyDirButton(ns("dir_collate_path_load"), 
             label = "Choose Folder (NxtSE)", 
             title = "Choose NxtSE path"
         ),
         br(), br(),
+        h4("Construct NxtSE object"),
         actionButton(ns("build_expr"), "Load NxtSE object"),
+        br(), br(),
+
+        h4("Update loaded NxtSE object with annotations"),
         actionButton(ns("build_expr_update_anno"), 
 			"Update NxtSE with annotations"),
     )

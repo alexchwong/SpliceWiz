@@ -24,6 +24,10 @@ ui_sidebar <- function() {
 }
 
 ui_tab_title <- function() {
+    max_threads <- parallel::detectCores()
+    thread_choices <- c(1, 2, 4, 6, 8, 12, 16, 24, 32)
+    thread_choices <- thread_choices[thread_choices <= max_threads]
+    out_choices <- c(thread_choices, "custom")
     tabItem(tabName = "navTitle",
 		fluidRow(
             column(4,
@@ -36,7 +40,7 @@ ui_tab_title <- function() {
 				shinyWidgets::pickerInput(
 				   inputId = "thread_number",
 				   label = "Number of threads to use", 
-					choices = c(1, 2, 4, 6, 8, 12, 16, "custom")
+					choices = out_choices
 				),
                 conditionalPanel(
                     condition = "['custom'].indexOf(input.thread_number) >= 0",

@@ -381,7 +381,7 @@ server_expr <- function(
                     is(settings_expr$se, "NxtSE")
             ) {
                 colData(settings_expr$se) <- 
-					as.data.table(settings_expr$df.anno)
+					as.data.frame(settings_expr$df.anno)
             }
         })
 
@@ -784,16 +784,16 @@ Expr_PB_initiate_run <- function(input, session, n_threads, settings_expr) {
             title = "Missing SpliceWiz (processBAM) output path",
             text = "Please set SpliceWiz (processBAM) output path")
     } else {
-        n_threads <- min(n_threads, length(selected_rows))
-        if(n_threads < length(selected_rows)) {
-            n_rounds <- ceiling(length(selected_rows) / n_threads)
-            n_threads <- ceiling(length(selected_rows) / n_rounds)
-        }
-        msg <- paste("Run processBAM on", length(selected_rows), "samples?",
-            "Estimated runtime", 
-                10 * ceiling(length(selected_rows) / n_threads),
-            "minutes using", n_threads, 
-            "threads (10min per BAM @ 100 million reads per sample)"
+        # n_threads <- min(n_threads, length(selected_rows))
+        # if(n_threads < length(selected_rows)) {
+            # n_rounds <- ceiling(length(selected_rows) / n_threads)
+            # n_threads <- ceiling(length(selected_rows) / n_rounds)
+        # }
+        msg <- paste("Run processBAM on", length(selected_rows), "samples",
+            # "Estimated runtime", 
+                # 10 * ceiling(length(selected_rows) / n_threads), "minutes"
+            "using", n_threads, "threads"#,
+            # "threads (10min per BAM @ 100 million reads per sample)"
         )
         ask_confirmation(inputId = "pb_confirm", type = "warning", 
             title = msg, btn_labels = c("Cancel", "Run processBAM"),

@@ -123,9 +123,11 @@ dash_server = function(input, output, session) {
         }
     })
 	
+    # Update 
 	observeEvent(list(input$memory_option, get_threads_reactive()), {
 		req(input$memory_option)
-		n_threads <- get_threads_reactive()
+        n_threads <- get_threads_reactive()
+        if(n_threads != .getSWthreads()) n_threads <- setSWthreads(n_threads)
 		if(input$memory_option == "Low") {
 			ref_mem <- 4
 			cd_mem <- 6

@@ -89,6 +89,7 @@ server_cov <- function(
                     obj <- do.call(plotCoverage, settings_Cov$plot_params)
                 
                     req(obj)
+                    print(as_ggplot_cov(obj))
                     settings_Cov$final_plot <- obj$final_plot
                     settings_Cov$final_plot$x$source <- "plotly_ViewRef"
                     output$plot_cov <- renderPlotly({

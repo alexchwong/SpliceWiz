@@ -495,7 +495,7 @@ server_vis_heatmap <- function(
                     name = rownames(colors.df)[color.index])
                 )
             )
-
+            color_vec <- color(100)
             # Hopefully the fixed filtering in limma pipeline will also fix the 
             #   NA issues here:
             na.exclude <- (rowSums(!is.na(mat)) == 0)
@@ -512,7 +512,7 @@ server_vis_heatmap <- function(
                     all(input$anno_col_heat %in% colnames(colData))
             ) {
                 settings_Heat$ggplot <- pheatmap(
-                    mat, color = color, 
+                    mat, color = color_vec, 
                     annotation_col = colData[, input$anno_col_heat, drop=FALSE]
                 )
                 settings_Heat$final_plot <- heatmaply::heatmaply(
@@ -521,7 +521,7 @@ server_vis_heatmap <- function(
                 )
             } else {
                 settings_Heat$ggplot <- pheatmap(
-                    mat, color = color
+                    mat, color = color_vec
                 )
                 settings_Heat$final_plot <- heatmaply::heatmaply(
                     mat, color = color)

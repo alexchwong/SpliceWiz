@@ -94,6 +94,7 @@ setreactive_Diag <- function() {
         plot_ini = FALSE,
         plotly_click = NULL,
         final_plot = NULL,
+        ggplot = NULL,
         selected = NULL
     )
 }
@@ -101,6 +102,7 @@ setreactive_Diag <- function() {
 # Settings for Heatmap
 setreactive_Heat <- function() {
     reactiveValues(
+        ggplot = NULL,
         final_plot = NULL
     )
 }

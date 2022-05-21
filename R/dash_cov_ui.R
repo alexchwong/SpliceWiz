@@ -88,9 +88,9 @@ ui_cov <- function(id) {
                     label = "Pairwise t-test", labelWidth = "150px"),
                 shinyWidgets::switchInput(ns("condense_cov"), 
                     label = "Condensed Tracks", labelWidth = "150px"),
-                shinySaveButton(ns("saveplot_cov"), 
-                    "Save Plot as PDF", "Save Plot as PDF...", 
-                    filetype = list(PDF = "pdf")),
+                # shinySaveButton(ns("saveplot_cov"), 
+                    # "Save Plot as PDF", "Save Plot as PDF...", 
+                    # filetype = list(PDF = "pdf")),
             ),
             column(9, plotlyOutput(ns("plot_cov"), height = "800px"))
         )    

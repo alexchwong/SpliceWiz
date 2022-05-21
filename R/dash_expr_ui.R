@@ -304,11 +304,11 @@ ui_ddb_load_expr <- function(id, color = "danger") {
         br(), br(),
         h4("Construct NxtSE object"),
         actionButton(ns("build_expr"), "Load NxtSE object"),
-        br(), br(),
+        # br(), br(),
 
-        h4("Update loaded NxtSE object with annotations"),
-        actionButton(ns("build_expr_update_anno"), 
-			"Update NxtSE with annotations"),
+        # h4("Update loaded NxtSE object with annotations"),
+        # actionButton(ns("build_expr_update_anno"), 
+			# "Update NxtSE with annotations"),
     )
 }
 

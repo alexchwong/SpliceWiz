@@ -452,9 +452,6 @@ server_expr <- function(
                 )
             }
         })
-    })
-
-
 
     # End of Server function
         return(settings_expr)

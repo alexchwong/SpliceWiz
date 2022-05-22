@@ -394,7 +394,8 @@ server_expr <- function(
                     df.anno = settings_expr$df.anno,
                     df.files = settings_expr$df.files,
                     bam_path = settings_expr$bam_path,
-                    sw_path = settings_expr$sw_path
+                    sw_path = settings_expr$sw_path,
+                    collate_path = settings_expr$collate_path
                 )
                 saveRDS(NxtSE_list, selectedfile$datapath)
                 .save_NxtSE_sweetalert_finish(session, selectedfile$datapath)
@@ -405,7 +406,8 @@ server_expr <- function(
         
         observeEvent(input$loadNxtSE_RDS, {
             req(input$loadNxtSE_RDS)
-            collection <- c("se", "df.anno", "df.files", "bam_path", "sw_path")
+            collection <- c("se", "df.anno", "df.files", 
+                "bam_path", "sw_path", "collate_path")
             RDSfile <- as.character(
                 parseFilePaths(volumes(), input$loadNxtSE_RDS))
             NxtSE_list <- readRDS(RDSfile)
@@ -422,6 +424,7 @@ server_expr <- function(
                 settings_expr$df.files <- NxtSE_list$df.files
                 settings_expr$bam_path <- NxtSE_list$bam_path
                 settings_expr$sw_path <- NxtSE_list$sw_path
+                settings_expr$collate_path <- NxtSE_list$collate_path
             }
             rm(NxtSE_list)
         })

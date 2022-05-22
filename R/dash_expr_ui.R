@@ -270,8 +270,7 @@ ui_ddb_build_annos <- function(id, color = "danger") {
         shinyFilesButton(ns("file_expr_anno_load_coldata"), 
             label = "Load Annotations from RDS", 
             title = "Load Annotations from RDS", 
-            multiple = FALSE), 
-
+            multiple = FALSE)
     )
 }
 

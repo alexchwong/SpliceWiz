@@ -406,10 +406,12 @@ server_expr <- function(
         
         observeEvent(input$loadNxtSE_RDS, {
             req(input$loadNxtSE_RDS)
+            file_selected <- parseFilePaths(volumes(), input$loadNxtSE_RDS)
+            req(file_selected$datapath)
+            RDSfile <- as.character(file_selected$datapath)
+            
             collection <- c("se", "df.anno", "df.files", 
                 "bam_path", "sw_path", "collate_path")
-            RDSfile <- as.character(
-                parseFilePaths(volumes(), input$loadNxtSE_RDS))
             NxtSE_list <- readRDS(RDSfile)
             if(
                     !is(NxtSE_list, "list") || 
@@ -427,7 +429,7 @@ server_expr <- function(
                 settings_expr$collate_path <- NxtSE_list$collate_path
             }
             rm(NxtSE_list)
-        })
+    })
     # End of Server function
         return(settings_expr)
     })

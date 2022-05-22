@@ -147,42 +147,45 @@ server_DE <- function(
             settings_DE$method = input$method_DE
 
             if(settings_DE$method == "DESeq2") {
-            
-                res.ASE = ASE_DESeq(
-                    get_se(), settings_DE$DE_Var, 
-                    settings_DE$nom_DE, settings_DE$denom_DE,
-                    settings_DE$batchVar1, settings_DE$batchVar2,
-                    n_threads = get_threads()
-                )
-                if(!input$adjP_DE) {
-                    setorderv(res.ASE, "pvalue")
-                } else {
-                    setorderv(res.ASE, "padj")            
-                }
-                settings_DE$res = as.data.frame(res.ASE)
-                
+                withProgress(message = 'Running DESeq2...', value = 0, {
+                    res.ASE = ASE_DESeq(
+                        get_se(), settings_DE$DE_Var, 
+                        settings_DE$nom_DE, settings_DE$denom_DE,
+                        settings_DE$batchVar1, settings_DE$batchVar2,
+                        n_threads = get_threads()
+                    )
+                    if(!input$adjP_DE) {
+                        setorderv(res.ASE, "pvalue")
+                    } else {
+                        setorderv(res.ASE, "padj")            
+                    }
+                    settings_DE$res = as.data.frame(res.ASE)
+                })
             } else if(settings_DE$method == "limma") {
-
-                res.ASE = ASE_limma(
-                    get_se(), settings_DE$DE_Var, 
-                    settings_DE$nom_DE, settings_DE$denom_DE,
-                    settings_DE$batchVar1, settings_DE$batchVar2
-                )
-                if(!input$adjP_DE) {
-                    setorderv(res.ASE, "P.Value")
-                } else {
-                    setorderv(res.ASE, "adj.P.Val")
-                }
+                withProgress(message = 'Running limma...', value = 0, {
+                    res.ASE = ASE_limma(
+                        get_se(), settings_DE$DE_Var, 
+                        settings_DE$nom_DE, settings_DE$denom_DE,
+                        settings_DE$batchVar1, settings_DE$batchVar2
+                    )
+                    if(!input$adjP_DE) {
+                        setorderv(res.ASE, "P.Value")
+                    } else {
+                        setorderv(res.ASE, "adj.P.Val")
+                    }
+                })
             } else if(settings_DE$method == "DoubleExpSeq") {
-                res.ASE = ASE_DoubleExpSeq(
-                    get_se(), settings_DE$DE_Var, 
-                    settings_DE$nom_DE, settings_DE$denom_DE
-                )
-                if(!input$adjP_DE) {
-                    setorderv(res.ASE, "P.Value")
-                } else {
-                    setorderv(res.ASE, "adj.P.Val")
-                }
+                withProgress(message = 'Running DoubleExpSeq...', value = 0, {
+                    res.ASE = ASE_DoubleExpSeq(
+                        get_se(), settings_DE$DE_Var, 
+                        settings_DE$nom_DE, settings_DE$denom_DE
+                    )
+                    if(!input$adjP_DE) {
+                        setorderv(res.ASE, "P.Value")
+                    } else {
+                        setorderv(res.ASE, "adj.P.Val")
+                    }
+                })
             }
             
             settings_DE$res = as.data.frame(res.ASE)

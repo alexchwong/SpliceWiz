@@ -118,8 +118,9 @@ ui_expr_limited <- function(id) {
                             )                                
                         )
                     ),
-                    ui_ddb_load_expr(id, color = "default"), br(),
-                    ui_ddb_build_annos(id, color = "default"),          
+                    ui_ddb_find_expr_folder(id, color = "default"), br(),
+                    ui_ddb_build_annos(id, color = "default"), br(),        
+                    ui_ddb_load_expr(id, color = "default")
                 )
             ),
             column(8,
@@ -249,7 +250,7 @@ ui_ddb_build_annos <- function(id, color = "danger") {
     ui_toggle_wellPanel_modular(
         inputId = "expr_ddb_expr_anno",
         id = id,
-        title = "Annotate Experiment",
+        title = "Review Annotations",
         color = color,
         icon = icon("edit", lib = "font-awesome"),
 
@@ -261,10 +262,9 @@ ui_ddb_build_annos <- function(id, color = "danger") {
         actionButton(ns("add_anno"), "Edit Interactively"),
         br(), br(),
         
-        tags$h4("Save / Load Experiment Annotations"),
+        tags$h4("Save / Load Annotations"),
         actionButton(ns("load_expr"), "Load Annotations"),
         actionButton(ns("save_expr"), "Save Annotations"),
-        br(),br(),
     )
 }
 
@@ -287,28 +287,53 @@ ui_ddb_build_expr <- function(id, color = "danger") {
 }
 
 
+ui_ddb_find_expr_folder <- function(id, color = "danger") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "expr_ddb_find_expr_folder",
+        id = id,
+        title = "Open Folder containing NxtSE",
+        color = color,
+        icon = icon("flask", lib = "font-awesome"),
+
+        shinyDirButton(ns("dir_collate_path_load"), 
+            label = "Choose Folder (NxtSE)", 
+            title = "Choose NxtSE path"
+        )
+    )
+}
+
+ui_ddb_save_NxtSE <- function(id, color = "danger") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "expr_ddb_save_NxtSE",
+        id = id,
+        title = "Save NxtSE to/from RDS file",
+        color = color,
+        icon = icon("floppy-disk", lib = "font-awesome"),
+
+        shinySaveButton(ns("saveNxtSE_RDS"), 
+            "Save NxtSE as RDS", "Save NxtSE as PDF...", 
+            filetype = list(RDS = "rds")), br(), br(),
+        shinyFilesButton(ns("loadNxtSE_RDS"), 
+            label = "Load NxtSE from RDS", 
+            title = "Select RDS file containing saved NxtSE", 
+            multiple = FALSE)
+    )
+}
+
+
+
 ui_ddb_load_expr <- function(id, color = "danger") {
     ns <- NS(id)
     ui_toggle_wellPanel_modular(
         inputId = "expr_ddb_expr_build",
         id = id,
-        title = "Construct Experiment",
+        title = "Load NxtSE object",
         color = color,
         icon = icon("flask", lib = "font-awesome"),
 
-        h4("Choose Folder containing compiled experiment"),
-        shinyDirButton(ns("dir_collate_path_load"), 
-            label = "Choose Folder (NxtSE)", 
-            title = "Choose NxtSE path"
-        ),
-        br(), br(),
-        h4("Construct NxtSE object"),
-        actionButton(ns("build_expr"), "Load NxtSE object"),
-        # br(), br(),
-
-        # h4("Update loaded NxtSE object with annotations"),
-        # actionButton(ns("build_expr_update_anno"), 
-			# "Update NxtSE with annotations"),
+        actionButton(ns("build_expr"), "Load NxtSE object")
     )
 }
 

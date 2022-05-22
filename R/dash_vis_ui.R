@@ -25,7 +25,7 @@ ui_vis_diag <- function(id) {
                 # shinySaveButton(ns("saveplot_diag"), 
                     # "Save Plot as PDF", "Save Plot as PDF...", 
                     # filetype = list(PDF = "pdf")),
-                actionButton(ns("output_plot_diag"), "Generate ggplot"),
+                # actionButton(ns("output_plot_diag"), "Generate RStudio ggplot"),
                 actionButton(ns("clear_diag"), "Clear settings"), br(), br(),
                 textOutput(ns("warning_diag"))
             ),
@@ -62,7 +62,7 @@ ui_vis_volcano <- function(id) {
                 # shinySaveButton(ns("saveplot_volc"), 
                     # "Save Plot as PDF", "Save Plot as PDF...", 
                     # filetype = list(PDF = "pdf")),
-                actionButton(ns("output_plot_volc"), "Generate ggplot"),
+                # actionButton(ns("output_plot_volc"), "Generate RStudio ggplot"),
                 actionButton(ns("clear_volc"), "Clear settings"), br(), br(),
                 textOutput(ns("warning_volc"))
             ),
@@ -83,23 +83,22 @@ ui_vis_heatmap <- function(id) {
                     label = 
                         "Select Events from Differential Expression Results",
                     justified = FALSE,
-                    choices = c("Highlighted", "Top N Filtered Results", 
-                        "Top N All Results"), 
+                    choices = c("Top All Results", "Top Filtered Results", 
+                        "Top Selected Results"), 
                     checkIcon = list(yes = icon("ok", lib = "glyphicon"))
                 ),
-                selectInput(ns("anno_col_heat"), "Sample Annotation Rows", 
+                selectInput(ns("anno_col_heat"), "Annotation Categories", 
                     width = '100%', multiple = TRUE,
                     choices = c()),
                 shinyWidgets::sliderTextInput(ns("slider_num_events_heat"), 
-                    "Num Events", choices = c(5, 10,25,50,100,200,500), 
+                    "Number of Top Events", 
+                    choices = c(5, 10,25,50,100,200,500), 
                     selected = 25),
                 shinyWidgets::radioGroupButtons(ns("mode_heat"), 
                     label = "Mode", justified = FALSE,
                     choices = c("PSI", "Logit", "Z-score"), 
                     checkIcon = list(yes = icon("ok", lib = "glyphicon"))
-                ),
-                # shinyWidgets::switchInput("NMD_heat", label = "NMD Mode", 
-                    # labelWidth = "100px"),                    
+                ),                   
                 selectInput(ns('color_heat'), 'Palette', 
                     c("RdBu", "BrBG", "PiYG", "PRGn", "PuOr", 
                         "RdGy", "RdYlBu", "RdYlGn", "Spectral")
@@ -107,7 +106,7 @@ ui_vis_heatmap <- function(id) {
                 # shinySaveButton(ns("saveplot_heat"), 
                     # "Save Plot as PDF", "Save Plot as PDF...", 
                     # filetype = list(PDF = "pdf"))
-                actionButton(ns("output_plot_heat"), "Generate ggplot"),
+                # actionButton(ns("output_plot_heat"), "Generate RStudio ggplot"),
             ),
             column(9, 
                 textOutput(ns("warning_heat")),

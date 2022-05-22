@@ -114,19 +114,26 @@ server_filters <- function(
             if(is(get_se(), "NxtSE")) {
                 filterSummary <- rep(TRUE, nrow(get_se()))
                 if(is_valid(settings_filter$filters)) {
+                    filters_to_run <- c()
                     for(i in seq_len(12)) {
                         if(
                             length(settings_filter$filters) >= i &&
                             is_valid(settings_filter$filters[[i]]@filterType)  
                         ) {
+                            filters_to_run <- c(filters_to_run, i)
+                        }
+                    }
+                    withProgress(message = 'Running NxtSE Filters', value = 0, {
+                        for(i in filters_to_run) {
                             filterSummary <- filterSummary & runFilter(
                                 get_se(),
                                 settings_filter$filters[[i]]
                             )
-                        } else {
-                            # message(paste("Trigger", i, "is NULL"))
+                            incProgress(1/length(filters_to_run))
                         }
-                    }
+                    })
+                    .filters_sweetalert_finish(session, 
+                        sum(filterSummary == TRUE))
                 }
                 settings_filter$filterSummary <- filterSummary
                 message("Filtered ", sum(filterSummary == TRUE), " ASE events")
@@ -265,4 +272,15 @@ Filters_Plot_Summary <- function(DT, scale) {
     }
     p <- p + labs(fill = "Filtered")
     return(p)
+}
+
+.filters_sweetalert_finish <- function(session, num_events) {
+    sendSweetAlert(
+        session = session,
+        title = paste(
+            "NxtSE filters processed (",
+            num_events, " ASEs retained)"
+        ),
+        type = "success"
+    )
 }

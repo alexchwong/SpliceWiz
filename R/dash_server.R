@@ -1,7 +1,8 @@
 dash_server = function(input, output, session) {
     # Volumes / storage drives
     default_volumes <- c("Working Directory" = getwd(), 
-        "Home" = "~", getVolumes()())
+        "Home" = "~", "Temporary Directory" = tempdir(),
+        getVolumes()())
     volumes = reactive(default_volumes)
     # Defines for Reactives
     settings_expr <- settings_expr_load <- settings_filtered_SE <- 

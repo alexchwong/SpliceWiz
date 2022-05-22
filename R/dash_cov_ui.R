@@ -46,11 +46,9 @@ ui_cov <- function(id) {
                     label = 
                         "Select Events from Differential Expression Results",
                         justified = FALSE,
-                        choices = c(
-                            "Top N All Results", 
-                            "Top N Filtered Results", 
-                            "Highlighted"
-                        ),
+                    choiceNames = c("Top All Results", "Top Filtered Results", 
+                        "Top Selected Results"), 
+                    choiceValues = c("All", "Filtered", "Selected"),
                     checkIcon = list(yes = icon("ok", lib = "glyphicon"))
                 ),
                 shinyWidgets::radioGroupButtons(ns("graph_mode_cov"), 

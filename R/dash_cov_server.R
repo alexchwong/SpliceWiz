@@ -593,9 +593,9 @@ server_cov_get_all_tracks <- function(input) {
         session, mode, num_events,
         DE, rows_all, rows_selected
 ) {
-    if(mode == "Highlighted") {
+    if(mode == "Selected") {
         selected <- rows_selected
-    } else if(mode == "Top N Filtered Results") {
+    } else if(mode == "Filtered") {
         selected <- rows_all
         if(length(selected) > num_events) {
             selected <- selected[seq_len(num_events)]

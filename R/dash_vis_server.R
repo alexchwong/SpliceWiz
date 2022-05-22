@@ -457,9 +457,9 @@ server_vis_heatmap <- function(
             validate(need(get_se(), "Load Experiment first"))
             validate(need(get_de(), "Load DE Analysis first"))
 
-            if(input$select_events_heat == "Highlighted") {
+            if(input$select_events_heat == "Selected") {
                 selected <- rows_selected()
-            } else if(input$select_events_heat == "Top N Filtered Results") {
+            } else if(input$select_events_heat == "Filtered") {
                 selected <- rows_all()
                 if(length(selected) > input$slider_num_events_heat) {
                     selected <- selected[seq_len(input$slider_num_events_heat)]

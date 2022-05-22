@@ -414,7 +414,9 @@ server_expr <- function(
             
             collection <- c("se", "df.anno", "df.files", 
                 "bam_path", "sw_path", "collate_path")
-            NxtSE_list <- readRDS(RDSfile)
+            withProgress(message = 'Loading NxtSE from RDS', value = 0, {
+                NxtSE_list <- readRDS(RDSfile)
+            })
             if(
                     !is(NxtSE_list, "list") || 
                     !all(collection %in% names(NxtSE_list)) ||

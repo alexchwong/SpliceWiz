@@ -120,7 +120,7 @@ ui_ref_new <- function(id) {
                         "Clear settings", 
                         style = "gradient", color = "warning"),
                     shinyWidgets::actionBttn(ns("load_ref_example"), 
-                        "Load Example FASTA / GTF",
+                        "Load Demo FASTA / GTF",
                         style = "gradient", color = "danger"
                     )
                 )

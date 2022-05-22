@@ -397,7 +397,9 @@ server_expr <- function(
                     sw_path = settings_expr$sw_path,
                     collate_path = settings_expr$collate_path
                 )
-                saveRDS(NxtSE_list, selectedfile$datapath)
+                withProgress(message = 'Saving NxtSE as RDS', value = 0, {
+                    saveRDS(NxtSE_list, selectedfile$datapath)
+                })                
                 .save_NxtSE_sweetalert_finish(session, selectedfile$datapath)
             }
 
@@ -429,7 +431,31 @@ server_expr <- function(
                 settings_expr$collate_path <- NxtSE_list$collate_path
             }
             rm(NxtSE_list)
+        })
+        
+        # Place demo BAM files in tempdir
+        observeEvent(input$makeDemoBAMS, {
+            if(getwd() != tempdir()) setwd(tempdir())
+            dir.create(file.path(tempdir(), "bams"))
+            ret <- example_bams(path = file.path(tempdir(), "bams"))
+            if(is.null(ret)) {
+                sendSweetAlert(
+                    session = session,
+                    title = "Error creating demo BAM files", type = "error"
+                )
+            } else {
+                sendSweetAlert(
+                    session = session,
+                    title = paste("BAM files downloaded to", 
+                        file.path(tempdir(), "bams")
+                    ), type = "success"
+                )
+            }
+        })
     })
+
+
+
     # End of Server function
         return(settings_expr)
     })

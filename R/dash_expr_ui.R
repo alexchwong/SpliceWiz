@@ -36,6 +36,7 @@ ui_expr <- function(id) {
                             )                                
                         )
                     ),
+                    ui_ddb_demo_load(id, color = "danger"), br(),
                     ui_ddb_project_dir(id, color = "default"), br(), # br(),
                     ui_ddb_sw_path(id, color = "default"), br(), # br(),
                     ui_ddb_build_annos(id, color = "default"), br(), # br(),                   
@@ -184,6 +185,20 @@ ui_ddb_project_dir <- function(id, color = "danger") {
         textOutput(ns("txt_NxtSE_path_load")),br(),
 
         # tags$h4("Clear Project Path"),
+    )
+}
+
+ui_ddb_demo_load <- function(id, color = "danger") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "expr_ddb_demo_load",
+        id = id,
+        title = "Load Demo Dataset",
+        color = color,
+        icon = icon("database", lib = "font-awesome"),
+
+        actionButton(ns("makeDemoBAMS"), 
+            "Place BAM files in temporary directory")
     )
 }
 

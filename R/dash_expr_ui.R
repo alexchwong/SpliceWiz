@@ -37,8 +37,6 @@ ui_expr <- function(id) {
                         )
                     ),
                     ui_ddb_project_dir(id, color = "default"), br(), # br(),
-                    # ui_ddb_ref_load(id, color = "default"), br(), # br(),
-                    # ui_ddb_bam_path(id, color = "default"), br(), # br(),
                     ui_ddb_sw_path(id, color = "default"), br(), # br(),
                     ui_ddb_build_annos(id, color = "default"), br(), # br(),                   
                     ui_ddb_build_expr(id, color = "default"), # br(), # br(),
@@ -119,8 +117,9 @@ ui_expr_limited <- function(id) {
                         )
                     ),
                     ui_ddb_find_expr_folder(id, color = "default"), br(),
-                    ui_ddb_build_annos(id, color = "default"), br(),        
-                    ui_ddb_load_expr(id, color = "default")
+                    ui_ddb_build_annos(id, color = "default"), br(), 
+                    ui_ddb_load_expr(id, color = "default"), br(),
+                    ui_ddb_save_NxtSE(id, color = "default")
                 )
             ),
             column(8,
@@ -310,7 +309,7 @@ ui_ddb_save_NxtSE <- function(id, color = "danger") {
         id = id,
         title = "Save NxtSE to/from RDS file",
         color = color,
-        icon = icon("floppy-disk", lib = "font-awesome"),
+        icon = icon("file", lib = "font-awesome"),
 
         shinySaveButton(ns("saveNxtSE_RDS"), 
             "Save NxtSE as RDS", "Save NxtSE as PDF...", 

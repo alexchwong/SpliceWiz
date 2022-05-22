@@ -113,6 +113,10 @@ server_expr <- function(
             # )
         # })
 
+        observe({
+            shinyFileSave(input, "file_expr_anno_save_coldata", 
+                roots = volumes(), session = session, filetypes = c("rds"))    
+        })
         observeEvent(input$file_expr_anno_save_coldata, {
             selectedfile <- parseSavePath(volumes(), 
                 input$file_expr_anno_save_coldata)
@@ -145,8 +149,11 @@ server_expr <- function(
 
         observeEvent(input$file_expr_anno_load_coldata, {
             req(input$file_expr_anno_load_coldata)
-            colData_file <- as.character(
-                parseFilePaths(volumes(), input$file_expr_anno_load_coldata))
+            file_selected <- parseFilePaths(volumes(),
+                input$file_expr_anno_load_coldata)
+            req(file_selected$datapath)
+
+            colData_file <- as.character(file_selected$datapath)
             output <- .server_expr_load_expr(
                 reactiveValuesToList(settings_expr), colData_file,
                 session, output)

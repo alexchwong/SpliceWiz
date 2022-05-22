@@ -89,6 +89,7 @@ server_cov <- function(
                     obj <- do.call(plotCoverage, settings_Cov$plot_params)
                 
                     req(obj)
+                    # spit out ggplot version
                     print(as_ggplot_cov(obj))
                     settings_Cov$final_plot <- obj$final_plot
                     settings_Cov$final_plot$x$source <- "plotly_ViewRef"
@@ -137,8 +138,7 @@ server_cov <- function(
             event_data("plotly_relayout", source = "plotly_ViewRef")
         })
         observeEvent(settings_Cov$plotly_relayout(), {
-            print(settings_Cov$plotly_relayout())
-            # req(FALSE)
+            # print(settings_Cov$plotly_relayout())
             req(length(settings_Cov$plotly_relayout()) == 2)
             req(all(c("xaxis.range[0]", "xaxis.range[1]") %in% 
                 names(settings_Cov$plotly_relayout())))

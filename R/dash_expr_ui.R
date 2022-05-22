@@ -255,15 +255,23 @@ ui_ddb_build_annos <- function(id, color = "danger") {
 
         tags$h4("Add Annotations"),
         shinyFilesButton(ns("file_expr_anno_load"), 
-            label = "Import From File", 
+            label = "Import Data Frame from File", 
             title = "Choose Sample Annotation Table", 
             multiple = FALSE), 
         actionButton(ns("add_anno"), "Edit Interactively"),
         br(), br(),
         
         tags$h4("Save / Load Annotations"),
-        actionButton(ns("load_expr"), "Load Annotations"),
-        actionButton(ns("save_expr"), "Save Annotations"),
+        # actionButton(ns("load_expr"), "Load Annotations"),
+        # actionButton(ns("save_expr"), "Save Annotations"),
+        shinySaveButton(ns("file_expr_anno_save_coldata"), 
+            "Save Annotations as RDS", "Save Annotations as RDS...", 
+            filetype = list(RDS = "rds")),
+        shinyFilesButton(ns("file_expr_anno_load_coldata"), 
+            label = "Load Annotations from RDS", 
+            title = "Load Annotations from RDS", 
+            multiple = FALSE), 
+
     )
 }
 
@@ -312,11 +320,12 @@ ui_ddb_save_NxtSE <- function(id, color = "danger") {
         icon = icon("file", lib = "font-awesome"),
 
         shinySaveButton(ns("saveNxtSE_RDS"), 
-            "Save NxtSE as RDS", "Save NxtSE as PDF...", 
+            "Save NxtSE as RDS", "Save NxtSE as RDS", 
             filetype = list(RDS = "rds")), br(), br(),
         shinyFilesButton(ns("loadNxtSE_RDS"), 
             label = "Load NxtSE from RDS", 
-            title = "Select RDS file containing saved NxtSE", 
+            title = "Select RDS file containing NxtSE", 
+            filetype = list(RDS = "rds"),
             multiple = FALSE)
     )
 }

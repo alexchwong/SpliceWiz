@@ -325,7 +325,6 @@ ui_ddb_save_NxtSE <- function(id, color = "danger") {
         shinyFilesButton(ns("loadNxtSE_RDS"), 
             label = "Load NxtSE from RDS", 
             title = "Select RDS file containing NxtSE", 
-            filetype = list(RDS = "rds"),
             multiple = FALSE)
     )
 }

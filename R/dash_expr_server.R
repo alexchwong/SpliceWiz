@@ -378,18 +378,29 @@ server_expr <- function(
             }
         })
 
+        observe({
+            shinyFileSave(input, "saveNxtSE_RDS", roots = volumes(), 
+                session = session, filetypes = c("rds"))    
+        })
         observeEvent(input$saveNxtSE_RDS, {    
             req(settings_expr$se)
-            selectedfile <- parseSavePath(volumes(), input$saveNxtSE_RDS)
-            req(selectedfile$datapath)
-            NxtSE_list <- list(
-                se = settings_expr$se,
-                df.anno = settings_expr$df.anno,
-                df.files = settings_expr$df.files,
-                bam_path = settings_expr$bam_path,
-                sw_path = settings_expr$sw_path
-            )
-            saveRDS(NxtSE_list, selectedfile$datapath)
+            if(!is(settings_expr$se, "NxtSE")) {
+                .save_NxtSE_sweetalert_error(session)
+            } else {
+                selectedfile <- parseSavePath(volumes(), input$saveNxtSE_RDS)
+                req(selectedfile$datapath)
+                NxtSE_list <- list(
+                    se = settings_expr$se,
+                    df.anno = settings_expr$df.anno,
+                    df.files = settings_expr$df.files,
+                    bam_path = settings_expr$bam_path,
+                    sw_path = settings_expr$sw_path
+                )
+                saveRDS(NxtSE_list, selectedfile$datapath)
+                .save_NxtSE_sweetalert_finish(session, selectedfile$datapath)
+            }
+
+            
         })
         
         observeEvent(input$loadNxtSE_RDS, {
@@ -1247,6 +1258,22 @@ Expr_Update_colData <- function(
     sendSweetAlert(
         session = session,
         title = "Error encountered loading NxtSE from RDS",
+        type = "error"
+    )
+}
+
+.save_NxtSE_sweetalert_finish <- function(session, filename) {
+    sendSweetAlert(
+        session = session,
+        title = paste("Successfully saved NxtSE to RDS", filename),
+        type = "success"
+    )
+}
+
+.save_NxtSE_sweetalert_error <- function(session) {
+    sendSweetAlert(
+        session = session,
+        title = "NxtSE must first be loaded into session from folder",
         type = "error"
     )
 }

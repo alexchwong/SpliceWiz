@@ -56,7 +56,7 @@ server_expr <- function(
 
         observeEvent(input$dir_collate_path_load, {
             req(input$dir_collate_path_load)
-            settings_expr$collate_path = parseDirPath(volumes(), 
+            settings_expr$collate_path_prompt = parseDirPath(volumes(), 
                 input$dir_collate_path_load)
         })
         
@@ -156,13 +156,7 @@ server_expr <- function(
             colData_file <- as.character(file_selected$datapath)
             output <- .server_expr_load_expr(
                 reactiveValuesToList(settings_expr), colData_file,
-                session, output)
-            # Update status boxes
-            output <- .server_expr_parse_collate_path(
-                limited = limited,
-                settings_expr = reactiveValuesToList(settings_expr), 
-                output = output
-            )
+                session, output, limited)
         })
 
         # Toggle to Annotations
@@ -202,7 +196,7 @@ server_expr <- function(
         # Clearing Selections
         observeEvent(input$dir_collate_path_clear, {
             req(input$dir_collate_path_clear)
-            settings_expr$collate_path = ""
+            settings_expr$collate_path_prompt = ""
         })
         observeEvent(input$clearLoadRef,{
             settings_expr$ref_path = ""
@@ -213,7 +207,7 @@ server_expr <- function(
             settings_expr$bam_path = ""
             settings_expr$sw_path = ""
             settings_expr$anno_file = ""
-            settings_expr$collate_path = ""
+            settings_expr$collate_path_prompt = ""
             settings_expr$df.files = c()
             settings_expr$df.anno = c()
             settings_expr$se = NULL
@@ -240,23 +234,27 @@ server_expr <- function(
 
         # Event when BAM directory is set
         observeEvent(settings_expr$bam_path,{
-            settings_expr$df.files <- Expr_Load_BAMs(
-                settings_expr$df.files, settings_expr$bam_path, session)
-            output$bam_expr_infobox <- Expr_BAM_update_status(
-                settings_expr$df.files, settings_expr$bam_path,
-                settings_expr$collate_path)
-            output$txt_bam_path_load <- renderText(
-                settings_expr$bam_path)
+            if(!limited) {
+                settings_expr$df.files <- Expr_Load_BAMs(
+                    settings_expr$df.files, settings_expr$bam_path, session)
+                output$bam_expr_infobox <- Expr_BAM_update_status(
+                    settings_expr$df.files, settings_expr$bam_path,
+                    settings_expr$collate_path)
+                output$txt_bam_path_load <- renderText(
+                    settings_expr$bam_path)
+            }
         })
 
         # Event when processBAM output directory is set
         observeEvent(settings_expr$sw_path,{
-            settings_expr$df.files <- Expr_Load_SW(
-                settings_expr$df.files, settings_expr$sw_path)
-            output <- .server_expr_check_sw_path(settings_expr$df.files, 
-                settings_expr$sw_path, output)
-            output$txt_sw_path_expr <- renderText(
-                settings_expr$sw_path)
+            if(!limited) {
+                settings_expr$df.files <- Expr_Load_SW(
+                    settings_expr$df.files, settings_expr$sw_path)
+                output <- .server_expr_check_sw_path(settings_expr$df.files, 
+                    settings_expr$sw_path, output)
+                output$txt_sw_path_expr <- renderText(
+                    settings_expr$sw_path)
+            }
         })
 
         # Event when Annotation file is set
@@ -267,15 +265,16 @@ server_expr <- function(
         })
 
         # Event when NxtSE output directory is set
-        observeEvent(settings_expr$collate_path, {
+        observeEvent(settings_expr$collate_path_prompt, {
             if(
-                    is_valid(settings_expr$collate_path) && 
+                    is_valid(settings_expr$collate_path_prompt) && 
                     file.exists(
-                        file.path(settings_expr$collate_path, "colData.Rds")
+                        file.path(settings_expr$collate_path_prompt, 
+                            "colData.Rds")
                     )
             ) {
                 colData.Rds = readRDS(file.path(
-                    settings_expr$collate_path, "colData.Rds"))
+                    settings_expr$collate_path_prompt, "colData.Rds"))
                 if(all(c("df.anno", "df.files") %in% names(colData.Rds))) {
                     settings_expr$df.files              <- colData.Rds$df.files
                     settings_expr$df.anno               <- colData.Rds$df.anno
@@ -289,6 +288,7 @@ server_expr <- function(
                     }
                 }
             }
+            settings_expr$collate_path <- settings_expr$collate_path_prompt
             output <- .server_expr_parse_collate_path(
                 limited = limited,
                 settings_expr = reactiveValuesToList(settings_expr), 
@@ -408,6 +408,8 @@ server_expr <- function(
                     saveRDS(NxtSE_list, selectedfile$datapath)
                 })                
                 .save_NxtSE_sweetalert_finish(session, selectedfile$datapath)
+                settings_expr$df.files_savestate <- settings_expr$df.files
+                settings_expr$df.anno_savestate <- settings_expr$df.anno
             }
 
             
@@ -420,7 +422,7 @@ server_expr <- function(
             RDSfile <- as.character(file_selected$datapath)
             
             collection <- c("se", "df.anno", "df.files", 
-                "bam_path", "sw_path", "collate_path")
+                "bam_path", "sw_path")#, "collate_path")
             withProgress(message = 'Loading NxtSE from RDS', value = 0, {
                 NxtSE_list <- readRDS(RDSfile)
             })
@@ -438,14 +440,20 @@ server_expr <- function(
                 settings_expr$bam_path <- NxtSE_list$bam_path
                 settings_expr$sw_path <- NxtSE_list$sw_path
                 settings_expr$collate_path <- NxtSE_list$collate_path
+                settings_expr$df.files_savestate <- settings_expr$df.files
+                settings_expr$df.anno_savestate <- settings_expr$df.anno
             }
             rm(NxtSE_list)
         })
         
         # Place demo BAM files in tempdir
         observeEvent(input$makeDemoBAMS, {
-            if(getwd() != tempdir()) setwd(tempdir())
-            dir.create(file.path(tempdir(), "bams"))
+            if(!dir.exists(file.path(tempdir(), "bams")))
+                dir.create(file.path(tempdir(), "bams"))
+            if(!dir.exists(file.path(tempdir(), "pb")))
+                dir.create(file.path(tempdir(), "pb"))
+            if(!dir.exists(file.path(tempdir(), "NxtSE")))
+                dir.create(file.path(tempdir(), "NxtSE"))
             ret <- example_bams(path = file.path(tempdir(), "bams"))
             if(is.null(ret)) {
                 sendSweetAlert(
@@ -1109,7 +1117,7 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
 }
 
 .server_expr_load_expr <- function(
-        settings_expr, colData_file, session, output
+        settings_expr, colData_file, session, output, limited
 ) {
     if(
             is_valid(settings_expr$collate_path) &&
@@ -1130,7 +1138,7 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
             }
             output <- .server_expr_parse_collate_path(
                 limited = limited,
-                settings_expr = reactiveValuesToList(settings_expr), 
+                settings_expr = settings_expr, 
                 output = output
             )
             .server_expr_load_alert_success(session, colData_file)

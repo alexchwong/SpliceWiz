@@ -291,7 +291,6 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         })
         
         observeEvent(input$load_ref_example, {
-            if(getwd() != tempdir()) setwd(tempdir())
             dir.create(file.path(tempdir(), "Reference"))
             output$txt_reference_path <- renderText({
                 settings_newref$newref_path <- file.path(tempdir(), "Reference")

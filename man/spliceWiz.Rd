@@ -6,7 +6,8 @@
 \usage{
 spliceWiz(
   mode = c("dialog", "browser"),
-  res = c("1080p", "720p", "960p", "1440p")
+  res = c("1080p", "720p", "960p", "1440p"),
+  demo = FALSE
 )
 }
 \arguments{
@@ -17,6 +18,9 @@ browser-like resizable window.}
 \item{res}{(default "1080p") Sets width and height of the app to pre-defined
 dimensions. Possible options are "720p, "960p", "1080p", "1440p", which
 specifies the height of the app. All are displayed in aspect ratio 16x9}
+
+\item{demo}{(default FALSE) If set to \code{TRUE}, SpliceWiz will place demo
+reference and BAM files into the temporary directory.}
 }
 \value{
 Runs an interactive shinydashboard SpliceWiz app with the specified

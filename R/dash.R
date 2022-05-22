@@ -7,6 +7,8 @@
 #' @param res (default "1080p") Sets width and height of the app to pre-defined
 #'   dimensions. Possible options are "720p, "960p", "1080p", "1440p", which
 #'   specifies the height of the app. All are displayed in aspect ratio 16x9
+#' @param demo (default FALSE) If set to `TRUE`, SpliceWiz will place demo
+#'   reference and BAM files into the temporary directory.
 #' @return Runs an interactive shinydashboard SpliceWiz app with the specified
 #'   mode.
 #' @examples
@@ -25,7 +27,8 @@
 #' @export
 spliceWiz <- function(
         mode = c("dialog", "browser"),
-        res = c("1080p", "720p", "960p", "1440p")
+        res = c("1080p", "720p", "960p", "1440p"),
+        demo = FALSE
 ) {
     if(!interactive()) {
         .log(paste("In spliceWiz(), SpliceWiz App",
@@ -68,6 +71,26 @@ spliceWiz <- function(
     } else if(res == "1440p") {
         height = 1440
         width = 2560
+    }
+    
+    if(demo) {
+        if(!dir.exists(file.path(tempdir(), "Reference")))
+            dir.create(file.path(tempdir(), "Reference"))
+        if(!dir.exists(file.path(tempdir(), "bams")))
+            dir.create(file.path(tempdir(), "bams"))
+        if(!dir.exists(file.path(tempdir(), "pb")))
+            dir.create(file.path(tempdir(), "pb"))
+        if(!dir.exists(file.path(tempdir(), "NxtSE")))
+            dir.create(file.path(tempdir(), "NxtSE"))
+        ret <- example_bams(path = file.path(tempdir(), "bams"))
+        
+        if(is.null(ret)) {
+            .log("Error creating demo BAM files", "message")
+        } else {
+            .log("Reference and BAM files placed into temporary directory", 
+                "message")
+            setwd(tempdir())
+        }
     }
     
     if(mode == "browser") {

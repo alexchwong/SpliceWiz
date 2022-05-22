@@ -37,6 +37,7 @@ setreactive_expr <- function() {
         sw_path = "",
         anno_file = "",
         collate_path = "",
+        collate_path_prompt = "",
 
         df.files = c(),
         df.anno = c(),

@@ -111,6 +111,15 @@ ui_ref_new <- function(id) {
                 )
             ),
             wellPanel(
+                h4("Load Demo Reference"),
+                tags$div(
+                    shinyWidgets::actionBttn(ns("load_ref_example"), 
+                        "Load Demo FASTA / GTF",
+                        style = "gradient", color = "danger"
+                    )
+                )
+            ),
+            wellPanel(
                 h4("Start Building Reference"),
                 tags$div(
                     shinyWidgets::actionBttn(ns("buildRef"), 
@@ -119,10 +128,6 @@ ui_ref_new <- function(id) {
                     shinyWidgets::actionBttn(ns("clearNewRef"), 
                         "Clear settings", 
                         style = "gradient", color = "warning"),
-                    shinyWidgets::actionBttn(ns("load_ref_example"), 
-                        "Load Demo FASTA / GTF",
-                        style = "gradient", color = "danger"
-                    )
                 )
             ),
             uiOutput(ns("refStatus"))

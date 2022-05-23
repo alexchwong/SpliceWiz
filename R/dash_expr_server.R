@@ -50,8 +50,11 @@ server_expr <- function(
         })
         observeEvent(input$file_expr_anno_load, {
             req(input$file_expr_anno_load)
-            settings_expr$anno_file = as.character(
-                parseFilePaths(volumes(), input$file_expr_anno_load))
+            file_selected <- parseFilePaths(volumes(),
+                input$file_expr_anno_load)
+            req(file_selected$datapath)
+			
+            settings_expr$anno_file <- as.character(file_selected$datapath)
         })
 
         observeEvent(input$dir_collate_path_load, {
@@ -260,8 +263,9 @@ server_expr <- function(
         # Event when Annotation file is set
         observeEvent(settings_expr$anno_file,{
             req(settings_expr$anno_file)
+			req(file.exists(settings_expr$anno_file))
             settings_expr$df.anno <- Expr_Load_Anno(settings_expr$df.anno,
-                settings_expr$df.files, settings_expr$anno_files)
+                settings_expr$df.files, settings_expr$anno_file, session)
         })
 
         # Event when NxtSE output directory is set
@@ -394,25 +398,35 @@ server_expr <- function(
             if(!is(settings_expr$se, "NxtSE")) {
                 .save_NxtSE_sweetalert_error(session)
             } else {
-                selectedfile <- parseSavePath(volumes(), input$saveNxtSE_RDS)
-                req(selectedfile$datapath)
-                NxtSE_list <- list(
-                    se = settings_expr$se,
-                    df.anno = settings_expr$df.anno,
-                    df.files = settings_expr$df.files,
-                    bam_path = settings_expr$bam_path,
-                    sw_path = settings_expr$sw_path,
-                    collate_path = settings_expr$collate_path
-                )
-                withProgress(message = 'Saving NxtSE as RDS', value = 0, {
-                    saveRDS(NxtSE_list, selectedfile$datapath)
-                })                
-                .save_NxtSE_sweetalert_finish(session, selectedfile$datapath)
-                settings_expr$df.files_savestate <- settings_expr$df.files
-                settings_expr$df.anno_savestate <- settings_expr$df.anno
-            }
+				# First ensure colData is identical to that of NxtSE:
+				colData <- as.data.frame(colData(settings_expr$se),
+					stringsAsFactors = FALSE)
+				rownames(colData) <- seq_len(nrow(colData))
+				colData_samples <- 
+					data.frame(samples = colnames(settings_expr$se),
+					stringsAsFactors = FALSE)
+				colData <- cbind(colData_samples, colData)
+				settings_expr$df.anno <- colData
+				selectedfile <- parseSavePath(volumes(), 
+					input$saveNxtSE_RDS)
+				req(selectedfile$datapath)
+				NxtSE_list <- list(
+					se = settings_expr$se,
+					df.anno = colData,
+					df.files = settings_expr$df.files,
+					bam_path = settings_expr$bam_path,
+					sw_path = settings_expr$sw_path,
+					collate_path = settings_expr$collate_path
+				)
+				withProgress(message = 'Saving NxtSE as RDS', value = 0, {
+					saveRDS(NxtSE_list, selectedfile$datapath)
+				})                
+				.save_NxtSE_sweetalert_finish(session, 
+					selectedfile$datapath)
+				settings_expr$df.files_savestate <- settings_expr$df.files
+				settings_expr$df.anno_savestate <- settings_expr$df.anno
 
-            
+            }
         })
         
         observeEvent(input$loadNxtSE_RDS, {
@@ -450,8 +464,8 @@ server_expr <- function(
         observeEvent(input$makeDemoBAMS, {
             if(!dir.exists(file.path(tempdir(), "bams")))
                 dir.create(file.path(tempdir(), "bams"))
-            if(!dir.exists(file.path(tempdir(), "pb")))
-                dir.create(file.path(tempdir(), "pb"))
+            if(!dir.exists(file.path(tempdir(), "pb_output")))
+                dir.create(file.path(tempdir(), "pb_output"))
             if(!dir.exists(file.path(tempdir(), "NxtSE")))
                 dir.create(file.path(tempdir(), "NxtSE"))
             ret <- example_bams(path = file.path(tempdir(), "bams"))
@@ -936,9 +950,16 @@ Expr_PB_actually_run <- function(input, session, n_threads, settings_expr) {
 
 # Load annotation file
 Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
-    temp.DT <- tryCatch(fread(anno_file), error = function(e) NULL)
-    if(!is_valid(temp.DT)) return(df.anno)
-    if(nrow(temp.DT) == 0) return(df.anno)
+	temp.DT <- tryCatch(fread(anno_file), error = function(e) NULL)
+    if(!is_valid(temp.DT) || nrow(temp.DT) == 0) {
+		sendSweetAlert(
+            session = session,
+            title = "Error in Annotation file",
+            text = "Annotation file must be in tabular format",
+            type = "error"
+        )
+		return(df.anno)
+	}
     if(!("sample" %in% colnames(temp.DT))) {
         sendSweetAlert(
             session = session,
@@ -1319,6 +1340,17 @@ Expr_Update_colData <- function(
     sendSweetAlert(
         session = session,
         title = "NxtSE must first be loaded into session from folder",
+        type = "error"
+    )
+}
+
+.save_NxtSE_sweetalert_nonidentical <- function(session) {
+    sendSweetAlert(
+        session = session,
+        title = paste(
+			"Annotations have been edited since NxtSE last loaded.",
+			"Reload NxtSE to session prior to saving as RDS"
+		),
         type = "error"
     )
 }

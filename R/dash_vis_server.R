@@ -224,7 +224,7 @@ server_vis_diag <- function(
             updateSelectInput(session = session, 
                 "EventType_diag", selected = NULL)
             shinyWidgets::updateSliderTextInput(session = session, 
-                "number_events_diag", selected = 10000)
+                "number_events_diag", selected = 1000)
             
             if(is_valid(get_se())) {
                 colData <- colData(get_se())
@@ -431,7 +431,7 @@ server_vis_volcano <- function(
             updateSelectInput(session = session, "EventType_volc", 
                 selected = NULL)
             shinyWidgets::updateSliderTextInput(session = session, 
-                "number_events_volc", selected = 10000)
+                "number_events_volc", selected = 1000)
         })
         
         return(settings_Volc)

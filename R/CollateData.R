@@ -185,8 +185,8 @@ collateData <- function(Experiment, reference_path, output_path,
     )
     gc()
 
-    dash_progress("Building Final SummarizedExperiment Object", N_steps)
-    .log("Building Final SummarizedExperiment Object", "message")
+    dash_progress("Building Final NxtSE Object", N_steps)
+    .log("Building Final NxtSE Object", "message")
 
 	samples_per_block <- 16
 	if(lowMemoryMode) samples_per_block <- 4

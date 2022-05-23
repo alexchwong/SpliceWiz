@@ -8,9 +8,19 @@ is.nan.data.frame <- function(x) do.call(cbind, lapply(x, is.nan))
 
 is_valid <- function(x) {
     !missing(x) &&
-    !is.null(x) && length(x) > 0 &&
-        (isS4(x) || !is.na(x)) &&
-        (!is.character(x) || (x != "" && x != "(none)"))
+    !is.null(x) && 
+	length(x) > 0 &&
+	(
+		length(x) > 1 || 
+		isS4(x) || 
+		is(x, "data.frame") || 
+		!is.na(x)
+	) &&
+	(
+		length(x) > 1 || 
+		!is.character(x) || 
+		(x != "" && x != "(none)")
+	)
 }
 
 .log <- function(msg = "",

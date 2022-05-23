@@ -53,11 +53,11 @@ server_filters <- function(
         observeEvent(refresh_tab(), {
             if(is_valid(get_se())) {
                 output$current_expr_Filters <- 
-                    renderText("SummarizedExperiment loaded")
+                    renderText("NxtSE loaded")
                 processFilters()
             } else {
                 output$current_expr_Filters <- 
-                    renderText("Please load SummarizedExperiment first")
+                    renderText("Please load NxtSE first")
             }
         })
 

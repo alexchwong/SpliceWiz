@@ -230,7 +230,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                         "Mappability")
                     new_mappa_file <- file.path(new_mappa_path, mappa_base)
                     
-                    dir.create(new_mappa_path)
+                    if(!dir.exists(new_mappa_path)) dir.create(new_mappa_path)
                     
                     if(dir.exists(new_mappa_path))
                         file.copy(args$MappabilityRef, new_mappa_file)
@@ -291,7 +291,8 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         })
         
         observeEvent(input$load_ref_example, {
-            dir.create(file.path(tempdir(), "Reference"))
+            if(!dir.exists(file.path(tempdir(), "Reference")))
+				dir.create(file.path(tempdir(), "Reference"))
             output$txt_reference_path <- renderText({
                 settings_newref$newref_path <- file.path(tempdir(), "Reference")
             })

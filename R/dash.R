@@ -78,8 +78,8 @@ spliceWiz <- function(
             dir.create(file.path(tempdir(), "Reference"))
         if(!dir.exists(file.path(tempdir(), "bams")))
             dir.create(file.path(tempdir(), "bams"))
-        if(!dir.exists(file.path(tempdir(), "pb")))
-            dir.create(file.path(tempdir(), "pb"))
+        if(!dir.exists(file.path(tempdir(), "pb_output")))
+            dir.create(file.path(tempdir(), "pb_output"))
         if(!dir.exists(file.path(tempdir(), "NxtSE")))
             dir.create(file.path(tempdir(), "NxtSE"))
         ret <- example_bams(path = file.path(tempdir(), "bams"))
@@ -89,6 +89,15 @@ spliceWiz <- function(
         } else {
             .log("Reference and BAM files placed into temporary directory", 
                 "message")
+			fwrite(
+				data.frame(
+					sample = c("02H003", "02H025", "02H026",
+						"02H033", "02H043", "02H046"),
+					condition = rep(c("A", "B"), each = 3),
+					batch = rep(c("K", "L", "M"), 2)
+				),
+				file.path(tempdir(), "demo_annotations.csv")
+			)		
             setwd(tempdir())
         }
     }

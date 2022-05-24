@@ -28,6 +28,8 @@ ui_filters <- function(id) {
                 textOutput(ns("current_ref_Filters")), br(),
                 actionButton(ns("loadDefault_Filters"), "Load Default Filters"),
                 br(), br(),
+                actionButton(ns("refresh_filters_Filters"), "Apply Filters"),
+                br(), br(),
                 shinySaveButton(ns("saveAnalysis_Filters"), "Save Filters", 
                     "Save Filters as...", filetype = list(RDS = "Rds")),
                 shinyFilesButton(ns("loadAnalysis_Filters"), 
@@ -36,7 +38,6 @@ ui_filters <- function(id) {
                 plotlyOutput(ns("plot_filtered_Events")),
                 selectInput(ns('graphscale_Filters'), 'Y-axis Scale', 
                     width = '100%', choices = c("linear", "log10")), 
-                actionButton(ns("refresh_filters_Filters"), "Apply Filters"),
             )
         )
     )
@@ -52,11 +53,11 @@ server_filters <- function(
         observeEvent(refresh_tab(), {
             if(is_valid(get_se())) {
                 output$current_expr_Filters <- 
-                    renderText("SummarizedExperiment loaded")
+                    renderText("NxtSE loaded")
                 processFilters()
             } else {
                 output$current_expr_Filters <- 
-                    renderText("Please load SummarizedExperiment first")
+                    renderText("Please load NxtSE first")
             }
         })
 
@@ -113,19 +114,26 @@ server_filters <- function(
             if(is(get_se(), "NxtSE")) {
                 filterSummary <- rep(TRUE, nrow(get_se()))
                 if(is_valid(settings_filter$filters)) {
+                    filters_to_run <- c()
                     for(i in seq_len(12)) {
                         if(
                             length(settings_filter$filters) >= i &&
                             is_valid(settings_filter$filters[[i]]@filterType)  
                         ) {
+                            filters_to_run <- c(filters_to_run, i)
+                        }
+                    }
+                    withProgress(message = 'Running NxtSE Filters', value = 0, {
+                        for(i in filters_to_run) {
                             filterSummary <- filterSummary & runFilter(
                                 get_se(),
                                 settings_filter$filters[[i]]
                             )
-                        } else {
-                            # message(paste("Trigger", i, "is NULL"))
+                            incProgress(1/length(filters_to_run))
                         }
-                    }
+                    })
+                    .filters_sweetalert_finish(session, 
+                        sum(filterSummary == TRUE))
                 }
                 settings_filter$filterSummary <- filterSummary
                 message("Filtered ", sum(filterSummary == TRUE), " ASE events")
@@ -264,4 +272,15 @@ Filters_Plot_Summary <- function(DT, scale) {
     }
     p <- p + labs(fill = "Filtered")
     return(p)
+}
+
+.filters_sweetalert_finish <- function(session, num_events) {
+    sendSweetAlert(
+        session = session,
+        title = paste(
+            "NxtSE filters processed (",
+            num_events, " ASEs retained)"
+        ),
+        type = "success"
+    )
 }

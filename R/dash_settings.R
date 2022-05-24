@@ -37,6 +37,7 @@ setreactive_expr <- function() {
         sw_path = "",
         anno_file = "",
         collate_path = "",
+        collate_path_prompt = "",
 
         df.files = c(),
         df.anno = c(),
@@ -94,6 +95,7 @@ setreactive_Diag <- function() {
         plot_ini = FALSE,
         plotly_click = NULL,
         final_plot = NULL,
+        ggplot = NULL,
         selected = NULL
     )
 }
@@ -101,6 +103,7 @@ setreactive_Diag <- function() {
 # Settings for Heatmap
 setreactive_Heat <- function() {
     reactiveValues(
+        ggplot = NULL,
         final_plot = NULL
     )
 }

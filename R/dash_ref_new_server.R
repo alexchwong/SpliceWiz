@@ -1,5 +1,5 @@
 # Module for new SpliceWiz reference
-server_ref_new <- function(id, refresh_tab, volumes) {
+server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
     moduleServer(id, function(input, output, session) {
         # Instantiate settings
         settings_newref <- setreactive_newref()
@@ -230,7 +230,7 @@ server_ref_new <- function(id, refresh_tab, volumes) {
                         "Mappability")
                     new_mappa_file <- file.path(new_mappa_path, mappa_base)
                     
-                    dir.create(new_mappa_path)
+                    if(!dir.exists(new_mappa_path)) dir.create(new_mappa_path)
                     
                     if(dir.exists(new_mappa_path))
                         file.copy(args$MappabilityRef, new_mappa_file)
@@ -238,7 +238,7 @@ server_ref_new <- function(id, refresh_tab, volumes) {
                     if(file.exists(new_mappa_file)) 
                         args$MappabilityRef <- new_mappa_file
                 }
-
+				args$lowMemoryMode <- get_memmode_reactive()
                 withProgress(message = 'Building Reference', value = 0, {
                     do.call(buildRef, args)
                 })
@@ -291,8 +291,10 @@ server_ref_new <- function(id, refresh_tab, volumes) {
         })
         
         observeEvent(input$load_ref_example, {
+            if(!dir.exists(file.path(tempdir(), "Reference")))
+				dir.create(file.path(tempdir(), "Reference"))
             output$txt_reference_path <- renderText({
-                settings_newref$newref_path <- tempdir()
+                settings_newref$newref_path <- file.path(tempdir(), "Reference")
             })
             settings_newref$newref_fasta <- NxtIRFdata::chrZ_genome()
             settings_newref$newref_gtf <- NxtIRFdata::chrZ_gtf()

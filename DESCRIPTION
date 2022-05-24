@@ -54,12 +54,12 @@ Imports:
 	rhandsontable,
 	DT,
 	grDevices,
-	heatmaply,
+	heatmaply, pheatmap,
 	matrixStats,
 	RColorBrewer,
 	XML
 Suggests: 
-    knitr, rmarkdown, pheatmap, openssl, crayon, egg,
+    knitr, rmarkdown, openssl, crayon, egg,
     DESeq2, limma, DoubleExpSeq, Rsubread, testthat (>= 3.0.0)
 LinkingTo: 
     ompBAM,

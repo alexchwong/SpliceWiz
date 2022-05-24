@@ -1,5 +1,7 @@
 server_expr <- function(
-        id, refresh_tab, volumes, get_threads_reactive, limited = FALSE
+        id, refresh_tab, volumes, get_threads_reactive, 
+		get_memmode_reactive,
+		limited = FALSE
 ) {
     moduleServer(id, function(input, output, session) {
         ns = NS(id)
@@ -26,6 +28,10 @@ server_expr <- function(
                 roots = volumes(), session = session)
             shinyFileChoose(input, "file_expr_anno_load", 
                 roots = volumes(), session = session)
+            shinyFileChoose(input, "loadNxtSE_RDS", 
+                roots = volumes(), session = session, filetype = c("Rds"))
+            shinyFileChoose(input, "file_expr_anno_load_coldata", 
+                roots = volumes(), session = session, filetype = c("Rds"))
         })
         observeEvent(input$dir_reference_path_load, {
             req(input$dir_reference_path_load)
@@ -44,12 +50,16 @@ server_expr <- function(
         })
         observeEvent(input$file_expr_anno_load, {
             req(input$file_expr_anno_load)
-            settings_expr$anno_file = as.character(
-                parseFilePaths(volumes(), input$file_expr_anno_load))
+            file_selected <- parseFilePaths(volumes(),
+                input$file_expr_anno_load)
+            req(file_selected$datapath)
+			
+            settings_expr$anno_file <- as.character(file_selected$datapath)
         })
+
         observeEvent(input$dir_collate_path_load, {
             req(input$dir_collate_path_load)
-            settings_expr$collate_path = parseDirPath(volumes(), 
+            settings_expr$collate_path_prompt = parseDirPath(volumes(), 
                 input$dir_collate_path_load)
         })
         
@@ -93,9 +103,29 @@ server_expr <- function(
         })
         
         # Experiment I/O - saves and loads to NxtSE project directory
-        observeEvent(input$save_expr,{
-            req(input$save_expr)
-            .server_expr_save_expr(reactiveValuesToList(settings_expr), session)
+        # observeEvent(input$save_expr,{
+            # req(input$save_expr)
+            # .server_expr_save_expr(reactiveValuesToList(settings_expr), session)
+            # settings_expr$df.files_savestate <- settings_expr$df.files
+            # settings_expr$df.anno_savestate <- settings_expr$df.anno
+            
+            # output <- .server_expr_parse_collate_path(
+                # limited = limited,
+                # settings_expr = reactiveValuesToList(settings_expr), 
+                # output = output
+            # )
+        # })
+
+        observe({
+            shinyFileSave(input, "file_expr_anno_save_coldata", 
+                roots = volumes(), session = session, filetypes = c("rds"))    
+        })
+        observeEvent(input$file_expr_anno_save_coldata, {
+            selectedfile <- parseSavePath(volumes(), 
+                input$file_expr_anno_save_coldata)
+            req(selectedfile$datapath)
+            .server_expr_save_expr(reactiveValuesToList(settings_expr), 
+                selectedfile$datapath, session)
             settings_expr$df.files_savestate <- settings_expr$df.files
             settings_expr$df.anno_savestate <- settings_expr$df.anno
             # Validate NxtSE Object
@@ -107,49 +137,29 @@ server_expr <- function(
         })
         
         # Click "Load Experiment" after setting collateData output path
-        observeEvent(input$load_expr,{
-            req(input$load_expr)
-            if(
-                    is_valid(settings_expr$collate_path) &&
-                    file.exists(
-                        file.path(settings_expr$collate_path, "colData.Rds")
-                    )
-            ) {
-                colData.Rds = readRDS(
-                    file.path(settings_expr$collate_path, "colData.Rds"))
-                req_columns = c("df.anno", "df.files")
-                if(all(req_columns %in% names(colData.Rds))) {
-                    settings_expr$df.files <- colData.Rds$df.files
-                    settings_expr$df.files_savestate <- settings_expr$df.files
-                    settings_expr$df.anno <- colData.Rds$df.anno
-                    settings_expr$df.anno_savestate <- settings_expr$df.anno
-                    if("bam_path" %in% names(colData.Rds)) {
-                        settings_expr$bam_path = colData.Rds$bam_path
-                    }
-                    if("sw_path" %in% names(colData.Rds)) {
-                        settings_expr$sw_path = colData.Rds$sw_path
-                    }
-                    output <- .server_expr_parse_collate_path(
-                        limited = limited,
-                        settings_expr = reactiveValuesToList(settings_expr), 
-                        output = output
-                    )
-                    .server_expr_load_alert_success(session, 
-                        settings_expr$collate_path)
-                } else {
-                    .server_expr_load_alert_fail(session, 
-                        settings_expr$collate_path)
-                }
-            } else {
-                .server_expr_load_alert_fail(session, 
-                    settings_expr$collate_path)
-            }
-            # Update status boxes
-            output <- .server_expr_parse_collate_path(
-                limited = limited,
-                settings_expr = reactiveValuesToList(settings_expr), 
-                output = output
-            )
+        # observeEvent(input$load_expr,{
+            # req(input$load_expr)
+            # output <- .server_expr_load_expr(
+                # reactiveValuesToList(settings_expr), 
+                # session, output)
+            
+            # output <- .server_expr_parse_collate_path(
+                # limited = limited,
+                # settings_expr = reactiveValuesToList(settings_expr), 
+                # output = output
+            # )
+        # })
+
+        observeEvent(input$file_expr_anno_load_coldata, {
+            req(input$file_expr_anno_load_coldata)
+            file_selected <- parseFilePaths(volumes(),
+                input$file_expr_anno_load_coldata)
+            req(file_selected$datapath)
+
+            colData_file <- as.character(file_selected$datapath)
+            output <- .server_expr_load_expr(
+                reactiveValuesToList(settings_expr), colData_file,
+                session, output, limited)
         })
 
         # Toggle to Annotations
@@ -189,17 +199,18 @@ server_expr <- function(
         # Clearing Selections
         observeEvent(input$dir_collate_path_clear, {
             req(input$dir_collate_path_clear)
-            settings_expr$collate_path = ""
+            settings_expr$collate_path_prompt = ""
         })
         observeEvent(input$clearLoadRef,{
             settings_expr$ref_path = ""
             output <- .server_expr_clear_ref(output)   
         })
         observeEvent(input$clear_expr, {
+			settings_expr$ref_path = ""
             settings_expr$bam_path = ""
             settings_expr$sw_path = ""
             settings_expr$anno_file = ""
-            settings_expr$collate_path = ""
+            settings_expr$collate_path_prompt = ""
             settings_expr$df.files = c()
             settings_expr$df.anno = c()
             settings_expr$se = NULL
@@ -226,38 +237,48 @@ server_expr <- function(
 
         # Event when BAM directory is set
         observeEvent(settings_expr$bam_path,{
-            settings_expr$df.files <- Expr_Load_BAMs(
-                settings_expr$df.files, settings_expr$bam_path, session)
-            output$bam_expr_infobox <- Expr_BAM_update_status(
-                settings_expr$df.files, settings_expr$bam_path,
-                settings_expr$collate_path)
+            if(!limited) {
+                settings_expr$df.files <- Expr_Load_BAMs(
+                    settings_expr$df.files, settings_expr$bam_path, session)
+                output$bam_expr_infobox <- Expr_BAM_update_status(
+                    settings_expr$df.files, settings_expr$bam_path,
+                    settings_expr$collate_path)
+                output$txt_bam_path_load <- renderText(
+                    settings_expr$bam_path)
+            }
         })
 
         # Event when processBAM output directory is set
         observeEvent(settings_expr$sw_path,{
-            settings_expr$df.files <- Expr_Load_SW(
-                settings_expr$df.files, settings_expr$sw_path)
-            output <- .server_expr_check_sw_path(settings_expr$df.files, 
-                settings_expr$sw_path, output)
+            if(!limited) {
+                settings_expr$df.files <- Expr_Load_SW(
+                    settings_expr$df.files, settings_expr$sw_path)
+                output <- .server_expr_check_sw_path(settings_expr$df.files, 
+                    settings_expr$sw_path, output)
+                output$txt_sw_path_expr <- renderText(
+                    settings_expr$sw_path)
+            }
         })
 
         # Event when Annotation file is set
         observeEvent(settings_expr$anno_file,{
             req(settings_expr$anno_file)
+			req(file.exists(settings_expr$anno_file))
             settings_expr$df.anno <- Expr_Load_Anno(settings_expr$df.anno,
-                settings_expr$df.files, settings_expr$anno_files)
+                settings_expr$df.files, settings_expr$anno_file, session)
         })
 
         # Event when NxtSE output directory is set
-        observeEvent(settings_expr$collate_path, {
+        observeEvent(settings_expr$collate_path_prompt, {
             if(
-                    is_valid(settings_expr$collate_path) && 
+                    is_valid(settings_expr$collate_path_prompt) && 
                     file.exists(
-                        file.path(settings_expr$collate_path, "colData.Rds")
+                        file.path(settings_expr$collate_path_prompt, 
+                            "colData.Rds")
                     )
             ) {
                 colData.Rds = readRDS(file.path(
-                    settings_expr$collate_path, "colData.Rds"))
+                    settings_expr$collate_path_prompt, "colData.Rds"))
                 if(all(c("df.anno", "df.files") %in% names(colData.Rds))) {
                     settings_expr$df.files              <- colData.Rds$df.files
                     settings_expr$df.anno               <- colData.Rds$df.anno
@@ -271,6 +292,7 @@ server_expr <- function(
                     }
                 }
             }
+            settings_expr$collate_path <- settings_expr$collate_path_prompt
             output <- .server_expr_parse_collate_path(
                 limited = limited,
                 settings_expr = reactiveValuesToList(settings_expr), 
@@ -327,7 +349,8 @@ server_expr <- function(
                 {
                     collateData(
                         Experiment, reference_path, output_path, 
-                        n_threads = get_threads_reactive()
+                        n_threads = get_threads_reactive(),
+						lowMemoryMode = get_memmode_reactive()
                     )
                 })
                 Expr_Update_colData(
@@ -363,6 +386,101 @@ server_expr <- function(
                         .makeSE_sweetalert_error(session)
                     })
                 })
+            }
+        })
+
+        observe({
+            shinyFileSave(input, "saveNxtSE_RDS", roots = volumes(), 
+                session = session, filetypes = c("rds"))    
+        })
+        observeEvent(input$saveNxtSE_RDS, {    
+            req(settings_expr$se)
+            if(!is(settings_expr$se, "NxtSE")) {
+                .save_NxtSE_sweetalert_error(session)
+            } else {
+				# First ensure colData is identical to that of NxtSE:
+				colData <- as.data.frame(colData(settings_expr$se),
+					stringsAsFactors = FALSE)
+				rownames(colData) <- seq_len(nrow(colData))
+				colData_samples <- 
+					data.frame(samples = colnames(settings_expr$se),
+					stringsAsFactors = FALSE)
+				colData <- cbind(colData_samples, colData)
+				settings_expr$df.anno <- colData
+				selectedfile <- parseSavePath(volumes(), 
+					input$saveNxtSE_RDS)
+				req(selectedfile$datapath)
+				NxtSE_list <- list(
+					se = settings_expr$se,
+					df.anno = colData,
+					df.files = settings_expr$df.files,
+					bam_path = settings_expr$bam_path,
+					sw_path = settings_expr$sw_path,
+					collate_path = settings_expr$collate_path
+				)
+				withProgress(message = 'Saving NxtSE as RDS', value = 0, {
+					saveRDS(NxtSE_list, selectedfile$datapath)
+				})                
+				.save_NxtSE_sweetalert_finish(session, 
+					selectedfile$datapath)
+				settings_expr$df.files_savestate <- settings_expr$df.files
+				settings_expr$df.anno_savestate <- settings_expr$df.anno
+
+            }
+        })
+        
+        observeEvent(input$loadNxtSE_RDS, {
+            req(input$loadNxtSE_RDS)
+            file_selected <- parseFilePaths(volumes(), input$loadNxtSE_RDS)
+            req(file_selected$datapath)
+            RDSfile <- as.character(file_selected$datapath)
+            
+            collection <- c("se", "df.anno", "df.files", 
+                "bam_path", "sw_path")#, "collate_path")
+            withProgress(message = 'Loading NxtSE from RDS', value = 0, {
+                NxtSE_list <- readRDS(RDSfile)
+            })
+            if(
+                    !is(NxtSE_list, "list") || 
+                    !all(collection %in% names(NxtSE_list)) ||
+                    !is(NxtSE_list$se, "NxtSE")
+            ) {
+                .load_NxtSE_sweetalert_error(session)
+            } else {
+                .load_NxtSE_sweetalert_finish(session)
+                settings_expr$se <- NxtSE_list$se
+                settings_expr$df.anno <- NxtSE_list$df.anno
+                settings_expr$df.files <- NxtSE_list$df.files
+                settings_expr$bam_path <- NxtSE_list$bam_path
+                settings_expr$sw_path <- NxtSE_list$sw_path
+                settings_expr$collate_path <- NxtSE_list$collate_path
+                settings_expr$df.files_savestate <- settings_expr$df.files
+                settings_expr$df.anno_savestate <- settings_expr$df.anno
+            }
+            rm(NxtSE_list)
+        })
+        
+        # Place demo BAM files in tempdir
+        observeEvent(input$makeDemoBAMS, {
+            if(!dir.exists(file.path(tempdir(), "bams")))
+                dir.create(file.path(tempdir(), "bams"))
+            if(!dir.exists(file.path(tempdir(), "pb_output")))
+                dir.create(file.path(tempdir(), "pb_output"))
+            if(!dir.exists(file.path(tempdir(), "NxtSE")))
+                dir.create(file.path(tempdir(), "NxtSE"))
+            ret <- example_bams(path = file.path(tempdir(), "bams"))
+            if(is.null(ret)) {
+                sendSweetAlert(
+                    session = session,
+                    title = "Error creating demo BAM files", type = "error"
+                )
+            } else {
+                sendSweetAlert(
+                    session = session,
+                    title = paste("BAM files downloaded to", 
+                        file.path(tempdir(), "bams")
+                    ), type = "success"
+                )
             }
         })
 
@@ -460,11 +578,11 @@ server_expr <- function(
                 which(names(ah) == ref_settings[["ah_transcriptome"]])])
         }, error = function(e) NULL)
     }
-    if(is.null(ah_genome_record) && "fasta" %in% names(ref_settings)) {
-        fasta <- basename(ref_settings[["fasta"]])
+    if(is.null(ah_genome_record) && "fasta_file" %in% names(ref_settings)) {
+        fasta <- basename(ref_settings[["fasta_file"]])
     }
-    if(is.null(ah_gtf_record) && "gtf" %in% names(ref_settings)) {
-        gtf <- basename(ref_settings[["gtf"]])
+    if(is.null(ah_gtf_record) && "gtf_file" %in% names(ref_settings)) {
+        gtf <- basename(ref_settings[["gtf_file"]])
     }
     if("MappabilityRef" %in% names(ref_settings)) {
         mappa <- basename(ref_settings[["MappabilityRef"]])
@@ -765,16 +883,16 @@ Expr_PB_initiate_run <- function(input, session, n_threads, settings_expr) {
             title = "Missing SpliceWiz (processBAM) output path",
             text = "Please set SpliceWiz (processBAM) output path")
     } else {
-        n_threads <- min(n_threads, length(selected_rows))
-        if(n_threads < length(selected_rows)) {
-            n_rounds <- ceiling(length(selected_rows) / n_threads)
-            n_threads <- ceiling(length(selected_rows) / n_rounds)
-        }
-        msg <- paste("Run processBAM on", length(selected_rows), "samples?",
-            "Estimated runtime", 
-                10 * ceiling(length(selected_rows) / n_threads),
-            "minutes using", n_threads, 
-            "threads (10min per BAM @ 100 million reads per sample)"
+        # n_threads <- min(n_threads, length(selected_rows))
+        # if(n_threads < length(selected_rows)) {
+            # n_rounds <- ceiling(length(selected_rows) / n_threads)
+            # n_threads <- ceiling(length(selected_rows) / n_rounds)
+        # }
+        msg <- paste("Run processBAM on", length(selected_rows), "samples",
+            # "Estimated runtime", 
+                # 10 * ceiling(length(selected_rows) / n_threads), "minutes"
+            "using", n_threads, "threads"#,
+            # "threads (10min per BAM @ 100 million reads per sample)"
         )
         ask_confirmation(inputId = "pb_confirm", type = "warning", 
             title = msg, btn_labels = c("Cancel", "Run processBAM"),
@@ -832,9 +950,16 @@ Expr_PB_actually_run <- function(input, session, n_threads, settings_expr) {
 
 # Load annotation file
 Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
-    temp.DT <- tryCatch(fread(anno_file), error = function(e) NULL)
-    if(!is_valid(temp.DT)) return(df.anno)
-    if(nrow(temp.DT) == 0) return(df.anno)
+	temp.DT <- tryCatch(fread(anno_file), error = function(e) NULL)
+    if(!is_valid(temp.DT) || nrow(temp.DT) == 0) {
+		sendSweetAlert(
+            session = session,
+            title = "Error in Annotation file",
+            text = "Annotation file must be in tabular format",
+            type = "error"
+        )
+		return(df.anno)
+	}
     if(!("sample" %in% colnames(temp.DT))) {
         sendSweetAlert(
             session = session,
@@ -986,10 +1111,10 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
 }
 
 # Save annotations to colData.Rds
-.server_expr_save_expr <- function(settings_expr, session) {
+.server_expr_save_expr <- function(settings_expr, colData_file, session) {
     if(
-            is_valid(settings_expr$collate_path) # &&
-            # file.exists(file.path(settings_expr$collate_path, "colData.Rds"))
+        is_valid(colData_file) && is_valid(settings_expr$df.anno) &&
+            is_valid(settings_expr$df.files)
     ) {
         colData.Rds = list(
             df.anno = settings_expr$df.anno,
@@ -997,11 +1122,10 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
             bam_path = settings_expr$bam_path,
             sw_path = settings_expr$sw_path
         )
-        saveRDS(colData.Rds, file.path(settings_expr$collate_path, 
-            "colData.Rds"))
+        saveRDS(colData.Rds, colData_file)
         sendSweetAlert(
             session = session,
-            title = paste("Annotations saved to", settings_expr$collate_path),
+            title = paste("Annotations saved to", colData_file),
             type = "success"
         )
     } else {
@@ -1011,6 +1135,41 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
             type = "error"
         )
     }
+}
+
+.server_expr_load_expr <- function(
+        settings_expr, colData_file, session, output, limited
+) {
+    if(
+            is_valid(settings_expr$collate_path) &&
+            file.exists(colData_file)
+    ) {
+        colData.Rds = readRDS(colData_file)
+        req_columns = c("df.anno", "df.files")
+        if(all(req_columns %in% names(colData.Rds))) {
+            settings_expr$df.files <- colData.Rds$df.files
+            settings_expr$df.files_savestate <- settings_expr$df.files
+            settings_expr$df.anno <- colData.Rds$df.anno
+            settings_expr$df.anno_savestate <- settings_expr$df.anno
+            if("bam_path" %in% names(colData.Rds)) {
+                settings_expr$bam_path = colData.Rds$bam_path
+            }
+            if("sw_path" %in% names(colData.Rds)) {
+                settings_expr$sw_path = colData.Rds$sw_path
+            }
+            output <- .server_expr_parse_collate_path(
+                limited = limited,
+                settings_expr = settings_expr, 
+                output = output
+            )
+            .server_expr_load_alert_success(session, colData_file)
+        } else {
+            .server_expr_load_alert_fail(session, colData_file)
+        }
+    } else {
+        .server_expr_load_alert_fail(session, colData_file)
+    }
+    return(output)
 }
 
 # Check paths are legit before running collateData()
@@ -1149,6 +1308,49 @@ Expr_Update_colData <- function(
     sendSweetAlert(
         session = session,
         title = "Error encountered loading NxtSE object",
+        type = "error"
+    )
+}
+
+.load_NxtSE_sweetalert_finish <- function(session) {
+    sendSweetAlert(
+        session = session,
+        title = "Successfully loaded NxtSE from RDS",
+        type = "success"
+    )
+}
+
+.load_NxtSE_sweetalert_error <- function(session) {
+    sendSweetAlert(
+        session = session,
+        title = "Error encountered loading NxtSE from RDS",
+        type = "error"
+    )
+}
+
+.save_NxtSE_sweetalert_finish <- function(session, filename) {
+    sendSweetAlert(
+        session = session,
+        title = paste("Successfully saved NxtSE to RDS", filename),
+        type = "success"
+    )
+}
+
+.save_NxtSE_sweetalert_error <- function(session) {
+    sendSweetAlert(
+        session = session,
+        title = "NxtSE must first be loaded into session from folder",
+        type = "error"
+    )
+}
+
+.save_NxtSE_sweetalert_nonidentical <- function(session) {
+    sendSweetAlert(
+        session = session,
+        title = paste(
+			"Annotations have been edited since NxtSE last loaded.",
+			"Reload NxtSE to session prior to saving as RDS"
+		),
         type = "error"
     )
 }

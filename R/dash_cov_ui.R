@@ -46,11 +46,9 @@ ui_cov <- function(id) {
                     label = 
                         "Select Events from Differential Expression Results",
                         justified = FALSE,
-                        choices = c(
-                            "Top N All Results", 
-                            "Top N Filtered Results", 
-                            "Highlighted"
-                        ),
+                    choiceNames = c("Top All Results", "Top Filtered Results", 
+                        "Top Selected Results"), 
+                    choiceValues = c("All", "Filtered", "Selected"),
                     checkIcon = list(yes = icon("ok", lib = "glyphicon"))
                 ),
                 shinyWidgets::radioGroupButtons(ns("graph_mode_cov"), 
@@ -88,9 +86,9 @@ ui_cov <- function(id) {
                     label = "Pairwise t-test", labelWidth = "150px"),
                 shinyWidgets::switchInput(ns("condense_cov"), 
                     label = "Condensed Tracks", labelWidth = "150px"),
-                shinySaveButton(ns("saveplot_cov"), 
-                    "Save Plot as PDF", "Save Plot as PDF...", 
-                    filetype = list(PDF = "pdf")),
+                # shinySaveButton(ns("saveplot_cov"), 
+                    # "Save Plot as PDF", "Save Plot as PDF...", 
+                    # filetype = list(PDF = "pdf")),
             ),
             column(9, plotlyOutput(ns("plot_cov"), height = "800px"))
         )    

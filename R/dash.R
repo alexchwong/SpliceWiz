@@ -7,6 +7,8 @@
 #' @param res (default "1080p") Sets width and height of the app to pre-defined
 #'   dimensions. Possible options are "720p, "960p", "1080p", "1440p", which
 #'   specifies the height of the app. All are displayed in aspect ratio 16x9
+#' @param demo (default FALSE) If set to `TRUE`, SpliceWiz will place demo
+#'   reference and BAM files into the temporary directory.
 #' @return Runs an interactive shinydashboard SpliceWiz app with the specified
 #'   mode.
 #' @examples
@@ -25,7 +27,8 @@
 #' @export
 spliceWiz <- function(
         mode = c("dialog", "browser"),
-        res = c("1080p", "720p", "960p", "1440p")
+        res = c("1080p", "720p", "960p", "1440p"),
+        demo = FALSE
 ) {
     if(!interactive()) {
         .log(paste("In spliceWiz(), SpliceWiz App",
@@ -40,9 +43,7 @@ spliceWiz <- function(
         dashboardBody(
             tabItems(
                 ui_tab_title(),     # "navTitle"
-                
-                # ui_tab_system(),    # "navSystem"
-                
+
                 ui_tab_ref_new(),   # "navRef_New"    
 
                 ui_tab_expr(),      # "navExpr"
@@ -52,8 +53,8 @@ spliceWiz <- function(
                 ui_tab_filter(),    # "navFilter"
                 ui_tab_analyse(),   # "navAnalyse"
 
-                ui_tab_diag(),      # "navDiag"
                 ui_tab_volcano(),   # "navVolcano"
+                ui_tab_diag(),      # "navDiag"
                 ui_tab_heatmap(),   # "navHeatmap"
                 ui_tab_coverage()   # "navCoverage"
             )
@@ -70,6 +71,35 @@ spliceWiz <- function(
     } else if(res == "1440p") {
         height = 1440
         width = 2560
+    }
+    
+    if(demo) {
+        if(!dir.exists(file.path(tempdir(), "Reference")))
+            dir.create(file.path(tempdir(), "Reference"))
+        if(!dir.exists(file.path(tempdir(), "bams")))
+            dir.create(file.path(tempdir(), "bams"))
+        if(!dir.exists(file.path(tempdir(), "pb_output")))
+            dir.create(file.path(tempdir(), "pb_output"))
+        if(!dir.exists(file.path(tempdir(), "NxtSE")))
+            dir.create(file.path(tempdir(), "NxtSE"))
+        ret <- example_bams(path = file.path(tempdir(), "bams"))
+        
+        if(is.null(ret)) {
+            .log("Error creating demo BAM files", "message")
+        } else {
+            .log("Reference and BAM files placed into temporary directory", 
+                "message")
+			fwrite(
+				data.frame(
+					sample = c("02H003", "02H025", "02H026",
+						"02H033", "02H043", "02H046"),
+					condition = rep(c("A", "B"), each = 3),
+					batch = rep(c("K", "L", "M"), 2)
+				),
+				file.path(tempdir(), "demo_annotations.csv")
+			)		
+            setwd(tempdir())
+        }
     }
     
     if(mode == "browser") {

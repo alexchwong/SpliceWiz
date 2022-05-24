@@ -6,12 +6,12 @@ server_DE <- function(
         settings_DE <- setreactive_DE()
 
         observeEvent(refresh_tab(), {
-            output$warning_DE = renderText({
-                validate(need(get_se(), 
-                    "Please load experiment via 'Experiment' tab"))
+            # output$warning_DE = renderText({
+                # validate(need(get_se(), 
+                    # "Please load experiment via 'Experiment' tab"))
                 
-                "Experiment Loaded"
-            })
+                # "Experiment Loaded"
+            # })
             req(get_se())
             colcat = .get_discrete_cats(get_se())
             updateSelectInput(session = session, inputId = "variable_DE", 
@@ -40,29 +40,37 @@ server_DE <- function(
             req(input$variable_DE != "(none)")
 
             colData = colData(get_se())
-
-            col_levels <- levels(colData[,input$variable_DE])
-            updateSelectInput(session = session, inputId = "nom_DE", 
-                choices = c("(none)", col_levels), 
-                selected = "(none)")
-            updateSelectInput(session = session, inputId = "denom_DE", 
-                choices = c("(none)", col_levels),
-                selected = "(none)")
-            if(
-                    is_valid(settings_DE$nom_DE) && 
-                    settings_DE$nom_DE %in% col_levels
-            ) {
-                updateSelectInput(session = session, inputId = "nom_DE", 
-                    selected = settings_DE$nom_DE)
-            }
-            if(
-                    is_valid(settings_DE$nom_DE) && 
-                    settings_DE$denom_DE %in% col_levels
-            ) {
-                updateSelectInput(session = session, inputId = "denom_DE", 
-                    selected = settings_DE$denom_DE)
-            }
-
+			
+			if(is(colData[,input$variable_DE], "factor")) {
+				col_levels <- levels(colData[,input$variable_DE])
+				updateSelectInput(session = session, inputId = "nom_DE", 
+					choices = c("(none)", col_levels), 
+					selected = "(none)")
+				updateSelectInput(session = session, inputId = "denom_DE", 
+					choices = c("(none)", col_levels),
+					selected = "(none)")
+				if(
+						is_valid(settings_DE$nom_DE) && 
+						settings_DE$nom_DE %in% col_levels
+				) {
+					updateSelectInput(session = session, inputId = "nom_DE", 
+						selected = settings_DE$nom_DE)
+				}
+				if(
+						is_valid(settings_DE$nom_DE) && 
+						settings_DE$denom_DE %in% col_levels
+				) {
+					updateSelectInput(session = session, inputId = "denom_DE", 
+						selected = settings_DE$denom_DE)
+				}
+			} else {
+				updateSelectInput(session = session, inputId = "nom_DE", 
+					choices = c("(time series)"), 
+					selected = "(time series)")
+				updateSelectInput(session = session, inputId = "denom_DE", 
+					choices = c("(time series denom)"),
+					selected = "(time series denom)")
+			}
         })
 
         observeEvent(settings_DE$method, {
@@ -96,24 +104,47 @@ server_DE <- function(
                 selected = settings_DE$batchVar2)
         })
 
+        observe({
+            output$warning_DE = renderText({
+                validate(need(get_se(), 
+                    "Please load experiment via 'Experiment' tab"))
+                validate(need(is_valid(input$variable_DE),
+                    "Variable for DE needs to be defined"))
+                validate(need(is_valid(input$nom_DE), 
+                    "Nominator for DE Variable needs to be defined"))
+                validate(need(is_valid(input$denom_DE), 
+                    "Denominator for DE Variable needs to be defined"))
+                validate(need(input$nom_DE != "(time series)" ||
+						input$method_DE == "DESeq2", 
+                    "Time series analysis can only be performed using DESeq2"))
+                validate(need(input$denom_DE != input$nom_DE, 
+                    "Denominator and Nominator must be different"))
+				"Ready to run differential analysis"
+            })
+		})
+
         observeEvent(input$perform_DE, {
             req(get_se())
             output$warning_DE = renderText({
-                validate(need(input$variable_DE != "(none)"),
-                    "Variable for DE needs to be defined")
-                validate(need(input$nom_DE != "(none)"), 
-                    "Nominator for DE Variable needs to be defined")
-                validate(need(input$denom_DE != "(none)"), 
-                    "Denominator for DE Variable needs to be defined")
-                validate(need(input$denom_DE != input$nom_DE), 
-                    "Denominator and Nominator must be different")
-                paste("Running", input$method_DE)
+                validate(need(is_valid(input$variable_DE),
+                    "Variable for DE needs to be defined"))
+                validate(need(is_valid(input$nom_DE), 
+                    "Nominator for DE Variable needs to be defined"))
+                validate(need(is_valid(input$denom_DE), 
+                    "Denominator for DE Variable needs to be defined"))
+                validate(need(input$nom_DE != "(time series)" ||
+						input$method_DE == "DESeq2", 
+                    "Time series analysis can only be performed using DESeq2"))
+                validate(need(input$denom_DE != input$nom_DE, 
+                    "Denominator and Nominator must be different"))
+				"Running differential analysis"
             })
             req(is_valid(input$variable_DE))
             req(is_valid(input$nom_DE))
             req(is_valid(input$denom_DE))
-            # req(input$variable_DE != "(none)" & 
-                # input$nom_DE != "(none)" & input$denom_DE != "(none)")
+			req(input$denom_DE != input$nom_DE)
+			req(input$nom_DE != "(time series)" ||
+				input$method_DE == "DESeq2")
 
             rowData = as.data.frame(rowData(get_se()))
             colData = as.data.frame(colData(get_se()))
@@ -147,42 +178,55 @@ server_DE <- function(
             settings_DE$method = input$method_DE
 
             if(settings_DE$method == "DESeq2") {
-            
-                res.ASE = ASE_DESeq(
-                    get_se(), settings_DE$DE_Var, 
-                    settings_DE$nom_DE, settings_DE$denom_DE,
-                    settings_DE$batchVar1, settings_DE$batchVar2,
-                    n_threads = get_threads()
-                )
-                if(!input$adjP_DE) {
-                    setorderv(res.ASE, "pvalue")
-                } else {
-                    setorderv(res.ASE, "padj")            
-                }
-                settings_DE$res = as.data.frame(res.ASE)
-                
+                withProgress(message = 'Running DESeq2...', value = 0, {
+                    if(settings_DE$nom_DE != "(time series)") {
+						res.ASE = ASE_DESeq(
+							get_se(), settings_DE$DE_Var, 
+							settings_DE$nom_DE, settings_DE$denom_DE,
+							settings_DE$batchVar1, settings_DE$batchVar2,
+							n_threads = get_threads()
+						)					
+					} else {
+						res.ASE = ASE_DESeq(
+							get_se(), settings_DE$DE_Var, 
+							batch1 = settings_DE$batchVar1, 
+							batch2 = settings_DE$batchVar2,
+							n_threads = get_threads()
+						)
+					}
+					
+                    if(!input$adjP_DE) {
+                        setorderv(res.ASE, "pvalue")
+                    } else {
+                        setorderv(res.ASE, "padj")            
+                    }
+                    settings_DE$res = as.data.frame(res.ASE)
+                })
             } else if(settings_DE$method == "limma") {
-
-                res.ASE = ASE_limma(
-                    get_se(), settings_DE$DE_Var, 
-                    settings_DE$nom_DE, settings_DE$denom_DE,
-                    settings_DE$batchVar1, settings_DE$batchVar2
-                )
-                if(!input$adjP_DE) {
-                    setorderv(res.ASE, "P.Value")
-                } else {
-                    setorderv(res.ASE, "adj.P.Val")
-                }
+                withProgress(message = 'Running limma...', value = 0, {
+                    res.ASE = ASE_limma(
+                        get_se(), settings_DE$DE_Var, 
+                        settings_DE$nom_DE, settings_DE$denom_DE,
+                        settings_DE$batchVar1, settings_DE$batchVar2
+                    )
+                    if(!input$adjP_DE) {
+                        setorderv(res.ASE, "P.Value")
+                    } else {
+                        setorderv(res.ASE, "adj.P.Val")
+                    }
+                })
             } else if(settings_DE$method == "DoubleExpSeq") {
-                res.ASE = ASE_DoubleExpSeq(
-                    get_se(), settings_DE$DE_Var, 
-                    settings_DE$nom_DE, settings_DE$denom_DE
-                )
-                if(!input$adjP_DE) {
-                    setorderv(res.ASE, "P.Value")
-                } else {
-                    setorderv(res.ASE, "adj.P.Val")
-                }
+                withProgress(message = 'Running DoubleExpSeq...', value = 0, {
+                    res.ASE = ASE_DoubleExpSeq(
+                        get_se(), settings_DE$DE_Var, 
+                        settings_DE$nom_DE, settings_DE$denom_DE
+                    )
+                    if(!input$adjP_DE) {
+                        setorderv(res.ASE, "P.Value")
+                    } else {
+                        setorderv(res.ASE, "adj.P.Val")
+                    }
+                })
             }
             
             settings_DE$res = as.data.frame(res.ASE)
@@ -326,7 +370,9 @@ server_DE <- function(
     for(colcat in colnames(colData)) {
         if(is(colData[, colcat], "factor")) {
             ret <- c(ret, colcat)
-        }
+        } else if(is(colData[, colcat], "numeric")) {
+			ret <- c(ret, colcat)
+		}
     }
     return(ret)
 }

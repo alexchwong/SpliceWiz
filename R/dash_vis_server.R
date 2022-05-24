@@ -114,35 +114,39 @@ server_vis_diag <- function(
                     )         
             }
             p <- p + labs(color = "Selected")
+            settings_Diag$ggplot <- p
             settings_Diag$final_plot <- ggplotly(
                 p, tooltip = "text",
                 source = "plotly_diagonal") %>% 
                 layout(
                     dragmode = "lasso",
                     yaxis = list(scaleanchor="x", scaleratio=1)
-                )      
+                )
             print(
                 settings_Diag$final_plot
             )
         })
     
-        observe({
-            shinyFileSave(
-                input, "saveplot_diag", 
-                roots = volumes(), session = session,
-                filetypes = c("pdf")
-            )
-        })
-        observeEvent(input$saveplot_diag, {
-            req(settings_Diag$final_plot)
-            selectedfile <- parseSavePath(volumes(), input$saveplot_diag)
-            req(selectedfile$datapath)
+        # observe({
+            # shinyFileSave(
+                # input, "saveplot_diag", 
+                # roots = volumes(), session = session,
+                # filetypes = c("pdf")
+            # )
+        # })
+        # observeEvent(input$saveplot_diag, {
+            # req(settings_Diag$final_plot)
+            # selectedfile <- parseSavePath(volumes(), input$saveplot_diag)
+            # req(selectedfile$datapath)
 
-            obj <- isolate(settings_Diag$final_plot)
-            plotly::orca(obj, .make_path_relative(getwd(), 
-                selectedfile$datapath))
-        })
-
+            # obj <- isolate(settings_Diag$final_plot)
+            # plotly::orca(obj, .make_path_relative(getwd(), 
+                # selectedfile$datapath))
+        # })
+        # observeEvent(input$output_plot_diag, {
+            # req(settings_Diag$ggplot)
+            # print(settings_Diag$ggplot)
+        # })
         settings_Diag$plotly_click = reactive({
             plot_exist <- settings_Diag$plot_ini
             if(plot_exist) 
@@ -220,7 +224,7 @@ server_vis_diag <- function(
             updateSelectInput(session = session, 
                 "EventType_diag", selected = NULL)
             shinyWidgets::updateSliderTextInput(session = session, 
-                "number_events_diag", selected = 10000)
+                "number_events_diag", selected = 1000)
             
             if(is_valid(get_se())) {
                 colData <- colData(get_se())
@@ -394,6 +398,7 @@ server_vis_volcano <- function(
             }
             
             p <- p + labs(color = "Selected")
+            settings_Volc$ggplot <- p
             settings_Volc$final_plot <- ggplotly(
                 p, tooltip = "text",
                 source = "plotly_volcano"
@@ -404,26 +409,29 @@ server_vis_volcano <- function(
             )
         })
         
-        observe({
-            shinyFileSave(input, "saveplot_volc", 
-                roots = volumes(), session = session,
-                filetypes = c("pdf"))
-        })
-        observeEvent(input$saveplot_volc, {
-            req(settings_Volc$final_plot)
-            selectedfile <- parseSavePath(volumes(), input$saveplot_volc)
-            req(selectedfile$datapath)
+        # observe({
+            # shinyFileSave(input, "saveplot_volc", 
+                # roots = volumes(), session = session,
+                # filetypes = c("pdf"))
+        # })
+        # observeEvent(input$saveplot_volc, {
+            # req(settings_Volc$final_plot)
+            # selectedfile <- parseSavePath(volumes(), input$saveplot_volc)
+            # req(selectedfile$datapath)
 
-            obj <- isolate(settings_Volc$final_plot)
-            plotly::orca(obj, .make_path_relative(
-                getwd(), selectedfile$datapath))
-        })
-        
+            # obj <- isolate(settings_Volc$final_plot)
+            # plotly::orca(obj, .make_path_relative(
+                # getwd(), selectedfile$datapath))
+        # })
+        # observeEvent(input$output_plot_volc, {
+            # req(settings_Volc$ggplot)
+            # print(settings_Volc$ggplot)
+        # })
         observeEvent(input$clear_volc, {
             updateSelectInput(session = session, "EventType_volc", 
                 selected = NULL)
             shinyWidgets::updateSliderTextInput(session = session, 
-                "number_events_volc", selected = 10000)
+                "number_events_volc", selected = 1000)
         })
         
         return(settings_Volc)
@@ -449,9 +457,9 @@ server_vis_heatmap <- function(
             validate(need(get_se(), "Load Experiment first"))
             validate(need(get_de(), "Load DE Analysis first"))
 
-            if(input$select_events_heat == "Highlighted") {
+            if(input$select_events_heat == "Selected") {
                 selected <- rows_selected()
-            } else if(input$select_events_heat == "Top N Filtered Results") {
+            } else if(input$select_events_heat == "Filtered") {
                 selected <- rows_all()
                 if(length(selected) > input$slider_num_events_heat) {
                     selected <- selected[seq_len(input$slider_num_events_heat)]
@@ -487,7 +495,7 @@ server_vis_heatmap <- function(
                     name = rownames(colors.df)[color.index])
                 )
             )
-
+            color_vec <- color(100)
             # Hopefully the fixed filtering in limma pipeline will also fix the 
             #   NA issues here:
             na.exclude <- (rowSums(!is.na(mat)) == 0)
@@ -503,11 +511,18 @@ server_vis_heatmap <- function(
                     is_valid(input$anno_col_heat) && 
                     all(input$anno_col_heat %in% colnames(colData))
             ) {
+                settings_Heat$ggplot <- pheatmap(
+                    mat, color = color_vec, 
+                    annotation_col = colData[, input$anno_col_heat, drop=FALSE]
+                )
                 settings_Heat$final_plot <- heatmaply::heatmaply(
                     mat, color = color, 
                     col_side_colors = colData[, input$anno_col_heat, drop=FALSE]
                 )
             } else {
+                settings_Heat$ggplot <- pheatmap(
+                    mat, color = color_vec
+                )
                 settings_Heat$final_plot <- heatmaply::heatmaply(
                     mat, color = color)
             }      
@@ -516,20 +531,23 @@ server_vis_heatmap <- function(
             )
         })
         
-        observe({
-            shinyFileSave(input, "saveplot_heat", 
-                roots = volumes(), session = session,
-                filetypes = c("pdf"))
-        })
-        observeEvent(input$saveplot_heat, {
-            req(settings_Heat$final_plot)
-            selectedfile <- parseSavePath(volumes(), input$saveplot_heat)
-            req(selectedfile$datapath)
+        # observe({
+            # shinyFileSave(input, "saveplot_heat", 
+                # roots = volumes(), session = session,
+                # filetypes = c("pdf"))
+        # })
+        # observeEvent(input$saveplot_heat, {
+            # req(settings_Heat$final_plot)
+            # selectedfile <- parseSavePath(volumes(), input$saveplot_heat)
+            # req(selectedfile$datapath)
             
-            obj <- isolate(settings_Heat$final_plot)
-            plotly::orca(obj, 
-                .make_path_relative(getwd(), selectedfile$datapath))
-        })
-        
+            # obj <- isolate(settings_Heat$final_plot)
+            # plotly::orca(obj, 
+                # .make_path_relative(getwd(), selectedfile$datapath))
+        # })
+        # observeEvent(input$output_plot_heat, {
+            # req(settings_Heat$ggplot)
+            # print(settings_Heat$ggplot)
+        # })
     })
 }

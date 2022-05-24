@@ -1,7 +1,8 @@
 dash_server = function(input, output, session) {
     # Volumes / storage drives
     default_volumes <- c("Working Directory" = getwd(), 
-        "Home" = "~", getVolumes()())
+        "Home" = "~", "Temporary Directory" = tempdir(),
+        getVolumes()())
     volumes = reactive(default_volumes)
     # Defines for Reactives
     settings_expr <- settings_expr_load <- settings_filtered_SE <- 
@@ -61,15 +62,19 @@ dash_server = function(input, output, session) {
         
     # Reactive that returns the number of threads to use
     get_threads_reactive <- reactive(.dash_get_threads(
-        input$thread_option, input$cores_numeric))
-    
+        input$thread_number, input$cores_numeric))
+    get_memmode_reactive <- reactive(.dash_get_memmode(
+        input$memory_option))
+    get_omp_reactive <- reactive(.dash_get_openmp())
+
     # Tie module data to their server objects
     settings_system <- setreactive_system()
-    settings_newref <- server_ref_new("new_ref", refresh_newref, volumes)
+    settings_newref <- server_ref_new("new_ref", refresh_newref, volumes,
+		get_memmode_reactive)
     settings_expr <- server_expr("build_expr", refresh_expr, volumes, 
-        get_threads_reactive)
+        get_threads_reactive, get_memmode_reactive)
     settings_expr_load <- server_expr("load_expr", refresh_exprload, volumes, 
-        get_threads_reactive, limited = TRUE)
+        get_threads_reactive, get_memmode_reactive, limited = TRUE)
     settings_QC <- server_qc("qc", refresh_QC, get_se_path_reactive, 
         get_df_anno_reactive)
     settings_filtered_SE <- server_filters("filters", refresh_filters, volumes, 
@@ -118,20 +123,44 @@ dash_server = function(input, output, session) {
             settings_refresh$cov = runif(1)
         }
     })
+	
+    # Update 
+	observeEvent(list(input$memory_option, get_threads_reactive()), {
+		req(input$memory_option)
+        n_threads <- get_threads_reactive()
+        if(n_threads != .getSWthreads()) n_threads <- setSWthreads(n_threads)
+		if(input$memory_option == "Low") {
+			ref_mem <- 4
+			cd_mem <- 6
+		} else {
+			ref_mem <- 8
+			cd_mem <- 6 * n_threads
+		}
+		if(get_omp_reactive()) {
+			pb_mem <- 10
+		} else {
+			pb_mem <- 10 * n_threads
+		}
+		output$txt_mem_buildRef = renderText(paste(ref_mem, "Gb"))
+		output$txt_mem_processBAM = renderText(paste(pb_mem, "Gb"))
+		output$txt_mem_collateData = renderText(paste(cd_mem, "Gb"))
+	})
 # End of server function
 }
 
-.dash_get_threads <- function(thread_option, cores_numeric) {
-    if(thread_option == "Single-Thread"){
-        n_threads = 1
-    } else if(thread_option == "Multi-Thread (Low)") {
-        n_threads = min(parallel::detectCores(), 4)
-        if(n_threads < 1) n_threads = 1
-    } else if(thread_option == "Multi-Thread (High)") {
-        n_threads = min(parallel::detectCores(), 16)
-        if(n_threads < 1) n_threads = 1
-    } else if(thread_option == "Custom") {
-        n_threads = cores_numeric
-    }
+.dash_get_threads <- function(thread_number, cores_numeric) {
+    if(thread_number == "custom") {
+        n_threads <- cores_numeric
+    } else {
+		n_threads <- as.numeric(thread_number)
+	}
     n_threads
+}
+
+.dash_get_memmode <- function(memmode) {
+    memmode == "Low"
+}
+
+.dash_get_openmp <- function() {
+	return(Has_OpenMP() > 0)
 }

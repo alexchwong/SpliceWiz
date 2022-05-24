@@ -36,9 +36,8 @@ ui_expr <- function(id) {
                             )                                
                         )
                     ),
+                    ui_ddb_demo_load(id, color = "danger"), br(),
                     ui_ddb_project_dir(id, color = "default"), br(), # br(),
-                    # ui_ddb_ref_load(id, color = "default"), br(), # br(),
-                    # ui_ddb_bam_path(id, color = "default"), br(), # br(),
                     ui_ddb_sw_path(id, color = "default"), br(), # br(),
                     ui_ddb_build_annos(id, color = "default"), br(), # br(),                   
                     ui_ddb_build_expr(id, color = "default"), # br(), # br(),
@@ -118,8 +117,10 @@ ui_expr_limited <- function(id) {
                             )                                
                         )
                     ),
-                    ui_ddb_build_annos(id, color = "default"), br(), # br(),                   
-                    ui_ddb_load_expr(id, color = "default"),
+                    ui_ddb_find_expr_folder(id, color = "default"), br(),
+                    ui_ddb_build_annos(id, color = "default"), br(), 
+                    ui_ddb_load_expr(id, color = "default"), br(),
+                    ui_ddb_save_NxtSE(id, color = "default")
                 )
             ),
             column(8,
@@ -166,8 +167,9 @@ ui_ddb_project_dir <- function(id, color = "danger") {
         tags$h4("BAM files"),
         shinyDirButton(ns("dir_bam_path_load"), 
             label = "Choose Folder (BAM files)", 
-            title = "Select path containing BAM files"), br(), br(),
-
+            title = "Select path containing BAM files"),
+        textOutput(ns("txt_bam_path_load")), br(),
+		
         tags$h4("processBAM Output"),       
         shinyDirButton(ns("dir_sw_path_load"), 
             label = "Choose Folder (processBAM output)", 
@@ -183,6 +185,20 @@ ui_ddb_project_dir <- function(id, color = "danger") {
         textOutput(ns("txt_NxtSE_path_load")),br(),
 
         # tags$h4("Clear Project Path"),
+    )
+}
+
+ui_ddb_demo_load <- function(id, color = "danger") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "expr_ddb_demo_load",
+        id = id,
+        title = "Load Demo Dataset",
+        color = color,
+        icon = icon("database", lib = "font-awesome"),
+
+        actionButton(ns("makeDemoBAMS"), 
+            "Place BAM files in temporary directory")
     )
 }
 
@@ -232,8 +248,13 @@ ui_ddb_sw_path <- function(id, color = "danger") {
         icon = icon("align-center", lib = "font-awesome"),
         
         tags$h4("Run processBAM on BAM files"),
-        actionButton(ns("run_pb_expr"), 
-            "Run processBAM()"),
+		tags$div(
+			title = paste("Select the cells",
+				"containing the paths to the BAM files",
+				"that you wish to process"),
+			actionButton(ns("run_pb_expr"), 
+				"Run processBAM()")
+		),
         textOutput(ns("txt_run_pb_expr"))
     )      
 }
@@ -243,22 +264,28 @@ ui_ddb_build_annos <- function(id, color = "danger") {
     ui_toggle_wellPanel_modular(
         inputId = "expr_ddb_expr_anno",
         id = id,
-        title = "Annotate Experiment",
+        title = "Review Annotations",
         color = color,
         icon = icon("edit", lib = "font-awesome"),
 
         tags$h4("Add Annotations"),
         shinyFilesButton(ns("file_expr_anno_load"), 
-            label = "Import From File", 
+            label = "Import Data Frame from File", 
             title = "Choose Sample Annotation Table", 
             multiple = FALSE), 
         actionButton(ns("add_anno"), "Edit Interactively"),
         br(), br(),
         
-        tags$h4("Save / Load Experiment Annotations"),
-        actionButton(ns("load_expr"), "Load Annotations"),
-        actionButton(ns("save_expr"), "Save Annotations"),
-        br(),br(),
+        tags$h4("Save / Load Annotations"),
+        # actionButton(ns("load_expr"), "Load Annotations"),
+        # actionButton(ns("save_expr"), "Save Annotations"),
+        shinySaveButton(ns("file_expr_anno_save_coldata"), 
+            "Save Annotations as RDS", "Save Annotations as RDS...", 
+            filetype = list(RDS = "rds")),
+        shinyFilesButton(ns("file_expr_anno_load_coldata"), 
+            label = "Load Annotations from RDS", 
+            title = "Load Annotations from RDS", 
+            multiple = FALSE)
     )
 }
 
@@ -281,21 +308,53 @@ ui_ddb_build_expr <- function(id, color = "danger") {
 }
 
 
-ui_ddb_load_expr <- function(id, color = "danger") {
+ui_ddb_find_expr_folder <- function(id, color = "danger") {
     ns <- NS(id)
     ui_toggle_wellPanel_modular(
-        inputId = "expr_ddb_expr_build",
+        inputId = "expr_ddb_find_expr_folder",
         id = id,
-        title = "Construct Experiment",
+        title = "Open Folder containing NxtSE",
         color = color,
         icon = icon("flask", lib = "font-awesome"),
 
         shinyDirButton(ns("dir_collate_path_load"), 
             label = "Choose Folder (NxtSE)", 
             title = "Choose NxtSE path"
-        ),
-        br(), br(),
-        actionButton(ns("build_expr"), "Load NxtSE object"),
+        )
+    )
+}
+
+ui_ddb_save_NxtSE <- function(id, color = "danger") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "expr_ddb_save_NxtSE",
+        id = id,
+        title = "Save NxtSE to/from RDS file",
+        color = color,
+        icon = icon("file", lib = "font-awesome"),
+
+        shinySaveButton(ns("saveNxtSE_RDS"), 
+            "Save NxtSE as RDS", "Save NxtSE as RDS", 
+            filetype = list(RDS = "rds")), br(), br(),
+        shinyFilesButton(ns("loadNxtSE_RDS"), 
+            label = "Load NxtSE from RDS", 
+            title = "Select RDS file containing NxtSE", 
+            multiple = FALSE)
+    )
+}
+
+
+
+ui_ddb_load_expr <- function(id, color = "danger") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "expr_ddb_expr_build",
+        id = id,
+        title = "Load NxtSE object",
+        color = color,
+        icon = icon("flask", lib = "font-awesome"),
+
+        actionButton(ns("build_expr"), "Load NxtSE object")
     )
 }
 

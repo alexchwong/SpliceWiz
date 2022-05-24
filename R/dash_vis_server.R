@@ -143,10 +143,10 @@ server_vis_diag <- function(
             # plotly::orca(obj, .make_path_relative(getwd(), 
                 # selectedfile$datapath))
         # })
-        # observeEvent(input$output_plot_diag, {
-            # req(settings_Diag$ggplot)
-            # print(settings_Diag$ggplot)
-        # })
+        observeEvent(input$output_plot_diag, {
+            req(settings_Diag$ggplot)
+            print(settings_Diag$ggplot)
+        })
         settings_Diag$plotly_click <- reactive({
             plot_exist <- settings_Diag$plot_ini
             if(plot_exist) 
@@ -423,10 +423,10 @@ server_vis_volcano <- function(
             # plotly::orca(obj, .make_path_relative(
                 # getwd(), selectedfile$datapath))
         # })
-        # observeEvent(input$output_plot_volc, {
-            # req(settings_Volc$ggplot)
-            # print(settings_Volc$ggplot)
-        # })
+        observeEvent(input$output_plot_volc, {
+            req(settings_Volc$ggplot)
+            print(settings_Volc$ggplot)
+        })
         observeEvent(input$clear_volc, {
             updateSelectInput(session = session, "EventType_volc", 
                 selected = NULL)

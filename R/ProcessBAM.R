@@ -233,7 +233,9 @@ processBAM <- function(
     .log("Running SpliceWiz processBAM", "message")
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & Use_OpenMP) {
-        SpliceWizMain_multi(ref_file, s_bam, output_files, n_threads, verbose, multiRead)
+        SpliceWizMain_multi(
+            ref_file, s_bam, output_files, n_threads, verbose, multiRead
+        )
     } else {
         # Use BiocParallel
         n_rounds <- ceiling(length(s_bam) / floor(max_threads))

@@ -24,7 +24,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                 session = session, filetypes = c("fa", "fasta", "gz"))
             if(!is.null(input$file_genome)){
                 file_selected<-parseFilePaths(volumes(), input$file_genome)
-                settings_newref$newref_fasta = 
+                settings_newref$newref_fasta <- 
                     as.character(file_selected$datapath)
                 output$txt_genome <- renderText(
                     as.character(file_selected$datapath))
@@ -37,7 +37,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                 session = session, filetypes = c("gtf", "gz"))
             if(!is.null(input$file_gtf)){
                 file_selected<-parseFilePaths(volumes(), input$file_gtf)
-                settings_newref$newref_gtf = 
+                settings_newref$newref_gtf <- 
                     as.character(file_selected$datapath)
                 output$txt_gtf <- renderText(
                     as.character(file_selected$datapath))
@@ -54,8 +54,8 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                     # choices = c("(custom)", "hg38", "mm10", "hg19", "mm9"),
                     # selected = "(custom)"
                 # )
-                file_selected<-parseFilePaths(volumes(), input$file_mappa)
-                settings_newref$newref_mappa = 
+                file_selected <- parseFilePaths(volumes(), input$file_mappa)
+                settings_newref$newref_mappa <- 
                     as.character(file_selected$datapath)
             }
         })
@@ -64,7 +64,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         })
         observeEvent(input$clear_mappa, {
             req(input$clear_mappa)
-            settings_newref$newref_mappa = ""
+            settings_newref$newref_mappa <- ""
         })    
 
         # Choose non-polyA BED file
@@ -77,8 +77,8 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                     # choices = c("(custom)", "hg38", "mm10", "hg19", "mm9"),
                     # selected = "(custom)"
                 # )
-                file_selected<-parseFilePaths(volumes(), input$file_NPA)
-                settings_newref$newref_NPA = 
+                file_selected <- parseFilePaths(volumes(), input$file_NPA)
+                settings_newref$newref_NPA <- 
                     as.character(file_selected$datapath)
             }
         })
@@ -87,7 +87,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         })
         observeEvent(input$clear_NPA, {
             req(input$clear_NPA)
-            settings_newref$newref_NPA = ""
+            settings_newref$newref_NPA <- ""
         })
         
         # Choose Blacklist BED file
@@ -95,8 +95,9 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
             shinyFileChoose(input, "file_bl", roots = volumes(), 
                 session = session, filetypes = c("bed", "txt", "gz"))
             if(!is.null(input$file_bl)){
-                file_selected<-parseFilePaths(volumes(), input$file_bl)
-                settings_newref$newref_bl = as.character(file_selected$datapath)
+                file_selected <- parseFilePaths(volumes(), input$file_bl)
+                settings_newref$newref_bl <- 
+                    as.character(file_selected$datapath)
             }
         })
         observeEvent(settings_newref$newref_bl, {
@@ -104,7 +105,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         })
         observeEvent(input$clear_bl, {
             req(input$clear_bl)
-            settings_newref$newref_bl = ""
+            settings_newref$newref_bl <- ""
         })
         
         # Choose genome_type
@@ -128,7 +129,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                 }
             })
 
-            settings_newref$ui_newref_genome_type = input$newref_genome_type
+            settings_newref$ui_newref_genome_type <- input$newref_genome_type
         })
 
         # This block runs when the tab is refreshed
@@ -177,7 +178,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         # Choose FASTA from Ensembl
         observeEvent(input$fasta, {
             req(input$fasta)
-            settings_newref$newref_fasta = paste0(
+            settings_newref$newref_fasta <- paste0(
                 # "https://ftp.ensembl.org/pub/",
                 "ftp://ftp.ensembl.org/pub/",
                 "release-", as.character(isolate(input$release)),
@@ -190,7 +191,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         # Choose GTF from Ensembl
         observeEvent(input$gtf, {
             req(input$gtf)
-            settings_newref$newref_gtf = paste0(
+            settings_newref$newref_gtf <- paste0(
                 # "https://ftp.ensembl.org/pub/",
                 "ftp://ftp.ensembl.org/pub/",
                 "release-", as.character(isolate(input$release)),
@@ -214,11 +215,11 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 
             args <- Filter(is_valid, args)
             if(!("reference_path" %in% names(args))) {
-                output$refStatus = renderText({ "Reference path not set" })
+                output$refStatus <- renderText({ "Reference path not set" })
             } else if(!any(c("fasta") %in% names(args))) {
-                output$refStatus = renderText({ "Genome not provided" })        
+                output$refStatus <- renderText({ "Genome not provided" })        
             } else if(!any(c("gtf") %in% names(args))) {
-                output$refStatus = renderText("Gene annotations not provided")
+                output$refStatus <- renderText("Gene annotations not provided")
             } else {        
                 # Copy MappabilityRef into target directory
                 if(
@@ -238,7 +239,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                     if(file.exists(new_mappa_file)) 
                         args$MappabilityRef <- new_mappa_file
                 }
-				args$lowMemoryMode <- get_memmode_reactive()
+                args$lowMemoryMode <- get_memmode_reactive()
                 withProgress(message = 'Building Reference', value = 0, {
                     do.call(buildRef, args)
                 })
@@ -292,7 +293,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         
         observeEvent(input$load_ref_example, {
             if(!dir.exists(file.path(tempdir(), "Reference")))
-				dir.create(file.path(tempdir(), "Reference"))
+                dir.create(file.path(tempdir(), "Reference"))
             output$txt_reference_path <- renderText({
                 settings_newref$newref_path <- file.path(tempdir(), "Reference")
             })
@@ -308,53 +309,53 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_releases <- function() {
-    test = XML::getHTMLLinks("http://ftp.ensembl.org/pub")
-    test = test[grepl("release-", test)]
-    test = test[grepl("/", test)]
-    int_release = tstrsplit(test, split="-")[[2]]
-    int_release = as.integer(sub("/","",int_release))
-    int_release = sort(int_release, decreasing = TRUE)
+    test <- XML::getHTMLLinks("http://ftp.ensembl.org/pub")
+    test <- test[grepl("release-", test)]
+    test <- test[grepl("/", test)]
+    int_release <- tstrsplit(test, split="-")[[2]]
+    int_release <- as.integer(sub("/","",int_release))
+    int_release <- sort(int_release, decreasing = TRUE)
     return(int_release[int_release > 46])
 }
 
 .refresh_species <- function(release) {
-    test_genome = XML::getHTMLLinks(paste0(
+    test_genome <- XML::getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
         "/fasta/"
     ))
-    test_gtf = XML::getHTMLLinks(paste0(
+    test_gtf <- XML::getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
         "/gtf/"
     ))
-    species = union(test_genome, test_gtf)
-    species = species[!grepl("..", species, fixed = TRUE)]
-    species = sub("/","",species)
+    species <- union(test_genome, test_gtf)
+    species <- species[!grepl("..", species, fixed = TRUE)]
+    species <- sub("/","",species)
     if(all(c("homo_sapiens", "mus_musculus") %in% species)) {
-        species = unique(c(
+        species <- unique(c(
             "homo_sapiens",
             "mus_musculus",
             sort(species)
             )
         )        
     } else {
-        species = sort(species)
+        species <- sort(species)
     }
     return(species)
 }
 
 .refresh_genome <- function(release, species) {
-    test_genome = XML::getHTMLLinks(paste0(
+    test_genome <- XML::getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
         "/fasta/",
         species, "/dna/"           
     ))
-    test_genome = test_genome[
+    test_genome <- test_genome[
         grepl("toplevel", test_genome, fixed = TRUE) |
         grepl("primary", test_genome, fixed = TRUE)
     ]
@@ -362,14 +363,14 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_gtf <- function(release, species) {
-    test_gtf = XML::getHTMLLinks(paste0(
+    test_gtf <- XML::getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
         "/gtf/",
         species        
     ))
-    test_gtf = test_gtf[
+    test_gtf <- test_gtf[
         grepl("gtf.gz", test_gtf, fixed = TRUE) &
         !grepl("abinitio", test_gtf, fixed = TRUE) &
         !grepl("scaff", test_gtf, fixed = TRUE) &

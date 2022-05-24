@@ -275,7 +275,7 @@ labeled by their sample names, e.g. "sample1/Unsorted.bam",
 
 ```{r}
 # as BAM file names denote their sample names
-bams = findBAMS(tempdir(), level = 0) 
+bams <- findBAMS(tempdir(), level = 0) 
 
 # In the case where BAM files are labelled using sample names as parent 
 # directory names (which oftens happens with the STAR aligner), use level = 1
@@ -571,9 +571,9 @@ with the first column containing the desired sample names and parse this into
 the `colData` parameter as shown:
 
 ```{r, eval = FALSE}
-subset_samples = colnames(se)[1:4]
-df = data.frame(sample = subset_samples)
-se_small = makeSE(nxtse_path, colData = df, RemoveOverlapping = TRUE)
+subset_samples <- colnames(se)[1:4]
+df <- data.frame(sample = subset_samples)
+se_small <- makeSE(nxtse_path, colData = df, RemoveOverlapping = TRUE)
 ```
 
 In complex transcriptomes including those of human and mouse, alternative
@@ -593,8 +593,8 @@ set `RemoveOverlapping = FALSE`.
 ### Assigning annotations to samples
 
 ```{r}
-colData(se)$condition = rep(c("A", "B"), each = 3)
-colData(se)$batch = rep(c("K", "L", "M"), 2)
+colData(se)$condition <- rep(c("A", "B"), each = 3)
+colData(se)$batch <- rep(c("K", "L", "M"), 2)
 ```
 \
 <details>
@@ -736,7 +736,7 @@ conditions "A" and "B":
 ```{r, results='hide', message = FALSE, warning = FALSE}
 # Requires limma to be installed:
 require("limma")
-res_limma = ASE_limma(
+res_limma <- ASE_limma(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -789,7 +789,7 @@ between two groups (i.e. batch correction is not implemented)
 ```{r, results='hide', message = FALSE, warning = FALSE}
 # Requires limma to be installed:
 require("limma")
-res_limma = ASE_limma(
+res_limma <- ASE_limma(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -798,7 +798,7 @@ res_limma = ASE_limma(
 
 # Requires DESeq2 to be installed:
 require("DESeq2")
-res_deseq = ASE_DESeq(
+res_deseq <- ASE_DESeq(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -807,7 +807,7 @@ res_deseq = ASE_DESeq(
 
 # Requires DoubleExpSeq to be installed:
 require("DoubleExpSeq")
-res_DES = ASE_DoubleExpSeq(
+res_DES <- ASE_DoubleExpSeq(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -826,7 +826,7 @@ one would run:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 require("limma")
-res_limma_batchnorm = ASE_limma(
+res_limma_batchnorm <- ASE_limma(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -849,7 +849,7 @@ continuous variable. See the following example:
 colData(se.filtered)$timevar <- rep(c(0,1,2), 2)
 
 require("DESeq2")
-res_deseq_cont = ASE_DESeq(
+res_deseq_cont <- ASE_DESeq(
     se = se.filtered,
     test_factor = "timevar"
 )
@@ -1015,7 +1015,7 @@ First, obtain a matrix of PSI values:
 
 ```{r}
 # Create a matrix of values of the top 10 differentially expressed events:
-mat = makeMatrix(
+mat <- makeMatrix(
     se.filtered,
     event_list = res_limma$EventName[1:10],
     method = "PSI"
@@ -1113,13 +1113,13 @@ can be compared across samples.
 First, lets obtain a list of differential events with delta PSI > 5%:
 
 ```{r}
-res_limma.filtered = subset(res_limma, abs(AvgPSI_A - AvgPSI_B) > 0.05)
+res_limma.filtered <- subset(res_limma, abs(AvgPSI_A - AvgPSI_B) > 0.05)
 ```
 
 Plot up to 4 individual samples using `plotCoverage()`:
 
 ```{r, fig.width = 8, fig.height = 6}
-p = plotCoverage(
+p <- plotCoverage(
     se = se,
     Event = res_limma.filtered$EventName[1],
     tracks = colnames(se)[c(1,2,4,5)],
@@ -1144,7 +1144,7 @@ by name or ID (`transcript_name` and `transcript_id` field in the GTF file,
 respectively)
 
 ```{r}
-p = plotCoverage(
+p <- plotCoverage(
     se = se,
     Event = res_limma.filtered$EventName[1],
     tracks = colnames(se)[c(1,2,4,5)],
@@ -1168,7 +1168,7 @@ We plot average coverages of groups "A" and "B" of the "condition" category,
 as follows:
 
 ```{r, fig.width = 8, fig.height = 6}
-p = plotCoverage(
+p <- plotCoverage(
     se = se,
     Event = res_limma.filtered$EventName[1],
     tracks = c("A", "B"),

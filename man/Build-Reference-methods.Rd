@@ -212,8 +212,8 @@ See examples below for common use cases.
 }
 \section{Functions}{
 \itemize{
-\item \code{getResources}: Processes / downloads a copy of the genome
-and gene annotations and stores this in the "resource" subdirectory
+\item \code{getResources}: Processes / downloads a copy of the
+genome and gene annotations and stores this in the "resource" subdirectory
 of the given reference path
 
 \item \code{buildRef}: First calls \code{getResources()}
@@ -224,8 +224,8 @@ given reference path
 creates a STAR reference (including mappability calculations), then
 creates the SpliceWiz reference
 
-\item \code{getNonPolyARef}: Returns the path to the BED file containing
-coordinates of known non-polyadenylated transcripts for genomes
+\item \code{getNonPolyARef}: Returns the path to the BED file
+containing coordinates of known non-polyadenylated transcripts for genomes
 \code{hg38}, \code{hg19}, \code{mm10} and \code{mm9},
 }}
 

@@ -41,6 +41,7 @@ setreactive_expr <- function() {
 
         df.files = c(),
         df.anno = c(),
+        disallow_df_update = FALSE,
 
         df.files_savestate = c(),
         df.anno_savestate = c(),

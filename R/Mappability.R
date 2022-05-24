@@ -127,8 +127,11 @@ generateSyntheticReads <- function(reference_path,
     .gmr_check_params(read_len, read_stride, error_pos + 1)
     if (missing(alt_fasta_file)) {
         alt_fasta_file <- .STAR_get_FASTA(reference_path)
-        if (!file.exists(alt_fasta_file)) .log(paste("In generateSyntheticReads,",
-            "failed to generate genome fasta file from given reference"))
+        if (!file.exists(alt_fasta_file)) 
+            .log(paste(
+                "In generateSyntheticReads,",
+                "failed to generate genome fasta file from given reference"
+            ))
     } else if (!file.exists(alt_fasta_file)) {
         .log(paste("In generateSyntheticReads,",
             "given fasta file", alt_fasta_file, "not found"))

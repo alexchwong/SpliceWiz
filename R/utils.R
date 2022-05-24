@@ -34,7 +34,7 @@ coord2GR <- function(coordinates) {
     )
     coord_valid1 <- grepl(":", coordinates, fixed = TRUE)
     if(!all(coord_valid1)) {
-        coord_error = coordinates[!coord_valid1]
+        coord_error <- coordinates[!coord_valid1]
         .log(paste(
             stopmsg,
             coord_error[1]
@@ -63,7 +63,8 @@ coord2GR <- function(coordinates) {
         grepl("/-", coordinates, fixed = TRUE)
         
     if(any(!coord_hasstrand)) {
-        coordinates[!coord_hasstrand] <- paste0(coordinates[!coord_hasstrand], "/*")
+        coordinates[!coord_hasstrand] <- 
+            paste0(coordinates[!coord_hasstrand], "/*")
     }
     
     # All coordinates should now have the correct format
@@ -75,8 +76,8 @@ coord2GR <- function(coordinates) {
         )[[1]],
         split = ":"
     )[[2]]
-    starts = as.numeric(tstrsplit(ranges, split = "-")[[1]])
-    ends = as.numeric(tstrsplit(ranges, split = "-")[[2]])
+    starts <- as.numeric(tstrsplit(ranges, split = "-")[[1]])
+    ends <- as.numeric(tstrsplit(ranges, split = "-")[[2]])
     
     if(any(is.na(starts))) .log("Some coordinates have non-numeric starts")
     if(any(is.na(ends))) .log("Some coordinates have non-numeric ends")

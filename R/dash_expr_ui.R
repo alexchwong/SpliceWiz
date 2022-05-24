@@ -169,7 +169,7 @@ ui_ddb_project_dir <- function(id, color = "danger") {
             label = "Choose Folder (BAM files)", 
             title = "Select path containing BAM files"),
         textOutput(ns("txt_bam_path_load")), br(),
-		
+        
         tags$h4("processBAM Output"),       
         shinyDirButton(ns("dir_sw_path_load"), 
             label = "Choose Folder (processBAM output)", 
@@ -248,13 +248,13 @@ ui_ddb_sw_path <- function(id, color = "danger") {
         icon = icon("align-center", lib = "font-awesome"),
         
         tags$h4("Run processBAM on BAM files"),
-		tags$div(
-			title = paste("Select the cells",
-				"containing the paths to the BAM files",
-				"that you wish to process"),
-			actionButton(ns("run_pb_expr"), 
-				"Run processBAM()")
-		),
+        tags$div(
+            title = paste("Select the cells",
+                "containing the paths to the BAM files",
+                "that you wish to process"),
+            actionButton(ns("run_pb_expr"), 
+                "Run processBAM()")
+        ),
         textOutput(ns("txt_run_pb_expr"))
     )      
 }
@@ -359,7 +359,7 @@ ui_ddb_load_expr <- function(id, color = "danger") {
 }
 
 ui_infobox_ref <- function(settings_file) {
-    box1 = infoBox(
+    box1 <- infoBox(
         title = "Reference", 
         value = ifelse(file.exists(settings_file),
             "LOADED", "MISSING"),
@@ -374,15 +374,15 @@ ui_infobox_ref <- function(settings_file) {
 
 ui_infobox_bam <- function(bam_path, bam_files, escape = FALSE) {
     if(escape == TRUE) {
-        box1 = infoBox(
+        box1 <- infoBox(
             title = "bam path", 
             value = "NOT REQUIRED",
             icon = icon("folder-open", lib = "font-awesome"),
             color = "green"
         )
     } else {
-        ret = is_valid(bam_files) && all(file.exists(bam_files))
-        box1 = infoBox(
+        ret <- is_valid(bam_files) && all(file.exists(bam_files))
+        box1 <- infoBox(
             title = "bam path", 
             value = ifelse(!is_valid(bam_path),
                 "MISSING", ifelse(ret == TRUE, "LOADED", "No BAMs found")),
@@ -398,15 +398,15 @@ ui_infobox_bam <- function(bam_path, bam_files, escape = FALSE) {
 
 ui_infobox_pb <- function(sw_path, sw_files, escape = FALSE) {
     if(escape == TRUE) {
-        box1 = infoBox(
+        box1 <- infoBox(
             title = "SpliceWiz (processBAM) output", 
             value = "NOT REQUIRED",
             icon = icon("align-center", lib = "font-awesome"),
             color = "green"
         )
     } else {
-        ret = is_valid(sw_files) && all(file.exists(sw_files))
-        box1 =  infoBox(
+        ret <- is_valid(sw_files) && all(file.exists(sw_files))
+        box1 <-  infoBox(
             title = "SpliceWiz (processBAM) output", 
             value = ifelse(!is_valid(sw_path),
                 "MISSING", ifelse(ret == TRUE, 
@@ -422,7 +422,7 @@ ui_infobox_pb <- function(sw_path, sw_files, escape = FALSE) {
 }
 
 ui_infobox_expr <- function(status = 0, msg = "", submsg = "") {
-    box1 =  infoBox(
+    box1 <-  infoBox(
         title = "NxtSE Object", 
         value = ifelse(status == 0,
             "MISSING", msg),

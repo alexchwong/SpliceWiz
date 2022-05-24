@@ -1,8 +1,8 @@
 #' Convenience Function to (recursively) find all files in a folder.
 #'
 #' Often, files e.g. raw sequencing FASTQ files, alignment BAM files,
-#' or [processBAM] output files, are stored in a single folder under some directory
-#' structure.
+#' or [processBAM] output files, are stored in a single folder under some 
+#' directory structure.
 #' They can be grouped by being in common directory or having common names.
 #' Often, their sample names can be gleaned by these common names or the names
 #' of the folders in which they are contained.
@@ -22,9 +22,9 @@
 #' case, use `level = 1` to automatically annotate the sample names using
 #' `findBAMS()`.
 #'
-#' [processBAM] outputs two files per BAM processed. These are named by the given
-#' sample names. The text output is named "sample1.txt.gz", and the COV file
-#' is named "sample1.cov", where `sample1` is the name of the sample. These
+#' [processBAM] outputs two files per BAM processed. These are named by the 
+#' given sample names. The text output is named "sample1.txt.gz", and the COV
+#' file is named "sample1.cov", where `sample1` is the name of the sample. These
 #' files can be organised / tabulated using the function `findSpliceWizOutput`.
 #' The generic function `findSamples` will organise the [processBAM] text output
 #' files but exclude the COV files. Use the latter as the `Experiment` in

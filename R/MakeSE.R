@@ -256,8 +256,8 @@ makeSE <- function(
     se.IR <- se[rowData(se)$EventType == "IR", , drop = FALSE]
     se.coords <- rowData(se.IR)$EventRegion[
         rowData(se.IR)$EventRegion %in% rownames(junc_PSI)]
-    se.coords.gr = coord2GR(se.coords)
-    names(se.coords.gr) = se.coords
+    se.coords.gr <- coord2GR(se.coords)
+    names(se.coords.gr) <- se.coords
     
     if (length(se.coords.gr) > 0) {
         .log(paste("Iterating through IR events to determine introns",
@@ -312,7 +312,8 @@ makeSE <- function(
     gr.reduced <- reduce(gr)
 
     OL <- findOverlaps(gr, gr.reduced)
-    junc_PSI.group <- as.data.table(junc_PSI[names(se.coords.gr), , drop = FALSE])
+    junc_PSI.group <- as.data.table(
+        junc_PSI[names(se.coords.gr), , drop = FALSE])
     junc_PSI.group$means <- rowMeans(junc_PSI.group)
     junc_PSI.group$group <- to(OL)
     junc_PSI.group[, c("max_means") := max(get("means")),

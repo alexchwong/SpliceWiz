@@ -35,7 +35,7 @@ server_vis_diag <- function(
 
         })
         observeEvent(rows_selected(), {
-            settings_Diag$selected = rows_selected()
+            settings_Diag$selected <- rows_selected()
         })
     
         output$plot_diag <- renderPlotly({
@@ -79,7 +79,7 @@ server_vis_diag <- function(
             df.diag$NMD_direction <- get_de()$NMD_direction[
                 match(df.diag$EventName, get_de()$EventName)]
             
-            settings_Diag$plot_ini = TRUE
+            settings_Diag$plot_ini <- TRUE
             if(input$NMD_diag == TRUE) {
                 df.diag             <- df.diag[df.diag$NMD_direction != 0, ]
                 df.diag$nom_NMD     <- ifelse(df.diag$NMD_direction == 1, 
@@ -143,11 +143,11 @@ server_vis_diag <- function(
             # plotly::orca(obj, .make_path_relative(getwd(), 
                 # selectedfile$datapath))
         # })
-        # observeEvent(input$output_plot_diag, {
-            # req(settings_Diag$ggplot)
-            # print(settings_Diag$ggplot)
-        # })
-        settings_Diag$plotly_click = reactive({
+        observeEvent(input$output_plot_diag, {
+            req(settings_Diag$ggplot)
+            print(settings_Diag$ggplot)
+        })
+        settings_Diag$plotly_click <- reactive({
             plot_exist <- settings_Diag$plot_ini
             if(plot_exist) 
                 event_data("plotly_click", source = "plotly_diagonal")
@@ -171,7 +171,7 @@ server_vis_diag <- function(
             # DT::dataTableProxy("DT_DE") %>% DT::selectRows(selected)
         })
 
-        settings_Diag$plotly_brush = reactive({
+        settings_Diag$plotly_brush <- reactive({
             plot_exist <- settings_Diag$plot_ini
             if(plot_exist)
                 event_data("plotly_selected", source = "plotly_diagonal")
@@ -234,7 +234,7 @@ server_vis_diag <- function(
                     selected = "(none)"
                 )
             } else {
-                updateSelectInput(session = session, inputId = "variable_diag", 
+                updateSelectInput(session = session, inputId = "variable_diag",
                     choices = c("(none)"), selected = "(none)")
             }
             
@@ -382,9 +382,9 @@ server_vis_volcano <- function(
                 p <- p + facet_wrap(vars(get("EventType")))
             }
             if(volc_units %in% c("log2FoldChange", "logFC")) {
-                formatted_units = "Log2 Fold Change"
+                formatted_units <- "Log2 Fold Change"
             } else {
-                formatted_units = "MLE Log2 Fold Change"
+                formatted_units <- "MLE Log2 Fold Change"
             }
             if(input$NMD_volc) {
                 p <- p + labs(x = paste(formatted_units, "NMD substrate"))
@@ -423,10 +423,10 @@ server_vis_volcano <- function(
             # plotly::orca(obj, .make_path_relative(
                 # getwd(), selectedfile$datapath))
         # })
-        # observeEvent(input$output_plot_volc, {
-            # req(settings_Volc$ggplot)
-            # print(settings_Volc$ggplot)
-        # })
+        observeEvent(input$output_plot_volc, {
+            req(settings_Volc$ggplot)
+            print(settings_Volc$ggplot)
+        })
         observeEvent(input$clear_volc, {
             updateSelectInput(session = session, "EventType_volc", 
                 selected = NULL)
@@ -465,7 +465,7 @@ server_vis_heatmap <- function(
                     selected <- selected[seq_len(input$slider_num_events_heat)]
                 }
             } else {
-                selected = seq_len(min(input$slider_num_events_heat, 
+                selected <- seq_len(min(input$slider_num_events_heat, 
                     nrow(get_de())))
             }
 

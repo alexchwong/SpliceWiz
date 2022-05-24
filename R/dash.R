@@ -34,8 +34,8 @@ spliceWiz <- function(
         .log(paste("In spliceWiz(), SpliceWiz App",
             "can only be run in interactive mode (i.e. RStudio)."))
     }
-    mode = match.arg(mode)
-    res = match.arg(res)
+    mode <- match.arg(mode)
+    res <- match.arg(res)
     
     ui_dash <- dashboardPage(
         dashboardHeader(title = "SpliceWiz"),
@@ -60,17 +60,17 @@ spliceWiz <- function(
             )
         )
     )
-    height = 1080
-    width = 1920
+    height <- 1080
+    width <- 1920
     if(res == "720p") {
-        height = 720
-        width = 1280
+        height <- 720
+        width <- 1280
     } else if(res == "960p") {
-        height = 960
-        width = 1700    
+        height <- 960
+        width <- 1700    
     } else if(res == "1440p") {
-        height = 1440
-        width = 2560
+        height <- 1440
+        width <- 2560
     }
     
     if(demo) {
@@ -89,15 +89,15 @@ spliceWiz <- function(
         } else {
             .log("Reference and BAM files placed into temporary directory", 
                 "message")
-			fwrite(
-				data.frame(
-					sample = c("02H003", "02H025", "02H026",
-						"02H033", "02H043", "02H046"),
-					condition = rep(c("A", "B"), each = 3),
-					batch = rep(c("K", "L", "M"), 2)
-				),
-				file.path(tempdir(), "demo_annotations.csv")
-			)		
+            fwrite(
+                data.frame(
+                    sample = c("02H003", "02H025", "02H026",
+                        "02H033", "02H043", "02H046"),
+                    condition = rep(c("A", "B"), each = 3),
+                    batch = rep(c("K", "L", "M"), 2)
+                ),
+                file.path(tempdir(), "demo_annotations.csv")
+            )        
             setwd(tempdir())
         }
     }

@@ -256,27 +256,6 @@ runFilter <- function(se, filterObj) {
             Down_Exc.subset <- Down_Exc[, which(cond_vec == cond)]
             Excluded.subset <- Excluded[, which(cond_vec == cond)]
 
-            # sum_inc <- rowSums(
-                # abs(log2(Up_Inc.subset + 1) - log2(IntronDepth.subset + 1))
-                    # < filterObj@maximum &
-                # abs(log2(Down_Inc.subset + 1) - log2(IntronDepth.subset + 1))
-                    # < filterObj@maximum
-            # )
-            # sum_exc <- rowSums(
-                # abs(log2(Up_Exc.subset + 1) - log2(Excluded.subset + 1))
-                    # < filterObj@maximum &
-                # abs(log2(Down_Exc.subset + 1) - log2(Excluded.subset + 1))
-                    # < filterObj@maximum
-            # )
-            # sum_inc <- c(sum_inc, rep(ncol(Up_Inc.subset),
-                # sum(!(rowData$EventType %in% c("IR", "MXE", "SE", "RI")))))
-            # sum_exc <- c(
-                # rep(ncol(Up_Inc.subset), sum(rowData$EventType == "IR")),
-                # sum_exc,
-                # rep(ncol(Up_Inc.subset),
-                    # sum(!(rowData$EventType %in% c("IR", "MXE"))))
-            # )
-            # sum <- 0.5 * (sum_inc + sum_exc)
             sum <- .runFilter_data_consistency_truths(
                 Up_Inc.subset, Down_Inc.subset, 
                 Up_Exc.subset, Down_Exc.subset, 
@@ -289,25 +268,7 @@ runFilter <- function(se, filterObj) {
         n_TRUE <- filterObj@minCond
         if (n_TRUE == -1) n_TRUE <- length(unique(cond_vec))
         res <- (sum_res >= n_TRUE)
-    } else {
-        # sum_inc <- rowSums(
-            # abs(log2(Up_Inc + 1) - log2(IntronDepth + 1)) < filterObj@maximum &
-            # abs(log2(Down_Inc + 1) - log2(IntronDepth + 1)) < filterObj@maximum
-        # )
-        # sum_exc <- rowSums(
-            # abs(log2(Up_Exc + 1) - log2(Excluded + 1)) < filterObj@maximum &
-            # abs(log2(Down_Exc + 1) - log2(Excluded + 1)) < filterObj@maximum
-        # )
-        # sum_inc <- c(sum_inc, rep(ncol(Up_Inc),
-            # sum(!(rowData$EventType %in% c("IR", "MXE", "SE", "RI")))))
-        # sum_exc <- c(
-            # rep(ncol(Up_Inc), sum(rowData$EventType == "IR")),
-            # sum_exc,
-            # rep(ncol(Up_Inc),
-                # sum(!(rowData$EventType %in% c("IR", "MXE"))))
-        # )
-        # sum <- 0.5 * (sum_inc + sum_exc)
-        
+    } else {       
         sum <- .runFilter_data_consistency_truths(
             Up_Inc, Down_Inc, Up_Exc, Down_Exc,
             IntronDepth, Excluded, 
@@ -406,8 +367,8 @@ runFilter <- function(se, filterObj) {
     AFE <- rowSelected[get("EventType") == "AFE"]
     ALE <- rowSelected[get("EventType") == "ALE"]
     rowSelected <- rowSelected[!(get("EventType") %in% c("ALE", "AFE"))]
-    AFE = AFE[get("is_always_first_intron") == TRUE]
-    ALE = ALE[get("is_always_last_intron") == TRUE]
+    AFE <- AFE[get("is_always_first_intron") == TRUE]
+    ALE <- ALE[get("is_always_last_intron") == TRUE]
     res <- rowData(se)$EventName %in% c(rowSelected$EventName, 
         ALE$EventName, AFE$EventName)
     res[!(rowData(se)$EventType %in% filterObj@EventTypes)] <- TRUE
@@ -433,9 +394,9 @@ runFilter <- function(se, filterObj) {
 .runFilter_anno_mxe_gr_casette <- function(coord1, coord2) {
     if(length(coord1) != length(coord2))
         .log("INTERNAL ERROR: two MXE coord vectors must be of equal size")
-    gr1 = coord2GR(coord1)
+    gr1 <- coord2GR(coord1)
     gr1$ID <- as.character(seq_len(length(gr1)))
-    gr2 = coord2GR(coord2)
+    gr2 <- coord2GR(coord2)
     gr2$ID <- as.character(seq_len(length(gr2)))
     grbind <- c(gr1, gr2)
     return(unlist(

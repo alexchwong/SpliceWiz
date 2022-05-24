@@ -150,7 +150,8 @@ to estimate dispersion.
 \item \code{RI} = (known / annotated) intron retention.
 }
 
-NB: SpliceWiz separately considers known "RI" and novel "IR" events separately:
+NB: SpliceWiz separately considers known "RI" and novel "IR" events
+separately:
 \itemize{
 \item \strong{IR} novel events are calculated using the IRFinder method, whereby
 spliced transcripts are \strong{all} isoforms that do not retain the intron, as

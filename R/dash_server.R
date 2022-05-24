@@ -1,9 +1,9 @@
-dash_server = function(input, output, session) {
+dash_server <- function(input, output, session) {
     # Volumes / storage drives
     default_volumes <- c("Working Directory" = getwd(), 
         "Home" = "~", "Temporary Directory" = tempdir(),
         getVolumes()())
-    volumes = reactive(default_volumes)
+    volumes <- reactive(default_volumes)
     # Defines for Reactives
     settings_expr <- settings_expr_load <- settings_filtered_SE <- 
         settings_DE <- settings_Diag <- settings_Volc <- c()
@@ -70,7 +70,7 @@ dash_server = function(input, output, session) {
     # Tie module data to their server objects
     settings_system <- setreactive_system()
     settings_newref <- server_ref_new("new_ref", refresh_newref, volumes,
-		get_memmode_reactive)
+        get_memmode_reactive)
     settings_expr <- server_expr("build_expr", refresh_expr, volumes, 
         get_threads_reactive, get_memmode_reactive)
     settings_expr_load <- server_expr("load_expr", refresh_exprload, volumes, 
@@ -82,13 +82,13 @@ dash_server = function(input, output, session) {
     settings_DE <- server_DE("DE", refresh_DE, volumes, get_threads_reactive,
         get_filtered_se_reactive, get_filters_reactive,
         get_rows_selected_diag, get_rows_selected_volc)
-    settings_Diag = server_vis_diag("diag", refresh_diag, volumes, 
+    settings_Diag <- server_vis_diag("diag", refresh_diag, volumes, 
         get_filtered_se_reactive, get_de_reactive,
         get_rows_all, get_rows_selected)
-    settings_Volc = server_vis_volcano("volcano", refresh_diag, volumes, 
+    settings_Volc <- server_vis_volcano("volcano", refresh_diag, volumes, 
         get_filtered_se_reactive, get_de_reactive,
         get_rows_all, get_rows_selected)
-    settings_Heat = server_vis_heatmap("heatmap", refresh_diag, volumes, 
+    settings_Heat <- server_vis_heatmap("heatmap", refresh_diag, volumes, 
         get_filtered_se_reactive, get_de_reactive,
         get_rows_all, get_rows_selected)
     settings_Cov <- server_cov("cov", refresh_cov, volumes, 
@@ -100,51 +100,51 @@ dash_server = function(input, output, session) {
         if(input$navSelection == "navTitle") {
 
         } else if(input$navSelection == "navRef_New") {
-            settings_refresh$new_ref = runif(1)
+            settings_refresh$new_ref <- runif(1)
         } else if(input$navSelection == "navSystem") {
 
         } else if(input$navSelection == "navExpr") {
-            settings_refresh$expr = runif(1)
+            settings_refresh$expr <- runif(1)
         } else if(input$navSelection == "navExprLoad") {
-            settings_refresh$expr_load = runif(1)
+            settings_refresh$expr_load <- runif(1)
         } else if(input$navSelection == "navQC") {
-            settings_refresh$qc = runif(1)
+            settings_refresh$qc <- runif(1)
         } else if(input$navSelection == "navFilter") {
-            settings_refresh$filters = runif(1)
+            settings_refresh$filters <- runif(1)
         } else if(input$navSelection == "navAnalyse") {
-            settings_refresh$DE = runif(1)
+            settings_refresh$DE <- runif(1)
         } else if(input$navSelection == "navDiag") {
-            settings_refresh$diag = runif(1)
+            settings_refresh$diag <- runif(1)
         } else if(input$navSelection == "navDiag") {
-            settings_refresh$volc = runif(1)
+            settings_refresh$volc <- runif(1)
         } else if(input$navSelection == "navHeatmap") {
-            settings_refresh$heat = runif(1)
+            settings_refresh$heat <- runif(1)
         } else if(input$navSelection == "navCoverage") {
-            settings_refresh$cov = runif(1)
+            settings_refresh$cov <- runif(1)
         }
     })
-	
+    
     # Update 
-	observeEvent(list(input$memory_option, get_threads_reactive()), {
-		req(input$memory_option)
+    observeEvent(list(input$memory_option, get_threads_reactive()), {
+        req(input$memory_option)
         n_threads <- get_threads_reactive()
         if(n_threads != .getSWthreads()) n_threads <- setSWthreads(n_threads)
-		if(input$memory_option == "Low") {
-			ref_mem <- 4
-			cd_mem <- 6
-		} else {
-			ref_mem <- 8
-			cd_mem <- 6 * n_threads
-		}
-		if(get_omp_reactive()) {
-			pb_mem <- 10
-		} else {
-			pb_mem <- 10 * n_threads
-		}
-		output$txt_mem_buildRef = renderText(paste(ref_mem, "Gb"))
-		output$txt_mem_processBAM = renderText(paste(pb_mem, "Gb"))
-		output$txt_mem_collateData = renderText(paste(cd_mem, "Gb"))
-	})
+        if(input$memory_option == "Low") {
+            ref_mem <- 4
+            cd_mem <- 6
+        } else {
+            ref_mem <- 8
+            cd_mem <- 6 * n_threads
+        }
+        if(get_omp_reactive()) {
+            pb_mem <- 10
+        } else {
+            pb_mem <- 10 * n_threads
+        }
+        output$txt_mem_buildRef <- renderText(paste(ref_mem, "Gb"))
+        output$txt_mem_processBAM <- renderText(paste(pb_mem, "Gb"))
+        output$txt_mem_collateData <- renderText(paste(cd_mem, "Gb"))
+    })
 # End of server function
 }
 
@@ -152,8 +152,8 @@ dash_server = function(input, output, session) {
     if(thread_number == "custom") {
         n_threads <- cores_numeric
     } else {
-		n_threads <- as.numeric(thread_number)
-	}
+        n_threads <- as.numeric(thread_number)
+    }
     n_threads
 }
 
@@ -162,5 +162,5 @@ dash_server = function(input, output, session) {
 }
 
 .dash_get_openmp <- function() {
-	return(Has_OpenMP() > 0)
+    return(Has_OpenMP() > 0)
 }

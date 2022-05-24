@@ -135,8 +135,8 @@ path given by \code{reference_path}. Optionally, it will run \link{STAR_mappabil
 if \code{also_generate_mappability} is set to \code{TRUE}
 
 For \code{STAR_mappability}: this function will first
-will run \link{generateSyntheticReads}, then use the given \code{STAR} genome to align
-the synthetic reads using \code{STAR}. The aligned BAM file will then be
+will run \link{generateSyntheticReads}, then use the given \code{STAR} genome to
+align the synthetic reads using \code{STAR}. The aligned BAM file will then be
 processed using \link{calculateMappability} to calculate the
 lowly-mappable genomic regions,
 producing the \code{MappabilityExclusion.bed.gz} output file.

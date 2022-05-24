@@ -68,7 +68,7 @@ server_expr <- function(
             req(settings_expr$df.files)
             req(is(settings_expr$df.files, "data.frame"))
             req("sample" %in% colnames(settings_expr$df.files))
-            if(!settings_expr$allow_df_update) {
+            if(!is_valid(settings_expr$allow_df_update)) {
                 settings_expr$allow_df_update <- TRUE
             } else {
                 settings_expr$df.anno <- .server_expr_sync_df(
@@ -80,7 +80,7 @@ server_expr <- function(
             req(is(settings_expr$df.anno, "data.frame"))
             req("sample" %in% colnames(settings_expr$df.anno))
             req(settings_expr$df.files)
-            if(!settings_expr$allow_df_update) {
+            if(!is_valid(settings_expr$allow_df_update)) {
                 settings_expr$df.files <- .server_expr_sync_df(
                     settings_expr$df.anno, settings_expr$df.files)
                 # If annotations are added, validate NxtSE Object

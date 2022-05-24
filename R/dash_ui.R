@@ -29,19 +29,19 @@ ui_tab_title <- function() {
     thread_choices <- thread_choices[thread_choices <= max_threads]
     out_choices <- c(thread_choices, "custom")
     tabItem(tabName = "navTitle",
-		fluidRow(
+        fluidRow(
             column(4,
             tags$div(title = paste(
                 "These options set the number of threads to run",
                 "computationally-intensive operations",
                 "such as processBAM, collateData, and DESeq2.",
-				"Also, set memory mode here."),
-				h3("Thread and memory options"),
-				shinyWidgets::pickerInput(
-				   inputId = "thread_number",
-				   label = "Number of threads to use", 
-					choices = out_choices
-				),
+                "Also, set memory mode here."),
+                h3("Thread and memory options"),
+                shinyWidgets::pickerInput(
+                   inputId = "thread_number",
+                   label = "Number of threads to use", 
+                    choices = out_choices
+                ),
                 conditionalPanel(
                     condition = "['custom'].indexOf(input.thread_number) >= 0",
                     numericInput("cores_numeric", "# Threads", min = 1, 
@@ -59,22 +59,22 @@ ui_tab_title <- function() {
                         yes = icon("ok", lib = "glyphicon")
                     )
                 ), br(),
-				h4("Estimated memory usage for reference generation"),
-				textOutput("txt_mem_buildRef"), br(),
-				h4("Estimated memory usage for BAM processing"),
-				textOutput("txt_mem_processBAM"), br(),
-				h4("Estimated memory usage for data collation"),
-				textOutput("txt_mem_collateData"), br()
+                h4("Estimated memory usage for reference generation"),
+                textOutput("txt_mem_buildRef"), br(),
+                h4("Estimated memory usage for BAM processing"),
+                textOutput("txt_mem_processBAM"), br(),
+                h4("Estimated memory usage for data collation"),
+                textOutput("txt_mem_collateData"), br()
             )),
-			column(8,
-				img(src=paste0(
-					"https://pbs.twimg.com/",
-					"profile_images/",
-					"1310789966293655553/",
-					"7HawCItY_400x400.jpg"
-				))
-			)
-		)
+            column(8,
+                img(src=paste0(
+                    "https://pbs.twimg.com/",
+                    "profile_images/",
+                    "1310789966293655553/",
+                    "7HawCItY_400x400.jpg"
+                ))
+            )
+        )
     )
 }
 

@@ -25,7 +25,8 @@ ui_vis_diag <- function(id) {
                 # shinySaveButton(ns("saveplot_diag"), 
                     # "Save Plot as PDF", "Save Plot as PDF...", 
                     # filetype = list(PDF = "pdf")),
-                # actionButton(ns("output_plot_diag"), "Generate RStudio ggplot"),
+                # actionButton(ns("output_plot_diag"), 
+                    # "Generate RStudio ggplot"),
                 actionButton(ns("clear_diag"), "Clear settings"), br(), br(),
                 textOutput(ns("warning_diag"))
             ),
@@ -62,7 +63,8 @@ ui_vis_volcano <- function(id) {
                 # shinySaveButton(ns("saveplot_volc"), 
                     # "Save Plot as PDF", "Save Plot as PDF...", 
                     # filetype = list(PDF = "pdf")),
-                # actionButton(ns("output_plot_volc"), "Generate RStudio ggplot"),
+                # actionButton(ns("output_plot_volc"), 
+                    # "Generate RStudio ggplot"),
                 actionButton(ns("clear_volc"), "Clear settings"), br(), br(),
                 textOutput(ns("warning_volc"))
             ),
@@ -107,7 +109,8 @@ ui_vis_heatmap <- function(id) {
                 # shinySaveButton(ns("saveplot_heat"), 
                     # "Save Plot as PDF", "Save Plot as PDF...", 
                     # filetype = list(PDF = "pdf"))
-                # actionButton(ns("output_plot_heat"), "Generate RStudio ggplot"),
+                # actionButton(ns("output_plot_heat"), 
+                    # "Generate RStudio ggplot"),
             ),
             column(9, 
                 textOutput(ns("warning_heat")),

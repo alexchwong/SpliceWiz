@@ -33,7 +33,8 @@
 #' * `A3SS` = alternate 3'-splice site
 #' * `RI` = (known / annotated) intron retention.
 #'
-#' NB: SpliceWiz separately considers known "RI" and novel "IR" events separately:
+#' NB: SpliceWiz separately considers known "RI" and novel "IR" events 
+#'   separately:
 #' * **IR** novel events are calculated using the IRFinder method, whereby
 #' spliced transcripts are **all** isoforms that do not retain the intron, as
 #' estimated via the `SpliceMax` and `SpliceOver` methods

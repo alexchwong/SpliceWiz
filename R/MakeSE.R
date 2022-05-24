@@ -312,7 +312,8 @@ makeSE <- function(
     gr.reduced <- reduce(gr)
 
     OL <- findOverlaps(gr, gr.reduced)
-    junc_PSI.group <- as.data.table(junc_PSI[names(se.coords.gr), , drop = FALSE])
+    junc_PSI.group <- as.data.table(
+        junc_PSI[names(se.coords.gr), , drop = FALSE])
     junc_PSI.group$means <- rowMeans(junc_PSI.group)
     junc_PSI.group$group <- to(OL)
     junc_PSI.group[, c("max_means") := max(get("means")),

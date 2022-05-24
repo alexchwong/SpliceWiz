@@ -169,7 +169,7 @@ ui_ddb_project_dir <- function(id, color = "danger") {
             label = "Choose Folder (BAM files)", 
             title = "Select path containing BAM files"),
         textOutput(ns("txt_bam_path_load")), br(),
-		
+        
         tags$h4("processBAM Output"),       
         shinyDirButton(ns("dir_sw_path_load"), 
             label = "Choose Folder (processBAM output)", 
@@ -248,13 +248,13 @@ ui_ddb_sw_path <- function(id, color = "danger") {
         icon = icon("align-center", lib = "font-awesome"),
         
         tags$h4("Run processBAM on BAM files"),
-		tags$div(
-			title = paste("Select the cells",
-				"containing the paths to the BAM files",
-				"that you wish to process"),
-			actionButton(ns("run_pb_expr"), 
-				"Run processBAM()")
-		),
+        tags$div(
+            title = paste("Select the cells",
+                "containing the paths to the BAM files",
+                "that you wish to process"),
+            actionButton(ns("run_pb_expr"), 
+                "Run processBAM()")
+        ),
         textOutput(ns("txt_run_pb_expr"))
     )      
 }

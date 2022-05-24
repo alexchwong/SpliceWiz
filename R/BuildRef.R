@@ -283,8 +283,8 @@
 #' @md
 NULL
 
-#' @describeIn Build-Reference-methods Processes / downloads a copy of the genome
-#' and gene annotations and stores this in the "resource" subdirectory
+#' @describeIn Build-Reference-methods Processes / downloads a copy of the 
+#' genome and gene annotations and stores this in the "resource" subdirectory
 #' of the given reference path
 #' @export
 getResources <- function(
@@ -323,8 +323,8 @@ buildRef <- function(
     extra_files <- .fetch_genome_defaults(reference_path,
         genome_type, nonPolyARef, MappabilityRef, BlacklistRef,
         force_download = force_download)
-	
-	session <- shiny::getDefaultReactiveDomain()
+    
+    session <- shiny::getDefaultReactiveDomain()
 
     N_steps <- 8
     dash_progress("Reading Reference Files", N_steps)
@@ -343,9 +343,9 @@ buildRef <- function(
     reference_data$gtf_gr <- NULL # To save memory, remove original gtf
     gc()
 
-	# Check here whether fetching from TwoBitFile is problematic
-	reference_data$genome <- .check_2bit_performance(reference_path,
-		reference_data$genome)		
+    # Check here whether fetching from TwoBitFile is problematic
+    reference_data$genome <- .check_2bit_performance(reference_path,
+        reference_data$genome)        
 
     dash_progress("Processing introns", N_steps)
     chromosomes <- .convert_chromosomes(chromosome_aliases)
@@ -435,8 +435,8 @@ buildFullRef <- function(
 }
 
 
-#' @describeIn Build-Reference-methods Returns the path to the BED file containing
-#'   coordinates of known non-polyadenylated transcripts for genomes
+#' @describeIn Build-Reference-methods Returns the path to the BED file 
+#'   containing coordinates of known non-polyadenylated transcripts for genomes
 #'   \code{hg38}, \code{hg19}, \code{mm10} and \code{mm9},
 #' @export
 getNonPolyARef <- function(genome_type) {
@@ -744,22 +744,22 @@ return(TRUE)
     } else {
         gtf_use <- gtf
     }
-	session <- shiny::getDefaultReactiveDomain()
-	fetch_fasta_args <- list(
+    session <- shiny::getDefaultReactiveDomain()
+    fetch_fasta_args <- list(
         reference_path = reference_path,
         fasta = fasta_use, ah_genome = ah_genome_use,
         verbose = verbose, overwrite = overwrite,
         force_download = force_download, pseudo_fetch = pseudo_fetch_fasta
     )
-	fetch_gtf_args <- list(
+    fetch_gtf_args <- list(
         gtf = gtf_use, ah_transcriptome = ah_gtf_use,
         reference_path = reference_path,
         verbose = verbose, overwrite = overwrite,
         force_download = force_download, pseudo_fetch = pseudo_fetch_gtf
     )
-	genome <- gtf_gr <- NULL
-	
-	# wrap nested progress bars for shiny
+    genome <- gtf_gr <- NULL
+    
+    # wrap nested progress bars for shiny
     if(!is.null(session)) {
         shiny::withProgress(message = "Loading genome", {
             genome <- do.call(.fetch_fasta, fetch_fasta_args)
@@ -768,8 +768,8 @@ return(TRUE)
             gtf_gr <- do.call(.fetch_gtf, fetch_gtf_args)
         })
     } else {
-		genome <- do.call(.fetch_fasta, fetch_fasta_args)
-		gtf_gr <- do.call(.fetch_gtf, fetch_gtf_args)
+        genome <- do.call(.fetch_fasta, fetch_fasta_args)
+        gtf_gr <- do.call(.fetch_gtf, fetch_gtf_args)
     }
 
     # Save Resource details to settings.Rds:
@@ -819,19 +819,19 @@ return(TRUE)
         pseudo_fetch = FALSE
 ) {
     if (ah_genome != "") {
-		N_steps <- 3
-		dash_progress("Retrieving AnnotationHub resource", N_steps)
+        N_steps <- 3
+        dash_progress("Retrieving AnnotationHub resource", N_steps)
         genome <- .fetch_fasta_ah(ah_genome, verbose = verbose)
-		dash_progress("Saving copy of genome as TwoBit file", N_steps)
+        dash_progress("Saving copy of genome as TwoBit file", N_steps)
         .fetch_fasta_save_2bit(genome, reference_path, overwrite)
-		dash_progress("Loading genome into memory", N_steps)
+        dash_progress("Loading genome into memory", N_steps)
         genome <- .fetch_genome_as_required(genome, pseudo_fetch)
         return(genome)
     } else if (fasta == "") {
         twobit <- file.path(reference_path, "resource", "genome.2bit")
         if (file.exists(twobit)) {
-			N_steps <- 1
-			dash_progress("Loading genome into memory", N_steps)
+            N_steps <- 1
+            dash_progress("Loading genome into memory", N_steps)
             .log("Connecting to genome TwoBitFile...", "message",
                 appendLF = FALSE)
             genome <- Get_Genome(reference_path, validate = FALSE,
@@ -846,8 +846,8 @@ return(TRUE)
         if (!overwrite) {
             twobit <- file.path(reference_path, "resource", "genome.2bit")
             if (file.exists(twobit)) {
-				N_steps <- 1
-				dash_progress("Loading genome into memory", N_steps)
+                N_steps <- 1
+                dash_progress("Loading genome into memory", N_steps)
                 .log("Connecting to genome TwoBitFile...", "message",
                     appendLF = FALSE)
                 genome <- Get_Genome(reference_path, validate = FALSE,
@@ -856,30 +856,30 @@ return(TRUE)
                 return(genome)
             }
         }
-		N_steps <- 4
+        N_steps <- 4
         .log("Converting FASTA to local TwoBitFile...", "message",
             appendLF = FALSE)
-		dash_progress("Downloading genome, if required...", N_steps)
+        dash_progress("Downloading genome, if required...", N_steps)
         fasta_file <- .parse_valid_file(fasta, force_download = force_download)
         if (!file.exists(fasta_file))
             .log(paste("In .fetch_fasta(),",
                 "Given genome fasta file", fasta_file, "not found"))
 
-		dash_progress("Loading genome into memory", N_steps)
+        dash_progress("Loading genome into memory", N_steps)
         genome <- .fetch_fasta_file(fasta_file)
-		dash_progress("Saving copy of genome as TwoBit file", N_steps)
+        dash_progress("Saving copy of genome as TwoBit file", N_steps)
         .fetch_fasta_save_2bit(genome, reference_path, overwrite)
         message("done")
 
-		rm(genome)
-		gc() # free memory before re-import
-		.log("Connecting to genome TwoBitFile...", "message", appendLF = FALSE)
-		dash_progress("Reloading genome from TwoBit file...", N_steps)
-		genome <- Get_Genome(reference_path, validate = FALSE,
-			as_DNAStringSet = !pseudo_fetch)
-		# TwoBitFile's getSeq is slow on some linux systems (don't know why)
-		# Importing TwoBitFile as a proper DNAStringSet
-		message("done")
+        rm(genome)
+        gc() # free memory before re-import
+        .log("Connecting to genome TwoBitFile...", "message", appendLF = FALSE)
+        dash_progress("Reloading genome from TwoBit file...", N_steps)
+        genome <- Get_Genome(reference_path, validate = FALSE,
+            as_DNAStringSet = !pseudo_fetch)
+        # TwoBitFile's getSeq is slow on some linux systems (don't know why)
+        # Importing TwoBitFile as a proper DNAStringSet
+        message("done")
         return(genome)
     }
 }
@@ -945,8 +945,8 @@ return(TRUE)
     r_path <- file.path(reference_path, "resource")
     gtf_path <- file.path(r_path, "transcripts.gtf.gz")
     if (ah_transcriptome != "") {
-		N_steps <- 1
-		dash_progress("Retrieving AnnotationHub resource", N_steps)
+        N_steps <- 1
+        dash_progress("Retrieving AnnotationHub resource", N_steps)
         gtf_gr <- .fetch_AH(ah_transcriptome, verbose = verbose,
             pseudo_fetch = pseudo_fetch)
         if (overwrite || !file.exists(gtf_path)) {
@@ -960,38 +960,38 @@ return(TRUE)
         return(gtf_gr)
     } else if (gtf == "") {
         if (file.exists(gtf_path)) {
-			N_steps <- 1
-			dash_progress("Loading gene annotation into memory", N_steps)
+            N_steps <- 1
+            dash_progress("Loading gene annotation into memory", N_steps)
             .log("Reading source GTF file...", "message", appendLF = FALSE)
             gtf_gr <- rtracklayer::import(gtf_path, "gtf")
             message("done")
-			return(gtf_gr)
+            return(gtf_gr)
         } else {
             .log(paste("Resource gene annotation is not available;",
-				"`gtf` parameter required"))
+                "`gtf` parameter required"))
         }
-		
+        
     } else {
         # If no overwrite, quickly return GTF if exists
         if (!overwrite) {
             if (file.exists(gtf_path)) {
-				N_steps <- 1
-				dash_progress("Loading gene annotation into memory", N_steps)
-				.log("Reading source GTF file...", "message", appendLF = FALSE)
-				gtf_gr <- rtracklayer::import(gtf_path, "gtf")
-				message("done")
-				return(gtf_gr)
+                N_steps <- 1
+                dash_progress("Loading gene annotation into memory", N_steps)
+                .log("Reading source GTF file...", "message", appendLF = FALSE)
+                gtf_gr <- rtracklayer::import(gtf_path, "gtf")
+                message("done")
+                return(gtf_gr)
             }
         }
-		
-		N_steps <- 3
-		dash_progress("Downloading gene annotations, if required...", N_steps)
+        
+        N_steps <- 3
+        dash_progress("Downloading gene annotations, if required...", N_steps)
         gtf_file <- .parse_valid_file(gtf, force_download = force_download)
         if (!file.exists(gtf_file)) {
             .log(paste("In .fetch_gtf(),",
                 "Given transcriptome gtf file", gtf, "not found"))
         }
-		dash_progress("Making local copy, if required...", N_steps)
+        dash_progress("Making local copy, if required...", N_steps)
         if (!file.exists(gtf_path) ||
                 normalizePath(gtf_file) != normalizePath(gtf_path)) {
             if (overwrite || !file.exists(gtf_path)) {
@@ -1008,7 +1008,7 @@ return(TRUE)
                 message("done")
             }
         }
-		dash_progress("Loading annotations into memory", N_steps)
+        dash_progress("Loading annotations into memory", N_steps)
         if (!pseudo_fetch) {
             .log("Reading source GTF file...", "message", appendLF = FALSE)
             gtf_gr <- rtracklayer::import(gtf_file, "gtf")
@@ -1110,11 +1110,11 @@ return(TRUE)
 }
 
 .get_cache_file_path <- function(cache, rpath) {
-	if(grepl(cache, rpath, fixed = TRUE)) {
-		return(rpath)
-	} else {
-		return(paste(cache, rpath, sep = "/"))
-	}
+    if(grepl(cache, rpath, fixed = TRUE)) {
+        return(rpath)
+    } else {
+        return(paste(cache, rpath, sep = "/"))
+    }
 }
 
 .parse_valid_file <- function(file, msg = "", force_download = FALSE) {
@@ -1466,26 +1466,26 @@ return(TRUE)
 #   taken to fetch. A ratio of > 3 is evidence there is position-dependent
 #   loading lag (which is observed on some systems)
 .check_2bit_performance <- function(reference_path, genome) {
-	if(is(genome, "TwoBitFile")) {
-		Exons <- as.data.table(
-			read.fst(file.path(reference_path, "fst", "Exons.fst")),
-		)
-		if(nrow(Exons) > 1000) {
-			gr_start <- .grDT(Exons[seq_len(1000)])
-			gr_end <- .grDT(Exons[seq(nrow(Exons) - 999, nrow(Exons))])
-			bench_start <- system.time(getSeq(genome, gr_start))
-			bench_end <- system.time(getSeq(genome, gr_end))
-			# message("TwoBit fetch benchmark start: ", unname(bench_start[3]), 
-				# ", end: ", unname(bench_end[3]))
-			if(bench_start[3] > 0 && bench_end[3] / bench_start[3] > 3) {
-				.log(paste("SpliceWiz detected inefficient TwoBit retrieval,",
-					" importing genome as DNAStringSet"),
-					"message")
-				return(rtracklayer::import(genome))
-			}
-		}
-	}
-	return(genome)
+    if(is(genome, "TwoBitFile")) {
+        Exons <- as.data.table(
+            read.fst(file.path(reference_path, "fst", "Exons.fst")),
+        )
+        if(nrow(Exons) > 1000) {
+            gr_start <- .grDT(Exons[seq_len(1000)])
+            gr_end <- .grDT(Exons[seq(nrow(Exons) - 999, nrow(Exons))])
+            bench_start <- system.time(getSeq(genome, gr_start))
+            bench_end <- system.time(getSeq(genome, gr_end))
+            # message("TwoBit fetch benchmark start: ", unname(bench_start[3]), 
+                # ", end: ", unname(bench_end[3]))
+            if(bench_start[3] > 0 && bench_end[3] / bench_start[3] > 3) {
+                .log(paste("SpliceWiz detected inefficient TwoBit retrieval,",
+                    " importing genome as DNAStringSet"),
+                    "message")
+                return(rtracklayer::import(genome))
+            }
+        }
+    }
+    return(genome)
 }
 
 ################################################################################

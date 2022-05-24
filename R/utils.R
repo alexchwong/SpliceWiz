@@ -63,7 +63,8 @@ coord2GR <- function(coordinates) {
         grepl("/-", coordinates, fixed = TRUE)
         
     if(any(!coord_hasstrand)) {
-        coordinates[!coord_hasstrand] <- paste0(coordinates[!coord_hasstrand], "/*")
+        coordinates[!coord_hasstrand] <- 
+            paste0(coordinates[!coord_hasstrand], "/*")
     }
     
     # All coordinates should now have the correct format

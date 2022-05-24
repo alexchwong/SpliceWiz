@@ -114,7 +114,7 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
 VignetteBuilder: knitr
 biocViews: Software, Transcriptomics, RNASeq, AlternativeSplicing, Coverage, 
-  DifferentialSplicing
+  DifferentialSplicing, DifferentialExpression, GUI, Sequencing
 URL: https://github.com/alexchwong/SpliceWiz
 BugReports: https://support.bioconductor.org/
 Config/testthat/edition: 3

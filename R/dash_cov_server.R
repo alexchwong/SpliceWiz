@@ -576,7 +576,7 @@ server_cov_get_all_tracks <- function(input) {
     if(target_end - target_start < 50) target_start <- target_end - 50
     
     span <- target_end - target_start
-    cur_zoom = floor(log(span/50) / log(3))
+    cur_zoom <- floor(log(span/50) / log(3))
     
     output$label_zoom_cov <- renderText({16 - cur_zoom})
     if(target_end != input$end_cov)

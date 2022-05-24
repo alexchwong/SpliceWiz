@@ -23,8 +23,8 @@
 #'   if `also_generate_mappability` is set to `TRUE`
 #'
 #' For `STAR_mappability`: this function will first
-#'   will run [generateSyntheticReads], then use the given `STAR` genome to align
-#'   the synthetic reads using `STAR`. The aligned BAM file will then be
+#'   will run [generateSyntheticReads], then use the given `STAR` genome to 
+#'   align the synthetic reads using `STAR`. The aligned BAM file will then be
 #'   processed using [calculateMappability] to calculate the
 #'   lowly-mappable genomic regions,
 #'   producing the `MappabilityExclusion.bed.gz` output file.

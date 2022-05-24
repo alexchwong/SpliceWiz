@@ -171,7 +171,7 @@ server_vis_diag <- function(
             # DT::dataTableProxy("DT_DE") %>% DT::selectRows(selected)
         })
 
-        settings_Diag$plotly_brush = reactive({
+        settings_Diag$plotly_brush <- reactive({
             plot_exist <- settings_Diag$plot_ini
             if(plot_exist)
                 event_data("plotly_selected", source = "plotly_diagonal")
@@ -234,7 +234,7 @@ server_vis_diag <- function(
                     selected = "(none)"
                 )
             } else {
-                updateSelectInput(session = session, inputId = "variable_diag", 
+                updateSelectInput(session = session, inputId = "variable_diag",
                     choices = c("(none)"), selected = "(none)")
             }
             

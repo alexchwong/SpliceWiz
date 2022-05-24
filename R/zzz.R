@@ -1,10 +1,10 @@
 .onAttach <- function(libname, pkgname) {
-	SW_threads <- setSWthreads(0)
-	packageStartupMessage("SpliceWiz package loaded with ", SW_threads, 
+    SW_threads <- setSWthreads(0)
+    packageStartupMessage("SpliceWiz package loaded with ", SW_threads, 
         " threads")
-	packageStartupMessage(
+    packageStartupMessage(
         "Use setSWthreads() to set the number of SpliceWiz threads")
-	invisible()
+    invisible()
 }
 
 #' Sets the number of threads used by SpliceWiz
@@ -22,29 +22,29 @@
 #' setSWthreads(0)
 #' @export
 setSWthreads <- function(threads = 0) {
-	system_threads <- parallel::detectCores()
-	DT_threads <- getDTthreads()
-	FST_threads <- threads_fst()
+    system_threads <- parallel::detectCores()
+    DT_threads <- getDTthreads()
+    FST_threads <- threads_fst()
 
-	if(threads == 0) {
-		if(DT_threads <= ceiling(system_threads / 2)) {
-			SW_threads <- DT_threads
-		} else {
-			SW_threads <- ceiling(system_threads / 2)
-		}
-	} else if(threads <= system_threads) {
-		SW_threads <- threads
-	} else {
-		.log("Requested threads exceed system resources")
-	}
-	
-	setDTthreads(SW_threads)
-	threads_fst(SW_threads)
-	return(SW_threads)
+    if(threads == 0) {
+        if(DT_threads <= ceiling(system_threads / 2)) {
+            SW_threads <- DT_threads
+        } else {
+            SW_threads <- ceiling(system_threads / 2)
+        }
+    } else if(threads <= system_threads) {
+        SW_threads <- threads
+    } else {
+        .log("Requested threads exceed system resources")
+    }
+    
+    setDTthreads(SW_threads)
+    threads_fst(SW_threads)
+    return(SW_threads)
 }
 
 .getSWthreads <- function() {
-	DT_threads <- getDTthreads()
-	FST_threads <- threads_fst()
+    DT_threads <- getDTthreads()
+    FST_threads <- threads_fst()
     return(min(DT_threads, FST_threads))
 }

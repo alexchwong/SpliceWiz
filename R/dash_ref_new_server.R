@@ -97,7 +97,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
             if(!is.null(input$file_bl)){
                 file_selected <- parseFilePaths(volumes(), input$file_bl)
                 settings_newref$newref_bl <- 
-					as.character(file_selected$datapath)
+                    as.character(file_selected$datapath)
             }
         })
         observeEvent(settings_newref$newref_bl, {
@@ -239,7 +239,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                     if(file.exists(new_mappa_file)) 
                         args$MappabilityRef <- new_mappa_file
                 }
-				args$lowMemoryMode <- get_memmode_reactive()
+                args$lowMemoryMode <- get_memmode_reactive()
                 withProgress(message = 'Building Reference', value = 0, {
                     do.call(buildRef, args)
                 })
@@ -293,7 +293,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         
         observeEvent(input$load_ref_example, {
             if(!dir.exists(file.path(tempdir(), "Reference")))
-				dir.create(file.path(tempdir(), "Reference"))
+                dir.create(file.path(tempdir(), "Reference"))
             output$txt_reference_path <- renderText({
                 settings_newref$newref_path <- file.path(tempdir(), "Reference")
             })

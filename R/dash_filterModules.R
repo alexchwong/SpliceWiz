@@ -196,7 +196,7 @@ filterModule_server <- function(id, filterdata, conditionList) {
                 session = session, inputId = "slider_mincond", 
                 selected = fmCond)
                 
-            choices_conds = c("(none)", conditionList())
+            choices_conds <- c("(none)", conditionList())
             fCond <- final()@condition
             if(is_valid(fCond) && fCond %in% choices_conds) {
                 updateSelectInput(session = session, 

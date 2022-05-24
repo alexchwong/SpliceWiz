@@ -68,22 +68,28 @@ server_expr <- function(
             req(settings_expr$df.files)
             req(is(settings_expr$df.files, "data.frame"))
             req("sample" %in% colnames(settings_expr$df.files))
-            settings_expr$df.anno <- .server_expr_sync_df(
-                settings_expr$df.files, settings_expr$df.anno)
+            if(!settings_expr$allow_df_update) {
+                settings_expr$allow_df_update <- TRUE
+            } else {
+                settings_expr$df.anno <- .server_expr_sync_df(
+                    settings_expr$df.files, settings_expr$df.anno)            
+            }
         })
         observeEvent(settings_expr$df.anno, {
             req(settings_expr$df.anno)
             req(is(settings_expr$df.anno, "data.frame"))
             req("sample" %in% colnames(settings_expr$df.anno))
             req(settings_expr$df.files)
-            settings_expr$df.files <- .server_expr_sync_df(
-                settings_expr$df.anno, settings_expr$df.files)
-            # If annotations are added, validate NxtSE Object
-            output <- .server_expr_parse_collate_path(
-                limited = limited,
-                settings_expr = reactiveValuesToList(settings_expr), 
-                output = output
-            )
+            if(!settings_expr$allow_df_update) {
+                settings_expr$df.files <- .server_expr_sync_df(
+                    settings_expr$df.anno, settings_expr$df.files)
+                # If annotations are added, validate NxtSE Object
+                output <- .server_expr_parse_collate_path(
+                    limited = limited,
+                    settings_expr = reactiveValuesToList(settings_expr), 
+                    output = output
+                )
+            }
         })
         
         # Experiment I/O - sync between user input and data frames
@@ -449,6 +455,7 @@ server_expr <- function(
                 .load_NxtSE_sweetalert_error(session)
             } else {
                 .load_NxtSE_sweetalert_finish(session)
+                settings_expr$allow_df_update <- FALSE
                 settings_expr$se <- NxtSE_list$se
                 settings_expr$df.anno <- NxtSE_list$df.anno
                 settings_expr$df.files <- NxtSE_list$df.files

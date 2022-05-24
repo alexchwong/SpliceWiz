@@ -154,7 +154,7 @@ click the `Reference` tab from the menu side bar. The following interface
 will be shown:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Reference GUI"}
-knitr::include_graphics("img/buildRef.png")
+knitr::include_graphics("img/buildRef.jpg")
 ```
 
 To build the demo reference using the GUI, click on the `Load Demo FASTA/GTF`
@@ -304,13 +304,13 @@ click the `Experiment` tab from the menu side bar. The following interface
 will be shown:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Experiment GUI"}
-knitr::include_graphics("img/Expr_empty.png")
+knitr::include_graphics("img/Expr_empty.jpg")
 ```
 
 Click on (2) `Define Project Folders` to bring up the following drop-down
 box:
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Define Project Folders"}
-knitr::include_graphics("img/Expr_drop_2.png")
+knitr::include_graphics("img/Expr_drop_2.jpg")
 ```
 
 We need to define the folders that contain our reference, BAM files, as well
@@ -330,7 +330,7 @@ After our folders have been defined, on the right hand side, an interactive
 table should be displayed that looks like the following:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Running processBAM"}
-knitr::include_graphics("img/Expr_pb.png")
+knitr::include_graphics("img/Expr_pb.jpg")
 ```
 
 To run processBAM on the example BAM files, first drag to select the 6 cells
@@ -456,7 +456,7 @@ sections (of the GUI instructions), your interface should currently look like
 this:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="collateData GUI"}
-knitr::include_graphics("img/Expr_cd.png")
+knitr::include_graphics("img/Expr_cd.jpg")
 ```
 
 To collate the experiment, click `Construct Experiment` to open the dropdown
@@ -518,7 +518,7 @@ and then click the `Load Experiment` on the menu bar. The display should
 look like this:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
-knitr::include_graphics("img/Expr_load_empty.png")
+knitr::include_graphics("img/Expr_load_empty.jpg")
 ```
 
 First, click the `Open Folder containing NxtSE` to open the dropdown, then 
@@ -526,7 +526,7 @@ click `Choose Folder (NxtSE)`. Select the `NxtSE` directory. The interface
 should now look like this:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
-knitr::include_graphics("img/Expr_load_folder.png")
+knitr::include_graphics("img/Expr_load_folder.jpg")
 ```
 
 To load the NxtSE object, click the `Load NxtSE object` to open the dropdown,
@@ -605,7 +605,7 @@ After following the previous GUI sections, with the NxtSE loaded, click on
 now look like this:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="NxtSE Annotations GUI"}
-knitr::include_graphics("img/Expr_anno_empty.png")
+knitr::include_graphics("img/Expr_anno_empty.jpg")
 ```
 
 Now, lets add an extra column. In the `Annotation Columns` box which has just
@@ -614,7 +614,7 @@ and again click `Add`. Then, click on each empty cell and fill in the fields
 as shown:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="NxtSE Annotations GUI"}
-knitr::include_graphics("img/Expr_anno_filled.png")
+knitr::include_graphics("img/Expr_anno_filled.jpg")
 ```
 
 Finally, the annotated NxtSE needs to be reloaded into memory. Click
@@ -700,7 +700,7 @@ After following the GUI tutorials in the prior sections, click on `Analysis`
 and then `Filters` from the menu bar. It should look like this:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Filters - GUI"}
-knitr::include_graphics("img/Filters_empty.png")
+knitr::include_graphics("img/Filters_empty.jpg")
 ```
 
 To load SpliceWiz's default filters, click the top right button 
@@ -709,7 +709,7 @@ To load SpliceWiz's default filters, click the top right button
 like this:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="SpliceWiz default filters- GUI"}
-knitr::include_graphics("img/Filters_applied.png")
+knitr::include_graphics("img/Filters_applied.jpg")
 ```
 </details>
 \
@@ -752,7 +752,7 @@ and then `Differential Expression Analysis` on the menu side bar. It should look
 something like this (but with empty fields):
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Differential Expression GUI"}
-knitr::include_graphics("img/DE_empty.png")
+knitr::include_graphics("img/DE_empty.jpg")
 ```
 
 To perform limma-based differential analysis, first ensure `Method` is set to
@@ -765,7 +765,7 @@ like below. The output is a DT-based data table equivalent to the `ASE_limma()`
 function.
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Differential Expression (limma) GUI"}
-knitr::include_graphics("img/DE_limma.png")
+knitr::include_graphics("img/DE_limma.jpg")
 ```
 
 </details>
@@ -900,7 +900,7 @@ to `Display` and then `Volcano Plot`. The default volcano plot (top 1000 ASEs)
 will be automatically generated as a plotly object:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Volcano Plot - GUI"}
-knitr::include_graphics("img/Vis_volcano.png")
+knitr::include_graphics("img/Vis_volcano.jpg")
 ```
 
 You can customize this volcano plot using the following controls:
@@ -962,7 +962,7 @@ For now, change the `Variable` to `condition`, `X-axis condition` to `A` and
 follows:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Scatter plot - GUI"}
-knitr::include_graphics("img/Vis_scatter.png")
+knitr::include_graphics("img/Vis_scatter.jpg")
 ```
 
 </details>
@@ -976,14 +976,14 @@ plots, points of interest can be selected using the lasso or box select tools.
 For example, we can select the top hits from the faceted volcano plot as shown:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Volcano plot - selecting ASEs of interest via the GUI"}
-knitr::include_graphics("img/Vis_volcano_select.png")
+knitr::include_graphics("img/Vis_volcano_select.jpg")
 ```
 
 These ASEs of interest will then be highlighted in other plots, for example
 scatter plot:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Scatter plot - highlighted ASE events"}
-knitr::include_graphics("img/Vis_scatter_highlighted.png")
+knitr::include_graphics("img/Vis_scatter_highlighted.jpg")
 ```
 </details>
 \
@@ -1065,7 +1065,7 @@ Navigate to `Display`, then `Heatmap` in the menu side bar. A heatmap will be
 automatically generated:
 
 ```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Heatmap - GUI"}
-knitr::include_graphics("img/Vis_heatmap.png")
+knitr::include_graphics("img/Vis_heatmap.jpg")
 ```
 
 The heatmap can be customized as follows:
@@ -1206,7 +1206,7 @@ Click on `Display` and then `Coverage plot` from the menu side bar.
 It should look like this:
 
 ```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Coverage Plots - GUI"}
-knitr::include_graphics("img/Cov.png")
+knitr::include_graphics("img/Cov.jpg")
 ```
 
 Coverage plots can be customized as follows:

@@ -268,56 +268,56 @@ filterModule_server <- function(id, filterdata, conditionList) {
         observeEvent(input$slider_depth_min, {
             obj <- final()
             if(obj@filterType == "Depth") {
-                obj@minimum = as.numeric(input$slider_depth_min)
+                obj@minimum <- as.numeric(input$slider_depth_min)
             }
             final(obj)
         })
         observeEvent(input$slider_cov_min, {
             obj <- final()
             if(obj@filterType == "Participation"){
-                obj@minimum = as.numeric(input$slider_cov_min)
+                obj@minimum <- as.numeric(input$slider_cov_min)
             }
             final(obj)
         })
         observeEvent(input$slider_TSL_min,{
             obj <- final()
             if(obj@filterType == "TSL"){
-                obj@minimum = as.numeric(input$slider_TSL_min)
+                obj@minimum <- as.numeric(input$slider_TSL_min)
             }
             final(obj)
         })
         observeEvent(input$slider_cons_max,{
             obj <- final()
-            obj@maximum = as.numeric(input$slider_cons_max)
+            obj@maximum <- as.numeric(input$slider_cons_max)
             final(obj)
         })
         observeEvent(input$slider_minDepth,{
             obj <- final()
-            obj@minDepth = as.numeric(input$slider_minDepth)
+            obj@minDepth <- as.numeric(input$slider_minDepth)
             final(obj)
         })
         observeEvent(input$slider_mincond,{
             obj <- final()
             if(input$slider_mincond == "All") {
-                obj@minCond = -1
+                obj@minCond <- -1
             } else {
-                obj@minCond = as.numeric(input$slider_mincond)            
+                obj@minCond <- as.numeric(input$slider_mincond)            
             }
             final(obj)
         })
         observeEvent(input$select_conds,{
             obj <- final()
-            obj@condition = input$select_conds
+            obj@condition <- input$select_conds
             final(obj)
         })
         observeEvent(input$slider_pcTRUE,{
             obj <- final()
-            obj@pcTRUE = as.numeric(input$slider_pcTRUE)
+            obj@pcTRUE <- as.numeric(input$slider_pcTRUE)
             final(obj)
         })
         observeEvent(input$EventType,{
             obj <- final()
-            obj@EventTypes = input$EventType
+            obj@EventTypes <- input$EventType
             final(obj)
         })
 

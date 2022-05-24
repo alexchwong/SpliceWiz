@@ -66,7 +66,7 @@ server_qc <- function(id, refresh_tab, get_se_path, get_df) {
                 choices <- choices[!(choices %in% 
                     c("paired", "strand", "path")
                 )]
-                choices <-c("(none)", choices)
+                choices <- c("(none)", choices)
                 updateSelectInput(session = session, inputId = "QC_xaxis",
                     choices = choices)
                 updateSelectInput(session = session, inputId = "QC_yaxis",

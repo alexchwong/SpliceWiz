@@ -35,7 +35,7 @@ server_vis_diag <- function(
 
         })
         observeEvent(rows_selected(), {
-            settings_Diag$selected = rows_selected()
+            settings_Diag$selected <- rows_selected()
         })
     
         output$plot_diag <- renderPlotly({
@@ -79,7 +79,7 @@ server_vis_diag <- function(
             df.diag$NMD_direction <- get_de()$NMD_direction[
                 match(df.diag$EventName, get_de()$EventName)]
             
-            settings_Diag$plot_ini = TRUE
+            settings_Diag$plot_ini <- TRUE
             if(input$NMD_diag == TRUE) {
                 df.diag             <- df.diag[df.diag$NMD_direction != 0, ]
                 df.diag$nom_NMD     <- ifelse(df.diag$NMD_direction == 1, 
@@ -147,7 +147,7 @@ server_vis_diag <- function(
             # req(settings_Diag$ggplot)
             # print(settings_Diag$ggplot)
         # })
-        settings_Diag$plotly_click = reactive({
+        settings_Diag$plotly_click <- reactive({
             plot_exist <- settings_Diag$plot_ini
             if(plot_exist) 
                 event_data("plotly_click", source = "plotly_diagonal")
@@ -382,9 +382,9 @@ server_vis_volcano <- function(
                 p <- p + facet_wrap(vars(get("EventType")))
             }
             if(volc_units %in% c("log2FoldChange", "logFC")) {
-                formatted_units = "Log2 Fold Change"
+                formatted_units <- "Log2 Fold Change"
             } else {
-                formatted_units = "MLE Log2 Fold Change"
+                formatted_units <- "MLE Log2 Fold Change"
             }
             if(input$NMD_volc) {
                 p <- p + labs(x = paste(formatted_units, "NMD substrate"))

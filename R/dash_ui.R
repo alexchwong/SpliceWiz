@@ -163,7 +163,7 @@ ui_toggle_wellPanel <- function(
 ui_toggle_wellPanel_modular <- function(
         inputId, id, title, color = "danger", icon = icon("bars"), ...
 ) {
-    ns = NS(id)
+    ns <- NS(id)
     tagList(
         actionBttn(
             inputId = ns(inputId),

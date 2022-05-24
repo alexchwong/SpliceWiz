@@ -89,11 +89,11 @@ server_expr <- function(
         # Experiment I/O - sync between user input and data frames
         observeEvent(input$hot_files_expr,{
             req(input$hot_files_expr)
-            settings_expr$df.files = hot_to_r(input$hot_files_expr) 
+            settings_expr$df.files <- hot_to_r(input$hot_files_expr) 
         })
         observeEvent(input$hot_anno_expr,{
             req(input$hot_anno_expr)
-            settings_expr$df.anno = hot_to_r(input$hot_anno_expr)
+            settings_expr$df.anno <- hot_to_r(input$hot_anno_expr)
         })
         output$hot_files_expr <- renderRHandsontable({
             .server_expr_gen_HOT(settings_expr$df.files, enable_select = TRUE)
@@ -199,21 +199,21 @@ server_expr <- function(
         # Clearing Selections
         observeEvent(input$dir_collate_path_clear, {
             req(input$dir_collate_path_clear)
-            settings_expr$collate_path_prompt = ""
+            settings_expr$collate_path_prompt <- ""
         })
         observeEvent(input$clearLoadRef,{
-            settings_expr$ref_path = ""
+            settings_expr$ref_path <- ""
             output <- .server_expr_clear_ref(output)   
         })
         observeEvent(input$clear_expr, {
-			settings_expr$ref_path = ""
-            settings_expr$bam_path = ""
-            settings_expr$sw_path = ""
-            settings_expr$anno_file = ""
-            settings_expr$collate_path_prompt = ""
-            settings_expr$df.files = c()
-            settings_expr$df.anno = c()
-            settings_expr$se = NULL
+			settings_expr$ref_path <- ""
+            settings_expr$bam_path <- ""
+            settings_expr$sw_path <- ""
+            settings_expr$anno_file <- ""
+            settings_expr$collate_path_prompt <- ""
+            settings_expr$df.files <- c()
+            settings_expr$df.anno <- c()
+            settings_expr$se <- NULL
         })    
         
         # Event when reference directory is set
@@ -277,7 +277,7 @@ server_expr <- function(
                             "colData.Rds")
                     )
             ) {
-                colData.Rds = readRDS(file.path(
+                colData.Rds <- readRDS(file.path(
                     settings_expr$collate_path_prompt, "colData.Rds"))
                 if(all(c("df.anno", "df.files") %in% names(colData.Rds))) {
                     settings_expr$df.files              <- colData.Rds$df.files
@@ -313,7 +313,7 @@ server_expr <- function(
         })
         observeEvent(input$pb_confirm, {
             if(input$pb_confirm == FALSE) {
-                settings_expr$selected_rows = c()
+                settings_expr$selected_rows <- c()
                 return()
             } else {
                 Expr_PB_actually_run(
@@ -321,7 +321,7 @@ server_expr <- function(
                     isolate(reactiveValuesToList(settings_expr))
                 )
             }
-            settings_expr$selected_rows = c()
+            settings_expr$selected_rows <- c()
             settings_expr$df.files <- Expr_Load_SW(
                 settings_expr$df.files, settings_expr$sw_path)
             output <- .server_expr_check_sw_path(settings_expr$df.files, 
@@ -335,11 +335,11 @@ server_expr <- function(
         observeEvent(input$run_collate_expr, {
             req(input$run_collate_expr)
             req(settings_expr$df.files)
-            Experiment = na.omit(as.data.table(
+            Experiment <- na.omit(as.data.table(
                 settings_expr$df.files[, c("sample", "sw_file", "cov_file")]
             ))
-            reference_path = settings_expr$ref_path
-            output_path = settings_expr$collate_path
+            reference_path <- settings_expr$ref_path
+            output_path <- settings_expr$collate_path
             if(Expr_collateData_Validate_Vars(
                     session, Experiment, reference_path, output_path
             )) {
@@ -374,10 +374,10 @@ server_expr <- function(
                     file.exists(file.path(
                         settings_expr$collate_path, "colData.Rds"))
             ) {
-                colData = as.data.table(settings_expr$df.anno)
+                colData <- as.data.table(settings_expr$df.anno)
                 withProgress(message = 'Loading NxtSE object', value = 0, {
                     tryCatch({
-                        settings_expr$se = makeSE(
+                        settings_expr$se <- makeSE(
                             settings_expr$collate_path, colData,
                             realize = TRUE
                         )
@@ -506,7 +506,7 @@ server_expr <- function(
     if(is_valid(ref_path)) {
         ref_settings_file <- file.path(ref_path, "settings.Rds")
         if(file.exists(ref_settings_file)) {
-            ref_settings = readRDS(ref_settings_file)
+            ref_settings <- readRDS(ref_settings_file)
             if("reference_path" %in% names(ref_settings)) {
                 return(ref_path)
             }
@@ -537,9 +537,9 @@ server_expr <- function(
     if(!is_valid(df2)) {
         return(data.frame(sample = df1$sample, stringsAsFactors = FALSE))
     } else {
-        DT1 = as.data.table(df1)
-        DT2 = as.data.table(df2)
-        samples = DT1[, "sample"]
+        DT1 <- as.data.table(df1)
+        DT2 <- as.data.table(df2)
+        samples <- DT1[, "sample"]
         return(as.data.frame(DT2[samples, on = "sample"]))
     }
 }
@@ -731,7 +731,7 @@ Expr_Load_BAMs <- function(df.files, bam_path, session) {
         sendSweetAlert(session = session, 
             title = "No BAM files found",
             text = "No BAM files found", type = "error")            
-        temp.DT = NULL
+        temp.DT <- NULL
     }
     # compile experiment df with bam paths
     if(!is.null(temp.DT) && nrow(temp.DT) > 0)  {
@@ -1116,7 +1116,7 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
         is_valid(colData_file) && is_valid(settings_expr$df.anno) &&
             is_valid(settings_expr$df.files)
     ) {
-        colData.Rds = list(
+        colData.Rds <- list(
             df.anno = settings_expr$df.anno,
             df.files = settings_expr$df.files,
             bam_path = settings_expr$bam_path,
@@ -1144,18 +1144,18 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
             is_valid(settings_expr$collate_path) &&
             file.exists(colData_file)
     ) {
-        colData.Rds = readRDS(colData_file)
-        req_columns = c("df.anno", "df.files")
+        colData.Rds <- readRDS(colData_file)
+        req_columns <- c("df.anno", "df.files")
         if(all(req_columns %in% names(colData.Rds))) {
             settings_expr$df.files <- colData.Rds$df.files
             settings_expr$df.files_savestate <- settings_expr$df.files
             settings_expr$df.anno <- colData.Rds$df.anno
             settings_expr$df.anno_savestate <- settings_expr$df.anno
             if("bam_path" %in% names(colData.Rds)) {
-                settings_expr$bam_path = colData.Rds$bam_path
+                settings_expr$bam_path <- colData.Rds$bam_path
             }
             if("sw_path" %in% names(colData.Rds)) {
-                settings_expr$sw_path = colData.Rds$sw_path
+                settings_expr$sw_path <- colData.Rds$sw_path
             }
             output <- .server_expr_parse_collate_path(
                 limited = limited,

@@ -359,7 +359,7 @@ ui_ddb_load_expr <- function(id, color = "danger") {
 }
 
 ui_infobox_ref <- function(settings_file) {
-    box1 = infoBox(
+    box1 <- infoBox(
         title = "Reference", 
         value = ifelse(file.exists(settings_file),
             "LOADED", "MISSING"),
@@ -374,15 +374,15 @@ ui_infobox_ref <- function(settings_file) {
 
 ui_infobox_bam <- function(bam_path, bam_files, escape = FALSE) {
     if(escape == TRUE) {
-        box1 = infoBox(
+        box1 <- infoBox(
             title = "bam path", 
             value = "NOT REQUIRED",
             icon = icon("folder-open", lib = "font-awesome"),
             color = "green"
         )
     } else {
-        ret = is_valid(bam_files) && all(file.exists(bam_files))
-        box1 = infoBox(
+        ret <- is_valid(bam_files) && all(file.exists(bam_files))
+        box1 <- infoBox(
             title = "bam path", 
             value = ifelse(!is_valid(bam_path),
                 "MISSING", ifelse(ret == TRUE, "LOADED", "No BAMs found")),
@@ -398,15 +398,15 @@ ui_infobox_bam <- function(bam_path, bam_files, escape = FALSE) {
 
 ui_infobox_pb <- function(sw_path, sw_files, escape = FALSE) {
     if(escape == TRUE) {
-        box1 = infoBox(
+        box1 <- infoBox(
             title = "SpliceWiz (processBAM) output", 
             value = "NOT REQUIRED",
             icon = icon("align-center", lib = "font-awesome"),
             color = "green"
         )
     } else {
-        ret = is_valid(sw_files) && all(file.exists(sw_files))
-        box1 =  infoBox(
+        ret <- is_valid(sw_files) && all(file.exists(sw_files))
+        box1 <-  infoBox(
             title = "SpliceWiz (processBAM) output", 
             value = ifelse(!is_valid(sw_path),
                 "MISSING", ifelse(ret == TRUE, 
@@ -422,7 +422,7 @@ ui_infobox_pb <- function(sw_path, sw_files, escape = FALSE) {
 }
 
 ui_infobox_expr <- function(status = 0, msg = "", submsg = "") {
-    box1 =  infoBox(
+    box1 <-  infoBox(
         title = "NxtSE Object", 
         value = ifelse(status == 0,
             "MISSING", msg),

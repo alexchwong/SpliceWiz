@@ -133,7 +133,7 @@ server_cov <- function(
         })
         
         # When user pans or zooms the plot, what happens
-        settings_Cov$plotly_relayout = reactive({
+        settings_Cov$plotly_relayout <- reactive({
             req(settings_Cov$plot_ini == TRUE)
             event_data("plotly_relayout", source = "plotly_ViewRef")
         })
@@ -257,9 +257,9 @@ server_cov <- function(
 
 # Get a list of all tracks
 server_cov_get_all_tracks <- function(input) {
-    tracks = list()
+    tracks <- list()
     for(i in seq_len(4)) {
-        tracks[[i]] = .server_cov_get_track_selection(input, i)       
+        tracks[[i]] <- .server_cov_get_track_selection(input, i)       
     }
     tracks <- Filter(is_valid, tracks)
     return(tracks)
@@ -300,10 +300,10 @@ server_cov_get_all_tracks <- function(input) {
         if(length(selected) > 0 & is_valid(DE)) {
             if(is_valid(selected_event)) {
                 if(!(selected_event %in% DE$EventName[selected])) {
-                    selected_event = "(none)"
+                    selected_event <- "(none)"
                 }
             } else {
-                selected_event = "(none)"
+                selected_event <- "(none)"
             }
             updateSelectizeInput(session = session, 
                 inputId = "events_cov", server = TRUE,
@@ -528,7 +528,7 @@ server_cov_get_all_tracks <- function(input) {
 
     settings_Cov$plot_params$start <- new_start
     settings_Cov$plot_params$end <- new_start + new_span
-    cur_zoom = floor(log(new_span/50) / log(3))
+    cur_zoom <- floor(log(new_span/50) / log(3))
     output$label_zoom_cov <- renderText({16 - cur_zoom})
     
     updateTextInput(session = session, inputId = "start_cov", 

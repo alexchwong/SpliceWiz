@@ -13,7 +13,7 @@ server_DE <- function(
                 # "Experiment Loaded"
             # })
             req(get_se())
-            colcat = .get_discrete_cats(get_se())
+            colcat <- .get_discrete_cats(get_se())
             updateSelectInput(session = session, inputId = "variable_DE", 
                 choices = c("(none)", colcat), selected = "(none)")
             updateSelectInput(session = session, inputId = "batch1_DE", 
@@ -23,23 +23,23 @@ server_DE <- function(
         })
         
         observeEvent(input$DT_DE_rows_all, {
-            settings_DE$DT_DE_rows_all = input$DT_DE_rows_all
+            settings_DE$DT_DE_rows_all <- input$DT_DE_rows_all
         })
         
         observeEvent(input$DT_DE_rows_selected, {
-            settings_DE$DT_DE_rows_selected = input$DT_DE_rows_selected
+            settings_DE$DT_DE_rows_selected <- input$DT_DE_rows_selected
         })
         
         # Filter import
         observeEvent(get_filters(), {
-            settings_DE$filters = get_filters()
+            settings_DE$filters <- get_filters()
         })
         
         observeEvent(input$variable_DE, {
             req(input$variable_DE)
             req(input$variable_DE != "(none)")
 
-            colData = colData(get_se())
+            colData <- colData(get_se())
 			
 			if(is(colData[,input$variable_DE], "factor")) {
 				col_levels <- levels(colData[,input$variable_DE])
@@ -105,7 +105,7 @@ server_DE <- function(
         })
 
         observe({
-            output$warning_DE = renderText({
+            output$warning_DE <- renderText({
                 validate(need(get_se(), 
                     "Please load experiment via 'Experiment' tab"))
                 validate(need(is_valid(input$variable_DE),
@@ -125,7 +125,7 @@ server_DE <- function(
 
         observeEvent(input$perform_DE, {
             req(get_se())
-            output$warning_DE = renderText({
+            output$warning_DE <- renderText({
                 validate(need(is_valid(input$variable_DE),
                     "Variable for DE needs to be defined"))
                 validate(need(is_valid(input$nom_DE), 
@@ -146,20 +146,20 @@ server_DE <- function(
 			req(input$nom_DE != "(time series)" ||
 				input$method_DE == "DESeq2")
 
-            rowData = as.data.frame(rowData(get_se()))
-            colData = as.data.frame(colData(get_se()))
+            rowData <- as.data.frame(rowData(get_se()))
+            colData <- as.data.frame(colData(get_se()))
 
-            settings_DE$DE_Var = input$variable_DE
-            settings_DE$nom_DE = input$nom_DE
-            settings_DE$denom_DE = input$denom_DE
+            settings_DE$DE_Var <- input$variable_DE
+            settings_DE$nom_DE <- input$nom_DE
+            settings_DE$denom_DE <- input$denom_DE
 
             if(
                     input$batch1_DE != "(none)" & 
                     input$batch1_DE != input$variable_DE
             ) {
-                settings_DE$batchVar1 = input$batch1_DE
+                settings_DE$batchVar1 <- input$batch1_DE
             } else {
-                settings_DE$batchVar1 = ""
+                settings_DE$batchVar1 <- ""
                 updateSelectInput(session = session, inputId = "batch1_DE", 
                     selected = "(none)")
             }
@@ -168,26 +168,26 @@ server_DE <- function(
                     input$batch2_DE != input$variable_DE & 
                     input$batch2_DE != input$batch1_DE
             ) {
-                settings_DE$batchVar2 = input$batch2_DE
+                settings_DE$batchVar2 <- input$batch2_DE
             } else {
-                settings_DE$batchVar2 = ""
+                settings_DE$batchVar2 <- ""
                 updateSelectInput(session = session, inputId = "batch2_DE", 
                     selected = "(none)")
             }
             req(input$method_DE)
-            settings_DE$method = input$method_DE
+            settings_DE$method <- input$method_DE
 
             if(settings_DE$method == "DESeq2") {
                 withProgress(message = 'Running DESeq2...', value = 0, {
                     if(settings_DE$nom_DE != "(time series)") {
-						res.ASE = ASE_DESeq(
+						res.ASE <- ASE_DESeq(
 							get_se(), settings_DE$DE_Var, 
 							settings_DE$nom_DE, settings_DE$denom_DE,
 							settings_DE$batchVar1, settings_DE$batchVar2,
 							n_threads = get_threads()
 						)					
 					} else {
-						res.ASE = ASE_DESeq(
+						res.ASE <- ASE_DESeq(
 							get_se(), settings_DE$DE_Var, 
 							batch1 = settings_DE$batchVar1, 
 							batch2 = settings_DE$batchVar2,
@@ -200,11 +200,11 @@ server_DE <- function(
                     } else {
                         setorderv(res.ASE, "padj")            
                     }
-                    settings_DE$res = as.data.frame(res.ASE)
+                    settings_DE$res <- as.data.frame(res.ASE)
                 })
             } else if(settings_DE$method == "limma") {
                 withProgress(message = 'Running limma...', value = 0, {
-                    res.ASE = ASE_limma(
+                    res.ASE <- ASE_limma(
                         get_se(), settings_DE$DE_Var, 
                         settings_DE$nom_DE, settings_DE$denom_DE,
                         settings_DE$batchVar1, settings_DE$batchVar2
@@ -217,7 +217,7 @@ server_DE <- function(
                 })
             } else if(settings_DE$method == "DoubleExpSeq") {
                 withProgress(message = 'Running DoubleExpSeq...', value = 0, {
-                    res.ASE = ASE_DoubleExpSeq(
+                    res.ASE <- ASE_DoubleExpSeq(
                         get_se(), settings_DE$DE_Var, 
                         settings_DE$nom_DE, settings_DE$denom_DE
                     )
@@ -229,17 +229,17 @@ server_DE <- function(
                 })
             }
             
-            settings_DE$res = as.data.frame(res.ASE)
-            output$warning_DE = renderText({"Finished"})
+            settings_DE$res <- as.data.frame(res.ASE)
+            output$warning_DE <- renderText({"Finished"})
 
             req(settings_DE$res)
             # save settings for current res
-            settings_DE$res_settings$method = settings_DE$method
-            settings_DE$res_settings$DE_Var = settings_DE$DE_Var
-            settings_DE$res_settings$nom_DE = settings_DE$nom_DE
-            settings_DE$res_settings$denom_DE = settings_DE$denom_DE
-            settings_DE$res_settings$batchVar1 = settings_DE$batchVar1
-            settings_DE$res_settings$batchVar2 = settings_DE$batchVar2
+            settings_DE$res_settings$method <- settings_DE$method
+            settings_DE$res_settings$DE_Var <- settings_DE$DE_Var
+            settings_DE$res_settings$nom_DE <- settings_DE$nom_DE
+            settings_DE$res_settings$denom_DE <- settings_DE$denom_DE
+            settings_DE$res_settings$batchVar1 <- settings_DE$batchVar1
+            settings_DE$res_settings$batchVar2 <- settings_DE$batchVar2
         })
 
         observeEvent(settings_DE$res, {
@@ -265,7 +265,7 @@ server_DE <- function(
             selectedfile <- parseSavePath(volumes(), input$save_DE)
             req(selectedfile$datapath)
 
-            save_DE = list(
+            save_DE <- list(
                 res = settings_DE$res, 
                 settings = settings_DE$res_settings, 
                 filters = settings_DE$filters)
@@ -280,18 +280,18 @@ server_DE <- function(
             req(input$load_DE)
             file_selected <- parseFilePaths(volumes(), input$load_DE)
             req(file_selected$datapath)
-            load_DE = readRDS(as.character(file_selected$datapath))
+            load_DE <- readRDS(as.character(file_selected$datapath))
             req(all(c("res", "settings") %in% names(load_DE)))
 
             # check all parameters exist in colData(se)
-            output$warning_DE = renderText({
+            output$warning_DE <- renderText({
                 validate(need(get_se(), 
                     "Please load experiment via 'Experiment' tab"))
                 
                 "Experiment Loaded"
             })
             req(get_se())
-            colData = colData(get_se())
+            colData <- colData(get_se())
             req(load_DE$settings$DE_Var %in% colnames(colData))
             req(!is_valid(load_DE$settings$batchVar1) || 
                 load_DE$settings$batchVar1 %in% colnames(colData))
@@ -304,30 +304,30 @@ server_DE <- function(
             req(load_DE$settings$method %in% 
                 c("DESeq2", "limma", "DoubleExpSeq"))
 
-            settings_DE$res = load_DE$res
-            settings_DE$res_settings$method = load_DE$settings$method
-            settings_DE$res_settings$DE_Var = load_DE$settings$DE_Var
-            settings_DE$res_settings$nom_DE = load_DE$settings$nom_DE
-            settings_DE$res_settings$denom_DE = load_DE$settings$denom_DE
-            settings_DE$res_settings$batchVar1 = load_DE$settings$batchVar1
-            settings_DE$res_settings$batchVar2 = load_DE$settings$batchVar2
+            settings_DE$res <- load_DE$res
+            settings_DE$res_settings$method <- load_DE$settings$method
+            settings_DE$res_settings$DE_Var <- load_DE$settings$DE_Var
+            settings_DE$res_settings$nom_DE <- load_DE$settings$nom_DE
+            settings_DE$res_settings$denom_DE <- load_DE$settings$denom_DE
+            settings_DE$res_settings$batchVar1 <- load_DE$settings$batchVar1
+            settings_DE$res_settings$batchVar2 <- load_DE$settings$batchVar2
 
-            settings_DE$method = settings_DE$res_settings$method
-            settings_DE$DE_Var = settings_DE$res_settings$DE_Var
-            settings_DE$nom_DE = settings_DE$res_settings$nom_DE
-            settings_DE$denom_DE = settings_DE$res_settings$denom_DE
-            settings_DE$batchVar1 = settings_DE$res_settings$batchVar1
-            settings_DE$batchVar2 = settings_DE$res_settings$batchVar2
+            settings_DE$method <- settings_DE$res_settings$method
+            settings_DE$DE_Var <- settings_DE$res_settings$DE_Var
+            settings_DE$nom_DE <- settings_DE$res_settings$nom_DE
+            settings_DE$denom_DE <- settings_DE$res_settings$denom_DE
+            settings_DE$batchVar1 <- settings_DE$res_settings$batchVar1
+            settings_DE$batchVar2 <- settings_DE$res_settings$batchVar2
 
             if("filters" %in% names(load_DE)) {
-                settings_DE$filters = load_DE$filters
+                settings_DE$filters <- load_DE$filters
             }
         })
 
         observeEvent(input$clear_selected_DE, {
             req(settings_DE$res)
             req(input$DT_DE_rows_selected)
-            settings_DE$command_selected = NULL
+            settings_DE$command_selected <- NULL
             DT::dataTableProxy("DT_DE") %>% DT::selectRows(NULL)
             settings_DE$DT_DE_rows_selected = NULL
         })
@@ -363,7 +363,7 @@ server_DE <- function(
 
 .get_discrete_cats <- function(se) {
     if(!is(se, "NxtSE")) return(NULL)
-    colData = colData(se)
+    colData <- colData(se)
     if(ncol(colData) == 0) return(NULL)
     
     ret <- c()

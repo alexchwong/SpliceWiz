@@ -43,7 +43,7 @@ This directory will be made by SpliceWiz, but its parent directory must exist,
 otherwise an error will be returned.
 
 ```{r eval = FALSE}
-ref_path = "./Reference"
+ref_path <- "./Reference"
 ```
 
 ### Create a SpliceWiz reference from user-defined FASTA and GTF files locally
@@ -68,7 +68,7 @@ BiocFileCache. Then, it uses the downloaded resource to create the SpliceWiz
 reference.
 
 ```{r eval=FALSE}
-FTP = "ftp://ftp.ensembl.org/pub/release-94/"
+FTP <- "ftp://ftp.ensembl.org/pub/release-94/"
 
 buildRef(
     reference_path = ref_path,
@@ -88,7 +88,7 @@ available:
 ```{r}
 require(AnnotationHub)
 
-ah = AnnotationHub()
+ah <- AnnotationHub()
 query(ah, "Ensembl")
 ```
 
@@ -161,7 +161,7 @@ here for convenience, to demonstrate how this would be done:
 ```{r eval = FALSE}
 # (1a) Creates genome resource files 
 
-ref_path = file.path(tempdir(), "Reference")
+ref_path <- file.path(tempdir(), "Reference")
 
 getResources(
     reference_path = ref_path,
@@ -257,7 +257,7 @@ STAR_alignReads(
 ### Aligning multiple samples using STAR
 
 ```{r eval = FALSE}
-Experiment = data.frame(
+Experiment <- data.frame(
     sample = c("sample_A", "sample_B"),
     forward = file.path("raw_data", c("sample_A", "sample_B"),
         c("sample_A_1.fastq", "sample_B_1.fastq")),
@@ -282,7 +282,7 @@ feature, as one-pass mapping is adequate in typical-use cases.
 To conveniently find all BAM files recursively in a given path:
 
 ```{r eval=FALSE}
-bams = findBAMS("./bams", level = 1)
+bams <- findBAMS("./bams", level = 1)
 ```
 
 This convenience function returns the putative sample names, either from BAM
@@ -333,7 +333,7 @@ as shown in the previous section, use the convenience function
 `processBAM()` outputs:
 
 ```{r eval=FALSE}
-expr = findSpliceWizOutput("./pb_output")
+expr <- findSpliceWizOutput("./pb_output")
 ```
 
 This data.frame can be directly used to run `collateData`:
@@ -351,7 +351,7 @@ that inherits `SummarizedExperiment` and has specialized containers to hold
 additional data required by SpliceWiz.
 
 ```{r eval = FALSE}
-se = makeSE("./NxtSE_output")
+se <- makeSE("./NxtSE_output")
 ```
 
 ## Downstream analysis using SpliceWiz

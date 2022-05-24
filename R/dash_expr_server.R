@@ -192,7 +192,7 @@ server_expr <- function(
             if(isolate(input$newcolumnname_expr) %in% colnames(DT)) {
                 message("removing column")
                 DT[, c(input$newcolumnname_expr) := NULL]
-                settings_expr$df.anno = as.data.frame(DT)
+                settings_expr$df.anno <- as.data.frame(DT)
             }
         })
         

@@ -406,8 +406,8 @@ runFilter <- function(se, filterObj) {
     AFE <- rowSelected[get("EventType") == "AFE"]
     ALE <- rowSelected[get("EventType") == "ALE"]
     rowSelected <- rowSelected[!(get("EventType") %in% c("ALE", "AFE"))]
-    AFE = AFE[get("is_always_first_intron") == TRUE]
-    ALE = ALE[get("is_always_last_intron") == TRUE]
+    AFE <- AFE[get("is_always_first_intron") == TRUE]
+    ALE <- ALE[get("is_always_last_intron") == TRUE]
     res <- rowData(se)$EventName %in% c(rowSelected$EventName, 
         ALE$EventName, AFE$EventName)
     res[!(rowData(se)$EventType %in% filterObj@EventTypes)] <- TRUE
@@ -433,9 +433,9 @@ runFilter <- function(se, filterObj) {
 .runFilter_anno_mxe_gr_casette <- function(coord1, coord2) {
     if(length(coord1) != length(coord2))
         .log("INTERNAL ERROR: two MXE coord vectors must be of equal size")
-    gr1 = coord2GR(coord1)
+    gr1 <- coord2GR(coord1)
     gr1$ID <- as.character(seq_len(length(gr1)))
-    gr2 = coord2GR(coord2)
+    gr2 <- coord2GR(coord2)
     gr2$ID <- as.character(seq_len(length(gr2)))
     grbind <- c(gr1, gr2)
     return(unlist(

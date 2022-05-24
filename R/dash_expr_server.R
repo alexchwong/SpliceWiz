@@ -4,7 +4,7 @@ server_expr <- function(
 		limited = FALSE
 ) {
     moduleServer(id, function(input, output, session) {
-        ns = NS(id)
+        ns <- NS(id)
         
         # Instantiate settings
         settings_expr <- setreactive_expr()
@@ -35,17 +35,17 @@ server_expr <- function(
         })
         observeEvent(input$dir_reference_path_load, {
             req(input$dir_reference_path_load)
-            settings_expr$ref_path = parseDirPath(volumes(), 
+            settings_expr$ref_path <- parseDirPath(volumes(), 
                 input$dir_reference_path_load)
         })
         observeEvent(input$dir_bam_path_load, {
             req(input$dir_bam_path_load)
-            settings_expr$bam_path = parseDirPath(volumes(), 
+            settings_expr$bam_path <- parseDirPath(volumes(), 
                 input$dir_bam_path_load)
         })
         observeEvent(input$dir_sw_path_load, {
             req(input$dir_sw_path_load)
-            settings_expr$sw_path = parseDirPath(volumes(), 
+            settings_expr$sw_path <- parseDirPath(volumes(), 
                 input$dir_sw_path_load)
         })
         observeEvent(input$file_expr_anno_load, {
@@ -59,7 +59,7 @@ server_expr <- function(
 
         observeEvent(input$dir_collate_path_load, {
             req(input$dir_collate_path_load)
-            settings_expr$collate_path_prompt = parseDirPath(volumes(), 
+            settings_expr$collate_path_prompt <- parseDirPath(volumes(), 
                 input$dir_collate_path_load)
         })
         

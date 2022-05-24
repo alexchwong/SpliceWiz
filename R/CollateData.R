@@ -1723,7 +1723,7 @@ collateData <- function(Experiment, reference_path, output_path,
     if (file.exists(h5filename)) file.remove(h5filename)
     h5createFile(h5filename)
     for (assay in assay.todo) {
-        chunk_row = nrow(rowData)
+        chunk_row <- nrow(rowData)
         h5createDataset(file = h5filename,
             dataset = assay,
             dims = c(nrow(rowData), num_samples),
@@ -1732,7 +1732,7 @@ collateData <- function(Experiment, reference_path, output_path,
         )
     }
     for (inc in inc.todo) {
-        chunk_row = length(Inc_Events)
+        chunk_row <- length(Inc_Events)
         h5createDataset(file = h5filename,
             dataset = inc,
             dims = c(length(Inc_Events), num_samples),
@@ -1741,7 +1741,7 @@ collateData <- function(Experiment, reference_path, output_path,
         )
     }
     for (exc in exc.todo) {
-        chunk_row = length(Exc_Events)
+        chunk_row <- length(Exc_Events)
         h5createDataset(file = h5filename, dataset = exc,
             dims = c(length(Exc_Events), num_samples),
             storage.mode = "double", 
@@ -1749,7 +1749,7 @@ collateData <- function(Experiment, reference_path, output_path,
         )
     }
     for (junc in junc.todo) {
-        chunk_row = length(junc_rownames)
+        chunk_row <- length(junc_rownames)
         h5createDataset(file = h5filename, dataset = junc,
             dims = c(length(junc_rownames), num_samples),
             storage.mode = "double", 

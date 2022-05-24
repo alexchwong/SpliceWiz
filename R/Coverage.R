@@ -407,7 +407,7 @@ as_ggplot_cov <- function(p_obj) {
 #'
 #' # Retrieve binned coverage of a large region
 #'
-#' gr.fetch = getCoverageBins(
+#' gr.fetch <- getCoverageBins(
 #'     cov_file,
 #'     region = GenomicRanges::GRanges(seqnames = "chrZ",
 #'         ranges = IRanges::IRanges(start = 100, end = 100000),
@@ -606,7 +606,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     gr.fetch <- .bin_gr(region, bin_size) 
 
     if (strandMode == "unstranded") {
-        strand = "*"
+        strand <- "*"
     } else if (strandMode == "reverse") {
         if(strand(region) == "+") {
             strand <- "-"

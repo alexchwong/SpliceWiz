@@ -256,8 +256,8 @@ makeSE <- function(
     se.IR <- se[rowData(se)$EventType == "IR", , drop = FALSE]
     se.coords <- rowData(se.IR)$EventRegion[
         rowData(se.IR)$EventRegion %in% rownames(junc_PSI)]
-    se.coords.gr = coord2GR(se.coords)
-    names(se.coords.gr) = se.coords
+    se.coords.gr <- coord2GR(se.coords)
+    names(se.coords.gr) <- se.coords
     
     if (length(se.coords.gr) > 0) {
         .log(paste("Iterating through IR events to determine introns",

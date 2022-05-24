@@ -5,7 +5,7 @@ server_cov <- function(
     moduleServer(id, function(input, output, session) {
         settings_Cov <- setreactive_Cov()
         get_ref <- function(){
-            se = get_se()
+            se <- get_se()
             ref(se)
         }
         observeEvent(refresh_tab(), {
@@ -345,7 +345,7 @@ server_cov_get_all_tracks <- function(input) {
     } else if(is_valid(cur_event)) {
         event_choices <- c(event_choices, cur_event)        
     }
-    event_choices = unique(c(event_choices, 
+    event_choices <- unique(c(event_choices, 
         .server_cov_get_inrange_events(view_chr, view_start, view_end,
             event.ranges)))
             
@@ -499,7 +499,7 @@ server_cov_get_all_tracks <- function(input) {
     
     settings_Cov$plot_params$start <- new_start
     settings_Cov$plot_params$end <- new_start + new_span
-    cur_zoom = floor(log(new_span/50) / log(3))
+    cur_zoom <- floor(log(new_span/50) / log(3))
     output$label_zoom_cov <- renderText({16 - cur_zoom})
     
     updateTextInput(session = session, inputId = "start_cov", 

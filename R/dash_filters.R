@@ -230,10 +230,10 @@ server_filters <- function(
         # Import filters from loading DE object
         observeEvent(get_filters_from_DE(), {
             req(get_filters_from_DE())
-            settings_filter$filters = get_filters_from_DE()
+            settings_filter$filters <- get_filters_from_DE()
         })
         observeEvent(input$loadDefault_Filters, {
-            settings_filter$filters = getDefaultFilters()
+            settings_filter$filters <- getDefaultFilters()
         })
         return(settings_filter)
     })

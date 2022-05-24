@@ -149,7 +149,7 @@ gr.stranded <- getCoverageRegions(cov_file,
 
 # Retrieve binned coverage of a large region
 
-gr.fetch = getCoverageBins(
+gr.fetch <- getCoverageBins(
     cov_file,
     region = GenomicRanges::GRanges(seqnames = "chrZ",
         ranges = IRanges::IRanges(start = 100, end = 100000),

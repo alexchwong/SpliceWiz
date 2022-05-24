@@ -465,7 +465,7 @@ server_vis_heatmap <- function(
                     selected <- selected[seq_len(input$slider_num_events_heat)]
                 }
             } else {
-                selected = seq_len(min(input$slider_num_events_heat, 
+                selected <- seq_len(min(input$slider_num_events_heat, 
                     nrow(get_de())))
             }
 

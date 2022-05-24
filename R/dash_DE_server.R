@@ -329,7 +329,7 @@ server_DE <- function(
             req(input$DT_DE_rows_selected)
             settings_DE$command_selected <- NULL
             DT::dataTableProxy("DT_DE") %>% DT::selectRows(NULL)
-            settings_DE$DT_DE_rows_selected = NULL
+            settings_DE$DT_DE_rows_selected <- NULL
         })
         
         observeEvent(get_selected_diag(), {

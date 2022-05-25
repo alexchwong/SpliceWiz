@@ -45,7 +45,10 @@ server_qc <- function(id, refresh_tab, get_se, get_df) {
             output$DT_QC <- DT::renderDataTable(NULL)
             
             if(is(get_se(), "NxtSE")) {
-                settings_QC$QC <- sampleQC(get_se())
+                settings_QC$QC <- cbind(
+                    data.frame(sample = colnames(se), stringsAsFactors = FALSE),
+                    sampleQC(get_se())
+                )
             }
             output$DT_QC <- DT::renderDataTable({
                 DT::datatable(

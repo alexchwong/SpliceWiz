@@ -113,21 +113,6 @@ server_expr <- function(
         output$hot_anno_expr <- renderRHandsontable({
             .server_expr_gen_HOT(settings_expr$df.anno)
         })
-        
-        # Experiment I/O - saves and loads to NxtSE project directory
-        # observeEvent(input$save_expr,{
-            # req(input$save_expr)
-            # .server_expr_save_expr(reactiveValuesToList(settings_expr), 
-                # session)
-            # settings_expr$df.files_savestate <- settings_expr$df.files
-            # settings_expr$df.anno_savestate <- settings_expr$df.anno
-            
-            # output <- .server_expr_parse_collate_path(
-                # limited = limited,
-                # settings_expr = reactiveValuesToList(settings_expr), 
-                # output = output
-            # )
-        # })
 
         observe({
             shinyFileSave(input, "file_expr_anno_save_coldata", 
@@ -149,20 +134,6 @@ server_expr <- function(
             )
         })
         
-        # Click "Load Experiment" after setting collateData output path
-        # observeEvent(input$load_expr,{
-            # req(input$load_expr)
-            # output <- .server_expr_load_expr(
-                # reactiveValuesToList(settings_expr), 
-                # session, output)
-            
-            # output <- .server_expr_parse_collate_path(
-                # limited = limited,
-                # settings_expr = reactiveValuesToList(settings_expr), 
-                # output = output
-            # )
-        # })
-
         observeEvent(input$file_expr_anno_load_coldata, {
             req(input$file_expr_anno_load_coldata)
             file_selected <- parseFilePaths(volumes(),
@@ -170,9 +141,36 @@ server_expr <- function(
             req(file_selected$datapath)
 
             colData_file <- as.character(file_selected$datapath)
-            output <- .server_expr_load_expr(
-                reactiveValuesToList(settings_expr), colData_file,
-                session, output, limited)
+            if(
+                    is_valid(settings_expr$collate_path) &&
+                    file.exists(colData_file)
+            ) {
+                colData.Rds <- readRDS(colData_file)
+                req_columns <- c("df.anno", "df.files")
+                if(all(req_columns %in% names(colData.Rds))) {
+                    settings_expr$disallow_df_update <- TRUE
+                    settings_expr$df.files <- colData.Rds$df.files
+                    settings_expr$df.files_savestate <- settings_expr$df.files
+                    settings_expr$df.anno <- colData.Rds$df.anno
+                    settings_expr$df.anno_savestate <- settings_expr$df.anno
+                    if("bam_path" %in% names(colData.Rds)) {
+                        settings_expr$bam_path <- colData.Rds$bam_path
+                    }
+                    if("sw_path" %in% names(colData.Rds)) {
+                        settings_expr$sw_path <- colData.Rds$sw_path
+                    }
+                    output <- .server_expr_parse_collate_path(
+                        limited = limited,
+                        settings_expr = reactiveValuesToList(settings_expr), 
+                        output = output
+                    )
+                    .server_expr_load_alert_success(session, colData_file)
+                } else {
+                    .server_expr_load_alert_fail(session, colData_file)
+                }
+            } else {
+                .server_expr_load_alert_fail(session, colData_file)
+            }
         })
 
         # Toggle to Annotations
@@ -558,13 +556,17 @@ server_expr <- function(
     }
 }
 
-# Generate rHOT from df
+# Generate rHOT from df (used for df.files and df.anno)
 .server_expr_gen_HOT <- function(df, enable_select = FALSE) {
     if(is_valid(df) && is(df, "data.frame")) {
-        rhandsontable(df, useTypes = TRUE, stretchH = "all",
+        r <- rhandsontable(df, useTypes = TRUE, stretchH = "all",
             selectCallback = enable_select)
+        if("sample" %in% colnames(df)) {
+            r <- r  %>% hot_col("sample", readOnly = TRUE)
+        }
+        return(r)
     } else {
-        NULL
+        return(NULL)
     }
 }
 
@@ -1149,41 +1151,6 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
             type = "error"
         )
     }
-}
-
-.server_expr_load_expr <- function(
-        settings_expr, colData_file, session, output, limited
-) {
-    if(
-            is_valid(settings_expr$collate_path) &&
-            file.exists(colData_file)
-    ) {
-        colData.Rds <- readRDS(colData_file)
-        req_columns <- c("df.anno", "df.files")
-        if(all(req_columns %in% names(colData.Rds))) {
-            settings_expr$df.files <- colData.Rds$df.files
-            settings_expr$df.files_savestate <- settings_expr$df.files
-            settings_expr$df.anno <- colData.Rds$df.anno
-            settings_expr$df.anno_savestate <- settings_expr$df.anno
-            if("bam_path" %in% names(colData.Rds)) {
-                settings_expr$bam_path <- colData.Rds$bam_path
-            }
-            if("sw_path" %in% names(colData.Rds)) {
-                settings_expr$sw_path <- colData.Rds$sw_path
-            }
-            output <- .server_expr_parse_collate_path(
-                limited = limited,
-                settings_expr = settings_expr, 
-                output = output
-            )
-            .server_expr_load_alert_success(session, colData_file)
-        } else {
-            .server_expr_load_alert_fail(session, colData_file)
-        }
-    } else {
-        .server_expr_load_alert_fail(session, colData_file)
-    }
-    return(output)
 }
 
 # Check paths are legit before running collateData()

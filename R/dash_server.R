@@ -75,7 +75,7 @@ dash_server <- function(input, output, session) {
         get_threads_reactive, get_memmode_reactive)
     settings_expr_load <- server_expr("load_expr", refresh_exprload, volumes, 
         get_threads_reactive, get_memmode_reactive, limited = TRUE)
-    settings_QC <- server_qc("qc", refresh_QC, get_se_path_reactive, 
+    settings_QC <- server_qc("qc", refresh_QC, get_se_reactive, 
         get_df_anno_reactive)
     settings_filtered_SE <- server_filters("filters", refresh_filters, volumes, 
         get_se_reactive, get_filters_DE_reactive)

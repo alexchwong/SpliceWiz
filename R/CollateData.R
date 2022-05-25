@@ -1196,6 +1196,16 @@ collateData <- function(Experiment, reference_path, output_path,
     return(templates)
 }
 
+.fo_process_junc <- function(DT1, DT2) {
+    unified_seqnames <- sort(unique(DT1$seqnames, DT2$seqnames))
+    DT1$seqnames <- factor(DT1$seqnames, unified_seqnames)
+    DT2$seqnames <- factor(DT2$seqnames, unified_seqnames)
+    gr1 <- .grDT(DT1)
+    gr2 <- .grDT(DT2)
+    OL <- findOverlaps(gr1, gr2)
+    return(OL)
+}
+
 # Collates junction counts, given sample strandedness and junction strand anno
 # - calculates SpliceLeft, SpliceRight, SpliceOver sums
 .collateData_process_junc <- function(sample, strand,
@@ -1258,7 +1268,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
     if (nrow(junc.subset) > 0) {
         subject <- junc[get("count") > 0]
-        OL <- findOverlaps(.grDT(junc.subset), .grDT(subject))
+        OL <- .fo_process_junc(junc.subset, subject)
 
         splice.overlaps.DT <- data.table(from = from(OL), to = to(OL))
         splice.overlaps.DT[,

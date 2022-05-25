@@ -566,8 +566,9 @@ server_expr <- function(
         if("sample" %in% colnames(df)) {
             r <- r  %>% hot_col("sample", readOnly = TRUE)
         }
+        return(r)
     } else {
-        NULL
+        return(NULL)
     }
 }
 

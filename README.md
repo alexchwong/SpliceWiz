@@ -15,13 +15,23 @@ library("devtools")
 install_github("alexchwong/SpliceWiz", dependencies=TRUE, build_vignettes=TRUE)
 ```
 
-### On R (version < 4.2.0)
+### On R (version < 4.2.0, >= 4.1.0)
+
+```
+library("devtools")
+install_github("alexchwong/ompBAM")
+install_github("alexchwong/SpliceWiz", dependencies=TRUE, build_vignettes=TRUE)
+```
+
+### On R (version < 4.1.0)
+
+Please note that vignettes do not work with Bioconductor 3.13 and below (as the BAM files are not accessible from old versions of ExperimentHub
 
 ```
 library("devtools")
 install_github("alexchwong/ompBAM")
 install_github("alexchwong/NxtIRFdata")
-install_github("alexchwong/SpliceWiz", dependencies=TRUE, build_vignettes=TRUE)
+install_github("alexchwong/SpliceWiz", dependencies=TRUE, build_vignettes=FALSE)
 ```
 
 ## Viewing the vignette

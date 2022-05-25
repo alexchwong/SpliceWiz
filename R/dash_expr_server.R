@@ -558,11 +558,14 @@ server_expr <- function(
     }
 }
 
-# Generate rHOT from df
+# Generate rHOT from df (used for df.files and df.anno)
 .server_expr_gen_HOT <- function(df, enable_select = FALSE) {
     if(is_valid(df) && is(df, "data.frame")) {
-        rhandsontable(df, useTypes = TRUE, stretchH = "all",
+        r <- rhandsontable(df, useTypes = TRUE, stretchH = "all",
             selectCallback = enable_select)
+        if("sample" %in% colnames(df)) {
+            r <- r  %>% hot_col("sample", readOnly = TRUE)
+        }
     } else {
         NULL
     }

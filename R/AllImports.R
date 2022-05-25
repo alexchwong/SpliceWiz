@@ -59,7 +59,7 @@
 #' @importFrom shinyWidgets radioGroupButtons updateRadioGroupButtons
 #' @importFrom shinyWidgets switchInput actionBttn
 #' @importFrom shinyWidgets sendSweetAlert ask_confirmation
-#' @importFrom rhandsontable rhandsontable hot_to_r
+#' @importFrom rhandsontable rhandsontable hot_to_r hot_col
 #' @importFrom rhandsontable renderRHandsontable rHandsontableOutput
 #' @importFrom stats runif na.omit prcomp
 #' @importFrom DT datatable selectRows dataTableProxy  

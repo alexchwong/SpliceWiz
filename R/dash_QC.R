@@ -33,7 +33,7 @@ ui_qc <- function(id) {
     )
 }
 
-server_qc <- function(id, refresh_tab, get_se_path, get_df) {
+server_qc <- function(id, refresh_tab, get_se, get_df) {
     moduleServer(id, function(input, output, session) {
         settings_QC <- setreactive_QC()
         
@@ -44,11 +44,8 @@ server_qc <- function(id, refresh_tab, get_se_path, get_df) {
                 choices = "(none)")
             output$DT_QC <- DT::renderDataTable(NULL)
             
-            if(file.exists(file.path(get_se_path(), "stats.fst"))) {
-                settings_QC$QC <- as.data.table(read.fst(
-                    file.path(get_se_path(), "stats.fst")))               
-                settings_QC$QC <- 
-                    merge(as.data.table(get_df()), settings_QC$QC, all = TRUE)
+            if(is(get_se(), "NxtSE")) {
+                settings_QC$QC <- sampleQC(get_se())
             }
             output$DT_QC <- DT::renderDataTable({
                 DT::datatable(

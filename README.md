@@ -41,8 +41,15 @@ install_github("alexchwong/SpliceWiz", dependencies=TRUE, build_vignettes=FALSE)
 
 ## Viewing the vignette
 
-After installing SpliceWiz as detailed above, run the following to browse the list of vignettes that accompany SpliceWiz:
+After installing SpliceWiz as detailed above, run the following to view the
+SpliceWiz quick-start vignette
 
 ```
-browseVignettes("SpliceWiz")
+vignette("SW_QuickStart", package = "SpliceWiz")
+```
+
+To view the SpliceWiz cookbook:
+
+```
+vignette("SW_Cookbook", package = "SpliceWiz")
 ```

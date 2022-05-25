@@ -65,7 +65,7 @@ server_qc <- function(id, refresh_tab, get_se, get_df) {
                     !(choices %in% colnames(get_df()))
                 ]
                 choices <- choices[!(choices %in% 
-                    c("paired", "strand", "path")
+                    c("sample", "paired", "strand", "path")
                 )]
                 choices <- c("(none)", choices)
                 updateSelectInput(session = session, inputId = "QC_xaxis",
@@ -125,10 +125,8 @@ QC_PCA <- function(mat) {
     print(
         ggplotly(
             ggplot(as.data.frame(PCA$x), 
-                aes(x = get("PC1"), y = get("PC2"), 
-                    text = rownames(PCA$x))
-            ) + geom_point() + 
-            geom_text(aes(label = rownames(PCA$x))),
+                aes(x = get("PC1"), y = get("PC2"), text = rownames(PCA$x))) + 
+            geom_point() + geom_text(aes(label = rownames(PCA$x))),
             tooltip = "text"
         )
     )
@@ -144,38 +142,35 @@ QC_Scatter_XY <- function(QC, x_axis, y_axis) {
         x_axis, y_axis
     )
     print(ggplotly(
-        ggplot(df.plot, aes_string(
-            x = x_axis, y = y_axis,
-            text = "sample")) +
+        ggplot(df.plot, 
+            aes_string(x = x_axis, y = y_axis, text = "sample")) +
         geom_point() + geom_text(aes(label = sample)),
         tooltip = "text"
     ))
 }
 
 QC_Bar_X <- function(QC, x_axis) {
-    df.plot <- data.frame(sample = QC$sample,
+    df.plot <- data.frame(
+        sample = QC$sample,
         xaxis = unname(unlist(QC[,x_axis]))
     )
-    colnames(df.plot)[2] <- x_axis
+    colnames(df.plot) <- c("sample", x_axis)
     print(ggplotly(
-        ggplot(df.plot, aes_string(
-            x = x_axis, y = "sample",
-            text = "sample")) +
-        geom_bar(stat="identity"),
-        tooltip = "text"
+        ggplot(df.plot, 
+            aes_string(x = x_axis, y = "sample",text = "sample")) +
+        geom_bar(stat="identity"), tooltip = "text"
     ))  
 }
 
 QC_Bar_Y <- function(QC, y_axis) {
-    df.plot <- data.frame(sample = QC$sample,
+    df.plot <- data.frame(
+        sample = QC$sample,
         yaxis = unname(unlist(QC[,y_axis]))
     )
-    colnames(df.plot)[2] <- y_axis
+    colnames(df.plot) <- c("sample", y_axis)
     print(ggplotly(
-        ggplot(df.plot, aes_string(
-            y = y_axis, x = "sample",
-            text = "sample")) +
-        geom_bar(stat="identity"),
-        tooltip = "text"
+        ggplot(df.plot, 
+            aes_string(y = y_axis, x = "sample", text = "sample")) +
+        geom_bar(stat="identity"), tooltip = "text"
     ))
 }

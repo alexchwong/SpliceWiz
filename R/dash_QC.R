@@ -84,7 +84,7 @@ server_qc <- function(id, refresh_tab, get_se, get_df) {
             choices <- colnames(settings_QC$QC)
             choices <- choices[!(choices %in% colnames(get_df()))]
             choices <- choices[!(choices %in% 
-                c("paired", "strand", "path")
+                c("sample", "paired", "strand", "path")
             )]
             output <- QC_update_plot(settings_QC$QC, choices, input$QCmode,
                 input$QC_xaxis, input$QC_yaxis, output)

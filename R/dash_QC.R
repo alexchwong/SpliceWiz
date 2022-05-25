@@ -46,7 +46,8 @@ server_qc <- function(id, refresh_tab, get_se, get_df) {
             
             if(is(get_se(), "NxtSE")) {
                 settings_QC$QC <- cbind(
-                    data.frame(sample = colnames(se), stringsAsFactors = FALSE),
+                    data.frame(sample = colnames(get_se()), 
+                        stringsAsFactors = FALSE),
                     sampleQC(get_se())
                 )
             }

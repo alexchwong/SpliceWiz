@@ -1197,11 +1197,11 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 .fo_process_junc <- function(DT1, DT2) {
-    unified_seqnames <- sort(unique(DT1$seqnames, DT2$seqnames))
-    DT1$seqnames <- factor(DT1$seqnames, unified_seqnames)
-    DT2$seqnames <- factor(DT2$seqnames, unified_seqnames)
     gr1 <- .grDT(DT1)
     gr2 <- .grDT(DT2)
+    unified_seqlevels <- sort(unique(c(seqlevels(gr1), seqlevels(gr2))))
+    seqlevels(gr1) <- unified_seqnames
+    seqlevels(gr2) <- unified_seqnames
     OL <- findOverlaps(gr1, gr2)
     return(OL)
 }

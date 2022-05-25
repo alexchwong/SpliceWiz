@@ -18,6 +18,11 @@ install_github("alexchwong/SpliceWiz", dependencies=TRUE, build_vignettes=TRUE)
 ### On R (version < 4.2.0, >= 4.1.0)
 
 ```
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install(version = "3.14")
+BiocManager::valid()              # checks for out of date packages
+
 library("devtools")
 install_github("alexchwong/ompBAM")
 install_github("alexchwong/SpliceWiz", dependencies=TRUE, build_vignettes=TRUE)

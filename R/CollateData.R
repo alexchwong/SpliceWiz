@@ -1200,8 +1200,8 @@ collateData <- function(Experiment, reference_path, output_path,
     gr1 <- .grDT(DT1)
     gr2 <- .grDT(DT2)
     unified_seqlevels <- sort(unique(c(seqlevels(gr1), seqlevels(gr2))))
-    seqlevels(gr1) <- unified_seqnames
-    seqlevels(gr2) <- unified_seqnames
+    seqlevels(gr1) <- unified_seqlevels
+    seqlevels(gr2) <- unified_seqlevels
     OL <- findOverlaps(gr1, gr2)
     return(OL)
 }

@@ -1,4 +1,7 @@
 dash_server <- function(input, output, session) {
+    # Remove cancel button
+    shinyOptions(progress.style="old")
+    
     # Volumes / storage drives
     default_volumes <- c("Working Directory" = getwd(), 
         "Home" = "~", "Temporary Directory" = tempdir(),

@@ -562,13 +562,13 @@ server_expr <- function(
 # Filter df2 by the samples in df1 by simple dataframe union
 .server_expr_simple_unify_new_df <- function(df1, df2) {
     samples <- df1$sample
-    new_samples <- df1$sample[!(df1$sample %in% df2$sample)]
+    new_samples <- unlist(df1$sample[!(df1$sample %in% df2$sample)])
     if(length(new_samples) > 0) {
         for(i in length(new_samples)) {
             df2 <- rbind(df2, NA)
         }
         df2$sample[
-            seq(nrow(df) - length(new_samples) + 1, nrow(df))
+            seq(nrow(df1) - length(new_samples) + 1, nrow(df1))
         ] <- new_samples
     }
     .server_expr_simple_unify_df(df1, df2)

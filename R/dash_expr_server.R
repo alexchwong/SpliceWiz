@@ -414,7 +414,7 @@ server_expr <- function(
                     stringsAsFactors = FALSE)
                 rownames(colData) <- seq_len(nrow(colData))
                 colData_samples <- 
-                    data.frame(samples = colnames(settings_expr$se),
+                    data.frame(sample = colnames(settings_expr$se),
                     stringsAsFactors = FALSE)
                 colData <- cbind(colData_samples, colData)
                 settings_expr$df.anno <- colData

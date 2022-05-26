@@ -555,11 +555,12 @@ server_expr <- function(
         DT1 <- as.data.table(df1)
         DT2 <- as.data.table(df2)
         samples <- DT1[, "sample"]
-        return(as.data.frame(DT2[samples, on = "sample"]))
+        return(as.data.frame(DT2[samples, on = "sample"],
+            stringsAsFactors = FALSE))
     }
 }
 
-# Filter df2 by the samples in df1 by simple dataframe union
+# Populate df2 with new sample names before unifying
 .server_expr_simple_unify_new_df <- function(df1, df2) {
     samples <- df1$sample
     new_samples <- unlist(df1$sample[!(df1$sample %in% df2$sample)])

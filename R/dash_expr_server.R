@@ -72,7 +72,7 @@ server_expr <- function(
                 is_valid(settings_expr$disallow_df_update) &&
                 settings_expr$disallow_df_update
             ) {
-                settings_expr$allow_df_update <- FALSE
+                settings_expr$disallow_df_update <- FALSE
             } else {
                 settings_expr$df.anno <- .server_expr_sync_df(
                     settings_expr$df.files, settings_expr$df.anno)            

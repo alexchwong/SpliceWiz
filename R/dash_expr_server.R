@@ -544,9 +544,12 @@ server_expr <- function(
     return(output)
 }
 
-# Filter df2 by the samples in df1
-.server_expr_sync_df <- function(df1, df2) {
-    if(!is_valid(df2)) {
+# Filter df2 by the samples in df1 by simple dataframe union
+.server_expr_simple_unify_df <- function(df1, df2) {
+    if(any(duplicated(df1$sample))) {
+        .log("Duplicate names in current data frame", "message")
+        return(df2)
+    } else if(!is_valid(df2)) {
         return(data.frame(sample = df1$sample, stringsAsFactors = FALSE))
     } else {
         DT1 <- as.data.table(df1)
@@ -556,14 +559,67 @@ server_expr <- function(
     }
 }
 
+# Filter df2 by the samples in df1 by simple dataframe union
+.server_expr_simple_unify_new_df <- function(df1, df2) {
+    samples <- df1$sample
+    new_samples <- df1$sample[!(df1$sample %in% df2$sample)]
+    if(length(new_samples) > 0) {
+        for(i in length(new_samples)) {
+            df2 <- rbind(df2, NA)
+        }
+        df2$sample[
+            seq(nrow(df) - length(new_samples) + 1, nrow(df))
+        ] <- new_samples
+    }
+    .server_expr_simple_unify_df(df1, df2)
+}
+
+# Filter df2 by the samples in df1
+.server_expr_sync_df <- function(df1, df2) {
+    if(!is_valid(df2)) {
+        return(data.frame(sample = df1$sample, stringsAsFactors = FALSE))
+    } else {
+        # Conditions to account for:
+        if(nrow(df1) > nrow(df2)) {
+        # Add single empty row
+            if(sum(!is_valid(df1$sample)) == 1) {
+                # adding empty rows:
+                .server_expr_simple_unify_df(df1, df2)
+            } else {
+                # might be a new data.frame or expansion of existing dataframe
+                .server_expr_simple_unify_new_df(df1, df2)
+            }
+        } else if(nrow(df1) < nrow(df2)) {
+        # Remove rows
+            .server_expr_simple_unify_df(df1, df2)
+        } else {
+        # Same rows, editing only sample name
+            n_mismatch <- sum(df1$sample != df2$sample)
+            if(n_mismatch == 0) {
+                return(df2)
+            } else {
+                n_common <- sum(df1$sample %in% df2$sample)
+                if(n_common + n_mismatch == nrow(df1)) {
+                    # Changing multiple names
+                    df2$sample <- df1$sample
+                    return(df2)
+                } else {
+                    # new data.frame or expansion of existing dataframe
+                    .server_expr_simple_unify_new_df(df1, df2)
+                }
+            }
+        }        
+    }
+}
+
 # Generate rHOT from df (used for df.files and df.anno)
 .server_expr_gen_HOT <- function(df, enable_select = FALSE) {
     if(is_valid(df) && is(df, "data.frame")) {
         r <- rhandsontable(df, useTypes = TRUE, stretchH = "all",
             selectCallback = enable_select)
-        if("sample" %in% colnames(df)) {
-            r <- r  %>% hot_col("sample", readOnly = TRUE)
-        }
+        # if("sample" %in% colnames(df)) {
+            # r <- r %>% hot_col("sample", readOnly = TRUE)
+        # }
         return(r)
     } else {
         return(NULL)

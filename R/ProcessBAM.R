@@ -325,7 +325,7 @@ processBAM <- function(
     bam_short <- file.path(basename(dirname(bam)), basename(bam))
     if (overwrite ||
         !(file.exists(file_gz) | file.exists(file_cov))) {
-        ret <- SpliceWizMain(bam, ref, out, verbose, 1)
+        ret <- SpliceWizMain(bam, ref, out, verbose, 1, FALSE)
         # Check SpliceWiz returns all files successfully
         if (ret != 0) {
             .log(paste(

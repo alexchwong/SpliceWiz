@@ -10,7 +10,7 @@ BAM2COV(
   sample_names = "sample1",
   output_path = "./cov_folder",
   n_threads = 1,
-  Use_OpenMP = TRUE,
+  useOpenMP = TRUE,
   overwrite = FALSE,
   verbose = FALSE,
   multiRead = FALSE
@@ -22,7 +22,7 @@ processBAM(
   reference_path = "./Reference",
   output_path = "./SpliceWiz_Output",
   n_threads = 1,
-  Use_OpenMP = TRUE,
+  useOpenMP = TRUE,
   overwrite = FALSE,
   run_featureCounts = FALSE,
   verbose = FALSE,
@@ -39,7 +39,7 @@ be a vector of the same length as \code{bamfiles}}
 
 \item{n_threads}{(default \code{1}) The number of threads to use. See details.}
 
-\item{Use_OpenMP}{(default \code{TRUE}) Whether to use OpenMP.
+\item{useOpenMP}{(default \code{TRUE}) Whether to use OpenMP.
 If set to \code{FALSE}, BiocParallel will be used if \code{n_threads} is set}
 
 \item{overwrite}{(default \code{FALSE}) If output files already exist,
@@ -87,12 +87,13 @@ BAM2COV creates COV files from BAM files without running \code{processBAM()}.
 \details{
 Typical run-times for a 100-million paired-end alignment BAM file takes 10
 minutes using a single core. Using 8 threads, the runtime is approximately
-2 minutes. Approximately 10 Gb of RAM is used when OpenMP is used. If OpenMP
+2-5 minutes, depending on your system's file input / output speeds.
+Approximately 10 Gb of RAM is used when OpenMP is used. If OpenMP
 is not used (see below), this memory usage is multiplied across the number
 of processor threads (i.e. 40 Gb if \code{n_threads = 4}).
 
 OpenMP is natively available to Linux / Windows compilers, and OpenMP will
-be used if \code{Use_OpenMP} is set to \code{TRUE}, using multiple threads to process
+be used if \code{useOpenMP} is set to \code{TRUE}, using multiple threads to process
 each BAM file. On Macs, if OpenMP is not available at compilation,
 BiocParallel will be used, processing BAM files simultaneously,
 with one BAM file per thread.

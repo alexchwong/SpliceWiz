@@ -1068,6 +1068,7 @@ int SpliceWizMain(
 ){
 	
   bool verbose = true;
+  bool multiRead = false;
 #endif
   
   int use_threads = Set_Threads(n_threads);

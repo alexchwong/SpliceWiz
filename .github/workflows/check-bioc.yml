@@ -144,7 +144,7 @@ jobs:
           brew install xquartz --cask
 
           ## Required for OpenMP
-          brew install libomp
+          # brew install libomp
           
       - name: Install Windows system dependencies
         if: runner.os == 'Windows'

@@ -14,7 +14,8 @@
 #' @details
 #' Typical run-times for a 100-million paired-end alignment BAM file takes 10
 #' minutes using a single core. Using 8 threads, the runtime is approximately
-#' 2 minutes. Approximately 10 Gb of RAM is used when OpenMP is used. If OpenMP
+#' 2-5 minutes, depending on your system's file input / output speeds. 
+#' Approximately 10 Gb of RAM is used when OpenMP is used. If OpenMP
 #' is not used (see below), this memory usage is multiplied across the number
 #' of processor threads (i.e. 40 Gb if `n_threads = 4`).
 #'

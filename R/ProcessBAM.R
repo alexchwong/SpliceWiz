@@ -20,7 +20,7 @@
 #' of processor threads (i.e. 40 Gb if `n_threads = 4`).
 #'
 #' OpenMP is natively available to Linux / Windows compilers, and OpenMP will
-#' be used if `Use_OpenMP` is set to `TRUE`, using multiple threads to process
+#' be used if `useOpenMP` is set to `TRUE`, using multiple threads to process
 #' each BAM file. On Macs, if OpenMP is not available at compilation,
 #' BiocParallel will be used, processing BAM files simultaneously,
 #' with one BAM file per thread.
@@ -31,7 +31,7 @@
 #' @param reference_path The directory containing the SpliceWiz reference
 #' @param output_path The output directory of this function
 #' @param n_threads (default `1`) The number of threads to use. See details.
-#' @param Use_OpenMP (default `TRUE`) Whether to use OpenMP.
+#' @param useOpenMP (default `TRUE`) Whether to use OpenMP.
 #'   If set to `FALSE`, BiocParallel will be used if `n_threads` is set
 #' @param overwrite (default `FALSE`) If output files already exist,
 #'   will not attempt to re-run. If `run_featureCounts` is `TRUE`, will not
@@ -95,7 +95,7 @@ BAM2COV <- function(
         bamfiles = "./Unsorted.bam",
         sample_names = "sample1",
         output_path = "./cov_folder",
-        n_threads = 1, Use_OpenMP = TRUE,
+        n_threads = 1, useOpenMP = TRUE,
         overwrite = FALSE,
         verbose = FALSE,
         multiRead = FALSE
@@ -131,7 +131,7 @@ BAM2COV <- function(
         .run_BAM2COV(
             bamfiles = bamfiles[!already_exist],
             output_file_prefixes = s_output[!already_exist],
-            max_threads = n_threads, Use_OpenMP = Use_OpenMP,
+            max_threads = n_threads, useOpenMP = useOpenMP,
             overwrite = overwrite,
             verbose = verbose, multiRead = multiRead
         )
@@ -153,7 +153,7 @@ processBAM <- function(
         sample_names = "sample1",
         reference_path = "./Reference",
         output_path = "./SpliceWiz_Output",
-        n_threads = 1, Use_OpenMP = TRUE,
+        n_threads = 1, useOpenMP = TRUE,
         overwrite = FALSE,
         run_featureCounts = FALSE,
         verbose = FALSE,
@@ -191,7 +191,7 @@ processBAM <- function(
             reference_path = reference_path,
             bamfiles = bamfiles[!already_exist],
             output_files = s_output[!already_exist],
-            max_threads = n_threads, Use_OpenMP = Use_OpenMP,
+            max_threads = n_threads, useOpenMP = useOpenMP,
             overwrite_SpliceWiz_Output = overwrite,
             verbose = verbose, multiRead = multiRead
         )
@@ -219,7 +219,7 @@ processBAM <- function(
         bamfiles = "Unsorted.bam",
         output_files = "./Sample",
         max_threads = max(parallel::detectCores(), 1),
-        Use_OpenMP = TRUE,
+        useOpenMP = TRUE,
         overwrite_SpliceWiz_Output = FALSE,
         verbose = TRUE, multiRead = FALSE
     ) {
@@ -233,7 +233,7 @@ processBAM <- function(
 
     .log("Running SpliceWiz processBAM", "message")
     n_threads <- floor(max_threads)
-    if (Has_OpenMP() > 0 & Use_OpenMP) {
+    if (Has_OpenMP() > 0 & useOpenMP) {
         SpliceWizMain_multi(
             ref_file, s_bam, output_files, n_threads, verbose, multiRead
         )
@@ -272,7 +272,7 @@ processBAM <- function(
         bamfiles = "sample.bam",
         output_file_prefixes = "sample",
         max_threads = max(parallel::detectCores(), 1),
-        Use_OpenMP = TRUE,
+        useOpenMP = TRUE,
         overwrite = FALSE,
         verbose = TRUE,
         multiRead = FALSE
@@ -283,7 +283,7 @@ processBAM <- function(
 
     .log("Running BAM2COV", "message")
     n_threads <- floor(max_threads)
-    if (Has_OpenMP() > 0 & Use_OpenMP) {
+    if (Has_OpenMP() > 0 & useOpenMP) {
         # Simple FOR loop:
         for (i in seq_len(length(s_bam))) {
             .BAM2COV_run_single(s_bam[i], output_file_prefixes[i],

@@ -300,7 +300,7 @@ processBAM(
     reference_path = ref_path,
     output_path = "./pb_output",
     n_threads = 4,
-    Use_OpenMP = TRUE
+    useOpenMP = TRUE
 )
 ```
 
@@ -321,7 +321,7 @@ BAM2COV(
     sample_names = bams$sample,
     output_path = "./pb_output",
     n_threads = 4,
-    Use_OpenMP = TRUE
+    useOpenMP = TRUE
 )
 ```
 

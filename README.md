@@ -3,6 +3,16 @@ SpliceWiz is an R package for exploring differential alternative splicing events
 
 ## Installation 
 
+### Enabling OpenMP multi-threading (for MacOS users)
+
+OpenMP is installed by default on Windows and Linux systems. For MacOS, OpenMP
+is not officially supported. To install SpliceWiz with OpenMP support, first
+install the `libomp` libraries via brew:
+
+```
+brew install libomp
+```
+
 ### On R (version >= 4.2.0) using Bioconductor version 3.1.5
 
 ```

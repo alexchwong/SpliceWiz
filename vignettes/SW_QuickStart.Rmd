@@ -115,7 +115,7 @@ in the RStudio environment. To start using SpliceWiz GUI:
 
 ```{r}
 if(interactive()) {
-	spliceWiz(demo = TRUE)
+    spliceWiz(demo = TRUE)
 }
 ```
 \

@@ -2015,7 +2015,9 @@ return(TRUE)
         introns.unique.blacklisted <- findOverlaps(introns.unique,
             exclude.omnidirectional, type = "within"
         )
-        introns.unique <- introns.unique[-introns.unique.blacklisted@from]
+        if(length(introns.unique.blacklisted@from) > 0) {
+            introns.unique <- introns.unique[-introns.unique.blacklisted@from]
+        }
     }
 
     final <- list(

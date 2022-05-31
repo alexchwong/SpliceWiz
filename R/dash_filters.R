@@ -54,6 +54,7 @@ server_filters <- function(
             if(is_valid(get_se())) {
                 output$current_expr_Filters <- 
                     renderText("NxtSE loaded")
+                req(!is_valid(settings_filter$filterSummary))
                 processFilters()
             } else {
                 output$current_expr_Filters <- 

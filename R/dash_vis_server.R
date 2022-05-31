@@ -36,7 +36,7 @@ server_vis_diag <- function(
         })
         observeEvent(rows_selected(), {
             settings_Diag$selected <- rows_selected()
-        })
+        }, ignoreNULL = FALSE)
     
         output$plot_diag <- renderPlotly({
             # settings_Diag$plot_ini = FALSE
@@ -280,9 +280,9 @@ server_vis_volcano <- function(
             req(refresh_tab())
         })
         observeEvent(rows_selected(), {
-            print(rows_selected())
+            # print(rows_selected())
             settings_Volc$selected <- rows_selected()
-        })
+        }, ignoreNULL = FALSE)
 
         settings_Volc$plotly_click <- reactive({
             plot_exist <- settings_Volc$plot_ini

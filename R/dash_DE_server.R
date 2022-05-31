@@ -229,6 +229,14 @@ server_DE <- function(
                 })
             }
             
+            # Allow filtering by EventType: factorize it
+            if(
+                    is(res.ASE$EventType, "character") && 
+                    length(unique(res.ASE$EventType)) > 1
+            ) {
+                res.ASE$EventType <- factor(res.ASE$EventType)
+            }
+            
             settings_DE$res <- as.data.frame(res.ASE)
             output$warning_DE <- renderText({"Finished"})
 

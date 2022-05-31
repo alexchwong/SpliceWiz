@@ -127,10 +127,7 @@ setClass("NxtSE",
 #' retention events
 #'
 #' @param filterClass Must be either `"Data"` or `"Annotation"`. See details
-#' @param filterType If `filterClass = "Data"`, then must be one of 
-#'   `c("Depth", "Participation", "Consistency")`. 
-#'   If `filterClass = "Annotation"`,
-#'   must be one of `c("Protein_Coding", "NMD", "TSL")`. See details
+#' @param filterType Must be a valid `Annotation` or `Data` filter. See details
 #' @param pcTRUE If conditions are set, what percentage of all samples in each
 #'   of the condition must the filter be satisfied for the event to pass the
 #'   filter check. Must be between 0 and 100 (default 100)
@@ -150,11 +147,14 @@ setClass("NxtSE",
 #'   pass criteria. Set to `-1` when the number of elements in the experimental
 #'   condition is unknown. Ignored if `condition` is left blank.
 #' @param EventTypes What types of events are considered for filtering. Must be 
-#'   one of `c("IR", "MXE", "SE", "A3SS", "A5SS", "AFE", "ALE", "RI")`. Events 
-#'   not specified in `EventTypes` are not filtered (i.e. they will pass the
-#'   filter without checks)
+#'   one or more of `c("IR", "MXE", "SE", "A3SS", "A5SS", "AFE", "ALE", "RI")`. 
+#'   Events not specified in `EventTypes` are not filtered (i.e. they will pass
+#'   the filter without checks)
 #' @details
 #'   **Annotation Filters**
+#'   * **Modality**: Filters for specific modalities of ASEs. All events
+#'       belonging to the specified `EventTypes` are retained.
+#'       No additional parameters required.
 #'   * **Protein_Coding**: Filters for alternative splicing or IR events 
 #'       involving protein-coding transcripts.
 #'       No additional parameters required.

@@ -4,7 +4,8 @@ ASEFilter <- function(
         filterClass = c("Data", "Annotation"),
         filterType = c(
             "Depth", "Participation", "Consistency",
-            "Protein_Coding", "NMD", "TSL", "Terminus", "ExclusiveMXE"
+            "Modality", "Protein_Coding", "NMD", "TSL", "Terminus", 
+            "ExclusiveMXE"
         ),
         pcTRUE = 100, minimum = 20, maximum = 1, minDepth = 5,
         condition = "", minCond = -1,
@@ -23,7 +24,8 @@ setMethod("initialize", "ASEFilter", function(.Object,
         filterClass = c("Data", "Annotation"),
         filterType = c(
             "Depth", "Participation", "Consistency",
-            "Protein_Coding", "NMD", "TSL", "Terminus", "ExclusiveMXE"
+            "Modality", "Protein_Coding", "NMD", "TSL", "Terminus", 
+            "ExclusiveMXE"
         ),
         pcTRUE = 100, minimum = 20, maximum = 1, minDepth = 5,
         condition = "", minCond = -1,
@@ -35,7 +37,7 @@ setMethod("initialize", "ASEFilter", function(.Object,
     # filterType <- match.arg(filterType)
 
     data_methods <- c("Depth", "Participation", "Consistency")
-    annotation_methods <- c("Protein_Coding", "NMD", "TSL",
+    annotation_methods <- c("Modality", "Protein_Coding", "NMD", "TSL",
         "Terminus", "ExclusiveMXE")
     
     if(filterClass %in% c("Data", "Annotation")) {
@@ -141,6 +143,8 @@ setMethod("show", "ASEFilter", function(object) {
         .nxtcat(paste0("Event Depth below ", .colourise("%i", "purple"),
             " are ignored\n"), as.integer(object@minDepth))
         .cat_filter_info("minDepth")
+    } else if (object@filterType == "Modality") {
+        cat("Events of the following modality are retained")
     } else if (object@filterType == "Protein_Coding") {
         cat("Events of which neither isoform encodes protein are removed")
     } else if (object@filterType == "NMD") {

@@ -9,8 +9,8 @@ retention events}
 \usage{
 ASEFilter(
   filterClass = c("Data", "Annotation"),
-  filterType = c("Depth", "Participation", "Consistency", "Protein_Coding", "NMD",
-    "TSL", "Terminus", "ExclusiveMXE"),
+  filterType = c("Depth", "Participation", "Consistency", "Modality", "Protein_Coding",
+    "NMD", "TSL", "Terminus", "ExclusiveMXE"),
   pcTRUE = 100,
   minimum = 20,
   maximum = 1,
@@ -23,10 +23,7 @@ ASEFilter(
 \arguments{
 \item{filterClass}{Must be either \code{"Data"} or \code{"Annotation"}. See details}
 
-\item{filterType}{If \code{filterClass = "Data"}, then must be one of
-\code{c("Depth", "Participation", "Consistency")}.
-If \code{filterClass = "Annotation"},
-must be one of \code{c("Protein_Coding", "NMD", "TSL")}. See details}
+\item{filterType}{Must be a valid \code{Annotation} or \code{Data} filter. See details}
 
 \item{pcTRUE}{If conditions are set, what percentage of all samples in each
 of the condition must the filter be satisfied for the event to pass the
@@ -53,9 +50,9 @@ pass criteria. Set to \code{-1} when the number of elements in the experimental
 condition is unknown. Ignored if \code{condition} is left blank.}
 
 \item{EventTypes}{What types of events are considered for filtering. Must be
-one of \code{c("IR", "MXE", "SE", "A3SS", "A5SS", "AFE", "ALE", "RI")}. Events
-not specified in \code{EventTypes} are not filtered (i.e. they will pass the
-filter without checks)}
+one or more of \code{c("IR", "MXE", "SE", "A3SS", "A5SS", "AFE", "ALE", "RI")}.
+Events not specified in \code{EventTypes} are not filtered (i.e. they will pass
+the filter without checks)}
 }
 \value{
 A ASEFilter object with the specified parameters
@@ -67,6 +64,9 @@ retention events
 \details{
 \strong{Annotation Filters}
 \itemize{
+\item \strong{Modality}: Filters for specific modalities of ASEs. All events
+belonging to the specified \code{EventTypes} are retained.
+No additional parameters required.
 \item \strong{Protein_Coding}: Filters for alternative splicing or IR events
 involving protein-coding transcripts.
 No additional parameters required.

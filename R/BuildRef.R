@@ -687,12 +687,12 @@ return(TRUE)
     if(is_valid(filename) && file.exists(filename)) {
         tryCatch(
             gr <- rtracklayer::import.bed(filename, "bed"),
-            error = function(x) NULL
+            error = function(x) NULL, warning = function(x) NULL
         )
         if(!is.null(gr)) return(gr)
         tryCatch({
                 gr <- readRDS(filename)
-            }, error = function(e) NULL
+            }, error = function(e) NULL, warning = function(x) NULL
         )
         if(!is.null(gr)) return(gr)
     }

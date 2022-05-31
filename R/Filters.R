@@ -126,7 +126,10 @@ runFilter <- function(se, filterObj) {
             return(.runFilter_data_consistency(se, filterObj))
         }
     } else if (filterObj@filterClass == "Annotation") {
-        if (filterObj@filterType == "Protein_Coding") {
+        if (filterObj@filterType == "Modality") {
+            message("Running Modality filter")
+            return(.runFilter_anno_mode(se, filterObj))
+        } else if (filterObj@filterType == "Protein_Coding") {
             message("Running Protein_Coding filter")
             return(.runFilter_anno_pc(se, filterObj))
         } else if (filterObj@filterType == "NMD") {
@@ -315,6 +318,14 @@ runFilter <- function(se, filterObj) {
     sum <- rowSums(truth_total)
     
     return(sum)
+}
+
+# returns if any of included or excluded is protein_coding
+.runFilter_anno_mode <- function(se, filterObj) {
+    rowSelected <- as.data.table(rowData(se))
+    rowSelected <- rowSelected[get("EventType") %in% filterObj@EventTypes]
+    res <- rowData(se)$EventName %in% rowSelected$EventName
+    return(res)
 }
 
 # returns if any of included or excluded is protein_coding

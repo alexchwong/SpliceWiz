@@ -3,7 +3,8 @@
 #' Making a Mappability Region Exclusion BED file requires 3 steps.
 #'   1) Generate mappability reads using `run_IRFinder_GenerateMapReads()`, 
 #'      using the primary assembly genome FASTA as `genome.fa`
-#'   2) Align `out.fa` to the corresponding genome using a genome splice-aware aligner such as STAR
+#'   2) Align `out.fa` to the corresponding genome using a genome splice-aware 
+#'      aligner such as STAR
 #'   3) Process the aligned BAM file using `run_IRFinder_MapExclusionRegions()`
 #' @examples
 #' \dontrun{
@@ -35,7 +36,7 @@
 #' }
 NULL
 
-#' Sample NxtSE object using the NxtIRF example reference and example bam files
+#' Sample NxtSE object using the example reference and example bam files
 #'
 #' This function generates an example reference, and runs IRFinder on example
 #' bam files. This object is used in downstream examples throughout

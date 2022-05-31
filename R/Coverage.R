@@ -309,7 +309,14 @@ as_ggplot_cov <- function(p_obj) {
 
     plot_tracks <- p_obj$ggplot[
         unlist(lapply(p_obj$ggplot, function(x) !is.null(x)))]
-    egg::ggarrange(plots = plot_tracks, ncol = 1)
+    
+    # Catch any unexpected errors
+    tryCatch({
+        egg::ggarrange(plots = plot_tracks, ncol = 1)
+    }, error = function(x) {
+        .log(x, "message")
+        return(NULL)
+    })
 }
 
 #' Calls SpliceWiz's C++ function to retrieve coverage from a COV file

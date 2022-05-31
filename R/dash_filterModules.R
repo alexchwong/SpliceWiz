@@ -121,8 +121,8 @@ filterModule_server <- function(id, filterdata, conditionList) {
             fClass <- final()@filterClass
             if(is_valid(fClass) && fClass %in% class_choices) {
                 if(fClass == "Annotation") {
-                    type_choices <- c("Protein_Coding", "NMD", "TSL", 
-                        "Terminus", "ExclusiveMXE")
+                    type_choices <- c("Modality", "Protein_Coding", "NMD", 
+                        "TSL", "Terminus", "ExclusiveMXE")
                 } else if(fClass == "Data") {
                     type_choices <- c("Depth", "Participation", "Consistency")
                 }
@@ -221,8 +221,8 @@ filterModule_server <- function(id, filterdata, conditionList) {
             obj <- final()
             obj@filterClass <- input$filterClass
             if(input$filterClass == "Annotation") {
-                type_choices <- c("Protein_Coding", "NMD", "TSL", 
-                    "Terminus", "ExclusiveMXE")
+                type_choices <- c("Modality", "Protein_Coding", "NMD", 
+                        "TSL", "Terminus", "ExclusiveMXE")
             } else if(input$filterClass == "Data") {
                 type_choices <- c("Depth", "Participation", "Consistency")
             } else {

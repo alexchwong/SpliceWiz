@@ -26,6 +26,7 @@ knitr::opts_chunk$set(
     comment = "#>"
 )
 ```
+\
 
 # Loading SpliceWiz
 
@@ -35,6 +36,7 @@ Quick-Start vignette.
 ```{r}
 library(SpliceWiz)
 ```
+\
 
 # Reference Generation
 
@@ -45,12 +47,15 @@ otherwise an error will be returned.
 ```{r eval = FALSE}
 ref_path <- "./Reference"
 ```
+\
+
 
 ### Create a SpliceWiz reference from user-defined FASTA and GTF files locally
 
-Note that setting `genome_path = "hg38"` will prompt SpliceWiz to use the default
-files for nonPolyA and Mappability exclusion references in the generation of its
-reference. Valid options for `genome_path` are "hg38", "hg19", "mm10" and "mm9".
+Note that setting `genome_path = "hg38"` will prompt SpliceWiz to use the 
+default files for nonPolyA and Mappability exclusion references in the 
+generation of its reference. Valid options for `genome_path` are "hg38", "hg19",
+"mm10" and "mm9".
 
 ```{r eval=FALSE}
 buildRef(
@@ -59,6 +64,36 @@ buildRef(
     genome_type = "hg38"
 )
 ```
+\
+
+### Prepare genome resources and building the reference as separate steps
+
+`buildRef()` first fetches the genome and gene annotations and makes a 
+compressed local copy in the `resources` subdirectory of the given reference
+path. This can sometimes be a long process (especially when downloading the
+genome from the internet). Also, one may choose to generate the mappability
+exclusion regions manually (see `Reference Generation` - 
+`Mappability exclusion generation using Rsubread` section). This needs to occur
+prior to generation of the SpliceWiz reference.
+
+To separately prepare the annotation data and build the SpliceWiz reference,
+use the `getResources()` function to specify the FASTA and GTF files. Once
+`getResources()` has completed successfully, call `buildRef()` and leave
+the `fasta` and `gtf` arguments blank, as in the example below:
+
+```{r eval=FALSE}
+getResources(
+    reference_path = ref_path,
+    fasta = "genome.fa",
+    gtf = "transcripts.gtf"
+)
+
+buildRef(
+    reference_path = ref_path,
+    genome_type = "hg38"
+)
+```
+\
 
 ### Create a SpliceWiz reference using web resources from Ensembl's FTP
 
@@ -79,6 +114,7 @@ buildRef(
     genome_type = "hg38"
 )
 ```
+\
 
 ### Create a SpliceWiz reference using AnnotationHub resources
 
@@ -110,9 +146,10 @@ buildRef(
 )
 ```
 
-`Build-Reference-methods` will recognise the inputs of `fasta` and `gtf` as AnnotationHub
-resources as they begin with "AH".
-
+`Build-Reference-methods` will recognise the inputs of `fasta` and `gtf` as
+AnnotationHub resources as they begin with "AH".
+\
+\
 ### Create a SpliceWiz reference from species other than human or mouse
 
 For human and mouse genomes, we highly recommend specifying `genome_type` as
@@ -127,6 +164,7 @@ buildRef(
     genome_type = ""
 )
 ```
+\
 
 ### Building a STAR reference alongside the SpliceWiz reference
 
@@ -151,6 +189,8 @@ buildFullRef(
 
 `n_threads` specify how many threads should be used to build the STAR reference
 and to calculate the low mappability regions
+\
+\
 
 ### Mappability exclusion generation using Rsubread
 
@@ -206,8 +246,10 @@ calculateMappability(
 buildRef(ref_path)      
 
 ```
+\
 
 # Aligning Raw RNA-seq data using SpliceWiz's STAR wrappers
+\
 
 ### Checking if STAR is installed
 
@@ -218,6 +260,7 @@ This software is not available in Windows. To check if `STAR` is available:
 ```{r}
 STAR_version()
 ```
+\
 
 ### Building a STAR reference
 
@@ -242,6 +285,7 @@ STAR_BuildRef(
 )
 
 ```
+\
 
 ### Aligning a single sample using STAR
 
@@ -253,6 +297,7 @@ STAR_alignReads(
     n_threads = 8
 )
 ```
+\
 
 ### Aligning multiple samples using STAR
 
@@ -276,6 +321,8 @@ STAR_alignExperiment(
 
 To use two-pass mapping, set `two_pass = TRUE`. We recommend disabling this
 feature, as one-pass mapping is adequate in typical-use cases.
+\
+\
 
 # Running processBAM on BAM files
 
@@ -303,6 +350,7 @@ processBAM(
     useOpenMP = TRUE
 )
 ```
+\
 
 ### Creating COV files from BAM files without running processBAM
 
@@ -324,8 +372,9 @@ BAM2COV(
     useOpenMP = TRUE
 )
 ```
+\
 
-# Collating the experiment:
+# Collating the experiment
 
 Assuming the SpliceWiz reference is in `ref_path`, after running `processBAM()`
 as shown in the previous section, use the convenience function 
@@ -353,11 +402,14 @@ additional data required by SpliceWiz.
 ```{r eval = FALSE}
 se <- makeSE("./NxtSE_output")
 ```
+\
 
-## Downstream analysis using SpliceWiz
+# Downstream analysis using SpliceWiz
 
 Please refer to SpliceWiz: Quick-Start vignette for worked examples using the 
 example dataset.
+\
+\
 
 # SessionInfo
 

@@ -687,12 +687,12 @@ return(TRUE)
     if(is_valid(filename) && file.exists(filename)) {
         tryCatch(
             gr <- rtracklayer::import.bed(filename, "bed"),
-            error = function(x) NULL
+            error = function(x) NULL, warning = function(x) NULL
         )
         if(!is.null(gr)) return(gr)
         tryCatch({
                 gr <- readRDS(filename)
-            }, error = function(e) NULL
+            }, error = function(e) NULL, warning = function(x) NULL
         )
         if(!is.null(gr)) return(gr)
     }
@@ -2015,7 +2015,9 @@ return(TRUE)
         introns.unique.blacklisted <- findOverlaps(introns.unique,
             exclude.omnidirectional, type = "within"
         )
-        introns.unique <- introns.unique[-introns.unique.blacklisted@from]
+        if(length(introns.unique.blacklisted@from) > 0) {
+            introns.unique <- introns.unique[-introns.unique.blacklisted@from]
+        }
     }
 
     final <- list(
@@ -3113,11 +3115,10 @@ return(TRUE)
                 intron_number_a = get("intron_number")[edge1],
                 intron_number_b = get("intron_number")[edge2]
             )
-        }, by = c("seqnames", "intron_coord")
+        }, by = c("seqnames", "strand", "intron_coord")
     ]
     introns_found_AFE <- introns_found_AFE[!is.na(get("gene_id"))]
     introns_found_AFE <- unique(introns_found_AFE, by = c("Event1a", "Event1b"))
-
     setorderv(introns_found_AFE, c("gene_id", "transcript_name_a"))
     introns_found_AFE <- introns_found_AFE[,
         c("EventName") := paste0(
@@ -3187,11 +3188,10 @@ return(TRUE)
                 intron_number_a = get("intron_number")[edge1],
                 intron_number_b = get("intron_number")[edge2]
             )
-        }, by = c("seqnames", "intron_coord")
+        }, by = c("seqnames", "strand", "intron_coord")
     ]
     introns_found_ALE <- introns_found_ALE[!is.na(get("gene_id"))]
     introns_found_ALE <- unique(introns_found_ALE, by = c("Event1a", "Event1b"))
-
     setorderv(introns_found_ALE, c("gene_id", "transcript_name_a"))
     introns_found_ALE <- introns_found_ALE[,
         c("EventName") := paste0("ALE:", get("transcript_name_a"), "-exon",
@@ -3270,22 +3270,23 @@ return(TRUE)
                 transcript_name_a = get("transcript_name")[edge1],
                 transcript_name_b = get("transcript_name")[edge2],
                 intron_number_a = get("intron_number")[edge1],
-                intron_number_b = get("intron_number")[edge2],
-                exon_groups_start_a = get("exon_groups_start")[edge1],
-                exon_groups_start_b = get("exon_groups_start")[edge2],
-                exon_groups_end_a = get("exon_groups_end")[edge1],
-                exon_groups_end_b = get("exon_groups_end")[edge2]
+                intron_number_b = get("intron_number")[edge2]#,
+                # exon_groups_start_a = get("exon_groups_start")[edge1],
+                # exon_groups_start_b = get("exon_groups_start")[edge2],
+                # exon_groups_end_a = get("exon_groups_end")[edge1],
+                # exon_groups_end_b = get("exon_groups_end")[edge2]
             )
-        }, by = "intron_coord"
+        }, by = c("seqnames", "strand", "intron_coord",
+            "exon_groups_start", "exon_groups_end")
     ]
     introns_found_A5SS <- introns_found_A5SS[!is.na(get("gene_id"))]
     introns_found_A5SS <- unique(introns_found_A5SS,
         by = c("Event1a", "Event1b"))
     # filter by same exon group starts and ends:
-    introns_found_A5SS <- introns_found_A5SS[
-        get("exon_groups_start_a") == get("exon_groups_start_b")]
-    introns_found_A5SS <- introns_found_A5SS[
-        get("exon_groups_end_a") == get("exon_groups_end_b")]
+    # introns_found_A5SS <- introns_found_A5SS[
+        # get("exon_groups_start_a") == get("exon_groups_start_b")]
+    # introns_found_A5SS <- introns_found_A5SS[
+        # get("exon_groups_end_a") == get("exon_groups_end_b")]
     setorderv(introns_found_A5SS, c("gene_id", "transcript_name_a"))
     introns_found_A5SS <- introns_found_A5SS[,
         c("EventName") := paste0(
@@ -3352,22 +3353,23 @@ return(TRUE)
                 transcript_name_a = get("transcript_name")[edge1],
                 transcript_name_b = get("transcript_name")[edge2],
                 intron_number_a = get("intron_number")[edge1],
-                intron_number_b = get("intron_number")[edge2],
-                exon_groups_start_a = get("exon_groups_start")[edge1],
-                exon_groups_start_b = get("exon_groups_start")[edge2],
-                exon_groups_end_a = get("exon_groups_end")[edge1],
-                exon_groups_end_b = get("exon_groups_end")[edge2]
+                intron_number_b = get("intron_number")[edge2]#,
+                # exon_groups_start_a = get("exon_groups_start")[edge1],
+                # exon_groups_start_b = get("exon_groups_start")[edge2],
+                # exon_groups_end_a = get("exon_groups_end")[edge1],
+                # exon_groups_end_b = get("exon_groups_end")[edge2]
             )
-        }, by = "intron_coord"
+        }, by = c("seqnames", "strand", "intron_coord",
+            "exon_groups_start", "exon_groups_end")
     ]
     introns_found_A3SS <- introns_found_A3SS[!is.na(get("gene_id"))]
     introns_found_A3SS <- unique(introns_found_A3SS,
         by = c("Event1a", "Event1b"))
     # filter by same exon group starts and ends:
-    introns_found_A3SS <- introns_found_A3SS[
-        get("exon_groups_start_a") == get("exon_groups_start_b")]
-    introns_found_A3SS <- introns_found_A3SS[
-        get("exon_groups_end_a") == get("exon_groups_end_b")]
+    # introns_found_A3SS <- introns_found_A3SS[
+        # get("exon_groups_start_a") == get("exon_groups_start_b")]
+    # introns_found_A3SS <- introns_found_A3SS[
+        # get("exon_groups_end_a") == get("exon_groups_end_b")]
 
     setorderv(introns_found_A3SS, c("gene_id", "transcript_name_a"))
     introns_found_A3SS <- introns_found_A3SS[,

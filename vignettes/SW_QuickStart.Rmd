@@ -24,6 +24,7 @@ knitr::opts_chunk$set(
     comment = "#>"
 )
 ```
+\
 
 # Introduction
 
@@ -46,6 +47,8 @@ like these, where available.
 
 For a list of ready-made "recipes" for typical-use SpliceWiz in real datasets, 
 refer to the vignette: `SpliceWiz: Cookbook`.
+\
+\
 
 # Workflow from a glance
 
@@ -58,6 +61,8 @@ The basic steps of SpliceWiz are as follows:
 * Alternative splicing event filtering
 * Differential ASE analysis
 * Visualization
+\
+\
 
 # Quick-Start
 
@@ -84,6 +89,7 @@ quickest way to get started is to install `libomp` via brew:
 brew install libomp
 ```
 </details> 
+\
 
 ## Loading SpliceWiz
 
@@ -109,7 +115,7 @@ in the RStudio environment. To start using SpliceWiz GUI:
 
 ```{r}
 if(interactive()) {
-	spliceWiz(demo = TRUE)
+    spliceWiz(demo = TRUE)
 }
 ```
 \
@@ -241,6 +247,7 @@ buildRef(
 )
 ```
 </details>
+\
 
 ## Process BAM files using SpliceWiz
 
@@ -497,6 +504,7 @@ exons. `SpliceOver` is the default option.
 We estimate it can use up to 6-7 Gb per thread. `lowMemoryMode` will minimise
 RAM usage to ~ 8 Gb, but will be slower and run on a single thread.\
 </details>
+\
 
 ## Importing the experiment
 
@@ -683,6 +691,7 @@ se_ASE_subset <- se[1:10,]
 ```
 \
 </details>
+\
 
 ### Filtering high-confidence events
 
@@ -727,6 +736,7 @@ depths at 100-million paired-end reads.
 
 To learn more about filters, consult the documentation via `?ASEFilters`
 </details>
+\
 
 ### Performing differential analysis
 
@@ -856,6 +866,7 @@ res_deseq_cont <- ASE_DESeq(
 ```
 \
 <\details>
+\
 
 ## Visualization
 
@@ -864,7 +875,7 @@ res_deseq_cont <- ASE_DESeq(
 Volcano plots show changes in PSI levels (log fold change, x axis) against
 statistical significance (-log10 p values, y axis):
 
-```{r, fig.width = 7, fig.height = 5}
+```{r, fig.width = 7, fig.height = 5, eval = Sys.info()["sysname"] != "Darwin"}
 library(ggplot2)
 
 ggplot(res_limma,
@@ -882,7 +893,7 @@ Yes. We can use `ggplot2`'s `facet_wrap` function to separately plot volcanos
 for each modality of ASE. The type of ASE is contained in the `EventType` column
 of the differential results data frame.
 
-```{r, fig.width = 7, fig.height = 5}
+```{r, fig.width = 7, fig.height = 5, eval = Sys.info()["sysname"] != "Darwin"}
 ggplot(res_limma,
         aes(x = logFC, y = -log10(adj.P.Val))) + 
     geom_point() + facet_wrap(vars(EventType)) +
@@ -928,7 +939,7 @@ Scatter plots are useful for showing splicing levels (percent-spliced-in, PSI)
 between two conditions. The results from differential analysis contains these
 values and can be plotted:
 
-```{r, fig.width = 7, fig.height = 5}
+```{r, fig.width = 7, fig.height = 5, eval = Sys.info()["sysname"] != "Darwin"}
 library(ggplot2)
 
 ggplot(res_limma, aes(x = 100 * AvgPSI_B, y = 100 * AvgPSI_A)) + 
@@ -1021,6 +1032,7 @@ mat <- makeMatrix(
     method = "PSI"
 )
 ```
+\
 
 <details>
 <summary>How does `makeMatrix()` work?</summary>
@@ -1045,6 +1057,7 @@ parameter `na.percent.max` (default `0.1`) means any ASE with the proportion of
 `NA` above this threshold will be removed from the final matrix.
 \
 </details>
+\
 
 Plot this matrix of values in a heatmap:
 
@@ -1083,11 +1096,11 @@ the selected annotation categories
 </details>
 \
 
-### SpliceWiz Coverage Plots
+## SpliceWiz Coverage Plots
 
 Coverage plots visualize RNA-seq coverage in individual samples. SpliceWiz uses
 its coverage normalization algorithm to visualize group differences in PSIs.
-
+\
 <details>
 <summary>What are SpliceWiz coverage plots and how are they generated?</summary>
 \
@@ -1107,8 +1120,9 @@ the intron depths reflect the fraction of transcripts with retained introns and
 can be compared across samples.
 \
 </details>
+\
 
-#### Coverage plots of individual samples
+### Coverage plots of individual samples
 
 First, lets obtain a list of differential events with delta PSI > 5%:
 
@@ -1118,7 +1132,7 @@ res_limma.filtered <- subset(res_limma, abs(AvgPSI_A - AvgPSI_B) > 0.05)
 
 Plot up to 4 individual samples using `plotCoverage()`:
 
-```{r, fig.width = 8, fig.height = 6}
+```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
 p <- plotCoverage(
     se = se,
     Event = res_limma.filtered$EventName[1],
@@ -1134,6 +1148,7 @@ if(interactive()) {
 }
 
 ```
+\
 
 <details>
 <summary>The genome track is too cluttered! How can I customize it?</summary>
@@ -1143,7 +1158,7 @@ to only display the specified transcripts. Selected transcripts can be supplied
 by name or ID (`transcript_name` and `transcript_id` field in the GTF file,
 respectively)
 
-```{r}
+```{r, eval = Sys.info()["sysname"] != "Darwin"}
 p <- plotCoverage(
     se = se,
     Event = res_limma.filtered$EventName[1],
@@ -1161,13 +1176,14 @@ if(interactive()) {
 ```
 \
 </details>
+\
 
-#### Group-averaged coverage plots
+### Group-averaged coverage plots
 
 We plot average coverages of groups "A" and "B" of the "condition" category,
 as follows:
 
-```{r, fig.width = 8, fig.height = 6}
+```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
 p <- plotCoverage(
     se = se,
     Event = res_limma.filtered$EventName[1],
@@ -1200,7 +1216,7 @@ introns) gives a sense of how differentially expressed these regions are.
 </details>
 \
 
-#### Using the GUI
+### Using the GUI
 
 Click on `Display` and then `Coverage plot` from the menu side bar. 
 It should look like this:
@@ -1215,9 +1231,9 @@ Coverage plots can be customized as follows:
 * (2) Events: display individual ASE events
 * (3) Coordinates: display by genomic coordinates
 * (4) Zoom in or out (each step is a factor of 3)
-* (5) Strand: select unstranded (*), positive (+) or negative (-). NB most RNA-seq
-protocols are reverse-stranded; this means the strand is opposite to that of the
-expressed RNA
+* (5) Strand: select unstranded (*), positive (+) or negative (-). NB most 
+RNA-seq protocols are reverse-stranded; this means the strand is opposite to 
+that of the expressed RNA
 * (6) Select events ranked by p values from All results, Filtered results (using
 the interactive DT data table), or Selected results using lasso / box select
 tools on the volcano or scatter plots
@@ -1241,6 +1257,7 @@ and per-window t-test results (-log10 transformed) will be displayed. Higher
 values indicate higher significance
 * (16) Condensed tracks: whether the individual transcripts `OFF` or collapsed
 combined transcripts `ON` is displayed
+\
 
 # SessionInfo
 

@@ -402,7 +402,7 @@ server_vis_volcano <- function(
             settings_Volc$final_plot <- ggplotly(
                 p, tooltip = "text",
                 source = "plotly_volcano"
-            ) %>% layout(dragmode = "lasso")
+            ) %>% layout(dragmode = "select")
             
             print(
                 settings_Volc$final_plot

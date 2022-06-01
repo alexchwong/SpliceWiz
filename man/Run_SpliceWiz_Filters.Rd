@@ -29,8 +29,9 @@ For \code{getDefaultFilters}: returns a list of default recommended filters
 that should be parsed into \code{applyFilters}.
 }
 \description{
-This function implements filtering of IR or AS events based on customisable
-criteria. See \link{ASEFilter} for details.
+These function implements filtering of alternative splicing events,
+based on customisable criteria. See \link{ASEFilter} for details on how to
+construct SpliceWiz filters
 }
 \details{
 We highly recommend using the default filters, which are as follows:
@@ -38,7 +39,7 @@ We highly recommend using the default filters, which are as follows:
 \item (1) Depth filter of 20,
 \item (2) Participation filter requiring 70\% coverage in IR events.
 \item (3) Participation filter requiring 40\% coverage in SE, A5SS and A3SS events
-(i.e. Included + Excluded isoforms must cover at least 60\% of all junction
+(i.e. Included + Excluded isoforms must cover at least 40\% of all junction
 events across the given region)
 \item (4) Consistency filter requring log difference of 2 (for skipped exon and
 mutually exclusive exon events, each junction must comprise at least 1/(2^2)

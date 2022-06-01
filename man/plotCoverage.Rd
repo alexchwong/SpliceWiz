@@ -119,15 +119,17 @@ is required if \code{Event} is not set and \code{condition} is set.}
 
 \item{p_obj}{In \code{as_ggplot_cov}, takes the output of \code{plotCoverage} and
 plots all tracks in a static plot using \code{ggarrange} function of the
-\code{egg} package. Requires \code{egg} to be installed.}
+\code{egg} package. Requires \code{egg} package to be installed.}
 }
 \value{
-A list containing two objects. final_plot is the plotly object.
-ggplot is a list of ggplot tracks, with:
+A list containing two objects (\code{final_plot} and \code{ggplot}).
+\code{final_plot} is the plotly object.
+\code{ggplot} is a list of ggplot tracks, with:
 \itemize{
 \item \code{ggplot[[n]]} is the nth track (where n = 1, 2, 3 or 4).
 \item \code{ggplot[[5]]} contains the T-test track if one is generated.
 \item \code{ggplot[[6]]} always contains the genome track.
+A static plot can be generated using the \code{as_ggplot_cov} function.
 }
 }
 \description{
@@ -213,7 +215,7 @@ p <- plotCoverage(
     tracks = colnames(se)[1:4]
 )
 
-# Display a static ggplot / egg::ggarrange stacked plot:
+# Display as a a static ggplot (requires the `egg` package to be installed):
 
 as_ggplot_cov(p)
 

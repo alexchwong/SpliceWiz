@@ -103,7 +103,7 @@ See Functions section (below) for details
 }
 \description{
 The NxtSE class inherits from the \linkS4class{SummarizedExperiment}
-class and is constructed from \link{makeSE}. NxtSE extends SummarizedExperiment
+class and is constructed using \link{makeSE}. NxtSE extends SummarizedExperiment
 by housing additional assays pertaining to IR and splice junction counts.
 }
 \section{Functions}{

@@ -140,9 +140,12 @@ For \code{getResources}: creates the following local resources:
 as a TwoBitFile.
 \item \code{reference_path/resource/transcripts.gtf.gz}: Local copy of the gene
 annotation as a gzip-compressed file.
-For \code{buildRef} and \code{buildFullRef}: creates a SpliceWiz reference
+}
+
+For \code{buildRef()} and \code{buildFullRef()}: creates a SpliceWiz reference
 which is written to the given directory specified by \code{reference_path}.
 Files created includes:
+\itemize{
 \item \code{reference_path/settings.Rds}: An RDS file containing parameters used
 to generate the SpliceWiz reference
 \item \code{reference_path/SpliceWiz.ref.gz}: A gzipped text file containing collated
@@ -153,10 +156,10 @@ SpliceWiz generated references
 visualise genome / transcript tracks.
 }
 
-\code{buildFullRef} also creates a \code{STAR} reference located in the \code{STAR}
+\code{buildFullRef()} also creates a \code{STAR} reference located in the \code{STAR}
 subdirectory inside the designated \code{reference_path}
 
-For \code{getNonPolyARef}: Returns the file path to the BED file for
+For \code{getNonPolyARef()}: Returns the file path to the BED file for
 the nonPolyA loci for the specified genome.
 }
 \description{
@@ -184,6 +187,16 @@ Then, it creates the SpliceWiz references. Typical run-times are
 
 NB: the parameters \code{fasta} and \code{gtf} can be omitted in \code{buildRef()} if
 \code{getResources()} is already run.
+
+\code{buildFullRef()} builds the STAR aligner reference alongside the SpliceWiz
+reference. The STAR reference will be located in the \code{STAR} subdirectory
+of the specified reference path. If \code{use_STAR_mappability} is set to \code{TRUE}
+this function will empirically compute regions of low mappability. This
+function requires \code{STAR} to be installed on the system (which only runs on
+linux-based systems).
+
+\code{getNonPolyARef()} returns the path of the non-polyA reference file for the
+human and mouse genomes.
 
 Typical usage involves running \code{buildRef()} for human and mouse genomes
 and specifying the \code{genome_type} to use the default \code{MappabilityRef} and
@@ -254,6 +267,7 @@ buildRef(
 # Get the path to the Non-PolyA BED file for hg19
 
 getNonPolyARef("hg19")
+
 \dontrun{
 
 ### Long examples ###
@@ -288,25 +302,6 @@ buildRef(
 
 ah <- AnnotationHub::AnnotationHub()
 AnnotationHub::query(ah, c("Homo Sapiens", "release-94"))
-# snapshotDate(): 2021-09-23
-# $dataprovider: Ensembl
-# $species: Homo sapiens
-# $rdataclass: TwoBitFile, GRanges
-# additional mcols(): taxonomyid, genome, description, coordinate_1_based,
-#   maintainer, rdatadateadded, preparerclass, tags,
-#   rdatapath, sourceurl, sourcetype
-# retrieve records with, e.g., 'object[["AH64628"]]'
-#
-#             title
-#   AH64628 | Homo_sapiens.GRCh38.94.abinitio.gtf
-#   AH64629 | Homo_sapiens.GRCh38.94.chr.gtf
-#   AH64630 | Homo_sapiens.GRCh38.94.chr_patch_hapl_scaff.gtf
-#   AH64631 | Homo_sapiens.GRCh38.94.gtf
-#   AH65744 | Homo_sapiens.GRCh38.cdna.all.2bit
-#   AH65745 | Homo_sapiens.GRCh38.dna.primary_assembly.2bit
-#   AH65746 | Homo_sapiens.GRCh38.dna_rm.primary_assembly.2bit
-#   AH65747 | Homo_sapiens.GRCh38.dna_sm.primary_assembly.2bit
-#   AH65748 | Homo_sapiens.GRCh38.ncrna.2bit
 
 buildRef(
     reference_path = "./Reference_AH",

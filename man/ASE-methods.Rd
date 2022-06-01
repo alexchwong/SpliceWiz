@@ -5,8 +5,7 @@
 \alias{ASE_limma}
 \alias{ASE_DESeq}
 \alias{ASE_DoubleExpSeq}
-\title{Use Limma, DESeq2 or DoubleExpSeq to test for differential Alternative
-Splice Events}
+\title{Differential Alternative Splicing Event analysis}
 \usage{
 ASE_limma(
   se,
@@ -59,14 +58,14 @@ types containing batch information to account for.}
 
 \item{filter_antiover, filter_antinear}{Whether to remove novel IR events that
 overlap over or near anti-sense genes. Default will exclude antiover but
-not antinear introns. These are ignored if stranded RNA-seq protocols are
-used.}
+not antinear introns. These are ignored if strand-specific RNA-seq
+protocols are used.}
 
 \item{n_threads}{(DESeq2 only) How many threads to use for DESeq2
 based analysis.}
 }
 \value{
-A data table containing the following:
+For all methods, a data table containing the following:
 \itemize{
 \item EventName: The name of the ASE event. This identifies each ASE
 in downstream functions including \link{makeMeanPSI}, \link{makeMatrix},
@@ -103,7 +102,7 @@ raw included / excluded counts only
 
 \strong{DoubleExp specific output}
 \itemize{
-\item MLE_nom, MLE_denom: Expectation values for the two groups. \code{nom} and
+\item MLE_nom, MLE_denom: Expectation PSI values for the two groups. \code{nom} and
 \code{denom} in column names are replaced with the condition names
 \item MLE_LFC: Log2-fold change of the MLE
 \item P.Value, adj.P.Val: Nominal and BH-adjusted P values
@@ -114,8 +113,8 @@ full models. See \link[DoubleExpSeq:DBGLM1]{DoubleExpSeq::DBGLM1} for details.
 }
 }
 \description{
-Use Limma, DESeq2 or DoubleExpSeq to test for differential Alternative
-Splice Events
+Use Limma, DESeq2 or DoubleExpSeq wrapper functions to test for differential
+Alternative Splice Events
 }
 \details{
 Using \strong{limma}, SpliceWiz models included and excluded counts as log-normal
@@ -127,6 +126,11 @@ For \strong{limma} and \strong{DESeq2}, differential ASE are considered as the
 "interaction" between included and excluded splice counts for each sample.
 See \href{https://rpubs.com/mikelove/ase}{this vignette} for an explanation of
 how this is done.
+
+SpliceWiz's \strong{limma} wrapper implements an additional filter where ASEs with
+an average cpm values of either Included or Excluded counts are less than 1.
+\strong{DESeq2} has its own method for handling outliers, which seems to work well
+for handling situations where PSI ~= 0 or PSI ~= 1.
 
 Time series are supported by SpliceWiz to a limited extent. Time series
 analysis is only performed via DESeq2 (using its "LRT" mode). To activate
@@ -140,38 +144,27 @@ to estimate dispersion.
 
 \strong{EventType} are as follow:
 \itemize{
-\item \code{IR} = (novel) intron retention
+\item \code{IR} = intron retention (IR-ratio) - all introns are considered
 \item \code{MXE} = mutually exclusive exons
 \item \code{SE} = skipped exons
 \item \code{AFE} = alternate first exon
 \item \code{ALE} = alternate last exon
 \item \code{A5SS} = alternate 5'-splice site
 \item \code{A3SS} = alternate 3'-splice site
-\item \code{RI} = (known / annotated) intron retention.
+\item \code{RI} = (known / annotated) intron retention (PSI).
 }
 
 NB: SpliceWiz separately considers known "RI" and novel "IR" events
 separately:
 \itemize{
-\item \strong{IR} novel events are calculated using the IRFinder method, whereby
+\item \strong{IR} novel events are quantified using the IRFinder method, whereby
 spliced transcripts are \strong{all} isoforms that do not retain the intron, as
-estimated via the \code{SpliceMax} and \code{SpliceOver} methods
-}
-\itemize{
-\item see \link{collateData}.
-}
-\itemize{
+estimated via the \code{SpliceMax} and \code{SpliceOver} methods - see \link{collateData}.
 \item \strong{RI} known retained introns are those that lie completely within a
 single exon of another transcript.
-(NB: in SpliceWiz v1.1.1 and later, this encompasses exons from any
-transcript, including \code{retained_intron} and \code{sense_intronic} transcripts).
-RI's are calculated by considering the specific
-spliced intron as a binary event paired with its retention. The spliced
-abundance is calculated exclusively by splice reads mapped to the
-specific intron boundaries. Known retained introns are those where the
-intron retaining transcript is an \strong{annotated} transcript.
-In SpliceWiz,
-the IR-transcript's \code{transcript_biotype} must not be
+RI's are quantified by considering the specific spliced intron as a binary
+event paired with its retention (analogous to PSI).
+In SpliceWiz, the IR-transcript's \code{transcript_biotype} must not be
 an \code{retained_intron} or \code{sense_intronic}.
 }
 
@@ -216,6 +209,7 @@ res_limma <- ASE_limma(se, "treatment", "A", "B")
 
 require("DoubleExpSeq")
 res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
+
 \dontrun{
 
 require("DESeq2")

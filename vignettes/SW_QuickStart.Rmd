@@ -1061,7 +1061,7 @@ parameter `na.percent.max` (default `0.1`) means any ASE with the proportion of
 
 Plot this matrix of values in a heatmap:
 
-```{r, fig.width = 8, fig.height = 6}
+```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
 library(pheatmap)
 
 anno_col_df <- as.data.frame(colData(se.filtered))

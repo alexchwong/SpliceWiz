@@ -46,7 +46,8 @@ as_ggplot_cov(p_obj)
 \arguments{
 \item{se}{A \linkS4class{NxtSE} object, created by \link{makeSE}.
 COV files must be linked to the NxtSE object. To do this, see the example
-in \link{makeSE}. Required by \code{plotCoverage}.}
+in \link{makeSE}. Required by \code{plotCoverage}. Not required by \code{plotGenome} if
+\code{reference_path} is supplied.}
 
 \item{Event}{The \code{EventName} of the IR / alternative splicing event to be
 displayed. Use \code{rownames(se)} to display a list of valid events.}

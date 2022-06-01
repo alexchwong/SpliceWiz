@@ -1,12 +1,12 @@
-#' Constructs a NxtSE object from the collated data
+#' Imports a collated dataset into the R session as an NxtSE object
 #'
-#' Creates a \linkS4class{NxtSE} object from the data
-#' from [processBAM] output, collated using [collateData]. This object is used
+#' Creates a \linkS4class{NxtSE} object from the data (that was collated using 
+#' [collateData]). This object is used
 #' for downstream differential analysis of IR and alternative splicing events
 #' using [ASE-methods] as well as visualisation using [plotCoverage]
 #'
 #' @details
-#' `makeSE` retrieves the generic SummarizedExperiment structure saved by
+#' `makeSE` retrieves the data collated by
 #' [collateData], and initialises a \linkS4class{NxtSE} object. It references
 #' the required on-disk assay data using DelayedArrays, thereby utilising
 #' 'on-disk' memory to conserve memory usage.
@@ -43,7 +43,7 @@
 #'   any assigned annotations.
 #'   Alternatively, if the names of only a subset of samples are given, then
 #'   `makeSE()` will construct the NxtSE object based only on the samples given.
-#'   The colData can be set later using `colData()`
+#'   The colData can be set later using [colData]
 #' @param RemoveOverlapping (default = `TRUE`) Whether to filter out overlapping
 #'   novel IR events belonging to minor isoforms. See details.
 #' @param realize (default = `FALSE`) Whether to load all assay data into

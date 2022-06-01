@@ -3,7 +3,7 @@
 #' The NxtSE class
 #'
 #' The NxtSE class inherits from the \linkS4class{SummarizedExperiment} 
-#' class and is constructed from [makeSE]. NxtSE extends SummarizedExperiment
+#' class and is constructed using [makeSE]. NxtSE extends SummarizedExperiment
 #' by housing additional assays pertaining to IR and splice junction counts.
 #' @param x A NxtSE object
 #' @param i,j Row and column subscripts to subset a NxtSE object.
@@ -123,13 +123,17 @@ setClass("NxtSE",
 )
 
 
-#' SpliceWiz filters to remove low-abundance alternative splicing and intron
+#' SpliceWiz filters to remove low-confidence alternative splicing and intron
 #' retention events
 #'
+#' SpliceWiz implements a number of novel filters designed to exclude
+#' alternative splicing events (ASEs) that will yield low-confidence estimates.
+#'
 #' @param filterClass Must be either `"Data"` or `"Annotation"`. See details
-#' @param filterType Must be a valid `Annotation` or `Data` filter. See details
+#' @param filterType Must be a valid `"Data"` or `"Annotation"` filter. See 
+#'   details
 #' @param pcTRUE If conditions are set, what percentage of all samples in each
-#'   of the condition must the filter be satisfied for the event to pass the
+#'   of the condition must satisfy the filter for the event to pass the
 #'   filter check. Must be between 0 and 100 (default 100)
 #' @param minimum Filter-dependent argument. See details
 #' @param maximum Filter-dependent argument. See details
@@ -179,19 +183,20 @@ setClass("NxtSE",
 #'   * **Participation**: Participation means different things to IR 
 #'       and alternative splicing.\cr\cr
 #'     For **IR**, Participation refers to the percentage of the measured intron
-#'       covered with reads. Introns of samples with an IntronDepth above 
-#'       `minDepth` are assessed, with introns with coverage 
+#'       covered with reads. Only introns of samples with a depth of intron
+#'       coverage above 
+#'       `minDepth` are assessed, with introns with coverage percentage
 #'       below `minimum` are filtered out.\cr\cr
 #'     For **Alternative Splicing**, Participation refers to the percentage of 
 #'       all splicing events observed across the genomic region that is 
 #'       compatible with either the included or excluded event. This prevents 
 #'       SpliceWiz from doing differential analysis between two minor isoforms. 
-#'       Instead od IntronDepth, in AS events SpliceWiz considers events where 
+#'       Instead of IntronDepth, in AS events SpliceWiz considers events where 
 #'       the spliced reads from both exonic regions exceed `minDepth`.
 #'       Then, events with a splicing coverage below `minimum`
 #'       are excluded. \cr\cr
-#'       We recommend testing IR events for > 90% coverage and AS
-#'       events for > 60% coverage as given in the default filters which can be
+#'       We recommend testing IR events for > 70% coverage and AS
+#'       events for > 40% coverage as given in the default filters which can be
 #'       accessed using [getDefaultFilters]\cr\cr
 #'    * **Consistency**: Skipped exons (SE) and mutually exclusive exons
 #'       (MXE) comprise reads aligned to two contiguous splice junctions. 
@@ -217,7 +222,7 @@ setClass("NxtSE",
 #'
 #'   We highly recommend using the default filters, which can be acquired 
 #'     using [getDefaultFilters]
-#' @return A ASEFilter object with the specified parameters
+#' @return An ASEFilter object with the specified parameters
 #' @examples
 #' # Create a ASEFilter that filters for protein-coding ASE
 #' f1 <- ASEFilter(filterClass = "Annotation", filterType = "Protein_Coding")

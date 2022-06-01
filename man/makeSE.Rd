@@ -2,7 +2,7 @@
 % Please edit documentation in R/MakeSE.R
 \name{makeSE}
 \alias{makeSE}
-\title{Constructs a NxtSE object from the collated data}
+\title{Imports a collated dataset into the R session as an NxtSE object}
 \usage{
 makeSE(collate_path, colData, RemoveOverlapping = TRUE, realize = FALSE)
 }
@@ -16,7 +16,7 @@ Omit \code{colData} to generate a NxtSE object of the whole dataset without
 any assigned annotations.
 Alternatively, if the names of only a subset of samples are given, then
 \code{makeSE()} will construct the NxtSE object based only on the samples given.
-The colData can be set later using \code{colData()}}
+The colData can be set later using \link{colData}}
 
 \item{RemoveOverlapping}{(default = \code{TRUE}) Whether to filter out overlapping
 novel IR events belonging to minor isoforms. See details.}
@@ -30,13 +30,13 @@ DelayedArrays pointing to the assay data contained in the given
 \code{collate_path}
 }
 \description{
-Creates a \linkS4class{NxtSE} object from the data
-from \link{processBAM} output, collated using \link{collateData}. This object is used
+Creates a \linkS4class{NxtSE} object from the data (that was collated using
+\link{collateData}). This object is used
 for downstream differential analysis of IR and alternative splicing events
 using \link{ASE-methods} as well as visualisation using \link{plotCoverage}
 }
 \details{
-\code{makeSE} retrieves the generic SummarizedExperiment structure saved by
+\code{makeSE} retrieves the data collated by
 \link{collateData}, and initialises a \linkS4class{NxtSE} object. It references
 the required on-disk assay data using DelayedArrays, thereby utilising
 'on-disk' memory to conserve memory usage.

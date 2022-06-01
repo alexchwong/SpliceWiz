@@ -1,5 +1,7 @@
-#' Use Limma, DESeq2 or DoubleExpSeq to test for differential Alternative
-#' Splice Events
+#' Differential Alternative Splicing Event analysis
+#'
+#' Use Limma, DESeq2 or DoubleExpSeq wrapper functions to test for differential 
+#' Alternative Splice Events
 #'
 #' @details
 #'
@@ -13,6 +15,11 @@
 #'  See [this vignette](https://rpubs.com/mikelove/ase) for an explanation of
 #' how this is done.
 #'
+#' SpliceWiz's **limma** wrapper implements an additional filter where ASEs with
+#' an average cpm values of either Included or Excluded counts are less than 1.
+#' **DESeq2** has its own method for handling outliers, which seems to work well
+#' for handling situations where PSI ~= 0 or PSI ~= 1.
+#'
 #' Time series are supported by SpliceWiz to a limited extent. Time series
 #' analysis is only performed via DESeq2 (using its "LRT" mode). To activate
 #' time series differential analysis, run `ASE_DESeq()` specifying `test_factor`
@@ -24,32 +31,25 @@
 #' to estimate dispersion.
 #'
 #' **EventType** are as follow:
-#' * `IR` = (novel) intron retention
+#' * `IR` = intron retention (IR-ratio) - all introns are considered
 #' * `MXE` = mutually exclusive exons
 #' * `SE` = skipped exons
 #' * `AFE` = alternate first exon
 #' * `ALE` = alternate last exon
 #' * `A5SS` = alternate 5'-splice site
 #' * `A3SS` = alternate 3'-splice site
-#' * `RI` = (known / annotated) intron retention.
+#' * `RI` = (known / annotated) intron retention (PSI).
 #'
 #' NB: SpliceWiz separately considers known "RI" and novel "IR" events 
 #'   separately:
-#' * **IR** novel events are calculated using the IRFinder method, whereby
+#' * **IR** novel events are quantified using the IRFinder method, whereby
 #' spliced transcripts are **all** isoforms that do not retain the intron, as
-#' estimated via the `SpliceMax` and `SpliceOver` methods
-#' - see [collateData].
+#' estimated via the `SpliceMax` and `SpliceOver` methods - see [collateData].
 #' * **RI** known retained introns are those that lie completely within a
 #' single exon of another transcript.
-#' (NB: in SpliceWiz v1.1.1 and later, this encompasses exons from any
-#' transcript, including `retained_intron` and `sense_intronic` transcripts).
-#' RI's are calculated by considering the specific
-#' spliced intron as a binary event paired with its retention. The spliced
-#' abundance is calculated exclusively by splice reads mapped to the
-#' specific intron boundaries. Known retained introns are those where the
-#' intron retaining transcript is an **annotated** transcript.
-#' In SpliceWiz, 
-#' the IR-transcript's `transcript_biotype` must not be
+#' RI's are quantified by considering the specific spliced intron as a binary 
+#' event paired with its retention (analogous to PSI). 
+#' In SpliceWiz, the IR-transcript's `transcript_biotype` must not be
 #' an `retained_intron` or `sense_intronic`.
 #'
 #' SpliceWiz considers "included" counts as those that represent abundance of 
@@ -84,11 +84,11 @@
 #'   types containing batch information to account for.
 #' @param filter_antiover,filter_antinear Whether to remove novel IR events that
 #'   overlap over or near anti-sense genes. Default will exclude antiover but
-#'   not antinear introns. These are ignored if stranded RNA-seq protocols are
-#'   used.
+#'   not antinear introns. These are ignored if strand-specific RNA-seq 
+#'   protocols are used.
 #' @param n_threads (DESeq2 only) How many threads to use for DESeq2
 #'   based analysis.
-#' @return A data table containing the following:
+#' @return For all methods, a data table containing the following:
 #'   * EventName: The name of the ASE event. This identifies each ASE
 #'     in downstream functions including [makeMeanPSI], [makeMatrix],
 #'     and [plotCoverage]
@@ -118,7 +118,7 @@
 #'     raw included / excluded counts only
 #'
 #'   **DoubleExp specific output**
-#'   * MLE_nom, MLE_denom: Expectation values for the two groups. `nom` and
+#'   * MLE_nom, MLE_denom: Expectation PSI values for the two groups. `nom` and
 #'     `denom` in column names are replaced with the condition names
 #'   * MLE_LFC: Log2-fold change of the MLE
 #'   * P.Value, adj.P.Val: Nominal and BH-adjusted P values
@@ -137,6 +137,7 @@
 #'
 #' require("DoubleExpSeq")
 #' res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
+#'
 #' \dontrun{
 #'
 #' require("DESeq2")

@@ -79,7 +79,7 @@ getDefaultFilters <- function() {
         minimum = 40, minDepth = 20,
         EventTypes = c("SE", "A5SS", "A3SS"))
     f4 <- ASEFilter("Data", "Consistency", pcTRUE = 80,
-        maximum = 1, minDepth = 20, EventTypes = c("MXE", "SE", "RI"))
+        maximum = 2, minDepth = 20, EventTypes = c("MXE", "SE", "RI"))
     f5 <- ASEFilter("Annotation", "Terminus")
     f6 <- ASEFilter("Annotation", "ExclusiveMXE")
     return(list(f1, f2, f3, f4, f5, f6))

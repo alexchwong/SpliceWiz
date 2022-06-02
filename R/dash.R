@@ -35,7 +35,7 @@
 #' @md
 NULL
 
-#' @describeIn Graphics-User-Interface
+#' @describeIn Graphics-User-Interface Launches the SpliceWiz GUI
 #' @export
 spliceWiz <- function(
         mode = c("dialog", "browser"),

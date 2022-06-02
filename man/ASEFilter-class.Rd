@@ -60,13 +60,13 @@ An ASEFilter object with the specified parameters
 }
 \description{
 SpliceWiz implements a number of novel filters designed to exclude
-alternative splicing events (ASEs) that will yield low-confidence estimates.
+alternative splicing events (ASEs) that yield low-confidence estimates.
 }
 \details{
 \strong{Annotation Filters}
 \itemize{
 \item \strong{Modality}: Filters for specific modalities of ASEs. All events
-belonging to the specified \code{EventTypes} are retained.
+belonging to the specified \code{EventTypes} are removed.
 No additional parameters required.
 \item \strong{Protein_Coding}: Filters for alternative splicing or IR events
 involving protein-coding transcripts.

@@ -41,7 +41,7 @@
 #' @param depth_threshold (default = 10) Samples with the number of reads
 #'   supporting either included or excluded isoforms below this values are
 #'   excluded
-#' @param logit_max (default = 5) PSI values close to 0 or 1 are rounded up/down
+#' @param logit_max PSI values close to 0 or 1 are rounded up/down
 #'  to `plogis(-logit_max)` and `plogis(logit_max)`, respectively. See details.
 #' @param na.percent.max (default = 0.1) The maximum proportion of values in
 #'   the given dataset that were transformed to `NA` because of low splicing

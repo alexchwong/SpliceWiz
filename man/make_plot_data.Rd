@@ -45,7 +45,7 @@ alternately be "logit" which returns logit-transformed PSI values, or
 supporting either included or excluded isoforms below this values are
 excluded}
 
-\item{logit_max}{(default = 5) PSI values close to 0 or 1 are rounded up/down
+\item{logit_max}{PSI values close to 0 or 1 are rounded up/down
 to \code{plogis(-logit_max)} and \code{plogis(logit_max)}, respectively. See details.}
 
 \item{na.percent.max}{(default = 0.1) The maximum proportion of values in

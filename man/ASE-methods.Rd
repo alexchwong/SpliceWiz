@@ -65,7 +65,7 @@ protocols are used.}
 based analysis.}
 }
 \value{
-For all methods, a data table containing the following:
+For all methods, a data.table containing the following:
 \itemize{
 \item EventName: The name of the ASE event. This identifies each ASE
 in downstream functions including \link{makeMeanPSI}, \link{makeMatrix},
@@ -102,7 +102,7 @@ raw included / excluded counts only
 
 \strong{DoubleExp specific output}
 \itemize{
-\item MLE_nom, MLE_denom: Expectation PSI values for the two groups. \code{nom} and
+\item MLE_nom, MLE_denom: Maximum likelihood expectation of PSI values for the
 \code{denom} in column names are replaced with the condition names
 \item MLE_LFC: Log2-fold change of the MLE
 \item P.Value, adj.P.Val: Nominal and BH-adjusted P values
@@ -157,15 +157,13 @@ to estimate dispersion.
 NB: SpliceWiz separately considers known "RI" and novel "IR" events
 separately:
 \itemize{
-\item \strong{IR} novel events are quantified using the IRFinder method, whereby
-spliced transcripts are \strong{all} isoforms that do not retain the intron, as
+\item For \strong{IR} (all introns are putative IR events), differential analysis
+is performed on IR-ratio, which is similar to PSI, but the "excluded isoform"
+includes \strong{all} spliced transcripts that contain an overlapping intron, as
 estimated via the \code{SpliceMax} and \code{SpliceOver} methods - see \link{collateData}.
-\item \strong{RI} known retained introns are those that lie completely within a
-single exon of another transcript.
-RI's are quantified by considering the specific spliced intron as a binary
-event paired with its retention (analogous to PSI).
-In SpliceWiz, the IR-transcript's \code{transcript_biotype} must not be
-an \code{retained_intron} or \code{sense_intronic}.
+\item For \strong{RI} (annotated retained introns), differential analysis is performed
+on PSI, whereby the "excluded" isoform is one that splice across the
+same \strong{exact} intron as the intron of interest.
 }
 
 SpliceWiz considers "included" counts as those that represent abundance of

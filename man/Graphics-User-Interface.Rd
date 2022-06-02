@@ -5,6 +5,13 @@
 \alias{GUI}
 \alias{spliceWiz}
 \title{Launches the SpliceWiz Graphics User Interface (GUI) using Shiny Dashboard}
+\usage{
+spliceWiz(
+  mode = c("dialog", "browser"),
+  res = c("1080p", "720p", "960p", "1440p"),
+  demo = FALSE
+)
+}
 \arguments{
 \item{mode}{(default \code{"dialog"}) \code{"dialog"} displays SpliceWiz in a dialog
 box with specified width and height. \code{"browser"} opens SpliceWiz in a
@@ -30,6 +37,11 @@ internet browser). The demo mode can be launched by setting \code{demo = TRUE}.
 See the \href{../doc/SW_QuickStart.html}{SpliceWiz Quick-Start} for a guide
 to using the SpliceWiz GUI.
 }
+\section{Functions}{
+\itemize{
+\item \code{spliceWiz}: Launches the SpliceWiz GUI
+}}
+
 \examples{
 if(interactive()) {
 

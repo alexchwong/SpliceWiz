@@ -42,15 +42,13 @@
 #'
 #' NB: SpliceWiz separately considers known "RI" and novel "IR" events 
 #'   separately:
-#' * **IR** novel events are quantified using the IRFinder method, whereby
-#' spliced transcripts are **all** isoforms that do not retain the intron, as
+#' * For **IR** (all introns are putative IR events), differential analysis
+#' is performed on IR-ratio, which is similar to PSI, but the "excluded isoform"
+#' includes **all** spliced transcripts that contain an overlapping intron, as
 #' estimated via the `SpliceMax` and `SpliceOver` methods - see [collateData].
-#' * **RI** known retained introns are those that lie completely within a
-#' single exon of another transcript.
-#' RI's are quantified by considering the specific spliced intron as a binary 
-#' event paired with its retention (analogous to PSI). 
-#' In SpliceWiz, the IR-transcript's `transcript_biotype` must not be
-#' an `retained_intron` or `sense_intronic`.
+#' * For **RI** (annotated retained introns), differential analysis is performed
+#' on PSI, whereby the "excluded" isoform is one that splice across the 
+#' same **exact** intron as the intron of interest. 
 #'
 #' SpliceWiz considers "included" counts as those that represent abundance of 
 #' the "included" isoform, whereas "excluded" counts represent the abundance of 
@@ -70,7 +68,6 @@
 #' | A5SS | Downstream 5'-SS | Upstream 5'-SS |
 #' | A3SS | Upstream 3'-SS | Downstream 3'-SS |
 #'
-#'
 #' @param se The \linkS4class{NxtSE} object created by `makeSE()`. To reduce
 #'   runtime and avoid excessive multiple testing, consider filtering
 #'   the object using [applyFilters]
@@ -88,7 +85,7 @@
 #'   protocols are used.
 #' @param n_threads (DESeq2 only) How many threads to use for DESeq2
 #'   based analysis.
-#' @return For all methods, a data table containing the following:
+#' @return For all methods, a data.table containing the following:
 #'   * EventName: The name of the ASE event. This identifies each ASE
 #'     in downstream functions including [makeMeanPSI], [makeMatrix],
 #'     and [plotCoverage]
@@ -118,7 +115,8 @@
 #'     raw included / excluded counts only
 #'
 #'   **DoubleExp specific output**
-#'   * MLE_nom, MLE_denom: Expectation PSI values for the two groups. `nom` and
+#'   * MLE_nom, MLE_denom: Maximum likelihood expectation of PSI values for the 
+#"     two groups. `nom` and
 #'     `denom` in column names are replaced with the condition names
 #'   * MLE_LFC: Log2-fold change of the MLE
 #'   * P.Value, adj.P.Val: Nominal and BH-adjusted P values

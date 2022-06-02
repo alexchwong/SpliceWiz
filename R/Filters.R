@@ -324,7 +324,7 @@ runFilter <- function(se, filterObj) {
 # returns if any of included or excluded is protein_coding
 .runFilter_anno_mode <- function(se, filterObj) {
     rowSelected <- as.data.table(rowData(se))
-    rowSelected <- rowSelected[get("EventType") %in% filterObj@EventTypes]
+    rowSelected <- rowSelected[!(get("EventType") %in% filterObj@EventTypes)]
     res <- rowData(se)$EventName %in% rowSelected$EventName
     return(res)
 }

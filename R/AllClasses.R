@@ -127,7 +127,7 @@ setClass("NxtSE",
 #' retention events
 #'
 #' SpliceWiz implements a number of novel filters designed to exclude
-#' alternative splicing events (ASEs) that will yield low-confidence estimates.
+#' alternative splicing events (ASEs) that yield low-confidence estimates.
 #'
 #' @param filterClass Must be either `"Data"` or `"Annotation"`. See details
 #' @param filterType Must be a valid `"Data"` or `"Annotation"` filter. See 
@@ -157,7 +157,7 @@ setClass("NxtSE",
 #' @details
 #'   **Annotation Filters**
 #'   * **Modality**: Filters for specific modalities of ASEs. All events
-#'       belonging to the specified `EventTypes` are retained.
+#'       belonging to the specified `EventTypes` are removed.
 #'       No additional parameters required.
 #'   * **Protein_Coding**: Filters for alternative splicing or IR events 
 #'       involving protein-coding transcripts.

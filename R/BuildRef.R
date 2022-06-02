@@ -23,6 +23,16 @@
 #' NB: the parameters `fasta` and `gtf` can be omitted in `buildRef()` if
 #' `getResources()` is already run.
 #'
+#' `buildFullRef()` builds the STAR aligner reference alongside the SpliceWiz
+#' reference. The STAR reference will be located in the `STAR` subdirectory
+#' of the specified reference path. If `use_STAR_mappability` is set to `TRUE`
+#' this function will empirically compute regions of low mappability. This
+#' function requires `STAR` to be installed on the system (which only runs on
+#' linux-based systems).
+#'
+#' `getNonPolyARef()` returns the path of the non-polyA reference file for the
+#' human and mouse genomes.
+#'
 #' Typical usage involves running `buildRef()` for human and mouse genomes
 #' and specifying the `genome_type` to use the default `MappabilityRef` and
 #' `nonPolyARef` files for the specified genome. For non-human non-mouse
@@ -122,7 +132,8 @@
 #'   as a TwoBitFile.
 #' * `reference_path/resource/transcripts.gtf.gz`: Local copy of the gene
 #'   annotation as a gzip-compressed file.
-#' For `buildRef` and `buildFullRef`: creates a SpliceWiz reference
+#' 
+#' For `buildRef()` and `buildFullRef()`: creates a SpliceWiz reference
 #'   which is written to the given directory specified by `reference_path`.
 #'   Files created includes:
 #' * `reference_path/settings.Rds`: An RDS file containing parameters used
@@ -134,10 +145,10 @@
 #' * `reference_path/cov_data.Rds`: An RDS file containing data required to
 #'    visualise genome / transcript tracks.
 #'
-#' `buildFullRef` also creates a `STAR` reference located in the `STAR`
+#' `buildFullRef()` also creates a `STAR` reference located in the `STAR`
 #'   subdirectory inside the designated `reference_path`
 #'
-#' For `getNonPolyARef`: Returns the file path to the BED file for
+#' For `getNonPolyARef()`: Returns the file path to the BED file for
 #' the nonPolyA loci for the specified genome.
 #'
 #' @examples
@@ -165,6 +176,7 @@
 #' # Get the path to the Non-PolyA BED file for hg19
 #'
 #' getNonPolyARef("hg19")
+#'
 #' \dontrun{
 #'
 #' ### Long examples ###
@@ -199,25 +211,6 @@
 #'
 #' ah <- AnnotationHub::AnnotationHub()
 #' AnnotationHub::query(ah, c("Homo Sapiens", "release-94"))
-#' # snapshotDate(): 2021-09-23
-#' # $dataprovider: Ensembl
-#' # $species: Homo sapiens
-#' # $rdataclass: TwoBitFile, GRanges
-#' # additional mcols(): taxonomyid, genome, description, coordinate_1_based,
-#' #   maintainer, rdatadateadded, preparerclass, tags,
-#' #   rdatapath, sourceurl, sourcetype
-#' # retrieve records with, e.g., 'object[["AH64628"]]'
-#' #
-#' #             title
-#' #   AH64628 | Homo_sapiens.GRCh38.94.abinitio.gtf
-#' #   AH64629 | Homo_sapiens.GRCh38.94.chr.gtf
-#' #   AH64630 | Homo_sapiens.GRCh38.94.chr_patch_hapl_scaff.gtf
-#' #   AH64631 | Homo_sapiens.GRCh38.94.gtf
-#' #   AH65744 | Homo_sapiens.GRCh38.cdna.all.2bit
-#' #   AH65745 | Homo_sapiens.GRCh38.dna.primary_assembly.2bit
-#' #   AH65746 | Homo_sapiens.GRCh38.dna_rm.primary_assembly.2bit
-#' #   AH65747 | Homo_sapiens.GRCh38.dna_sm.primary_assembly.2bit
-#' #   AH65748 | Homo_sapiens.GRCh38.ncrna.2bit
 #'
 #' buildRef(
 #'     reference_path = "./Reference_AH",
@@ -1503,7 +1496,7 @@ return(TRUE)
         data[["candidate.introns"]], data[["Transcripts"]], genome,
         data[["Proteins"]], data[["Exons"]]
     )
-    message("...defining flanking exon islands")
+    message("...defining flanking exon clusters")
     data[["candidate.introns"]] <- .process_introns_group(
         data[["candidate.introns"]], data[["Exons_group.stranded"]],
         data[["Exons_group.unstranded"]]
@@ -1841,9 +1834,9 @@ return(TRUE)
 # Sub
 
 .gen_irf <- function(reference_path, extra_files, genome, chromosome_aliases) {
-    .log("Generating SpliceWiz reference", "message")
+    .log("Generating processBAM reference", "message")
 
-    # Generating SpliceWiz-base references
+    # Generating processBAM references
     message("...prepping data")
     data <- .gen_irf_prep_data(reference_path)
     data2 <- .gen_irf_prep_introns(
@@ -1888,7 +1881,7 @@ return(TRUE)
         chr$seqalias <- ""
     }
     .gen_irf_final(reference_path, ref.cover, readcons, ref.ROI, ref.sj, chr)
-    message("SpliceWiz reference generation completed")
+    message("processBAM reference generated")
 }
 ################################################################################
 

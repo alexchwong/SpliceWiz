@@ -24,7 +24,7 @@ calculateMappability(
 }
 \arguments{
 \item{reference_path}{The directory of the reference prepared by
-\code{getResources()}}
+\link{getResources}}
 
 \item{read_len}{The nucleotide length of the synthetic reads}
 
@@ -37,7 +37,7 @@ from the start of each synthetic reads}
 
 \item{alt_fasta_file}{(Optional) The path to the user-supplied genome fasta
 file, if different to that found inside the \code{resource} subdirectory of the
-\code{reference_path}. If \code{getResources()} has already been run,
+\code{reference_path}. If \link{getResources} has already been run,
 this parameter should be omitted.}
 
 \item{aligned_bam}{The BAM file of alignment of the synthetic reads generated
@@ -59,13 +59,13 @@ subdirectory inside the given \code{reference_path}.
 \item For \code{calculateMappability}: writes a gzipped BED file
 named \code{MappabilityExclusion.bed.gz} to the \code{Mappability} subdirectory
 inside \code{reference_path}.
-This BED file is automatically used by \code{buildRef()} if
-\code{MappabilityRef} is not specified.
+This BED file is automatically used by \link{buildRef} if its
+\code{MappabilityRef} parameter is not specified.
 }
 }
 \description{
 These functions empirically calculate low-mappability (Mappability Exclusion)
-regions using the given genome FASTA file. A splice-aware alignment software
+regions using the given reference. A splice-aware alignment software
 capable of aligning reads to the genome is required.
 See details and examples below.
 }
@@ -73,14 +73,15 @@ See details and examples below.
 Creating a Mappability Exclusion BED file is a three-step process.
 \cr
 \itemize{
-\item First, using \code{generateSyntheticReads()},
-synthetic reads are systematically generated using the given genome contained
-within \code{reference_path}.
-\item Second, an aligner
-such as STAR (preferably the same aligner used for the subsequent RNA-seq
-experiment) is required to align these reads to the source genome. Poorly
-mapped regions of the genome will be reflected by regions of low coverage
-depth.
+\item First, using \code{generateSyntheticReads()}, synthetic reads are systematically
+generated using the given genome contained within \code{reference_path}, prepared
+via \link{getResources}. Alternatively, use \code{alt_fasta_file} to set the genome
+sequence if this is different to that prepared by \code{getResources} or if
+\code{getResources} is not yet run.
+\item Second, an aligner such as STAR (preferably the same aligner used for the
+subsequent RNA-seq experiment) is required to align these reads to the source
+genome. Poorly mapped regions of the genome will be reflected by regions of
+low coverage depth.
 \item Finally, the BAM file containing the aligned reads is analysed
 using \code{calculateMappability()}, to identify
 low-mappability regions to compile the Mappability Exclusion BED file.
@@ -93,7 +94,11 @@ as required.
 NB: \link{STAR_mappability} runs all 3 steps required, using the \code{STAR} aligner.
 This only works in systems where \code{STAR} is installed.
 
-NB2: In systems where \code{STAR} is not available, consider using HISAT2 or
+NB2: \link{buildFullRef} builds the STAR reference, then calculates mappability.
+It then uses the calculated mappability regions to build the SpliceWiz
+reference.
+
+NB3: In systems where \code{STAR} is not available, consider using HISAT2 or
 Rsubread. A working example using Rsubread is shown below.
 }
 \section{Functions}{

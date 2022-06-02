@@ -4,7 +4,7 @@
 \name{ASEFilter-class}
 \alias{ASEFilter-class}
 \alias{ASEFilter}
-\title{SpliceWiz filters to remove low-abundance alternative splicing and intron
+\title{SpliceWiz filters to remove low-confidence alternative splicing and intron
 retention events}
 \usage{
 ASEFilter(
@@ -23,10 +23,11 @@ ASEFilter(
 \arguments{
 \item{filterClass}{Must be either \code{"Data"} or \code{"Annotation"}. See details}
 
-\item{filterType}{Must be a valid \code{Annotation} or \code{Data} filter. See details}
+\item{filterType}{Must be a valid \code{"Data"} or \code{"Annotation"} filter. See
+details}
 
 \item{pcTRUE}{If conditions are set, what percentage of all samples in each
-of the condition must the filter be satisfied for the event to pass the
+of the condition must satisfy the filter for the event to pass the
 filter check. Must be between 0 and 100 (default 100)}
 
 \item{minimum}{Filter-dependent argument. See details}
@@ -55,17 +56,17 @@ Events not specified in \code{EventTypes} are not filtered (i.e. they will pass
 the filter without checks)}
 }
 \value{
-A ASEFilter object with the specified parameters
+An ASEFilter object with the specified parameters
 }
 \description{
-SpliceWiz filters to remove low-abundance alternative splicing and intron
-retention events
+SpliceWiz implements a number of novel filters designed to exclude
+alternative splicing events (ASEs) that yield low-confidence estimates.
 }
 \details{
 \strong{Annotation Filters}
 \itemize{
 \item \strong{Modality}: Filters for specific modalities of ASEs. All events
-belonging to the specified \code{EventTypes} are retained.
+belonging to the specified \code{EventTypes} are removed.
 No additional parameters required.
 \item \strong{Protein_Coding}: Filters for alternative splicing or IR events
 involving protein-coding transcripts.
@@ -93,19 +94,20 @@ sum of all splicing and IR reads spanning the event. Events with
 \item \strong{Participation}: Participation means different things to IR
 and alternative splicing.\cr\cr
 For \strong{IR}, Participation refers to the percentage of the measured intron
-covered with reads. Introns of samples with an IntronDepth above
-\code{minDepth} are assessed, with introns with coverage
+covered with reads. Only introns of samples with a depth of intron
+coverage above
+\code{minDepth} are assessed, with introns with coverage percentage
 below \code{minimum} are filtered out.\cr\cr
 For \strong{Alternative Splicing}, Participation refers to the percentage of
 all splicing events observed across the genomic region that is
 compatible with either the included or excluded event. This prevents
 SpliceWiz from doing differential analysis between two minor isoforms.
-Instead od IntronDepth, in AS events SpliceWiz considers events where
+Instead of IntronDepth, in AS events SpliceWiz considers events where
 the spliced reads from both exonic regions exceed \code{minDepth}.
 Then, events with a splicing coverage below \code{minimum}
 are excluded. \cr\cr
-We recommend testing IR events for > 90\% coverage and AS
-events for > 60\% coverage as given in the default filters which can be
+We recommend testing IR events for > 70\% coverage and AS
+events for > 40\% coverage as given in the default filters which can be
 accessed using \link{getDefaultFilters}\cr\cr
 \item \strong{Consistency}: Skipped exons (SE) and mutually exclusive exons
 (MXE) comprise reads aligned to two contiguous splice junctions.

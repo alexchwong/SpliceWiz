@@ -2,20 +2,21 @@
 #'
 #' @description
 #' These functions empirically calculate low-mappability (Mappability Exclusion)
-#' regions using the given genome FASTA file. A splice-aware alignment software
+#' regions using the given reference. A splice-aware alignment software
 #' capable of aligning reads to the genome is required.
 #' See details and examples below.
 #'
 #' @details Creating a Mappability Exclusion BED file is a three-step process.
 #' \cr
-#' * First, using `generateSyntheticReads()`,
-#' synthetic reads are systematically generated using the given genome contained
-#' within `reference_path`.
-#' * Second, an aligner
-#' such as STAR (preferably the same aligner used for the subsequent RNA-seq
-#' experiment) is required to align these reads to the source genome. Poorly
-#' mapped regions of the genome will be reflected by regions of low coverage
-#' depth.
+#' * First, using `generateSyntheticReads()`, synthetic reads are systematically
+#' generated using the given genome contained within `reference_path`, prepared
+#' via [getResources]. Alternatively, use `alt_fasta_file` to set the genome
+#' sequence if this is different to that prepared by `getResources` or if 
+#' `getResources` is not yet run.
+#' * Second, an aligner such as STAR (preferably the same aligner used for the
+#' subsequent RNA-seq experiment) is required to align these reads to the source 
+#' genome. Poorly mapped regions of the genome will be reflected by regions of 
+#' low coverage depth.
 #' * Finally, the BAM file containing the aligned reads is analysed
 #' using `calculateMappability()`, to identify
 #' low-mappability regions to compile the Mappability Exclusion BED file.
@@ -27,11 +28,15 @@
 #' NB: [STAR_mappability] runs all 3 steps required, using the `STAR` aligner.
 #' This only works in systems where `STAR` is installed.
 #'
-#' NB2: In systems where `STAR` is not available, consider using HISAT2 or
+#' NB2: [buildFullRef] builds the STAR reference, then calculates mappability.
+#' It then uses the calculated mappability regions to build the SpliceWiz
+#' reference.
+#'
+#' NB3: In systems where `STAR` is not available, consider using HISAT2 or
 #' Rsubread. A working example using Rsubread is shown below.
 #'
 #' @param reference_path The directory of the reference prepared by
-#'   `getResources()`
+#'   [getResources]
 #' @param read_len The nucleotide length of the synthetic reads
 #' @param read_stride The nucleotide distance between adjacent synthetic reads
 #' @param error_pos The position of the procedurally-generated nucleotide error
@@ -39,7 +44,7 @@
 #' @param verbose Whether additional status messages are shown
 #' @param alt_fasta_file (Optional) The path to the user-supplied genome fasta
 #'   file, if different to that found inside the `resource` subdirectory of the
-#'   `reference_path`. If `getResources()` has already been run,
+#'   `reference_path`. If [getResources] has already been run,
 #'   this parameter should be omitted.
 #' @param aligned_bam The BAM file of alignment of the synthetic reads generated
 #'   by `generateSyntheticReads()`. Users should use a genome splice-aware
@@ -56,8 +61,8 @@
 #' * For `calculateMappability`: writes a gzipped BED file
 #'   named `MappabilityExclusion.bed.gz` to the `Mappability` subdirectory
 #'   inside `reference_path`.
-#'   This BED file is automatically used by `buildRef()` if
-#'   `MappabilityRef` is not specified.
+#'   This BED file is automatically used by [buildRef] if its
+#'   `MappabilityRef` parameter is not specified.
 #' @examples
 #'
 #' # (1a) Creates genome resource files

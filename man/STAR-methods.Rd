@@ -7,7 +7,7 @@
 \alias{STAR_alignReads}
 \alias{STAR_version}
 \alias{STAR_mappability}
-\title{STAR wrapper for building reference for STAR, and aligning RNA-sequencing}
+\title{STAR wrappers for building reference for STAR, and aligning RNA-sequencing}
 \usage{
 STAR_version()
 
@@ -116,7 +116,7 @@ These functions run the STAR aligner to build a STAR genome reference,
 calculate mappability exclusion regions using STAR, and align one or more
 FASTQ files (single or paired) to the generated genome. These functions only
 work on Linux-based systems with STAR installed. STAR must be
-accessible via $PATH. See details and examples
+accessible via \verb{$PATH}. See details and examples
 }
 \details{
 \strong{Pre-requisites}
@@ -131,7 +131,7 @@ required genome and gene annotation files.
 
 For \code{STAR_buildRef}: this function
 will create a \code{STAR} genome reference in the \code{STAR} subdirectory in the
-path given by \code{reference_path}. Optionally, it will run \link{STAR_mappability}
+path given by \code{reference_path}. Optionally, it will run \code{STAR_mappability}
 if \code{also_generate_mappability} is set to \code{TRUE}
 
 For \code{STAR_mappability}: this function will first

@@ -1,6 +1,12 @@
-#' Launches the SpliceWiz Graphics User Interface using Shiny Dashboard
+#' Launches the SpliceWiz Graphics User Interface (GUI) using Shiny Dashboard
 #' 
 #' This function launches the SpliceWiz interactive app using Shiny Dashboard
+#' This is (by default) a dialog window within the RStudio application with
+#' the resolution specified by the `res` parameter. Alternatively, setting
+#' `mode = "browser"` will launch a resizable browser window (using the default
+#' internet browser). The demo mode can be launched by setting `demo = TRUE`.
+#' See the [SpliceWiz Quick-Start](../doc/SW_QuickStart.html) for a guide
+#' to using the SpliceWiz GUI. 
 #' @param mode (default `"dialog"`) `"dialog"` displays SpliceWiz in a dialog 
 #'   box with specified width and height. `"browser"` opens SpliceWiz in a 
 #'   browser-like resizable window.
@@ -23,7 +29,13 @@
 #' 
 #' }
 #' 
+#' @name Graphics-User-Interface
+#' @aliases
+#' GUI spliceWiz
 #' @md
+NULL
+
+#' @describeIn Graphics-User-Interface Launches the SpliceWiz GUI
 #' @export
 spliceWiz <- function(
         mode = c("dialog", "browser"),

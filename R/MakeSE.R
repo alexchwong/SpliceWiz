@@ -1,12 +1,14 @@
-#' Constructs a NxtSE object from the collated data
+#' Imports a collated dataset into the R session as an NxtSE object
 #'
-#' Creates a \linkS4class{NxtSE} object from the data
-#' from [processBAM] output, collated using [collateData]. This object is used
+#' Creates a \linkS4class{NxtSE} object from the data (that was collated using 
+#' [collateData]). This object is used
 #' for downstream differential analysis of IR and alternative splicing events
-#' using [ASE-methods] as well as visualisation using [plotCoverage]
+#' using [ASE-methods], data generation for visualization of scatter plots and
+#' heatmaps via [make_plot_data] methods, and coverage visualisation using 
+#' [plotCoverage]
 #'
 #' @details
-#' `makeSE` retrieves the generic SummarizedExperiment structure saved by
+#' `makeSE` retrieves the data collated by
 #' [collateData], and initialises a \linkS4class{NxtSE} object. It references
 #' the required on-disk assay data using DelayedArrays, thereby utilising
 #' 'on-disk' memory to conserve memory usage.
@@ -14,7 +16,10 @@
 #' For extremely large datasets, loading the entire data into memory may consume
 #' too much memory. In such cases, make a subset of the \linkS4class{NxtSE}
 #' object (e.g. subset by samples) before loading the data into memory (RAM) 
-#' using [realize_NxtSE]
+#' using [realize_NxtSE]. Alternatively supply a data frame to the `colData`
+#' parameter of the `makeSE()` function. Only samples listed in the first column
+#' of the `colData` data frame will be imported into the \linkS4class{NxtSE} 
+#' object.
 #' 
 #' It should be noted that downstream applications of SpliceWiz, including
 #' [ASE-methods], [plotCoverage], are much faster if the \linkS4class{NxtSE}
@@ -22,11 +27,11 @@
 #' before extensive usage.
 #'
 #' If COV files assigned via [collateData] have been moved relative to the
-#' `collate_path`, the created \linkS4class{NxtSE} object will not have any
-#' linked COV files and [plotCoverage] cannot be used. To reassign these
+#' `collate_path`, the created \linkS4class{NxtSE} object will not be linked to
+#' any COV files and [plotCoverage] cannot be used. To reassign these
 #' files, a vector of file paths corresponding to all the COV files of the data
 #' set can be assigned using `covfile(se) <- vector_of_cov_files`. See
-#' example below for details.
+#' the example below for details.
 #'
 #' If `RemoveOverlapping = TRUE`, `makeSE` will try to
 #' identify which introns belong to major isoforms, then remove introns of
@@ -43,15 +48,15 @@
 #'   any assigned annotations.
 #'   Alternatively, if the names of only a subset of samples are given, then
 #'   `makeSE()` will construct the NxtSE object based only on the samples given.
-#'   The colData can be set later using `colData()`
+#'   The colData can be set later using [colData]
 #' @param RemoveOverlapping (default = `TRUE`) Whether to filter out overlapping
 #'   novel IR events belonging to minor isoforms. See details.
 #' @param realize (default = `FALSE`) Whether to load all assay data into
 #'   memory. See details
 #'
 #' @return A \linkS4class{NxtSE} object containing the compiled data in
-#' DelayedArrays pointing to the assay data contained in the given
-#' `collate_path`
+#' DelayedArrays (or as matrices if `realize = TRUE`), pointing to the assay 
+#' data contained in the given `collate_path`
 #'
 #' @examples
 #'

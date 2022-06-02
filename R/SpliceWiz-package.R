@@ -2,43 +2,56 @@
 #'
 #' SpliceWiz is a computationally efficient and user friendly workflow that
 #' analyses aligned short-read RNA sequencing for differential
-#' intron retention and alternative splicing. It utilises an improved
-#' IRFinder-based OpenMP/C++ algorithm. A streamlined downstream analysis
-#' pipeline allows for GLM-based differential IR and splicing analysis, suited
-#' for large datasets of up to hundreds of samples. Additionally SpliceWiz 
-#' provides a novel visualisation of per-nucleotide mean and variations of
-#' alignment coverage across splice and IR events, grouped by user-defined
-#' experimental conditions.
+#' intron retention and alternative splicing. 
 #'
 #' @details
-#' [processBAM](https://doi.org/10.1186/s13059-017-1184-4) is a well-established
-#' bioinformatic tool that measures intron
-#' retention (IR) in annotated and novel retained introns in short-read RNA
-#' sequencing samples. It is a computationally-efficient algorithm that measures
-#' alignment coverage across introns, accounting for regions of low-mappable
-#' intronic regions. Unlike other algorithms that measure exon-intron spanning
-#' reads, IRFinder considers the alignment coverage across the whole intron,
-#' allowing it to distinguish between full-length and partial IR. This
-#' distinction is important as partial IR is often confounded with
-#' novel alternate splice site usage, alternate transcription start site and
-#' intronic polyadenylation events.
+#' SpliceWiz uses isoform-specific alignments to quantify percent-spliced-in 
+#' ratios (i.e. ratio of the "included" isoform, as a proportion of "included" 
+#' and "excluded" isoforms). For intron retention (IR), the abundance of the 
+#' intron-retaining transcript (included isoform) is quantified using the 
+#' trimmed-mean depth of intron coverage with reads, whereas the spliced
+#' transcript (excluded isoform) is measured as the splicing of the intron as 
+#' well as that of overlapping introns (since splicing of any overlapping intron
+#' implies the intron of interest is not retained). For other forms of 
+#' alternative splicing, junction reads (reads aligned across splice junctions) 
+#' are used to quantify included and excluded isoforms.
+#' 
+#' SpliceWiz processes BAM files (aligned RNA sequencing) using 
+#' [ompBAM::ompBAM-package]. ompBAM
+#' is a C++ library that allows R packages (via the Rcpp framework) to 
+#' efficiently read BAM files using OpenMP-based multi-threading. SpliceWiz
+#' processes BAM files via the [processBAM] function, using a splicing and
+#' intron reference built from any given genome / gene annotation resource
+#' using the [buildRef] function. [processBAM] generates two outputs per
+#' BAM file: a `txt.gz` file which is a gzip-compressed text file with multiple
+#' tables, containing information including junction read counts and intron
+#' retention metrics. This output is very similar to that of 
+#' [IRFinder](https://github.com/williamritchie/IRFinder), as the analysis
+#' steps of SpliceWiz's BAM processing was built on an improved version of
+#' IRFinder's source code (version 1.3.1). Additionally, [processBAM] outputs
+#' a COV file, which is a binary bgzf-compressed file that contains
+#' strand-specific coverage data.
 #'
-#' SpliceWiz is a R/Bioconductor package that provides a user-friendly workflow
-#' using the IRFinder algorithm to perform both IR and
-#' alternative splicing analysis in large datasets. By incorporating the core
-#' C++ based IRFinder algorithm using Rcpp, SpliceWiz is multi-platform and 
-#' further improves computational efficiency using OpenMP-based multi-threading.
-#' Besides analysing IR, SpliceWiz analyses other forms of
-#' alternative splicing events that depend on alternate splice site selection,
-#' including skipped exons, mutually exclusive exons, alternate 5'- and 3'-
-#' splice sites, alternate first exons and alternate last exons.
+#' Once individual files have been analysed, SpliceWiz compiles a dataset using
+#' these individual outputs, using [collateData]. This function unifies 
+#' junctions detected across the dataset, and generates included / excluded
+#' counts of all putative IR events and annotated alternative splicing events
+#' (ASEs). This dataset is exported as a collection of files including an
+#' H5 database. The data is later imported into the R session using the
+#' [makeSE] function, as a \linkS4class{NxtSE} object.
+#' 
+#' The \linkS4class{NxtSE} object is a specialized 
+#' \linkS4class{SummarizedExperiment} object tailored for use in SpliceWiz.
+#' Annotation of rows provide information about ASEs via [rowData], while
+#' columns allows users to provide annotations via [colData].
 #'
-#' Downstream, SpliceWiz provides functions to collate individual
-#' outputs of multiple samples in an experiment / dataset, and assembles
-#' these into a specialised \linkS4class{NxtSE} object that
-#' inherits the SummarizedExperiment class. Users can easily define experimental
-#' conditions, perform differential analysis and filter out lowly-expressed
-#' splice events.
+#' SpliceWiz offers several novel filters via the \linkS4class{ASEFilter}
+#' class. See [ASEFilter] for details.
+#'
+#' Once the \linkS4class{NxtSE} is annotated and filtered, differential
+#' analysis is performed, using limma, DESeq2 or DoubleExpSeq wrappers.
+#' These wrappers model isoform counts as log-normal, negative-binomial,
+#' or beta-binomial distributions, respectively. See [ASE-methods] for details.
 #'
 #' Finally, SpliceWiz provides visualisation tools to illustrate alternative
 #' splicing using coverage plots, including a novel method to normalise RNA-seq
@@ -46,29 +59,6 @@
 #' variations introduced by sequenced library size and gene expression. 
 #' SpliceWiz efficiently computes and visualises means and variations in 
 #' per-nucleotide coverage depth across alternate exons in genomic loci.
-#'
-#' SpliceWiz can be run via a graphical user interface via [spliceWiz]
-#'
-#' **Features include:**
-#' * Reference generation from user-supplied local and web resources, as well as
-#'   connectivity to the AnnotationHub repository for Ensembl-based genomes
-#'   and gene annotations;
-#' * OpenMP and BiocParallel-based multi-threaded support to process short-read
-#'   BAM files using the IRFinder-like algorithm written in native C++;
-#' * Stores alignment coverage using the *COV* format, which is a binary
-#'   compressed and indexed format for rapid recall of RNA-seq coverage. In
-#'   contrast to the *BigWig* format, *COV* files store coverage of unstranded
-#'   as well as stranded alignment coverage, and is much more space-efficient,
-#'   allowing for better portability;
-#' * Memory-efficient collation of hundreds of samples using on-disk memory
-#'   approaches and H5-based assay storage;
-#' * Streamlined user-friendly functions to construct multi-factor complex
-#'   experimental designs, and perform differential IR and alternative splicing
-#'   analysis using well-established statistical methods including limma and
-#'   DESeq2;
-#' * Advanced RNA-seq coverage visualisation, including the ability to
-#'   combine RNA-seq coverage of multiple samples using advanced library
-#'   normalisation methods across samples grouped by conditions;
 #'
 #' The main functions are:
 #'
@@ -96,8 +86,10 @@
 #'   individual samples or across samples grouped by user-specified conditions
 #'
 #' See the
-#' [SpliceWiz vignette](../doc/SpliceWiz.html)
+#' [SpliceWiz Quick-Start](../doc/SW_QuickStart.html)
 #' for worked examples on how to use SpliceWiz
+#' [SpliceWiz Cookbook](../doc/SW_Cookbook.html)
+#' for real-life usage examples
 #'
 #' @author Alex Wong
 #'

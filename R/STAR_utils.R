@@ -1,10 +1,10 @@
-#' STAR wrapper for building reference for STAR, and aligning RNA-sequencing
+#' STAR wrappers for building reference for STAR, and aligning RNA-sequencing
 #'
 #' These functions run the STAR aligner to build a STAR genome reference,
 #' calculate mappability exclusion regions using STAR, and align one or more
 #' FASTQ files (single or paired) to the generated genome. These functions only
 #' work on Linux-based systems with STAR installed. STAR must be
-#' accessible via $PATH. See details and examples
+#' accessible via `$PATH`. See details and examples
 #'
 #' @details
 #' **Pre-requisites**
@@ -19,7 +19,7 @@
 #'
 #' For `STAR_buildRef`: this function
 #'   will create a `STAR` genome reference in the `STAR` subdirectory in the
-#'   path given by `reference_path`. Optionally, it will run [STAR_mappability]
+#'   path given by `reference_path`. Optionally, it will run `STAR_mappability`
 #'   if `also_generate_mappability` is set to `TRUE`
 #'
 #' For `STAR_mappability`: this function will first

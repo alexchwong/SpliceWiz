@@ -1834,9 +1834,9 @@ return(TRUE)
 # Sub
 
 .gen_irf <- function(reference_path, extra_files, genome, chromosome_aliases) {
-    .log("Generating SpliceWiz reference", "message")
+    .log("Generating processBAM reference", "message")
 
-    # Generating SpliceWiz-base references
+    # Generating processBAM references
     message("...prepping data")
     data <- .gen_irf_prep_data(reference_path)
     data2 <- .gen_irf_prep_introns(
@@ -1881,7 +1881,7 @@ return(TRUE)
         chr$seqalias <- ""
     }
     .gen_irf_final(reference_path, ref.cover, readcons, ref.ROI, ref.sj, chr)
-    message("SpliceWiz reference generation completed")
+    message("processBAM reference generated")
 }
 ################################################################################
 

@@ -49,7 +49,12 @@ NULL
 SpliceWiz_example_bams <- function() {
     bams <- NxtIRFdata::example_bams()
     if (is.null(bams) || length(bams) != 6) stop("Example bam fetching failed")
-    return(findBAMS(tempdir()))
+    return(
+        data.frame(
+            sample = tstrsplit(basename(bams), split = ".", fixed = TRUE)[[1]],
+            path = bams
+        )
+    )
 }
 
 #' @describeIn example-SpliceWiz-data Returns a (in-memory / realized) NxtSE 

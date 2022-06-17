@@ -13,6 +13,15 @@ install the `libomp` libraries via brew:
 brew install libomp
 ```
 
+### On R (version >= 4.2.0) using Bioconductor version 3.1.6 (current devel)
+
+```
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("SpliceWiz")
+```
+
 ### On R (version >= 4.2.0) using Bioconductor version 3.1.5
 
 ```

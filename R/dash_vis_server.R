@@ -122,27 +122,9 @@ server_vis_diag <- function(
                     dragmode = "lasso",
                     yaxis = list(scaleanchor="x", scaleratio=1)
                 )
-            print(
-                settings_Diag$final_plot
-            )
+            print(settings_Diag$final_plot)
         })
-    
-        # observe({
-            # shinyFileSave(
-                # input, "saveplot_diag", 
-                # roots = volumes(), session = session,
-                # filetypes = c("pdf")
-            # )
-        # })
-        # observeEvent(input$saveplot_diag, {
-            # req(settings_Diag$final_plot)
-            # selectedfile <- parseSavePath(volumes(), input$saveplot_diag)
-            # req(selectedfile$datapath)
 
-            # obj <- isolate(settings_Diag$final_plot)
-            # plotly::orca(obj, .make_path_relative(getwd(), 
-                # selectedfile$datapath))
-        # })
         observeEvent(input$output_plot_diag, {
             req(settings_Diag$ggplot)
             print(settings_Diag$ggplot)
@@ -156,7 +138,6 @@ server_vis_diag <- function(
         observeEvent(settings_Diag$plotly_click(), {
             req(settings_Diag$plotly_click())
             click <- settings_Diag$plotly_click()
-            # print(click)
             click.id <- which(get_de()$EventName == click$key)
             req(click.id)
 
@@ -180,7 +161,6 @@ server_vis_diag <- function(
         observeEvent(settings_Diag$plotly_brush(), {
             req(settings_Diag$plotly_brush())
             brush <- settings_Diag$plotly_brush()
-            # print(brush)
             brush.id <- which(get_de()$EventName %in% brush$key)
             req(brush.id)
 
@@ -280,7 +260,6 @@ server_vis_volcano <- function(
             req(refresh_tab())
         })
         observeEvent(rows_selected(), {
-            # print(rows_selected())
             settings_Volc$selected <- rows_selected()
         }, ignoreNULL = FALSE)
 
@@ -404,25 +383,9 @@ server_vis_volcano <- function(
                 source = "plotly_volcano"
             ) %>% layout(dragmode = "select")
             
-            print(
-                settings_Volc$final_plot
-            )
+            print(settings_Volc$final_plot)
         })
-        
-        # observe({
-            # shinyFileSave(input, "saveplot_volc", 
-                # roots = volumes(), session = session,
-                # filetypes = c("pdf"))
-        # })
-        # observeEvent(input$saveplot_volc, {
-            # req(settings_Volc$final_plot)
-            # selectedfile <- parseSavePath(volumes(), input$saveplot_volc)
-            # req(selectedfile$datapath)
 
-            # obj <- isolate(settings_Volc$final_plot)
-            # plotly::orca(obj, .make_path_relative(
-                # getwd(), selectedfile$datapath))
-        # })
         observeEvent(input$output_plot_volc, {
             req(settings_Volc$ggplot)
             print(settings_Volc$ggplot)
@@ -501,8 +464,8 @@ server_vis_heatmap <- function(
             na.exclude <- (rowSums(!is.na(mat)) == 0)
             if(any(na.exclude == TRUE)) {
                 output$warning_heat <- renderText({
-                    cat("The following have been excluded due to NA values:")
-                    paste(rownames(mat)[which(na.exclude)])
+                    "Some events have been excluded due to NA values"
+                    # paste(rownames(mat)[which(na.exclude)])
                 })
                 mat <- mat[-which(na.exclude),]
             }
@@ -526,28 +489,8 @@ server_vis_heatmap <- function(
                 settings_Heat$final_plot <- heatmaply::heatmaply(
                     mat, color = color)
             }      
-            print(
-                settings_Heat$final_plot
-            )
+            print(settings_Heat$final_plot)
         })
-        
-        # observe({
-            # shinyFileSave(input, "saveplot_heat", 
-                # roots = volumes(), session = session,
-                # filetypes = c("pdf"))
-        # })
-        # observeEvent(input$saveplot_heat, {
-            # req(settings_Heat$final_plot)
-            # selectedfile <- parseSavePath(volumes(), input$saveplot_heat)
-            # req(selectedfile$datapath)
-            
-            # obj <- isolate(settings_Heat$final_plot)
-            # plotly::orca(obj, 
-                # .make_path_relative(getwd(), selectedfile$datapath))
-        # })
-        # observeEvent(input$output_plot_heat, {
-            # req(settings_Heat$ggplot)
-            # print(settings_Heat$ggplot)
-        # })
+
     })
 }

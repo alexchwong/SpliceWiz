@@ -138,15 +138,6 @@ server_filters <- function(
                 }
                 settings_filter$filterSummary <- filterSummary
                 message("Filtered ", sum(filterSummary == TRUE), " ASE events")
-            } else if(is_valid(settings_filter$filters)) {
-                for(i in seq_len(12)) {
-                    if(
-                        length(settings_filter$filters) >= i &&
-                        is_valid(settings_filter$filters[[i]]@filterType)  
-                    ) {
-                        print(settings_filter$filters[[i]])
-                    }
-                }
             }
         }
             

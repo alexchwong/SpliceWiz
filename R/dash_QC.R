@@ -100,18 +100,18 @@ QC_update_plot <- function(QC, QC_cols, mode, x_axis, y_axis, output) {
         mat <- as.matrix(df[, QC_cols])
         rownames(mat) <- df$sample
         output$QC_plot <- renderPlotly({
-            QC_PCA(mat)
+            print(QC_PCA(mat))
         })
     } else if(mode == "Graphs") {
         output$QC_plot <- renderPlotly({
             validate(need(is_valid(x_axis) | is_valid(y_axis),
                 "Specify X or Y axis"))
             if(is_valid(x_axis) & is_valid(y_axis)) {
-                QC_Scatter_XY(df, x_axis, y_axis)
+                print(QC_Scatter_XY(df, x_axis, y_axis))
             } else if(is_valid(x_axis)) {
-                QC_Bar_X(df, x_axis)
+                print(QC_Bar_X(df, x_axis))
             } else if(is_valid(y_axis)) {
-                QC_Bar_Y(df, y_axis)
+                print(QC_Bar_Y(df, y_axis))
             }
         })
     }    
@@ -122,13 +122,11 @@ QC_PCA <- function(mat) {
     colVar <- colVars(mat)
     mat <- mat[,colVar > 0]
     PCA <- prcomp(mat, scale. = TRUE)
-    print(
-        ggplotly(
-            ggplot(as.data.frame(PCA$x), 
-                aes(x = get("PC1"), y = get("PC2"), text = rownames(PCA$x))) + 
-            geom_point() + geom_text(aes(label = rownames(PCA$x))),
-            tooltip = "text"
-        )
+    ggplotly(
+        ggplot(as.data.frame(PCA$x), 
+            aes(x = get("PC1"), y = get("PC2"), text = rownames(PCA$x))) + 
+        geom_point() + geom_text(aes(label = rownames(PCA$x))),
+        tooltip = "text"
     )
 }
 
@@ -141,12 +139,12 @@ QC_Scatter_XY <- function(QC, x_axis, y_axis) {
     colnames(df.plot)[2:3] <- c(
         x_axis, y_axis
     )
-    print(ggplotly(
+    ggplotly(
         ggplot(df.plot, 
             aes_string(x = x_axis, y = y_axis, text = "sample")) +
         geom_point() + geom_text(aes(label = sample)),
         tooltip = "text"
-    ))
+    )
 }
 
 QC_Bar_X <- function(QC, x_axis) {
@@ -155,11 +153,11 @@ QC_Bar_X <- function(QC, x_axis) {
         xaxis = unname(unlist(QC[,x_axis]))
     )
     colnames(df.plot) <- c("sample", x_axis)
-    print(ggplotly(
+    ggplotly(
         ggplot(df.plot, 
             aes_string(x = x_axis, y = "sample",text = "sample")) +
         geom_bar(stat="identity"), tooltip = "text"
-    ))  
+    )
 }
 
 QC_Bar_Y <- function(QC, y_axis) {
@@ -168,9 +166,9 @@ QC_Bar_Y <- function(QC, y_axis) {
         yaxis = unname(unlist(QC[,y_axis]))
     )
     colnames(df.plot) <- c("sample", y_axis)
-    print(ggplotly(
+    ggplotly(
         ggplot(df.plot, 
             aes_string(y = y_axis, x = "sample", text = "sample")) +
         geom_bar(stat="identity"), tooltip = "text"
-    ))
+    )
 }

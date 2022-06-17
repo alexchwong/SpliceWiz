@@ -136,8 +136,6 @@
 #' require("DoubleExpSeq")
 #' res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 #'
-#' \dontrun{
-#'
 #' require("DESeq2")
 #' res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")
 #' 
@@ -146,7 +144,6 @@
 #' colData(se)$timepoint <- rep(c(1,2,3), each = 2)
 #' colData(se)$batch <- rep(c("1", "2"), 3)
 #' res_DESeq_timeseries <- ASE_DESeq(se, "timepoint")
-#' }
 #' 
 #' @name ASE-methods
 #' @references

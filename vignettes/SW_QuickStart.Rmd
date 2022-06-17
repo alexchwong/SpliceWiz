@@ -28,6 +28,23 @@ knitr::opts_chunk$set(
 
 # Introduction
 
+SpliceWiz is a graphical interface for differential alternative splicing and
+visualization in R. It differs from other alternative splicing tools as it is
+designed for users with basic bioinformatic skills to analyze datasets
+containing up to hundreds of samples! SpliceWiz contains a number of innovations
+including:
+
+* Super-fast handling of alignment BAM files using ompBAM, our developer
+resource for multi-threaded BAM processing,
+* Alternative splicing event filters, designed to remove unreliable measurements
+prior to differential analysis, which improves accuracy of reported results.
+* Group-averaged coverage plots: publication-ready figures to clearly visualize
+differential alternative splicing between biological / experimental conditions
+* Seamless storage and recall of sequencing coverage, using the COV format that
+stores strand-specific coverage typical of current RNA-seq protocols
+* Interactive figures, including scatter and volcano plots, heatmaps, and
+scrollable coverage plots, powered using the shinyDashboard interface
+
 This vignette is a runnable working example of the SpliceWiz workflow. The
 purpose is to quickly demonstrate the basic functionalities of SpliceWiz.
 
@@ -43,11 +60,6 @@ In most sections, we offer more details about each step of the workflow, that
 can be revealed in text segments like this one. Be sure to click on  buttons 
 like these, where available.
 </details>
-\
-
-For a list of ready-made "recipes" for typical-use SpliceWiz in real datasets, 
-refer to the vignette: `SpliceWiz: Cookbook`.
-\
 \
 
 # Workflow from a glance
@@ -107,9 +119,9 @@ mappability exclusion annotations for building human and mouse SpliceWiz
 references
 </details> 
 \
-<details>
-<summary>Starting the Graphics User Interface (GUI) in demo mode</summary>
-\
+
+## The SpliceWiz Graphics User Interface (GUI)
+
 SpliceWiz offers a graphical user interface (GUI) for interactive users, e.g.
 in the RStudio environment. To start using SpliceWiz GUI:
 
@@ -121,8 +133,16 @@ if(interactive()) {
 \
 Note that the GUI demo mode is not supported on Bioconductor 3.13 or below.
 \
-</details>
-\
+
+### Navigating the GUI
+
+The SpliceWiz GUI uses the `shinyDashboard` interface. Use the side menu on the
+left hand side of the interface to navigate across the various sub-panels in the
+SpliceWiz GUI.
+
+```{r, echo=FALSE, out.width='231pt', fig.align = 'center', fig.cap="Menu Side Bar"}
+knitr::include_graphics("img/MenuBar.jpg")
+```
 
 ## Building the SpliceWiz reference
 

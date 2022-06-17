@@ -1,6 +1,6 @@
 #' Convenience Function to (recursively) find all files in a folder.
 #'
-#' Often, files e.g. raw sequencing FASTQ files, alignment BAM files,
+#' Often, files e.g. alignment BAM files,
 #' or [processBAM] output files, are stored in a single folder under some 
 #' directory structure.
 #' They can be grouped by being in common directory or having common names.
@@ -14,9 +14,6 @@
 #' names. See details section below.
 #'
 #' @details
-#' Paired FASTQ files are assumed to be named using the suffix `_1` and `_2`
-#' after their common names; e.g. `sample_1.fastq`, `sample_2.fastq`. Alternate
-#' FASTQ suffixes for `findFASTQ()` include ".fq", ".fastq.gz", and ".fq.gz".
 #'
 #' In BAM files, often the parent directory denotes their sample names. In this
 #' case, use `level = 1` to automatically annotate the sample names using
@@ -39,11 +36,6 @@
 #' @param level Whether sample names can be found in the file names themselves
 #'   (level = 0), or their parent directory (level = 1). Potentially parent
 #'   of parent directory (level = 2). Support max level <= 3 (for sanity).
-#' @param paired Whether to expect single FASTQ files (of the format
-#'   "sample.fastq"), or
-#'   paired files (of the format "sample_1.fastq", "sample_2.fastq")
-#' @param fastq_suffix The name of the FASTQ suffix. Options are:
-#'   ".fastq", ".fastq.gz", ".fq", or ".fq.gz"
 #' @return A multi-column data frame with the first column containing
 #'   the sample name, and subsequent columns being the file paths with suffix
 #'   as determined by `suffix`.
@@ -60,24 +52,6 @@
 #' # named by sample names
 #'
 #' expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
-#' \dontrun{
-#'
-#' # Find FASTQ files in a directory, named by sample names
-#' # where files are in the form:
-#' # - "./sample_folder/sample1.fastq"
-#' # - "./sample_folder/sample2.fastq"
-#'
-#' findFASTQ("./sample_folder", paired = FALSE, fastq_suffix = ".fastq")
-#'
-#' # Find paired gzipped FASTQ files in a directory, named by parent directory
-#' # where files are in the form:
-#' # - "./sample_folder/sample1/raw_1.fq.gz"
-#' # - "./sample_folder/sample1/raw_2.fq.gz"
-#' # - "./sample_folder/sample2/raw_1.fq.gz"
-#' # - "./sample_folder/sample2/raw_2.fq.gz"
-#'
-#' findFASTQ("./sample_folder", paired = TRUE, fastq_suffix = ".fq.gz")
-#' }
 #'
 #' @name findSamples
 #' @md
@@ -144,23 +118,6 @@ findSamples <- function(sample_path, suffix = ".txt.gz", level = 0) {
     }
     cols <- c("sample", suffix_name[suffix_name %in% colnames(final)])
     return(as.data.frame(final[, cols, with = FALSE]))
-}
-
-#' @describeIn findSamples Use findSamples() to return all FASTQ files
-#' in a given folder
-#' @export
-findFASTQ <- function(sample_path, paired = TRUE,
-        fastq_suffix = c(".fastq", ".fq", ".fastq.gz", ".fq.gz"), level = 0) {
-    fastq_suffix <- match.arg(fastq_suffix)
-    if (paired) {
-        suffix_use <- paste0(c("_1", "_2"), fastq_suffix)
-    } else {
-        suffix_use <- fastq_suffix
-    }
-    DT <- findSamples(sample_path, suffix_use, level = level)
-    colnames(DT)[2] <- "forward"
-    if (paired) colnames(DT)[3] <- "reverse"
-    return(DT)
 }
 
 #' @describeIn findSamples Use findSamples() to return all BAM files in a

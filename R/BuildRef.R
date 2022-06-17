@@ -23,13 +23,6 @@
 #' NB: the parameters `fasta` and `gtf` can be omitted in `buildRef()` if
 #' `getResources()` is already run.
 #'
-#' `buildFullRef()` builds the STAR aligner reference alongside the SpliceWiz
-#' reference. The STAR reference will be located in the `STAR` subdirectory
-#' of the specified reference path. If `use_STAR_mappability` is set to `TRUE`
-#' this function will empirically compute regions of low mappability. This
-#' function requires `STAR` to be installed on the system (which only runs on
-#' linux-based systems).
-#'
 #' `getNonPolyARef()` returns the path of the non-polyA reference file for the
 #' human and mouse genomes.
 #'
@@ -41,20 +34,13 @@
 #'     To do this, simply run `buildRef()` and omit `MappabilityRef`. This is
 #'     acceptable assuming the introns assessed are short and do not contain
 #'     intronic repeats
-#' * Calculating Mappability Exclusion regions using the STAR aligner,
-#'     and building the SpliceWiz reference. This can be done using the
-#'     `buildFullRef()` function, on systems where `STAR` is installed
-#' * Instead of using the STAR aligner, any genome splice-aware aligner could be
-#'     used. See [Mappability-methods] for details. After producing the
-#'     `MappabilityExclusion.bed.gz` file (in the `Mappability` subfolder), run
-#'     `buildRef()` using this file (or simply leave it blank).
+#' * Calculating Mappability Exclusion regions: see [Mappability-methods] for
+#'     an example workflow using the Rsubread aligner
 #'
 #' BED files are tab-separated text files containing 3 unnamed columns
 #' specifying chromosome, start and end coordinates. To view an example BED
 #' file, open the file specified in the path returned by
 #' `getNonPolyARef("hg38")`
-#'
-#' See examples below for common use cases.
 #'
 #' @param reference_path (REQUIRED) The directory path to store the generated
 #'   reference files
@@ -83,8 +69,8 @@
 #'   BAM alignments to a genome whose chromosomes are named
 #'   differently to the reference genome. The most common scenario is where
 #'   Ensembl genome typically use chromosomes "1", "2", ..., "X", "Y", whereas
-#'   UCSC/Gencode genome use "chr1", "chr2", ..., "chrX", "chrY". See example
-#'   below. Refer to <https://github.com/dpryan79/ChromosomeMappings> for a
+#'   UCSC/Gencode genome use "chr1", "chr2", ..., "chrX", "chrY". 
+#'   Refer to <https://github.com/dpryan79/ChromosomeMappings> for a
 #'   list of chromosome alias resources.
 #' @param genome_type Allows `buildRef()` to select default
 #'   `nonPolyARef` and `MappabilityRef` for selected genomes. Allowed options
@@ -116,16 +102,6 @@
 #'   slow on some systems. Set this option to `FALSE` (which will convert the
 #'   TwoBit file back to FASTA) if you experience
 #'   very slow genome fetching (e.g. when annotating splice motifs).
-#' @param n_threads The number of threads used to generate the STAR reference
-#'   and mappability calculations. Multi-threading is not used for SpliceWiz
-#'   reference generation (but multiple cores are utilised in data-table
-#'   and fst file processing automatically, where available). See [STAR-methods]
-#' @param use_STAR_mappability (default FALSE) In `buildFullRef()`,
-#'   whether to run [STAR_mappability] to calculate low-mappability regions.
-#'   We recommend setting this to `FALSE` for the common genomes
-#'   (human and mouse), and to `TRUE` for genomes not supported by
-#'   `genome_type`. When set to false, the MappabilityExclusion default file
-#'   corresponding to `genome_type` will automatically be used.
 #' @return
 #' For `getResources`: creates the following local resources:
 #' * `reference_path/resource/genome.2bit`: Local copy of the genome sequences
@@ -144,9 +120,6 @@
 #'   SpliceWiz generated references
 #' * `reference_path/cov_data.Rds`: An RDS file containing data required to
 #'    visualise genome / transcript tracks.
-#'
-#' `buildFullRef()` also creates a `STAR` reference located in the `STAR`
-#'   subdirectory inside the designated `reference_path`
 #'
 #' For `getNonPolyARef()`: Returns the file path to the BED file for
 #' the nonPolyA loci for the specified genome.
@@ -177,95 +150,8 @@
 #'
 #' getNonPolyARef("hg19")
 #'
-#' \dontrun{
-#'
-#' ### Long examples ###
-#'
-#' # Generate a SpliceWiz reference from user supplied FASTA and GTF files for a
-#' # hg38-based genome:
-#'
-#' buildRef(
-#'     reference_path = "./Reference_user",
-#'     fasta = "genome.fa", gtf = "transcripts.gtf",
-#'     genome_type = "hg38"
-#' )
-#'
-#' # NB: Setting `genome_type = hg38`, will automatically use default
-#' # nonPolyARef and MappabilityRef for `hg38`
-#'
-#' # Reference generation from Ensembl's FTP links:
-#'
-#' FTP <- "ftp://ftp.ensembl.org/pub/release-94/"
-#' buildRef(
-#'     reference_path = "./Reference_FTP",
-#'     fasta = paste0(FTP, "fasta/homo_sapiens/dna/",
-#'         "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"),
-#'     gtf = paste0(FTP, "gtf/homo_sapiens/",
-#'         "Homo_sapiens.GRCh38.94.chr.gtf.gz"),
-#'     genome_type = "hg38"
-#' )
-#'
-#' # Get AnnotationHub record names for Ensembl release-94:
-#'
-#' # First, search for the relevant AnnotationHub record names:
-#'
-#' ah <- AnnotationHub::AnnotationHub()
-#' AnnotationHub::query(ah, c("Homo Sapiens", "release-94"))
-#'
-#' buildRef(
-#'     reference_path = "./Reference_AH",
-#'     fasta = "AH65745",
-#'     gtf = "AH64631",
-#'     genome_type = "hg38"
-#' )
-#'
-#' # Build a SpliceWiz reference, setting chromosome aliases to allow
-#' # this reference to process BAM files aligned to UCSC-style genomes:
-#'
-#' chrom.df <- GenomeInfoDb::genomeStyles()$Homo_sapiens
-#'
-#' buildRef(
-#'     reference_path = "./Reference_UCSC",
-#'     fasta = "AH65745",
-#'     gtf = "AH64631",
-#'     genome_type = "hg38",
-#'     chromosome_aliases = chrom.df[, c("Ensembl", "UCSC")]
-#' )
-#'
-#' # One-step generation of SpliceWiz and STAR references, using 4 threads.
-#' # NB1: requires a linux-based system with STAR installed.
-#' # NB2: A STAR reference genome will be generated in the `STAR` subfolder
-#' #      inside the given `reference_path`.
-#' # NB3: A custom Mappability Exclusion file will be calculated using STAR
-#' #      and will be used to generate the SpliceWiz reference.
-#'
-#' buildFullRef(
-#'     reference_path = "./Reference_with_STAR",
-#'     fasta = "genome.fa", gtf = "transcripts.gtf",
-#'     genome_type = "",
-#'     use_STAR_mappability = TRUE,
-#'     n_threads = 4
-#' )
-#'
-#' # NB: the above is equivalent to running the following in sequence:
-#'
-#' getResources(
-#'     reference_path = "./Reference_with_STAR",
-#'     fasta = "genome.fa", gtf = "transcripts.gtf"
-#' )
-#' STAR_buildRef(
-#'     reference_path = reference_path,
-#'     also_generate_mappability = TRUE,
-#'     n_threads = 4
-#' )
-#' buildRef(
-#'     reference_path = "./Reference_with_STAR",
-#'     genome_type = ""
-#' )
-#' }
 #' @seealso
 #' [Mappability-methods] for methods to calculate low mappability regions\cr\cr
-#' [STAR-methods] for a list of STAR wrapper functions\cr\cr
 #' \link[AnnotationHub]{AnnotationHub}\cr\cr
 #' <https://github.com/alexchwong/SpliceWizResources> for RDS files of
 #' Mappability Exclusion GRanges objects (for hg38, hg19, mm10 and mm9)
@@ -386,47 +272,6 @@ buildRef <- function(
 
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
 }
-
-#' @describeIn Build-Reference-methods One-step function that fetches resources,
-#'   creates a STAR reference (including mappability calculations), then
-#'   creates the SpliceWiz reference
-#' @export
-buildFullRef <- function(
-        reference_path,
-        fasta, gtf,
-        chromosome_aliases = NULL,
-        overwrite = FALSE, force_download = FALSE,
-        genome_type = genome_type,
-        use_STAR_mappability = FALSE,
-        nonPolyARef = getNonPolyARef(genome_type),
-        BlacklistRef = "",
-        useExtendedTranscripts = TRUE,
-        n_threads = 4
-) {
-    if (!overwrite && 
-            file.exists(file.path(reference_path, "SpliceWiz.ref.gz"))) {
-        .log("SpliceWiz reference already exists in given directory", "message")
-        return()
-    }
-
-    .validate_STAR_version()
-
-    getResources(reference_path = reference_path,
-        fasta = fasta, gtf = gtf,
-        overwrite = overwrite, force_download = force_download)
-
-    STAR_buildRef(reference_path = reference_path,
-        also_generate_mappability = use_STAR_mappability,
-        n_threads = n_threads)
-
-    buildRef(reference_path = reference_path,
-        genome_type = genome_type,
-        nonPolyARef = nonPolyARef,
-        BlacklistRef = BlacklistRef,
-        chromosome_aliases = chromosome_aliases,
-        useExtendedTranscripts = useExtendedTranscripts)
-}
-
 
 #' @describeIn Build-Reference-methods Returns the path to the BED file 
 #'   containing coordinates of known non-polyadenylated transcripts for genomes

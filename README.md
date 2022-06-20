@@ -67,8 +67,3 @@ SpliceWiz quick-start vignette
 vignette("SW_QuickStart", package = "SpliceWiz")
 ```
 
-To view the SpliceWiz cookbook:
-
-```
-vignette("SW_Cookbook", package = "SpliceWiz")
-```

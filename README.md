@@ -22,6 +22,8 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 BiocManager::install("SpliceWiz")
 ```
 
+NB: SpliceWiz is pending acceptance into Bioconductor
+
 ### On R (version >= 4.2.0) using Bioconductor version 3.1.5
 
 ```

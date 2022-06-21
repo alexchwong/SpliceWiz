@@ -378,7 +378,8 @@ STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
             }
 
             .log(paste("Aligning", sample, "using STAR"), "message")
-            STAR_alignReads(ref,
+            STAR_alignReads(
+                STAR_ref_path = ref,
                 BAM_output_path = file.path(BAM_output_path, sample),
                 fastq_1 = fastq_1, fastq_2 = fastq_2,
                 trim_adaptor = trim_adaptor,

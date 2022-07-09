@@ -1,6 +1,14 @@
 # SpliceWiz
 SpliceWiz is an R package for exploring differential alternative splicing events in splice-aware alignment BAM files.
 
+## Documentation
+
+[Bioconductor Landing Page](https://bioconductor.org/packages/devel/bioc/html/SpliceWiz.html)
+
+[QuickStart Vignette - html](https://bioconductor.org/packages/devel/bioc/vignettes/SpliceWiz/inst/doc/SW_QuickStart.html)
+
+[Reference Manual - PDF](https://bioconductor.org/packages/devel/bioc/manuals/SpliceWiz/man/SpliceWiz.pdf) 
+
 ## Installation 
 
 ### Enabling OpenMP multi-threading (for MacOS users)
@@ -23,8 +31,6 @@ BiocManager::valid()              # checks for out of date packages
 
 BiocManager::install("SpliceWiz")
 ```
-
-NB: SpliceWiz is pending acceptance into Bioconductor
 
 ### On R (version >= 4.2.0) using Bioconductor version 3.1.5
 

@@ -1173,8 +1173,10 @@ return(TRUE)
         if(length(dup_gene_names) > 0) {
             for(dup_gene in dup_gene_names) {
                 # Use raw transcript id instead of transcript name
-                gtf_gr$transcript_name[gtf_gr$gene_name == dup_gene] <-
-                    gtf_gr$transcript_id[gtf_gr$gene_name == dup_gene]
+                if ("transcript_name" %in% names(S4Vectors::mcols(gtf_gr))) {
+                    gtf_gr$transcript_name[gtf_gr$gene_name == dup_gene] <-
+                        gtf_gr$transcript_id[gtf_gr$gene_name == dup_gene]
+                }
                 # Replace {gene_name} with {gene_name}_{gene_id}
                 gtf_gr$gene_name[gtf_gr$gene_name == dup_gene] <-
                     paste(

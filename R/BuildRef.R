@@ -1172,10 +1172,14 @@ return(TRUE)
             duplicated(unique_gene_name)])
         if(length(dup_gene_names) > 0) {
             for(dup_gene in dup_gene_names) {
-                gtf_gr$gene_name[gtf_gr$gene_name == dup_gene_names] <-
+                # Use raw transcript id instead of transcript name
+                gtf_gr$transcript_name[gtf_gr$gene_name == dup_gene] <-
+                    gtf_gr$transcript_id[gtf_gr$gene_name == dup_gene]
+                # Replace {gene_name} with {gene_name}_{gene_id}
+                gtf_gr$gene_name[gtf_gr$gene_name == dup_gene] <-
                     paste(
                         dup_gene,
-                        gtf_gr$gene_id[gtf_gr$gene_name == dup_gene_names],
+                        gtf_gr$gene_id[gtf_gr$gene_name == dup_gene],
                         sep = "_"
                     )
             }

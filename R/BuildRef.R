@@ -3936,12 +3936,14 @@ return(TRUE)
 # Translate upstream, casette and downstream sequences
 .gen_splice_proteins_translate <- function(AS_Table.Extended) {
     str_to_translate <- c(
-        "DNA_upstr_A", "DNA_casette_A", "DNA_downstr_A",
-        "DNA_upstr_B", "DNA_casette_B", "DNA_downstr_B"
+        "upstr_A", "casette_A", "downstr_A",
+        "upstr_B", "casette_B", "downstr_B"
     )
-    for(strDNA in str_to_translate) {
-        AS_Table.Extended[nchar(get(strDNA)) > 0,
-            c("AA_upstr_A") := .translate_fuzzy(get(strDNA))]    
+    for(suffix in str_to_translate) {
+        DNA <- paste("DNA", suffix, sep = "_")
+        AA <- paste("AA", suffix, sep = "_")
+        AS_Table.Extended[nchar(get(DNA)) > 0,
+            c(AA) := .translate_fuzzy(get(DNA))]    
     }
     return(AS_Table.Extended)
 }

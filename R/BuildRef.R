@@ -1161,6 +1161,20 @@ return(TRUE)
         gtf_gr$gene_name[is.na(gtf_gr$gene_name)] <-
             gtf_gr$gene_id[is.na(gtf_gr$gene_name)]
         gtf_gr$gene_name <- gsub("/", "_", gtf_gr$gene_name)
+
+        # Check for duplicated gene names, replace these with:
+        #   "{gene_name}_{gene_id}"
+        dup_gene_names <- unique(gtf_gr$gene_name[duplicated(gtf_gr$gene_name)])
+        if(length(dup_gene_names) > 0) {
+            for(dup_gene in dup_gene_names) {
+                gtf_gr$gene_name[gtf_gr$gene_name == dup_gene_names] <-
+                    paste(
+                        dup_gene,
+                        gtf_gr$gene_id[gtf_gr$gene_name == dup_gene_names],
+                        sep = "_"
+                    )
+            }
+        }
     } else {
         gtf_gr$gene_name <- gtf_gr$gene_id
     }

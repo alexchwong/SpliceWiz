@@ -1164,7 +1164,12 @@ return(TRUE)
 
         # Check for duplicated gene names, replace these with:
         #   "{gene_name}_{gene_id}"
-        dup_gene_names <- unique(gtf_gr$gene_name[duplicated(gtf_gr$gene_name)])
+        unique_gene_id <- unique(gtf_gr$gene_id)
+        unique_gene_name <- gtf_gr$gene_name[
+            match(unique_gene_id, gtf_gr$gene_id)]
+        
+        dup_gene_names <- unique(unique_gene_name[
+            duplicated(unique_gene_name)])
         if(length(dup_gene_names) > 0) {
             for(dup_gene in dup_gene_names) {
                 gtf_gr$gene_name[gtf_gr$gene_name == dup_gene_names] <-

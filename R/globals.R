@@ -2,7 +2,7 @@
 
 globalVariables(c(":=", "."))
 
-buildref_version <- "0.99.0"
+buildref_version <- "0.99.2"
 
 is.nan.data.frame <- function(x) do.call(cbind, lapply(x, is.nan))
 

@@ -580,8 +580,12 @@ return(TRUE)
             settings.list[["BuildVersion"]] < buildref_version) {
         .log(paste(from_str,
             "in reference_path =", reference_path,
-            "SpliceWiz reference is earlier than current version",
-            buildref_version))
+            "reference was built using an earlier version of SpliceWiz (",
+            settings.list[["BuildVersion"]], 
+            "). SpliceWiz may encounter errors with this reference.",
+            "Please re-build your reference using the current version."
+            ), "warning"
+        )
     }
 }
 

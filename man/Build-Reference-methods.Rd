@@ -4,6 +4,7 @@
 \alias{Build-Reference-methods}
 \alias{getResources}
 \alias{buildRef}
+\alias{buildFullRef}
 \alias{getNonPolyARef}
 \title{Builds reference files used by SpliceWiz}
 \usage{
@@ -28,6 +29,21 @@ buildRef(
   BlacklistRef = "",
   useExtendedTranscripts = TRUE,
   lowMemoryMode = TRUE
+)
+
+buildFullRef(
+  reference_path,
+  fasta,
+  gtf,
+  chromosome_aliases = NULL,
+  overwrite = FALSE,
+  force_download = FALSE,
+  genome_type = genome_type,
+  use_STAR_mappability = FALSE,
+  nonPolyARef = getNonPolyARef(genome_type),
+  BlacklistRef = "",
+  useExtendedTranscripts = TRUE,
+  n_threads = 4
 )
 
 getNonPolyARef(genome_type)
@@ -65,8 +81,8 @@ chromosome name conversions. If this is set, allows \link{processBAM} to parse
 BAM alignments to a genome whose chromosomes are named
 differently to the reference genome. The most common scenario is where
 Ensembl genome typically use chromosomes "1", "2", ..., "X", "Y", whereas
-UCSC/Gencode genome use "chr1", "chr2", ..., "chrX", "chrY".
-Refer to \url{https://github.com/dpryan79/ChromosomeMappings} for a
+UCSC/Gencode genome use "chr1", "chr2", ..., "chrX", "chrY". See example
+below. Refer to \url{https://github.com/dpryan79/ChromosomeMappings} for a
 list of chromosome alias resources.}
 
 \item{genome_type}{Allows \code{buildRef()} to select default
@@ -104,6 +120,18 @@ most cases, this method uses less memory and is faster, but can be very
 slow on some systems. Set this option to \code{FALSE} (which will convert the
 TwoBit file back to FASTA) if you experience
 very slow genome fetching (e.g. when annotating splice motifs).}
+
+\item{use_STAR_mappability}{(default FALSE) In \code{buildFullRef()},
+whether to run \link{STAR_mappability} to calculate low-mappability regions.
+We recommend setting this to \code{FALSE} for the common genomes
+(human and mouse), and to \code{TRUE} for genomes not supported by
+\code{genome_type}. When set to false, the MappabilityExclusion default file
+corresponding to \code{genome_type} will automatically be used.}
+
+\item{n_threads}{The number of threads used to generate the STAR reference
+and mappability calculations. Multi-threading is not used for SpliceWiz
+reference generation (but multiple cores are utilised in data-table
+and fst file processing automatically, where available). See \link{STAR-methods}}
 }
 \value{
 For \code{getResources}: creates the following local resources:
@@ -127,6 +155,9 @@ SpliceWiz generated references
 \item \code{reference_path/cov_data.Rds}: An RDS file containing data required to
 visualise genome / transcript tracks.
 }
+
+\code{buildFullRef()} also creates a \code{STAR} reference located in the \code{STAR}
+subdirectory inside the designated \code{reference_path}
 
 For \code{getNonPolyARef()}: Returns the file path to the BED file for
 the nonPolyA loci for the specified genome.
@@ -157,6 +188,13 @@ Then, it creates the SpliceWiz references. Typical run-times are
 NB: the parameters \code{fasta} and \code{gtf} can be omitted in \code{buildRef()} if
 \code{getResources()} is already run.
 
+\code{buildFullRef()} builds the STAR aligner reference alongside the SpliceWiz
+reference. The STAR reference will be located in the \code{STAR} subdirectory
+of the specified reference path. If \code{use_STAR_mappability} is set to \code{TRUE}
+this function will empirically compute regions of low mappability. This
+function requires \code{STAR} to be installed on the system (which only runs on
+linux-based systems).
+
 \code{getNonPolyARef()} returns the path of the non-polyA reference file for the
 human and mouse genomes.
 
@@ -169,14 +207,22 @@ genomes, use one of the following alternatives:
 To do this, simply run \code{buildRef()} and omit \code{MappabilityRef}. This is
 acceptable assuming the introns assessed are short and do not contain
 intronic repeats
-\item Calculating Mappability Exclusion regions: see \link{Mappability-methods} for
-an example workflow using the Rsubread aligner
+\item Calculating Mappability Exclusion regions using the STAR aligner,
+and building the SpliceWiz reference. This can be done using the
+\code{buildFullRef()} function, on systems where \code{STAR} is installed
+\item Instead of using the STAR aligner, any genome splice-aware aligner could be
+used. See \link{Mappability-methods} for
+an example workflow using the Rsubread aligner. After producing the
+\code{MappabilityExclusion.bed.gz} file (in the \code{Mappability} subfolder), run
+\code{buildRef()} using this file (or simply leave it blank).
 }
 
 BED files are tab-separated text files containing 3 unnamed columns
 specifying chromosome, start and end coordinates. To view an example BED
 file, open the file specified in the path returned by
 \code{getNonPolyARef("hg38")}
+
+See examples below for common use cases.
 }
 \section{Functions}{
 \itemize{
@@ -187,6 +233,10 @@ of the given reference path
 \item \code{buildRef}: First calls \code{getResources()}
 (if required). Afterwards creates the SpliceWiz reference in the
 given reference path
+
+\item \code{buildFullRef}: One-step function that fetches resources,
+creates a STAR reference (including mappability calculations), then
+creates the SpliceWiz reference
 
 \item \code{getNonPolyARef}: Returns the path to the BED file
 containing coordinates of known non-polyadenylated transcripts for genomes
@@ -219,9 +269,96 @@ buildRef(
 
 getNonPolyARef("hg19")
 
+\dontrun{
+
+### Long examples ###
+
+# Generate a SpliceWiz reference from user supplied FASTA and GTF files for a
+# hg38-based genome:
+
+buildRef(
+    reference_path = "./Reference_user",
+    fasta = "genome.fa", gtf = "transcripts.gtf",
+    genome_type = "hg38"
+)
+
+# NB: Setting `genome_type = hg38`, will automatically use default
+# nonPolyARef and MappabilityRef for `hg38`
+
+# Reference generation from Ensembl's FTP links:
+
+FTP <- "ftp://ftp.ensembl.org/pub/release-94/"
+buildRef(
+    reference_path = "./Reference_FTP",
+    fasta = paste0(FTP, "fasta/homo_sapiens/dna/",
+        "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"),
+    gtf = paste0(FTP, "gtf/homo_sapiens/",
+        "Homo_sapiens.GRCh38.94.chr.gtf.gz"),
+    genome_type = "hg38"
+)
+
+# Get AnnotationHub record names for Ensembl release-94:
+
+# First, search for the relevant AnnotationHub record names:
+
+ah <- AnnotationHub::AnnotationHub()
+AnnotationHub::query(ah, c("Homo Sapiens", "release-94"))
+
+buildRef(
+    reference_path = "./Reference_AH",
+    fasta = "AH65745",
+    gtf = "AH64631",
+    genome_type = "hg38"
+)
+
+# Build a SpliceWiz reference, setting chromosome aliases to allow
+# this reference to process BAM files aligned to UCSC-style genomes:
+
+chrom.df <- GenomeInfoDb::genomeStyles()$Homo_sapiens
+
+buildRef(
+    reference_path = "./Reference_UCSC",
+    fasta = "AH65745",
+    gtf = "AH64631",
+    genome_type = "hg38",
+    chromosome_aliases = chrom.df[, c("Ensembl", "UCSC")]
+)
+
+# One-step generation of SpliceWiz and STAR references, using 4 threads.
+# NB1: requires a linux-based system with STAR installed.
+# NB2: A STAR reference genome will be generated in the `STAR` subfolder
+#      inside the given `reference_path`.
+# NB3: A custom Mappability Exclusion file will be calculated using STAR
+#      and will be used to generate the SpliceWiz reference.
+
+buildFullRef(
+    reference_path = "./Reference_with_STAR",
+    fasta = "genome.fa", gtf = "transcripts.gtf",
+    genome_type = "",
+    use_STAR_mappability = TRUE,
+    n_threads = 4
+)
+
+# NB: the above is equivalent to running the following in sequence:
+
+getResources(
+    reference_path = "./Reference_with_STAR",
+    fasta = "genome.fa", gtf = "transcripts.gtf"
+)
+STAR_buildRef(
+    reference_path = reference_path,
+    also_generate_mappability = TRUE,
+    n_threads = 4
+)
+buildRef(
+    reference_path = "./Reference_with_STAR",
+    genome_type = ""
+)
+}
 }
 \seealso{
 \link{Mappability-methods} for methods to calculate low mappability regions\cr\cr
+\link{STAR-methods} for a list of STAR wrapper functions\cr\cr
 \link[AnnotationHub]{AnnotationHub}\cr\cr
 \url{https://github.com/alexchwong/SpliceWizResources} for RDS files of
 Mappability Exclusion GRanges objects (for hg38, hg19, mm10 and mm9)

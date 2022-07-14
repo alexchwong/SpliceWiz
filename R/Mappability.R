@@ -13,7 +13,7 @@
 #' via [getResources]. Alternatively, use `alt_fasta_file` to set the genome
 #' sequence if this is different to that prepared by `getResources` or if 
 #' `getResources` is not yet run.
-#' * Second, an genome aligner (preferably the same aligner used for the
+#' * Second, an aligner such as STAR (preferably the same aligner used for the
 #' subsequent RNA-seq experiment) is required to align these reads to the source 
 #' genome. Poorly mapped regions of the genome will be reflected by regions of 
 #' low coverage depth.
@@ -24,6 +24,16 @@
 #' It is recommended to leave all parameters to their default settings. Regular
 #' users should only specify `reference_path`, `aligned_bam` and `n_threads`,
 #' as required.
+#'
+#' NB: [STAR_mappability] runs all 3 steps required, using the `STAR` aligner.
+#' This only works in systems where `STAR` is installed.
+#'
+#' NB2: [buildFullRef] builds the STAR reference, then calculates mappability.
+#' It then uses the calculated mappability regions to build the SpliceWiz
+#' reference.
+#'
+#' NB3: In systems where `STAR` is not available, consider using HISAT2 or
+#' Rsubread. A working example using Rsubread is shown below.
 #'
 #' @param reference_path The directory of the reference prepared by
 #'   [getResources]

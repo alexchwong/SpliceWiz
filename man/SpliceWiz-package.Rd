@@ -70,6 +70,9 @@ The main functions are:
 \item \link{Build-Reference-methods} - Prepares genome and gene annotation
 references from FASTA and GTF files and synthesizes the SpliceWiz reference
 for processing BAM files, collating the \linkS4class{NxtSE} object.
+\item \link{STAR-methods} - (Optional) Provides wrapper functions to build the STAR
+genome reference and alignment of short-read FASTQ raw sequencing files.
+This functionality is only available on systems with STAR installed.
 \item \link{processBAM} - OpenMP/C++ based algorithm to analyse
 single or multiple BAM files.
 \item \link{collateData} - Collates an experiment based on multiple IRFinder outputs
@@ -91,6 +94,8 @@ individual samples or across samples grouped by user-specified conditions
 See the
 \href{../doc/SW_QuickStart.html}{SpliceWiz Quick-Start}
 for worked examples on how to use SpliceWiz
+\href{../doc/SW_Cookbook.html}{SpliceWiz Cookbook}
+for real-life usage examples
 }
 \references{
 Middleton R, Gao D, Thomas A, Singh B, Au A, Wong JJ, Bomane A, Cosson B,

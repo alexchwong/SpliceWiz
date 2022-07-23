@@ -1,2 +1,11 @@
+Changes in version 0.99.2 (2022-07-23)
++ Added wrapper functions to use the STAR aligner to process fastq files
++ Added "SpliceWiz cookbook" vignette to illustrate functions involving
+"real world" genomes / transcriptomes
++ Fixed bug that triggers error in ASE_limma() when two genes with different
+gene_id have the same gene_name in the annotation. References built from prior
+versions of SpliceWiz are not supported!
++ Bugfix for translating protein codons when source genome contains N's
+
 Changes in version 0.99.0 (2022-06-02)
 + Bioconductor Submission

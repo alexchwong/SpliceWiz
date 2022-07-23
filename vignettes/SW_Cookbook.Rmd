@@ -95,6 +95,22 @@ buildRef(
 ```
 \
 
+### Overwriting an existing reference, but using the same annotations
+
+To re-build and overwrite an existing reference, using the same resource 
+annotations:
+
+```{r eval=FALSE}
+# Assuming hg38 genome:
+
+buildRef(
+    reference_path = ref_path,
+    genome_type = "hg38",
+    overwrite = TRUE
+)
+```
+\
+
 ### Create a SpliceWiz reference using web resources from Ensembl's FTP
 
 The following will first download the genome and gene annotation files from the
@@ -150,6 +166,7 @@ buildRef(
 AnnotationHub resources as they begin with "AH".
 \
 \
+
 ### Create a SpliceWiz reference from species other than human or mouse
 
 For human and mouse genomes, we highly recommend specifying `genome_type` as
@@ -163,6 +180,43 @@ buildRef(
     fasta = "genome.fa", gtf = "transcripts.gtf",
     genome_type = ""
 )
+```
+\
+
+# STAR reference generation
+
+### Checking if STAR is installed
+
+To use `STAR` to align FASTQ files, one must be using a system with `STAR` 
+installed.
+This software is not available in Windows. To check if `STAR` is available:
+
+```{r}
+STAR_version()
+```
+\
+
+### Building a STAR reference
+
+```{r eval = FALSE}
+ref_path = "./Reference"
+
+# Ensure genome resources are prepared from genome FASTA and GTF file:
+
+if(!dir.exists(file.path(ref_path, "resource"))) {
+    getResources(
+        reference_path = ref_path,
+        fasta = "genome.fa",
+        gtf = "transcripts.gtf"
+    )
+}
+
+# Generate a STAR genome reference:
+STAR_BuildRef(
+    reference_path = ref_path,
+    n_threads = 8
+)
+
 ```
 \
 
@@ -250,42 +304,11 @@ buildRef(ref_path)
 
 # Aligning Raw RNA-seq data using SpliceWiz's STAR wrappers
 \
-
-### Checking if STAR is installed
-
-To use `STAR` to align FASTQ files, one must be using a system with `STAR` 
-installed.
-This software is not available in Windows. To check if `STAR` is available:
+First, remember to check that STAR is available via command line:
 
 ```{r}
 STAR_version()
 ```
-\
-
-### Building a STAR reference
-
-```{r eval = FALSE}
-
-ref_path = "./Reference"
-
-# Ensure genome resources are prepared from genome FASTA and GTF file:
-
-if(!file.exists(file.path(ref_path, "resources"))) {
-    getResources(
-        reference_path = ref_path,
-        fasta = "genome.fa",
-        gtf = "transcripts.gtf"
-    )
-}
-
-# Generate a STAR genome reference:
-STAR_BuildRef(
-    reference_path = ref_path,
-    n_threads = 8
-)
-
-```
-\
 
 ### Aligning a single sample using STAR
 
@@ -323,6 +346,32 @@ To use two-pass mapping, set `two_pass = TRUE`. We recommend disabling this
 feature, as one-pass mapping is adequate in typical-use cases.
 \
 \
+
+### Finding FASTQ files recursively from a given directory
+
+SpliceWiz can identify sequencing FASTQ files recursively from a given 
+directory. It assumes that forward and reverse reads are suffixed as `_1` and
+`_2`, respectively. Users can choose to identify such files using a specified
+file extension. For example, to recursively identify FASTQ files of the format
+`{sample}_1.fq.gz` and `{sample}_2.fq.gz`, use the following:
+
+```{r eval = FALSE}
+# Assuming sequencing files are named by their respective sample names
+fastq_files <- findFASTQ("./sequencing_files", paired = TRUE,
+    fastq_suffix = ".fq.gz", level = 0)
+```
+
+Then, these can be aligned as follows:
+
+```{r eval = FALSE}
+STAR_alignExperiment(
+    Experiment = fastq_files,
+    STAR_ref_path = file.path("Reference_FTP", "STAR"),
+    BAM_output_path = "./bams",
+    n_threads = 8,
+    two_pass = FALSE
+)
+```
 
 # Running processBAM on BAM files
 
@@ -363,7 +412,6 @@ similar to `processBAM()` but without the need to give the path to the SpliceWiz
 reference:
 
 ```{r eval=FALSE}
-
 BAM2COV(
     bamfiles = bams$path,
     sample_names = bams$sample,

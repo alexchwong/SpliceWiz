@@ -308,7 +308,7 @@ buildRef <- function(
         useExtendedTranscripts = TRUE, lowMemoryMode = TRUE
         
     ) {
-    .validate_path(reference_path)
+    .validate_path(reference_path, subdirs = "resource")
     if (!overwrite && 
             file.exists(file.path(reference_path, "SpliceWiz.ref.gz"))) {
         .log("SpliceWiz reference already exists in given directory", "message")

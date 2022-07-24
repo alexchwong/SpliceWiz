@@ -654,6 +654,7 @@ collateData <- function(Experiment, reference_path, output_path,
     
         # Assemble intron_novel_transcript reference from novel junctions and
         # novel tandem junctions
+        message("...assembling novel splicing reference")
         .collateData_assemble_novel_reference(2, reference_path, 
             norm_output_path, lowMemoryMode)
             
@@ -697,13 +698,26 @@ collateData <- function(Experiment, reference_path, output_path,
             norm_output_path = norm_output_path,
             BPPARAM = BPPARAM_annotate
         )
-    }    
+        message("...assembling novel splicing reference")
+        tmp <- BiocParallel::bplapply(
+            seq_len(2),
+            .collateData_assemble_novel_reference,
+            reference_path = reference_path, 
+            norm_output_path = norm_output_path,
+            lowMemoryMode = lowMemoryMode,
+            BPPARAM = BPPARAM_annotate
+        )
+
+        use_ref_path <- file.path(norm_output_path, "Reference")
+    } else {
+        use_ref_path <- reference_path
+    }  
     
     message("...grouping splice junctions")
     tmp <- BiocParallel::bplapply(
         seq_len(2),
         .collateData_junc_group,
-        reference_path = reference_path, 
+        reference_path = use_ref_path, 
         norm_output_path = norm_output_path,
         BPPARAM = BPPARAM_annotate
     )
@@ -711,7 +725,7 @@ collateData <- function(Experiment, reference_path, output_path,
     tmp <- BiocParallel::bplapply(
         seq_len(2),
         .collateData_sw_group,
-        reference_path = reference_path, 
+        reference_path = use_ref_path, 
         norm_output_path = norm_output_path,
         stranded = stranded,
         BPPARAM = BPPARAM_annotate
@@ -720,7 +734,7 @@ collateData <- function(Experiment, reference_path, output_path,
     tmp <- BiocParallel::bplapply(
         seq_len(2),
         .collateData_splice_anno,
-        reference_path = reference_path, 
+        reference_path = use_ref_path, 
         norm_output_path = norm_output_path,
         BPPARAM = BPPARAM_annotate
     )
@@ -728,7 +742,7 @@ collateData <- function(Experiment, reference_path, output_path,
     tmp <- BiocParallel::bplapply(
         seq_len(2),
         .collateData_rowEvent,
-        reference_path = reference_path, 
+        reference_path = use_ref_path, 
         norm_output_path = norm_output_path,
         BPPARAM = BPPARAM_annotate
     )

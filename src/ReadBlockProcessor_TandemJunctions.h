@@ -35,8 +35,7 @@ class tandemJn {
     
     tandemJn(
       uint32_t b, uint32_t c,
-      uint32_t d, uint32_t e, 
-      bool f = false
+      uint32_t d, uint32_t e
     ) {
       start1 = b;
       end1 = c;

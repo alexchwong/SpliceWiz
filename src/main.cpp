@@ -1390,7 +1390,7 @@ int c_BAM2COV(
   
 #else
 int c_BAM2COV(
-    std::string bam_file, std::string output_file, int n_threads
+    std::string bam_file, std::string output_file, int n_threads, bool multiRead
 ){	
 	bool verbose = true;
 #endif

@@ -127,7 +127,8 @@ int SpliceWizCore(std::string const &bam_file,
   );	
 
   int c_BAM2COV(
-    std::string bam_file, std::string output_file, int n_threads = 1, bool multiRead = false
+    std::string bam_file, std::string output_file, 
+    int n_threads = 1, bool multiRead = false
   );
 
   int main(int argc, char * argv[]);

@@ -112,7 +112,7 @@ void TandemJunctions::ProcessBlocks(const FragmentBlocks &blocks) {
           blocks.readStart[index] + blocks.rStarts[index][j-2] + blocks.rLens[index][j-2],
           blocks.readStart[index] + blocks.rStarts[index][j-1],
           blocks.readStart[index] + blocks.rStarts[index][j-1] + blocks.rLens[index][j-1],
-          blocks.readStart[index] + blocks.rStarts[index][j], false
+          blocks.readStart[index] + blocks.rStarts[index][j]
         );
         (*chrID_tandemJn[blocks.chr_id])[tmpJn][blocks.direction]++;
       }

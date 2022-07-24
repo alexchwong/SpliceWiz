@@ -33,14 +33,16 @@ SOFTWARE.  */
 
 class GZReader {
   private:
-    gzFile gz_in;
+    gzFile gz_in = NULL;
     int GetBuffer();
 
-    char * buffer;            // stores data
-    unsigned long bufferLen;  // amount read from file
-    unsigned long bufferPos;  // amount read using getline, read or ignore
+    char * buffer = NULL;            // stores data
+    unsigned long bufferLen = 0;  // amount read from file
+    unsigned long bufferPos = 0;  // amount read using getline, read or ignore
     
-    bool loaded,lazy,streamed;
+    bool loaded = false;
+    bool lazy = false;
+    bool streamed = false;
   public:
     GZReader();
     ~GZReader();

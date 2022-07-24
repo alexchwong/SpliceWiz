@@ -957,6 +957,8 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_assemble_novel_reference <- function(
     threadID, reference_path, norm_output_path, lowMemoryMode
 ) {
+    if(threadID != 2) return()
+    
     novel_ref_path <- file.path(norm_output_path, "Reference")
     .validate_path(novel_ref_path)
     

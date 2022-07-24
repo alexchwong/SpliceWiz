@@ -8,7 +8,11 @@
 \usage{
 SpliceWiz_example_bams()
 
-SpliceWiz_example_NxtSE()
+SpliceWiz_example_NxtSE(novelSplicing = FALSE)
+}
+\arguments{
+\item{novelSplicing}{Whether to import an example NxtSE with novel splice
+event discovery.}
 }
 \value{
 In \code{SpliceWiz_example_bams()}: returns a 2-column data frame containing

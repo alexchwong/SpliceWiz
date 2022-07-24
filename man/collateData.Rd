@@ -9,7 +9,7 @@ collateData(
   reference_path,
   output_path,
   IRMode = c("SpliceOver", "SpliceMax"),
-  detectNovelSplicing = TRUE,
+  detectNovelSplicing = FALSE,
   overwrite = FALSE,
   n_threads = 1,
   lowMemoryMode = TRUE

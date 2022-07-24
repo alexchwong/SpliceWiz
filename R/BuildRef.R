@@ -596,6 +596,7 @@ return(TRUE)
         nonPolyARef = "", MappabilityRef = "", BlacklistRef = "",
         force_download = FALSE
 ) {
+    if(!is_valid(genome_type)) genome_type = ""
     if (!is_valid(nonPolyARef)) {
         nonPolyAFile <- getNonPolyARef(genome_type)
         nonPolyAFile <- .parse_valid_file(nonPolyAFile,

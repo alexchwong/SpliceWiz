@@ -90,7 +90,7 @@
 #' @export
 collateData <- function(Experiment, reference_path, output_path,
         IRMode = c("SpliceOver", "SpliceMax"),
-        detectNovelSplicing = TRUE,
+        detectNovelSplicing = FALSE,
         overwrite = FALSE, n_threads = 1,
         lowMemoryMode = TRUE
         # samples_per_block = 16
@@ -979,10 +979,15 @@ collateData <- function(Experiment, reference_path, output_path,
     reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
 
     # Insert novel gtf here
-
+    # reference_data$gtf_gr is a GRanges object
+    altSS_gtf <- .collateData_novel_assemble_altSS_transcripts(
+        reference_path, norm_output_path, reference_data$gtf_gr)
+    exon_gtf <- .collateData_novel_assemble_exon_transcripts(
+        reference_path, norm_output_path, reference_data$gtf_gr)
     # Finish inserting novel gtf
     
-    .process_gtf(reference_data$gtf_gr, novel_ref_path)
+    .process_gtf(c(reference_data$gtf_gr, altSS_gtf, exon_gtf), 
+        novel_ref_path)
     extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
     reference_data$gtf_gr <- NULL # To save memory, remove original gtf
     gc()
@@ -997,6 +1002,172 @@ collateData <- function(Experiment, reference_path, output_path,
     file.copy(file.path(reference_path, "fst", "IR.NMD.fst"),
         file.path(novel_ref_path, "fst", "IR.NMD.fst"))
     .gen_splice(novel_ref_path)
+    
+    settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
+    # (TODO) - modify settings.Rds
+    saveRDS(settings.list, file.path(novel_ref_path, "settings.Rds"))
+}
+
+.collateData_novel_assemble_altSS_transcripts <- function(
+    reference_path, norm_output_path, gtf
+) {
+    # Load junc.common
+    junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "junc.common.annotated.fst")))
+    
+    # Filter out known junctions
+    known.junctions <- unique(as.data.table(read.fst(
+        file.path(reference_path, "fst", "junctions.fst"), 
+        columns = c("seqnames", "start", "end", "strand", "Event"))))
+        
+    junc.novel <- junc.common[!(Event %in% known.junctions$Event)]
+    
+    # Filter for when there is at least 1 common splice site with knowns
+    kj.left <- with(known.junctions, GRanges(seqnames = seqnames,
+        ranges = IRanges(start, start), strand = strand))
+    nj.left <- with(junc.novel, GRanges(seqnames = seqnames,
+        ranges = IRanges(start, start), strand = strand))
+    kj.right <- with(known.junctions, GRanges(seqnames = seqnames,
+        ranges = IRanges(end, end), strand = strand))
+    nj.right <- with(junc.novel, GRanges(seqnames = seqnames,
+        ranges = IRanges(end, end), strand = strand))
+    OL_left <- findOverlaps(nj.left, kj.left)
+    OL_right <- findOverlaps(nj.left, kj.left)
+    
+    at_least_one_end <- unique(c(from(OL_left), from(OL_right)))
+    junc.novel <- junc.novel[at_least_one_end]
+
+    n_trans <- nrow(junc.novel)
+    gr_novel_leftExon <- with(junc.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = start - 50, end = start - 1),
+      strand = strand))
+    gr_novel_rightExon <- with(junc.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = end + 1, end = end + 50),
+      strand = strand))
+    gr_novel_transcript <- with(junc.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = start - 50, end = end + 50),
+      strand = strand))
+    gr_novel_gene <- gr_novel_transcript
+    
+    empty_mCol <- data.frame(matrix(ncol = ncol(mcols(gtf)), 
+        nrow = n_trans))
+    colnames(empty_mCol) <- colnames(mcols(gtf))
+
+    empty_mCol$source <- "novel"
+    empty_mCol$gene_biotype <- "intron_novel_transcript"
+    empty_mCol$transcript_biotype <- "intron_novel_transcript"
+
+    empty_mCol$gene_id <- paste0("novelSS", as.character(seq_len(n_trans)))
+    empty_mCol$gene_name <- paste0("novelSS", as.character(seq_len(n_trans)))
+
+    empty_mCol$transcript_id <- paste0("novelSS", 
+        as.character(seq_len(n_trans)))
+    empty_mCol$transcript_name <- paste0("novelSS", 
+        as.character(seq_len(n_trans)))
+
+    mcols(gr_novel_gene) <- empty_mCol
+    mcols(gr_novel_transcript) <- empty_mCol
+    mcols(gr_novel_leftExon) <- empty_mCol
+    mcols(gr_novel_rightExon) <- empty_mCol
+
+    mcols(gr_novel_gene)$type <- "gene"
+    mcols(gr_novel_gene)$transcript_id <- NA
+    mcols(gr_novel_gene)$transcript_name <- NA
+
+    mcols(gr_novel_transcript)$type <- "transcript"
+    mcols(gr_novel_leftExon)$type <- "exon"
+    mcols(gr_novel_rightExon)$type <- "exon"
+
+    mcols(gr_novel_leftExon)$exon_number <- ifelse(
+        strand(gr_novel_leftExon) == "+", 1, 2)
+    mcols(gr_novel_rightExon)$exon_number <- ifelse(
+        strand(gr_novel_rightExon) == "-", 1, 2)
+
+    mcols(gr_novel_leftExon)$exon_id <- paste0("novelSS", 
+        as.character(seq_len(n_trans)))
+    mcols(gr_novel_rightExon)$exon_id <- paste0("novelSS", 
+        as.character(n_trans + seq_len(n_trans)))
+    
+    new_gtf <- c(gr_novel_gene, gr_novel_transcript, 
+        gr_novel_leftExon, gr_novel_rightExon)
+    
+    rm(junc.common, known.junctions)
+    gc()
+    return(new_gtf)
+}
+
+.collateData_novel_assemble_exon_transcripts <- function(
+    reference_path, norm_output_path, gtf
+) {
+    # No need to filter tandem junctions as this was done in earlier step
+    tj.novel <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "tj.common.annotated.fst")))
+    
+    n_trans <- nrow(tj.novel)
+    gr_novel_leftExon <- with(tj.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = start1 - 50, end = start1 - 1),
+      strand = strand))
+    gr_novel_middleExon <- with(tj.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = end1 + 1, end = start2 - 1),
+      strand = strand))
+    gr_novel_rightExon <- with(tj.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = end2 + 1, end = end2 + 50),
+      strand = strand))
+    gr_novel_transcript <- with(tj.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = start1 - 50, end = end2 + 50),
+      strand = strand))
+    gr_novel_gene <- gr_novel_transcript
+
+    empty_mCol <- data.frame(matrix(ncol = ncol(mcols(gtf)), 
+        nrow = n_trans))
+    colnames(empty_mCol) <- colnames(mcols(gtf))
+
+    empty_mCol$source <- "novel"
+    empty_mCol$gene_biotype <- "intron_novel_transcript"
+    empty_mCol$transcript_biotype <- "intron_novel_transcript"
+
+    empty_mCol$gene_id <- paste0("novelExon", as.character(seq_len(n_trans)))
+    empty_mCol$gene_name <- paste0("novelExon", as.character(seq_len(n_trans)))
+
+    empty_mCol$transcript_id <- paste0("novelExon", 
+        as.character(seq_len(n_trans)))
+    empty_mCol$transcript_name <- paste0("novelExon", 
+        as.character(seq_len(n_trans)))
+
+    mcols(gr_novel_gene) <- empty_mCol
+    mcols(gr_novel_transcript) <- empty_mCol
+    mcols(gr_novel_leftExon) <- empty_mCol
+    mcols(gr_novel_middleExon) <- empty_mCol
+    mcols(gr_novel_rightExon) <- empty_mCol
+
+    mcols(gr_novel_gene)$type <- "gene"
+    mcols(gr_novel_gene)$transcript_id <- NA
+    mcols(gr_novel_gene)$transcript_name <- NA
+
+    mcols(gr_novel_transcript)$type <- "transcript"
+    mcols(gr_novel_leftExon)$type <- "exon"
+    mcols(gr_novel_middleExon)$type <- "exon"
+    mcols(gr_novel_rightExon)$type <- "exon"
+
+    mcols(gr_novel_leftExon)$exon_number <- ifelse(
+        strand(gr_novel_leftExon) == "+", 1, 3)
+    mcols(gr_novel_middleExon)$exon_number <- 2
+    mcols(gr_novel_rightExon)$exon_number <- ifelse(
+        strand(gr_novel_rightExon) == "-", 1, 3)
+
+    mcols(gr_novel_leftExon)$exon_id <- paste0("novelExon", 
+        as.character(seq_len(n_trans)))
+    mcols(gr_novel_middleExon)$exon_id <- paste0("novelExon", 
+        as.character(n_trans + seq_len(n_trans)))
+    mcols(gr_novel_rightExon)$exon_id <- paste0("novelExon", 
+        as.character(n_trans + seq_len(n_trans)))
+
+    new_gtf <- c(gr_novel_gene, gr_novel_transcript, 
+        gr_novel_leftExon, gr_novel_middleExon, gr_novel_rightExon)
+
+    rm(tj.novel)
+    gc()
+    return(new_gtf)
 }
 
 ################################################################################

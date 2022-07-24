@@ -56,4 +56,22 @@ make_example_NxtSE <- function() {
     se <- realize_NxtSE(se)
     
     saveRDS(se, "../extdata/example_NxtSE.Rds")
+
+    # Make example NxtSE with novel splice detection
+    collateData(
+        expr, 
+        reference_path = file.path(tempdir(), "Reference"),
+        output_path = file.path(tempdir(), "Collated_output_novel"),
+        detectNovelSplicing = TRUE
+    )
+    
+    se <- makeSE(collate_path = file.path(tempdir(), "Collated_output_novel"))
+
+    # De-identify COV files for validity:
+    covfile(se) <- rep("", 6)
+    
+    # Convert from HDF5-linked se to in-memory se:
+    se <- realize_NxtSE(se)
+    
+    saveRDS(se, "../extdata/example_NxtSE_novel.Rds")
 }

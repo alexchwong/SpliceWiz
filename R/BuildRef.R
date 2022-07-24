@@ -343,6 +343,9 @@ buildRef <- function(
 
     dash_progress("Processing introns", N_steps)
     chromosomes <- .convert_chromosomes(chromosome_aliases)
+    # save chromosomes for later
+    saveRDS(chromosomes, file.path(reference_path, "chromosomes.Rds"))
+    
     .process_introns(reference_path, reference_data$genome,
         useExtendedTranscripts)
 
@@ -644,6 +647,20 @@ return(TRUE)
     .check_is_BED_or_RDS(MappabilityFile)
     .check_is_BED_or_RDS(BlacklistFile)
 
+    # Save a copy of the 3 files into the "resource" folder
+    local.nonPolyAFile <- file.path(reference_path, "resource", 
+        "nonPolyAFile.resource")
+    local.MappabilityFile <- file.path(reference_path, "resource", 
+        "MappabilityFile.resource")
+    local.BlacklistFile <- file.path(reference_path, "resource", 
+        "BlacklistFile.resource")
+    if(file.exists(nonPolyAFile) && !file.exists(local.nonPolyAFile))
+        file.copy(nonPolyAFile, local.nonPolyAFile)
+    if(file.exists(MappabilityFile) && !file.exists(local.MappabilityFile))
+        file.copy(MappabilityFile, local.MappabilityFile)
+    if(file.exists(BlacklistFile) && !file.exists(local.BlacklistFile))
+        file.copy(BlacklistFile, local.BlacklistFile)
+        
     final <- list(
         nonPolyAFile = nonPolyAFile, MappabilityFile = MappabilityFile,
         BlacklistFile = BlacklistFile, genome_type = genome_type
@@ -1898,6 +1915,8 @@ return(TRUE)
         tmpdir.IntronCover.summa, tmpnd.IntronCover.summa)
     message("...writing ref-sj.ref")
     ref.sj <- .gen_irf_sj(reference_path)
+    message("...writing ref-tj.ref")
+    ref.tj <- .gen_irf_tj(reference_path)
 
     chr <- data.frame(seqnames = names(GenomeInfoDb::seqinfo(genome)),
         seqlengths = unname(GenomeInfoDb::seqlengths(genome)))
@@ -1909,7 +1928,8 @@ return(TRUE)
     } else {
         chr$seqalias <- ""
     }
-    .gen_irf_final(reference_path, ref.cover, readcons, ref.ROI, ref.sj, chr)
+    .gen_irf_final(reference_path, ref.cover, readcons, ref.ROI, 
+        ref.sj, ref.tj, chr)
     message("processBAM reference generated")
 }
 ################################################################################
@@ -2398,8 +2418,70 @@ return(TRUE)
     return(ref.sj)
 }
 
+.gen_irf_tj <- function(reference_path) {
+    # ref-tj.ref
+    # Reload candidate introns here, as we've filtered this before
+    candidate.introns <- as.data.table(
+        read.fst(file.path(reference_path, "fst", "junctions.fst"))
+    )
+    candidate.introns.pos <- candidate.introns[strand == "+"]
+    candidate.introns.neg <- candidate.introns[strand == "-"]
+    
+    # Sort by transcript_id, then by seqnames, start
+    setorderv(candidate.introns.pos, c(
+        "transcript_id", "seqnames", "start"))
+    setorderv(candidate.introns.neg, c(
+        "transcript_id", "seqnames", "start"))
+    
+    # Split left and right tandem junction
+    candidate.introns.pos.left <- candidate.introns.pos[
+        candidate.introns.pos[, 
+            .I[get("intron_number") != max(get("intron_number"))], 
+            by="transcript_id"]$V1]
+    candidate.introns.pos.right <- candidate.introns.pos[
+        candidate.introns.pos[, 
+            .I[get("intron_number") != 1], 
+            by="transcript_id"]$V1]
+
+    candidate.introns.neg.left <- candidate.introns.neg[
+        candidate.introns.neg[, 
+            .I[get("intron_number") != 1], 
+            by="transcript_id"]$V1]
+    candidate.introns.neg.right <- candidate.introns.neg[
+        candidate.introns.neg[, 
+            .I[get("intron_number") != max(get("intron_number"))], 
+            by="transcript_id"]$V1]
+    
+    # BED file conversion: start := start - 1
+    ref.tj <- as.data.table(
+        rbind(
+            data.frame(
+                seqnames = candidate.introns.pos.left$seqnames,
+                start1 = candidate.introns.pos.left$start - 1,
+                end1 = candidate.introns.pos.left$end,
+                start2 = candidate.introns.pos.right$start - 1,
+                end2 = candidate.introns.pos.right$end,
+                strand = "+"
+            ),
+            data.frame(
+                seqnames = candidate.introns.neg.left$seqnames,
+                start1 = candidate.introns.neg.left$start - 1,
+                end1 = candidate.introns.neg.left$end,
+                start2 = candidate.introns.neg.right$start - 1,
+                end2 = candidate.introns.neg.right$end,
+                strand = "-"
+            )
+        )
+    )
+    setorderv(ref.tj, c("seqnames", "start1", "end1", 
+        "start2", "end2", "strand"))
+    gc()
+    return(ref.tj)
+}
+
+
 .gen_irf_final <- function(reference_path,
-        ref.cover, readcons, ref.ROI, ref.sj,
+        ref.cover, readcons, ref.ROI, ref.sj, ref.tj,
         chromosome_aliases
 ) {
     IRF_file <- file.path(reference_path, "SpliceWiz.ref")
@@ -2421,6 +2503,11 @@ return(TRUE)
     fwrite(list("# ref-sj.ref"), IRF_file, append = TRUE,
         sep = "\t", eol = "\n", col.names = FALSE, scipen = 50)
     fwrite(ref.sj, IRF_file, append = TRUE,
+        sep = "\t", eol = "\n", col.names = FALSE, scipen = 50)
+
+    fwrite(list("# ref-tj.ref"), IRF_file, append = TRUE,
+        sep = "\t", eol = "\n", col.names = FALSE, scipen = 50)
+    fwrite(ref.tj, IRF_file, append = TRUE,
         sep = "\t", eol = "\n", col.names = FALSE, scipen = 50)
 
     if (!is.null(chromosome_aliases)) {

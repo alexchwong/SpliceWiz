@@ -9,6 +9,7 @@ collateData(
   reference_path,
   output_path,
   IRMode = c("SpliceOver", "SpliceMax"),
+  detectNovelSplicing = TRUE,
   overwrite = FALSE,
   n_threads = 1,
   lowMemoryMode = TRUE
@@ -34,6 +35,9 @@ collated dataset}
 'splice abundance' in IR quantification.
 Valid options are \code{SpliceOver} and \code{SpliceMax}.
 See details}
+
+\item{detectNovelSplicing}{(default FALSE) Whether collateData will use
+novel junction reads detected in samples to infer novel splice variants.}
 
 \item{overwrite}{(default \code{FALSE}) If \code{collateData()} has previously been run
 using the same set of samples, it will not be overwritten unless this is

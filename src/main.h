@@ -13,6 +13,7 @@
 #include "FastaReader.h"
 #include "GZTools.h"          // For gzip I/O
 #include "ReadBlockProcessor_CoverageBlocks.h"  // includes FragmentsMap and others
+#include "ReadBlockProcessor_TandemJunctions.h"
 
 int Has_OpenMP();
 int Set_Threads(int n_threads);
@@ -55,14 +56,15 @@ int ReadChrAlias(std::istringstream &IN,
     std::vector<uint32_t> &ref_lengths
 );
 
-int readReference(std::string &reference_file, 
+int readReferenceToStrings(std::string &reference_file, 
     std::vector<std::string> &ref_names, 
     std::vector<std::string> &ref_alias,
     std::vector<uint32_t> &ref_lengths,
-    CoverageBlocksIRFinder &CB_template, 
-    SpansPoint &SP_template, 
-    FragmentsInROI &ROI_template,
-    JunctionCount &JC_template, 
+    std::string &CB_string,
+    std::string &SP_string,
+    std::string &ROI_string,
+    std::string &JC_string,
+    std::string &TJ_string,
     bool verbose
 );
 
@@ -75,6 +77,7 @@ int SpliceWizCore(std::string const &bam_file,
     std::string &SP_string,
     std::string &ROI_string,
     std::string &JC_string,
+    std::string &TJ_string,
     bool const verbose,
     int n_threads = 1,
     bool const multithreadedRead = false

@@ -982,7 +982,7 @@ collateData <- function(Experiment, reference_path, output_path,
     extra_files <- .fetch_genome_defaults(novel_ref_path,
         settings$genome_type, nonPolyARef, 
         MappabilityRef, BlacklistRef,
-        force_download = false)
+        force_download = FALSE)
 
     reference_data <- .get_reference_data(
         reference_path = reference_path,
@@ -1036,7 +1036,7 @@ collateData <- function(Experiment, reference_path, output_path,
         file.path(reference_path, "fst", "junctions.fst"), 
         columns = c("seqnames", "start", "end", "strand", "Event"))))
         
-    junc.novel <- junc.common[!(Event %in% known.junctions$Event)]
+    junc.novel <- junc.common[!(get("Event") %in% known.junctions$Event)]
     
     # Filter for when there is at least 1 common splice site with knowns
     kj.left <- with(known.junctions, GRanges(seqnames = seqnames,

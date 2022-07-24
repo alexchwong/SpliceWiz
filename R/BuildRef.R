@@ -3185,7 +3185,10 @@ return(TRUE)
 
 # Generate a list of AFE
 .gen_splice_AFE <- function(candidate.introns, introns_found_A5SS) {
-    introns_search_AFE <- candidate.introns[get("intron_number") == 1]
+    # There's no way a novel junction could be known to be the first exon
+    introns_search_AFE <- candidate.introns[
+        get("transcript_biotype") != "intron_novel_transcript"]
+    introns_search_AFE <- introns_search_AFE[get("intron_number") == 1]
     introns_search_AFE_pos <- introns_search_AFE[get("strand") == "+"]
     setorderv(introns_search_AFE_pos,
         c("seqnames", "intron_end", "intron_start"),
@@ -3255,7 +3258,10 @@ return(TRUE)
 
 # Generate a list of ALE
 .gen_splice_ALE <- function(candidate.introns, introns_found_A3SS) {
-    introns_search_ALE <- candidate.introns[candidate.introns[,
+    introns_search_ALE <- candidate.introns[
+        get("transcript_biotype") != "intron_novel_transcript"]
+        
+    introns_search_ALE <- introns_search_ALE[candidate.introns[,
         .I[get("intron_number") == max(get("intron_number"))],
         by = "transcript_id"]$V1]
     introns_search_ALE_pos <- introns_search_ALE[get("strand") == "+"]

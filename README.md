@@ -1,6 +1,12 @@
 # SpliceWiz
 SpliceWiz is an R package for exploring differential alternative splicing events in splice-aware alignment BAM files.
 
+## Publication
+
+Check out our pre-print publication for SpliceWiz:
+
+[SpliceWiz: easy, optimized, and accurate alternative splicing analysis in R](https://www.biorxiv.org/content/10.1101/2022.07.05.498887v1)
+
 ## Documentation
 
 [Bioconductor Landing Page](https://bioconductor.org/packages/devel/bioc/html/SpliceWiz.html)

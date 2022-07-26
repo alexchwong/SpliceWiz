@@ -1,0 +1,19 @@
+citEntry(
+    entry="article",
+    title = "SpliceWiz: easy, optimized, and accurate alternative splicing analysis in R",
+    author = personList(
+        as.person("Alex CH Wong"),
+        as.person("Justin J-L Wong"),
+        as.person("John EJ Rasko"),
+        as.person("Ulf Schmitz")
+    ),
+    year = 2022,
+    journal = "biorxiv",
+    doi = "10.1101/2022.07.05.498887",
+    textVersion = 
+    paste(
+        "Alex CH Wong, Justin J-L Wong, John EJ Rasko, Ulf Schmitz.", 
+        "SpliceWiz: easy, optimized, and accurate alternative splicing analysis in R",
+        "biorxiv2022.07.05.498887; doi: https://doi.org/10.1101/2022.07.05.498887" 
+    )
+)

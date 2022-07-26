@@ -451,8 +451,10 @@ collateData <- function(Experiment, reference_path, output_path,
 # Sub
 
 # Compiles a unified list of detected splice junctions
-.collateData_junc_merge <- function(df.internal, jobs, BPPARAM_mod,
-        output_path) {
+.collateData_junc_merge <- function(
+        df.internal, jobs, BPPARAM_mod,
+        output_path
+) {
     temp_output_path <- file.path(output_path, "temp")
     n_jobs <- length(jobs)
 

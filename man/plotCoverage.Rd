@@ -21,6 +21,7 @@ plotCoverage(
   track_names = tracks,
   condition,
   selected_transcripts,
+  plot_involved_transcripts = FALSE,
   condense_tracks = FALSE,
   stack_tracks = FALSE,
   t_test = FALSE,
@@ -94,6 +95,10 @@ names of individual samples.}
 or transcript names of transcripts
 to be displayed on the gene annotation track. Useful to remove minor
 isoforms that are not relevant to the samples being displayed.}
+
+\item{plot_involved_transcripts}{(default \code{FALSE}) If \code{TRUE}, only
+transcripts involved in the selected \code{Event} or pair of \code{Event}s will be
+displayed.}
 
 \item{condense_tracks}{(default \code{FALSE}) Whether to collapse the
 transcript track annotations by gene.}
@@ -193,6 +198,12 @@ stacked ggplot, using egg::ggarrange
 \examples{
 se <- SpliceWiz_example_NxtSE()
 
+# Assign annotation of the experimental conditions
+colData(se)$treatment <- rep(c("A", "B"), each = 3)
+
+# Verify that the COV files are linked to the NxtSE object:
+covfile(se)
+
 # Plot the genome track only, with specified gene:
 p <- plotGenome(se, Gene = "SRSF3")
 p$ggplot
@@ -201,31 +212,32 @@ p$ggplot
 p <- plotGenome(se, coordinates = "chrZ:10000-20000")
 p$ggplot
 
-# Assign annotation re experimental conditions
-
-colData(se)$treatment <- rep(c("A", "B"), each = 3)
-
-# Verify that the COV files are linked to the NxtSE object:
-covfile(se)
-
 # Return a list of ggplot and plotly objects
 p <- plotCoverage(
     se = se,
-    Event = rowData(se)$EventName[1],
+    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
     tracks = colnames(se)[1:4]
 )
 
 # Display as a a static ggplot (requires the `egg` package to be installed):
-
 as_ggplot_cov(p)
 
 # Display the plotly-based interactive Coverage plot:
 p$final_plot
 
-# Plot the same event but by condition "treatment"
+# Plot by condition "treatment"
 p <- plotCoverage(
     se, rowData(se)$EventName[1],
     tracks = c("A", "B"), condition = "treatment"
+)
+as_ggplot_cov(p)
+
+# Select only transcripts involved in the selected alternative splicing event
+p <- plotCoverage(
+    se = se,
+    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+    tracks = colnames(se)[1:4],
+    plot_involved_transcripts = TRUE
 )
 as_ggplot_cov(p)
 }

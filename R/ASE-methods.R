@@ -617,8 +617,9 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     groups <- factor(colData[, test_factor])
     shrink.method <- "WEB"
 
-    contrast.first <- which(levels(groups) == test_nom)
-    contrast.second <- which(levels(groups) == test_denom)
+    # carry over error from DoubleExpSeq version 1.1
+    contrast.first <- which(unique(groups) == test_nom)
+    contrast.second <- which(unique(groups) == test_denom)
 
     res <- DoubleExpSeq::DBGLM1(
         as.matrix(y), as.matrix(m), groups, shrink.method,

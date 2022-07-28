@@ -2507,7 +2507,6 @@ collateData <- function(Experiment, reference_path, output_path,
     } else {
         total.DT <- exons.DT
     }
-
     return(total.DT)
 }
 

@@ -1975,7 +1975,7 @@ return(TRUE)
 
     allowed_tx <- c("protein_coding", "processed_transcript",
             "lincRNA", "antisense", "nonsense_mediated_decay",
-            "mRNA" # for compatibility with NCBI GTF files
+            "mRNA" # for compatibility with NCBI GTF files)
     )
     candidate.introns <- candidate.introns[
         get("transcript_biotype") %in% allowed_tx]

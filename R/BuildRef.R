@@ -364,12 +364,13 @@ buildRef <- function(
 
     dash_progress("Annotating Splice Events", N_steps)
     .gen_splice(reference_path)
-    if (file.exists(file.path(reference_path, "fst", "Splice.fst"))) {
+    if (file.exists(file.path(reference_path, "fst", "Splice.fst")) &
+        file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
         dash_progress("Translating AS Peptides", N_steps)
         .gen_splice_proteins(reference_path, reference_data$genome)
         .log("Splice Annotations finished\n", "message")
     } else {
-        dash_progress("No alternate splicing events detected", N_steps)
+        dash_progress("No protein-coding splicing events detected", N_steps)
     }
 
     message("Reference build finished")
@@ -1563,9 +1564,14 @@ return(TRUE)
     Transcripts <- as.data.table(
         read.fst(file.path(reference_path, "fst", "Transcripts.fst")),
     )
-    Proteins <- as.data.table(
-        read.fst(file.path(reference_path, "fst", "Proteins.fst")),
-    )
+    if(file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
+        Proteins <- as.data.table(
+            read.fst(file.path(reference_path, "fst", "Proteins.fst")),
+        )    
+    } else {
+        Proteins <- NULL
+    }
+    
     Exons_group <- as.data.table(
         read.fst(file.path(reference_path, "fst", "Exons.Group.fst")),
     )
@@ -1696,12 +1702,16 @@ return(TRUE)
     }
 
     # Annotate protein_id:
-    if ("protein_id" %in% colnames(Proteins)) {
-        Proteins.red <- unique(Proteins[, c("transcript_id", "protein_id")])
-        candidate.introns[Proteins.red,
-            on = "transcript_id",
-            c("protein_id") := list(get("i.protein_id"))
-        ]
+    if(!is.null(Proteins)) {
+        if ("protein_id" %in% colnames(Proteins)) {
+            Proteins.red <- unique(Proteins[, c("transcript_id", "protein_id")])
+            candidate.introns[Proteins.red,
+                on = "transcript_id",
+                c("protein_id") := list(get("i.protein_id"))
+            ]
+        }
+    } else {
+        candidate.introns$protein_id <- NA
     }
 
     # Annotate ccds_id:
@@ -1964,7 +1974,9 @@ return(TRUE)
     )
 
     allowed_tx <- c("protein_coding", "processed_transcript",
-            "lincRNA", "antisense", "nonsense_mediated_decay")
+            "lincRNA", "antisense", "nonsense_mediated_decay",
+            "mRNA" # for compatibility with NCBI GTF files
+    )
     candidate.introns <- candidate.introns[
         get("transcript_biotype") %in% allowed_tx]
     candidate.introns[, c("transcript_biotype") :=
@@ -3524,30 +3536,33 @@ return(TRUE)
     )
     candidate.RI <- candidate.RI[unique(from(OL))]
     
-    found_RI <- data.table(EventType = "RI",
-        EventID = paste0("RI#", seq_len(nrow(candidate.RI))),
-        EventName = "", # assign later
-        Event1a = with(candidate.RI,
-            paste0(seqnames, ":", start, "-", end, "/", strand)),
-        Event1b = with(candidate.RI,
-            paste0(seqnames, ":", start, "-", end, "/", strand)),
-        Event2a = NA,
-        Event2b = NA,
-        gene_id = Exons$gene_id[match(candidate.RI$transcript_id,
-            Exons$transcript_id)]
-    )
-    found_RI$gene_id_b <- found_RI$gene_id
-    found_RI$EventRegion <- found_RI$Event1a
-    found_RI$transcript_id_a <- ""
-    found_RI$transcript_name_a <- ""
-    found_RI$intron_number_a <- 0
-    found_RI$transcript_id_b <- candidate.RI$transcript_id
-    found_RI$transcript_name_b <- Exons$gene_id[match(
-        candidate.RI$transcript_id, Exons$transcript_id)]
-    found_RI$intron_number_b <- as.numeric(tstrsplit(candidate.RI$intron_id,
-        split = "Intron")[[2]])
-
-    return(found_RI)
+    if(nrow(candidate.RI) > 0) {
+        found_RI <- data.table(EventType = "RI",
+            EventID = paste0("RI#", seq_len(nrow(candidate.RI))),
+            EventName = "", # assign later
+            Event1a = with(candidate.RI,
+                paste0(seqnames, ":", start, "-", end, "/", strand)),
+            Event1b = with(candidate.RI,
+                paste0(seqnames, ":", start, "-", end, "/", strand)),
+            Event2a = NA,
+            Event2b = NA,
+            gene_id = Exons$gene_id[match(candidate.RI$transcript_id,
+                Exons$transcript_id)]
+        )
+        found_RI$gene_id_b <- found_RI$gene_id
+        found_RI$EventRegion <- found_RI$Event1a
+        found_RI$transcript_id_a <- ""
+        found_RI$transcript_name_a <- ""
+        found_RI$intron_number_a <- 0
+        found_RI$transcript_id_b <- candidate.RI$transcript_id
+        found_RI$transcript_name_b <- Exons$gene_id[match(
+            candidate.RI$transcript_id, Exons$transcript_id)]
+        found_RI$intron_number_b <- as.numeric(
+            tstrsplit(candidate.RI$intron_id, split = "Intron")[[2]])
+        return(found_RI)
+    } else {
+        return(NULL)
+    }
 }
 
 # Renames the ASEs based on the ranking order of transcripts

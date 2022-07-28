@@ -2029,19 +2029,24 @@ collateData <- function(Experiment, reference_path, output_path,
         c("seqnames", "start", "end", "strand", "type", "transcript_id")))
     exons.DT <- exons.DT[get("transcript_id") != "protein_coding"]
 
-    protein.DT <- as.data.table(read.fst(file.path(dir_path, "Proteins.fst"),
-        c("seqnames", "start", "end", "strand", "type", "transcript_id")))
-    misc.DT <- as.data.table(read.fst(file.path(dir_path, "Misc.fst"),
-        c("seqnames", "start", "end", "strand", "type", "transcript_id")))
+    if(file.exists(file.path(dir_path, "Proteins.fst"))) {
+        protein.DT <- as.data.table(
+            read.fst(file.path(dir_path, "Proteins.fst"),
+            c("seqnames", "start", "end", "strand", "type", "transcript_id")))
+        misc.DT <- as.data.table(read.fst(file.path(dir_path, "Misc.fst"),
+            c("seqnames", "start", "end", "strand", "type", "transcript_id")))
 
-    total.DT <- rbindlist(list(
-        exons.DT[, c("seqnames", "start", "end", "strand", "type",
-            "transcript_id")],
-        protein.DT[, c("seqnames", "start", "end", "strand", "type",
-            "transcript_id")],
-        misc.DT[, c("seqnames", "start", "end", "strand", "type",
-            "transcript_id")]
-    ))
+        total.DT <- rbindlist(list(
+            exons.DT[, c("seqnames", "start", "end", "strand", "type",
+                "transcript_id")],
+            protein.DT[, c("seqnames", "start", "end", "strand", "type",
+                "transcript_id")],
+            misc.DT[, c("seqnames", "start", "end", "strand", "type",
+                "transcript_id")]
+        ))
+    } else {
+        total.DT <- exons.DT
+    }
     return(total.DT)
 }
 

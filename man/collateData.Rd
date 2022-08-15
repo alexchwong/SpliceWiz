@@ -43,8 +43,8 @@ novel junction reads detected in samples to infer novel splice variants.}
 using the same set of samples, it will not be overwritten unless this is
 set to \code{TRUE}.}
 
-\item{n_threads}{(default \code{1}) The number of threads to use. On low
-memory systems, reduce the number of \code{n_threads} and \code{samples_per_block}}
+\item{n_threads}{(default \code{1}) The number of threads to use. If you run out
+of memory, try lowering the number of threads}
 
 \item{lowMemoryMode}{(default \code{TRUE}) \code{collateData()} will perform
 optimizations to conserve memory if this is set to \code{TRUE}. Otherwise,

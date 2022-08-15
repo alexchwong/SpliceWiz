@@ -1082,7 +1082,7 @@ getCoverageBins <- function(file, region, bins = 2000,
 
     if(plot_involved_transcripts) {
         transcripts.DT <- transcripts.DT[
-            transcript_id %in% reduced.DT$transcript_id]
+            get("transcript_id") %in% reduced.DT$transcript_id]
     }
     return(list(
         transcripts.DT = transcripts.DT,
@@ -1152,14 +1152,15 @@ determine_compatible_events <- function(
                 .grDT(misc),
                 .grDT(exons_selected)
             )
-            misc[seq_len(nrow(misc)) %in% unique(OL@from) & transcript_id == tr,
+            misc[seq_len(nrow(misc)) %in% unique(OL@from) & 
+                get("transcript_id") == tr,
                 c("highlight") := highlight_id]
         }
     }
     if(plot_involved_transcripts) {
-        introns <- introns[transcript_id %in% tr_filter]
-        exons <- exons[transcript_id %in% tr_filter]
-        misc <- misc[transcript_id %in% tr_filter]
+        introns <- introns[get("transcript_id") %in% tr_filter]
+        exons <- exons[get("transcript_id") %in% tr_filter]
+        misc <- misc[get("transcript_id") %in% tr_filter]
     } 
     return(rbind(introns, exons, misc))
 }

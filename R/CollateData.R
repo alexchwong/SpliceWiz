@@ -52,8 +52,8 @@
 #' @param lowMemoryMode (default `TRUE`) `collateData()` will perform
 #'   optimizations to conserve memory if this is set to `TRUE`. Otherwise,
 #'   will prioritise performance.
-#' @param n_threads (default `1`) The number of threads to use. On low
-#'   memory systems, reduce the number of `n_threads` and `samples_per_block`
+#' @param n_threads (default `1`) The number of threads to use. If you run out
+#'   of memory, try lowering the number of threads
 #' @param overwrite (default `FALSE`) If `collateData()` has previously been run
 #'   using the same set of samples, it will not be overwritten unless this is
 #'   set to `TRUE`.
@@ -93,7 +93,6 @@ collateData <- function(Experiment, reference_path, output_path,
         detectNovelSplicing = FALSE,
         overwrite = FALSE, n_threads = 1,
         lowMemoryMode = TRUE
-        # samples_per_block = 16
 ) {
     IRMode <- match.arg(IRMode)
     if (IRMode == "")

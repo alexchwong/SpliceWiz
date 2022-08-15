@@ -22,7 +22,7 @@
 #' @importFrom Biostrings readDNAStringSet DNAStringSet translate
 #' @importFrom BSgenome getSeq
 #' @importFrom DelayedArray qlogis plogis rowMeans DelayedArray rowSums
-#' @importFrom DelayedMatrixStats rowSds
+#' @importFrom DelayedMatrixStats rowSds rowAnyNAs
 #' @importFrom genefilter rowttests
 #' @importFrom GenomeInfoDb sortSeqlevels seqinfo seqlengths seqlevels<- 
 #' @importFrom GenomeInfoDb seqlevels seqlevelsStyle seqlevelsStyle<-

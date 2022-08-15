@@ -2284,7 +2284,9 @@ collateData <- function(Experiment, reference_path, output_path,
         if (buf_i >= samples_per_block | i == nrow(df.internal)) {
             for (stuff in stuff.todo) {
                 # write
-                h5write(as.matrix(do.call(cbind, matrices[[stuff]])),
+                mat <- as.matrix(do.call(cbind, matrices[[stuff]]))
+                mat[is.na(mat)] <- 0
+                h5write(mat,
                     file = h5filename, name = stuff,
                     index = list(NULL, seq(i - buf_i + 1, i))
                 )

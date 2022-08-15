@@ -158,27 +158,27 @@ makeSE <- function(
         se <- .makeSE_iterate_IR(se, collate_path)
     }
 
-    .log("Checking for NA values...", "message")
-    Inc_NA <- rowAnyNAs(assay(se, "Included"))
-    Exc_NA <- rowAnyNAs(assay(se, "Excluded"))
-    if(any(Inc_NA) | any(Exc_NA)) se <- se[!Inc_NA & !Exc_NA,]
+    # .log("Checking for NA values...", "message")
+    # Inc_NA <- rowAnyNAs(assay(se, "Included"))
+    # Exc_NA <- rowAnyNAs(assay(se, "Excluded"))
+    # if(any(Inc_NA) | any(Exc_NA)) se <- se[!Inc_NA & !Exc_NA,]
 
-    Up_Inc_NA <- rowAnyNAs(se@metadata[["Up_Inc"]])
-    Down_Inc_NA <- rowAnyNAs(se@metadata[["Down_Inc"]])
+    # Up_Inc_NA <- rowAnyNAs(se@metadata[["Up_Inc"]])
+    # Down_Inc_NA <- rowAnyNAs(se@metadata[["Down_Inc"]])
 
-    Up_Exc_NA <- rowAnyNAs(se@metadata[["Up_Inc"]])
-    Down_Exc_NA <- rowAnyNAs(se@metadata[["Down_Inc"]])
+    # Up_Exc_NA <- rowAnyNAs(se@metadata[["Up_Inc"]])
+    # Down_Exc_NA <- rowAnyNAs(se@metadata[["Down_Inc"]])
 
-    if(any(Up_Inc_NA) | any(Down_Inc_NA) | any(Up_Exc_NA) | any(Down_Exc_NA)) {
-        Up_Inc_NA_names <- rownames(se@metadata[["Up_Inc"]])[Up_Inc_NA]
-        Down_Inc_NA_names <- rownames(se@metadata[["Down_Inc"]])[Down_Inc_NA]
-        Up_Exc_NA_names <- rownames(se@metadata[["Up_Exc"]])[Up_Exc_NA]
-        Down_Exc_NA_names <- rownames(se@metadata[["Down_Exc"]])[Down_Exc_NA]
+    # if(any(Up_Inc_NA) | any(Down_Inc_NA) | any(Up_Exc_NA) | any(Down_Exc_NA)) {
+        # Up_Inc_NA_names <- rownames(se@metadata[["Up_Inc"]])[Up_Inc_NA]
+        # Down_Inc_NA_names <- rownames(se@metadata[["Down_Inc"]])[Down_Inc_NA]
+        # Up_Exc_NA_names <- rownames(se@metadata[["Up_Exc"]])[Up_Exc_NA]
+        # Down_Exc_NA_names <- rownames(se@metadata[["Down_Exc"]])[Down_Exc_NA]
         
-        names_NA <- unique(c(Up_Inc_NA_names, Down_Inc_NA_names, 
-            Up_Exc_NA_names, Down_Exc_NA_names))
-        se <- se[!(rownames(se) %in% names_NA),]
-    }
+        # names_NA <- unique(c(Up_Inc_NA_names, Down_Inc_NA_names, 
+            # Up_Exc_NA_names, Down_Exc_NA_names))
+        # se <- se[!(rownames(se) %in% names_NA),]
+    # }
 
     return(se)
 }

@@ -383,8 +383,8 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
 .ASE_limma_contrast <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2) {
-    countData <- rbind(assay(se, "Included"),
-        assay(se, "Excluded"))
+    countData <- as.matrix(rbind(assay(se, "Included"),
+        assay(se, "Excluded")))
     rowData <- as.data.frame(rowData(se))
     colData <- colData(se)
     rownames(colData) <- colnames(se)
@@ -427,8 +427,8 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
 .ASE_limma_contrast_ASE <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2) {
-    countData <- cbind(assay(se, "Included"),
-        assay(se, "Excluded"))
+    countData <- as.matrix(cbind(assay(se, "Included"),
+        assay(se, "Excluded")))
 
     rowData <- as.data.frame(rowData(se))
     colData <- as.data.frame(colData(se))
@@ -478,8 +478,8 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
 .ASE_DESeq2_contrast <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2, BPPARAM) {
-    countData <- rbind(assay(se, "Included"),
-        assay(se, "Excluded"))
+    countData <- as.matrix(rbind(assay(se, "Included"),
+        assay(se, "Excluded")))
     rowData <- as.data.frame(rowData(se))
     colData <- colData(se)
     rownames(colData) <- colnames(se)
@@ -534,8 +534,8 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
 .ASE_DESeq2_contrast_ASE <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2, BPPARAM) {
-    countData <- cbind(assay(se, "Included"),
-        assay(se, "Excluded"))
+    countData <- as.matrix(cbind(assay(se, "Included"),
+        assay(se, "Excluded")))
     rowData <- as.data.frame(rowData(se))
     colData <- as.data.frame(colData(se))
     colData <- rbind(colData, colData)
@@ -610,9 +610,10 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
     # NB add pseudocounts
     pseudocount <- 1
-    y <- assay(se, "Included") + pseudocount
-    m <- assay(se, "Included") + assay(se, "Excluded") + 2 * pseudocount
-
+    y <- as.matrix(assay(se, "Included") + pseudocount)
+    m <- as.matrix(
+        assay(se, "Included") + assay(se, "Excluded") + 2 * pseudocount
+    )
     colData <- as.data.frame(colData(se))
     groups <- factor(colData[, test_factor])
     shrink.method <- "WEB"

@@ -164,11 +164,15 @@ makeSE <- function(
     
     se <- se[!Inc_NA & !Exc_NA,]
 
-    Up_Inc_NA <- rownames(up_inc(se))[is.na(rowSums(up_inc(se)))]
-    Down_Inc_NA <- rownames(down_inc(se))[is.na(rowSums(down_inc(se)))]
-    Up_Exc_NA <- rownames(up_exc(se))[is.na(rowSums(up_exc(se)))]
-    Down_Exc_NA <- rownames(down_exc(se))[is.na(rowSums(down_exc(se)))]
-    
+    Up_Inc_NA <- rownames(se@metadata[["Up_Inc"]])[
+        is.na(rowSums(se@metadata[["Up_Inc"]]))]
+    Down_Inc_NA <- rownames(se@metadata[["Down_Inc"]])[
+        is.na(rowSums(se@metadata[["Down_Inc"]]))]
+    Up_Exc_NA <- rownames(se@metadata[["Up_Exc"]])[
+        is.na(rowSums(se@metadata[["Up_Exc"]]))]
+    Down_Exc_NA <- rownames(se@metadata[["Down_Exc"]])[
+        is.na(rowSums(se@metadata[["Down_Exc"]]))]
+
     names_NA <- unique(c(Up_Inc_NA, Down_Inc_NA, Up_Exc_NA, Down_Exc_NA))
 
     se <- se[!(rownames(se) %in% names_NA),]

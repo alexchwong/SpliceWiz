@@ -159,23 +159,23 @@ makeSE <- function(
     }
 
     # Remove events with NA's (not sure why this occurs)
-    Inc_NA <- is.na(rowSums(assay(se, "Included")))
-    Exc_NA <- is.na(rowSums(assay(se, "Excluded")))
+    # Inc_NA <- is.na(rowSums(assay(se, "Included")))
+    # Exc_NA <- is.na(rowSums(assay(se, "Excluded")))
     
-    se <- se[!Inc_NA & !Exc_NA,]
+    # se <- se[!Inc_NA & !Exc_NA,]
 
-    Up_Inc_NA <- rownames(se@metadata[["Up_Inc"]])[
-        is.na(rowSums(se@metadata[["Up_Inc"]]))]
-    Down_Inc_NA <- rownames(se@metadata[["Down_Inc"]])[
-        is.na(rowSums(se@metadata[["Down_Inc"]]))]
-    Up_Exc_NA <- rownames(se@metadata[["Up_Exc"]])[
-        is.na(rowSums(se@metadata[["Up_Exc"]]))]
-    Down_Exc_NA <- rownames(se@metadata[["Down_Exc"]])[
-        is.na(rowSums(se@metadata[["Down_Exc"]]))]
+    # Up_Inc_NA <- rownames(se@metadata[["Up_Inc"]])[
+        # is.na(rowSums(se@metadata[["Up_Inc"]]))]
+    # Down_Inc_NA <- rownames(se@metadata[["Down_Inc"]])[
+        # is.na(rowSums(se@metadata[["Down_Inc"]]))]
+    # Up_Exc_NA <- rownames(se@metadata[["Up_Exc"]])[
+        # is.na(rowSums(se@metadata[["Up_Exc"]]))]
+    # Down_Exc_NA <- rownames(se@metadata[["Down_Exc"]])[
+        # is.na(rowSums(se@metadata[["Down_Exc"]]))]
 
-    names_NA <- unique(c(Up_Inc_NA, Down_Inc_NA, Up_Exc_NA, Down_Exc_NA))
+    # names_NA <- unique(c(Up_Inc_NA, Down_Inc_NA, Up_Exc_NA, Down_Exc_NA))
 
-    se <- se[!(rownames(se) %in% names_NA),]
+    # se <- se[!(rownames(se) %in% names_NA),]
     
     return(se)
 }

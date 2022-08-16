@@ -226,7 +226,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
     .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.rds"))
     if (dir.exists(file.path(norm_output_path, "temp"))) {
-        # unlink(file.path(norm_output_path, "temp"), recursive = TRUE)
+        unlink(file.path(norm_output_path, "temp"), recursive = TRUE)
     }
     dash_progress("SpliceWiz (NxtSE) Collation Finished", N_steps)
     .log("SpliceWiz (NxtSE) Collation Finished", "message")
@@ -655,11 +655,15 @@ collateData <- function(Experiment, reference_path, output_path,
     
         # Assemble intron_novel_transcript reference from novel junctions and
         # novel tandem junctions
-        message("...assembling novel splicing reference")
+        .log(paste("Assembling novel splicing reference,",
+            "this may take up to 10 minutes..."), "message", appendLF = FALSE)
         .collateData_assemble_novel_reference(2, reference_path, 
             norm_output_path, lowMemoryMode)
-            
         use_ref_path <- file.path(norm_output_path, "Reference")
+        
+        message("done")
+        .log("Tidying up splice junctions and intron retentions (part 2)...",
+            "message")
     } else {
         use_ref_path <- reference_path
     }
@@ -699,7 +703,8 @@ collateData <- function(Experiment, reference_path, output_path,
             norm_output_path = norm_output_path,
             BPPARAM = BPPARAM_annotate
         )
-        message("...assembling novel splicing reference")
+        .log(paste("Assembling novel splicing reference,",
+            "this may take up to 10 minutes..."), "message", appendLF = FALSE)
         tmp <- BiocParallel::bplapply(
             seq_len(2),
             .collateData_assemble_novel_reference,
@@ -708,7 +713,9 @@ collateData <- function(Experiment, reference_path, output_path,
             lowMemoryMode = lowMemoryMode,
             BPPARAM = BPPARAM_annotate
         )
-
+        message("done")
+        .log("Tidying up splice junctions and intron retentions (part 2)...",
+            "message")
         use_ref_path <- file.path(norm_output_path, "Reference")
     } else {
         use_ref_path <- reference_path
@@ -983,11 +990,11 @@ collateData <- function(Experiment, reference_path, output_path,
     extra_files <- .fetch_genome_defaults(novel_ref_path,
         settings$genome_type, nonPolyARef, 
         MappabilityRef, BlacklistRef,
-        force_download = FALSE)
+        force_download = FALSE, verbose = FALSE)
 
     reference_data <- .get_reference_data(
         reference_path = reference_path,
-        fasta = "", gtf = "", verbose = TRUE,
+        fasta = "", gtf = "", verbose = FALSE,
         overwrite = FALSE, force_download = FALSE,
         pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
 
@@ -1004,21 +1011,23 @@ collateData <- function(Experiment, reference_path, output_path,
     # Finish inserting novel gtf
     
     .process_gtf(c(reference_data$gtf_gr, altSS_gtf, exon_gtf), 
-        novel_ref_path)
+        novel_ref_path, verbose = FALSE)
     extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
     reference_data$gtf_gr <- NULL # To save memory, remove original gtf
     gc()
     
     reference_data$genome <- .check_2bit_performance(reference_path,
-        reference_data$genome)
-    .process_introns(novel_ref_path, reference_data$genome, TRUE)
+        reference_data$genome, verbose = FALSE)
+    .process_introns(novel_ref_path, reference_data$genome, 
+        useExtendedTranscripts = TRUE, verbose = FALSE)
     
     chromosomes <- readRDS(file.path(reference_path, "chromosomes.Rds"))
-    .gen_irf(novel_ref_path, extra_files, reference_data$genome, chromosomes)
+    .gen_irf(novel_ref_path, extra_files, reference_data$genome, chromosomes,
+        verbose = FALSE)
 
     file.copy(file.path(reference_path, "fst", "IR.NMD.fst"),
         file.path(novel_ref_path, "fst", "IR.NMD.fst"))
-    .gen_splice(novel_ref_path)
+    .gen_splice(novel_ref_path, verbose = FALSE)
     
     settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
     # (TODO) - modify settings.Rds

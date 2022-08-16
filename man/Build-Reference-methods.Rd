@@ -13,7 +13,8 @@ getResources(
   fasta = "",
   gtf = "",
   overwrite = FALSE,
-  force_download = FALSE
+  force_download = FALSE,
+  verbose = TRUE
 )
 
 buildRef(
@@ -28,7 +29,8 @@ buildRef(
   MappabilityRef = "",
   BlacklistRef = "",
   useExtendedTranscripts = TRUE,
-  lowMemoryMode = TRUE
+  lowMemoryMode = TRUE,
+  verbose = TRUE
 )
 
 buildFullRef(
@@ -75,6 +77,8 @@ a local copy is stored in the \code{SpliceWiz} BiocFileCache. Subsequent calls
 to the web resource will fetch the local copy. Set \code{force_download} to
 \code{TRUE} will force the resource to be downloaded from the web. Set this to
 \code{TRUE} only if the web resource has been updated since the last retrieval.}
+
+\item{verbose}{(default \code{TRUE}) If \code{FALSE}, will silence progress messages}
 
 \item{chromosome_aliases}{(Highly optional) A 2-column data frame containing
 chromosome name conversions. If this is set, allows \link{processBAM} to parse

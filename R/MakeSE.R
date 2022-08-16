@@ -158,28 +158,6 @@ makeSE <- function(
         se <- .makeSE_iterate_IR(se, collate_path)
     }
 
-    # .log("Checking for NA values...", "message")
-    # Inc_NA <- rowAnyNAs(assay(se, "Included"))
-    # Exc_NA <- rowAnyNAs(assay(se, "Excluded"))
-    # if(any(Inc_NA) | any(Exc_NA)) se <- se[!Inc_NA & !Exc_NA,]
-
-    # Up_Inc_NA <- rowAnyNAs(se@metadata[["Up_Inc"]])
-    # Down_Inc_NA <- rowAnyNAs(se@metadata[["Down_Inc"]])
-
-    # Up_Exc_NA <- rowAnyNAs(se@metadata[["Up_Inc"]])
-    # Down_Exc_NA <- rowAnyNAs(se@metadata[["Down_Inc"]])
-
-    # if(any(Up_Inc_NA) | any(Down_Inc_NA) | any(Up_Exc_NA) | any(Down_Exc_NA)) {
-        # Up_Inc_NA_names <- rownames(se@metadata[["Up_Inc"]])[Up_Inc_NA]
-        # Down_Inc_NA_names <- rownames(se@metadata[["Down_Inc"]])[Down_Inc_NA]
-        # Up_Exc_NA_names <- rownames(se@metadata[["Up_Exc"]])[Up_Exc_NA]
-        # Down_Exc_NA_names <- rownames(se@metadata[["Down_Exc"]])[Down_Exc_NA]
-        
-        # names_NA <- unique(c(Up_Inc_NA_names, Down_Inc_NA_names, 
-            # Up_Exc_NA_names, Down_Exc_NA_names))
-        # se <- se[!(rownames(se) %in% names_NA),]
-    # }
-
     return(se)
 }
 
@@ -311,7 +289,11 @@ makeSE <- function(
             which(rowData(se.IR)$EventRegion %in% names(se.coords.final)),
             which(rowData(se)$EventType != "IR")
         ), ]
+        rm(se.coords.final, se.coords.excluded, include)
     }
+    
+    rm(se.coords, se.coords.gr)
+    gc()
     return(se)
 }
 
@@ -330,7 +312,12 @@ makeSE <- function(
     junc_PSI.group$group <- to(OL)
     junc_PSI.group[, c("max_means") := max(get("means")),
         by = "group"]
-    return(junc_PSI.group$means == junc_PSI.group$max_means)
+        
+    res <- junc_PSI.group$means == junc_PSI.group$max_means
+    
+    rm(junc_PSI.group)
+    gc()
+    return(res)
 }
 
 # Find excluded introns that does not overlap with given selection of introns

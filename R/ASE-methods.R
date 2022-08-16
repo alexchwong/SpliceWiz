@@ -422,6 +422,9 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
     res$AveExpr <- res$AveExpr - min(res$AveExpr)
     res <- as.data.table(res)
+    
+    rm(fit, countData, countData_use)
+    gc()
     return(res)
 }
 
@@ -473,6 +476,9 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     res$EventName <- rownames(res)
     res$AveExpr <- res$AveExpr - min(res$AveExpr)
     res <- as.data.table(res)
+    
+    rm(fit, countData, countData_use)
+    gc()
     return(res)
 }
 
@@ -505,7 +511,6 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         dds_formula_reduced <- paste0("~1")
     }
 
-    countData <- as.matrix(countData)
     mode(countData) <- "integer"
     dds <- DESeq2::DESeqDataSetFromMatrix(
         countData = round(countData),
@@ -529,6 +534,9 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         )    
     }
     res$EventName <- rownames(res)
+
+    rm(dds, countData)
+    gc()
     return(as.data.table(res))
 }
 
@@ -575,7 +583,7 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
             # paste0(test_factor, ":ASE"),
             sep="+"))
     }
-    countData <- as.matrix(countData)
+
     mode(countData) <- "integer"
     dds <- DESeq2::DESeqDataSetFromMatrix(
         countData = countData,
@@ -600,8 +608,10 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
             parallel = TRUE, BPPARAM = BPPARAM)
         )
     }
-
     res$EventName <- rownames(res)
+    
+    rm(dds, countData)
+    gc()
     return(as.data.table(res))
 }
 
@@ -627,6 +637,8 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         contrast=c(contrast.first,contrast.second),
         fdr.level=0.05, use.all.groups=TRUE)
 
+    rm(y, m)
+    gc()
     return(cbind(data.table(EventName = rownames(res$All)),
         as.data.table(res$All)))
 }

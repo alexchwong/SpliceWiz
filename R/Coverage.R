@@ -82,6 +82,9 @@
 #'   or transcript names of transcripts
 #'   to be displayed on the gene annotation track. Useful to remove minor
 #'   isoforms that are not relevant to the samples being displayed.
+#' @param plot_involved_transcripts (default `FALSE`) If `TRUE`, only 
+#'   transcripts involved in the selected `Event` or pair of `Event`s will be
+#'   displayed.
 #' @param condense_tracks (default `FALSE`) Whether to collapse the
 #'   transcript track annotations by gene.
 #' @param stack_tracks (default `FALSE`) Whether to graph all the conditions on
@@ -116,6 +119,12 @@
 #' @examples
 #' se <- SpliceWiz_example_NxtSE()
 #'
+#' # Assign annotation of the experimental conditions
+#' colData(se)$treatment <- rep(c("A", "B"), each = 3)
+#'
+#' # Verify that the COV files are linked to the NxtSE object:
+#' covfile(se)
+#'
 #' # Plot the genome track only, with specified gene:
 #' p <- plotGenome(se, Gene = "SRSF3")
 #' p$ggplot
@@ -124,31 +133,32 @@
 #' p <- plotGenome(se, coordinates = "chrZ:10000-20000")
 #' p$ggplot
 #'
-#' # Assign annotation re experimental conditions
-#'
-#' colData(se)$treatment <- rep(c("A", "B"), each = 3)
-#'
-#' # Verify that the COV files are linked to the NxtSE object:
-#' covfile(se)
-#'
 #' # Return a list of ggplot and plotly objects
 #' p <- plotCoverage(
 #'     se = se,
-#'     Event = rowData(se)$EventName[1],
+#'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
 #'     tracks = colnames(se)[1:4]
 #' )
 #'
 #' # Display as a a static ggplot (requires the `egg` package to be installed):
-#'
 #' as_ggplot_cov(p)
 #'
 #' # Display the plotly-based interactive Coverage plot:
 #' p$final_plot
 #'
-#' # Plot the same event but by condition "treatment"
+#' # Plot by condition "treatment"
 #' p <- plotCoverage(
 #'     se, rowData(se)$EventName[1],
 #'     tracks = c("A", "B"), condition = "treatment"
+#' )
+#' as_ggplot_cov(p)
+#'
+#' # Select only transcripts involved in the selected alternative splicing event
+#' p <- plotCoverage(
+#'     se = se,
+#'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+#'     tracks = colnames(se)[1:4],
+#'     plot_involved_transcripts = TRUE
 #' )
 #' as_ggplot_cov(p)
 #' @name plotCoverage
@@ -171,6 +181,7 @@ plotCoverage <- function(
         track_names = tracks,
         condition,
         selected_transcripts,
+        plot_involved_transcripts = FALSE,
         condense_tracks = FALSE,
         stack_tracks = FALSE,
         t_test = FALSE,
@@ -218,6 +229,7 @@ plotCoverage <- function(
         se = se, avail_files = covfile(se),
         transcripts = cov_data$transcripts.DT, elems = cov_data$elem.DT,
         stack_tracks = stack_tracks,
+        plot_involved_transcripts = plot_involved_transcripts,
         graph_mode = "Pan", conf.int = 0.95,
         t_test = t_test, condensed = condense_tracks
     )
@@ -938,6 +950,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     view_chr, view_start, view_end, view_strand,
     norm_event, condition, tracks = list(), track_names = NULL, se, avail_files,
     transcripts, elems, highlight_events = "", selected_transcripts = "",
+    plot_involved_transcripts = FALSE,
     stack_tracks, graph_mode, conf.int = 0.95,
     t_test = FALSE, condensed = FALSE
 ) {
@@ -947,7 +960,8 @@ getCoverageBins <- function(file, region, bins = 2000,
         view_chr, view_start, view_end,
         transcripts, elems, highlight_events,
         condensed = condensed,
-        selected_transcripts = selected_transcripts
+        selected_transcripts = selected_transcripts,
+        plot_involved_transcripts = plot_involved_transcripts
     )
     data.t_test <- list()
     cur_zoom <- floor(log((view_end - view_start) / 50) / log(3))
@@ -993,12 +1007,14 @@ getCoverageBins <- function(file, region, bins = 2000,
 .plot_view_ref_fn <- function(
     view_chr, view_start, view_end,
     transcripts, elems, highlight_events = "",
-    condensed = FALSE, selected_transcripts = ""
+    condensed = FALSE, selected_transcripts = "",
+    plot_involved_transcripts = FALSE
 ) {
     DTlist <- .plot_view_ref_fn_getDTlist(
         view_chr, view_start, view_end,
         transcripts, elems, highlight_events,
-        condensed = condensed, selected_transcripts
+        condensed, selected_transcripts,
+        plot_involved_transcripts
     )
     DTplotlist <- .plot_view_ref_fn_groupDTlist(DTlist,
         view_chr, view_start, view_end, highlight_events)
@@ -1010,7 +1026,8 @@ getCoverageBins <- function(file, region, bins = 2000,
 .plot_view_ref_fn_getDTlist <- function(
     view_chr, view_start, view_end,
     transcripts, elems, highlight_events = "",
-    condensed = FALSE, selected_transcripts = ""
+    condensed = FALSE, selected_transcripts = "",
+    plot_involved_transcripts = FALSE
 ) {
     transcripts.DT <- transcripts[
         get("seqnames") == view_chr &
@@ -1060,8 +1077,13 @@ getCoverageBins <- function(file, region, bins = 2000,
     # Highlight events here
     # highlight_events is of syntax chrX:10000-11000/-
     if (length(highlight_events) > 1 || highlight_events != "")
-        reduced.DT <- determine_compatible_events(reduced.DT, highlight_events)
+        reduced.DT <- determine_compatible_events(
+            reduced.DT, highlight_events, plot_involved_transcripts)
 
+    if(plot_involved_transcripts) {
+        transcripts.DT <- transcripts.DT[
+            get("transcript_id") %in% reduced.DT$transcript_id]
+    }
     return(list(
         transcripts.DT = transcripts.DT,
         reduced.DT = reduced.DT,
@@ -1069,7 +1091,9 @@ getCoverageBins <- function(file, region, bins = 2000,
     ))
 }
 
-determine_compatible_events <- function(reduced.DT, highlight_events) {
+determine_compatible_events <- function(
+        reduced.DT, highlight_events, plot_involved_transcripts
+) {
     introns <- reduced.DT[get("type") == "intron"]
     introns[, c("highlight") := "0"]
     exons <- reduced.DT[get("type") == "exon"]
@@ -1082,35 +1106,62 @@ determine_compatible_events <- function(reduced.DT, highlight_events) {
         gr <- coord2GR(highlight_events[[1]])
         introns.gr <- .grDT(introns)
         OL <- findOverlaps(gr, introns.gr)
-        introns[OL@to, c("highlight") := 1]
+        introns[OL@to, c("highlight") := "1"]
         OL2 <- findOverlaps(gr, introns.gr, type = "equal")
-        introns[OL2@to, c("highlight") := 2]
+        introns[OL2@to, c("highlight") := "2"]
+        
+        tr_filter <- unique(introns[get("highlight") != "0"]$transcript_id)
     } else if (length(highlight_events) == 2) {
         AS_count <- 1
         for (event in highlight_events) {
+            # Highlight introns that match exact junction
             gr <- coord2GR(event)
             introns.gr <- .grDT(introns)
             OL <- findOverlaps(gr, introns.gr, type = "equal")
             introns[OL@to, c("highlight") := as.character(AS_count)]
-
+            tr_filter <- unique(c(tr_filter, 
+                introns[get("highlight") != "0"]$transcript_id))
+            
+            # Only highlight exons when both junctions match
             OL_s1 <- findOverlaps(gr[1], introns.gr, type = "equal")
             tr1 <- unique(introns$transcript_id[OL_s1@to])
             if (length(gr) == 2) {
                 OL_s2 <- findOverlaps(gr[2], introns.gr, type = "equal")
                 tr1 <- unique(intersect(tr1, introns$transcript_id[OL_s2@to]))
             }
-            tr_filter <- c(tr_filter, tr1)
-            coord_keys <- c(start(gr[1]) - 1, end(gr[1]) + 1)
+            tr_filter <- unique(c(tr_filter, tr1))
+            
+            coord_keys_start <- end(gr[1]) + 1
+            coord_keys_end <- start(gr[1]) - 1
             if (length(gr) == 2) {
-                coord_keys <- c(coord_keys,
-                    start(gr[2]) - 1, end(gr[2]) + 1)
+                coord_keys_start <- c(coord_keys_start, end(gr[2]) + 1)
+                coord_keys_end <- c(coord_keys_end, start(gr[2]) - 1)
             }
             exons[get("transcript_id") %in% tr1 &
-                (get("start") %in% coord_keys | get("end") %in% coord_keys),
+                (get("start") %in% coord_keys_start | 
+                get("end") %in% coord_keys_end),
                 c("highlight") := as.character(AS_count)]
+            
             AS_count <- AS_count + 1
         }
+        for(tr in unique(exons[get("highlight") != "0"]$transcript_id)) {
+            exons_selected <- exons[get("transcript_id") == tr &
+                get("highlight") != "0"]
+            highlight_id <- exons_selected$highlight[1]
+            OL <- findOverlaps(
+                .grDT(misc),
+                .grDT(exons_selected)
+            )
+            misc[seq_len(nrow(misc)) %in% unique(OL@from) & 
+                get("transcript_id") == tr,
+                c("highlight") := highlight_id]
+        }
     }
+    if(plot_involved_transcripts) {
+        introns <- introns[get("transcript_id") %in% tr_filter]
+        exons <- exons[get("transcript_id") %in% tr_filter]
+        misc <- misc[get("transcript_id") %in% tr_filter]
+    } 
     return(rbind(introns, exons, misc))
 }
 

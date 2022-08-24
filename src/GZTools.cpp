@@ -122,9 +122,9 @@ int GZReader::LoadGZ(std::string s_filename, bool asStream, bool lazymode) {
     int curpos = 0;
     
     while(true) {
-      int err;
-      int bytes_read;
-      unsigned char *data_tmp;
+      int err = 0;
+      int bytes_read = 0;
+      unsigned char *data_tmp = NULL;
       
       data = (unsigned char *)realloc((data_tmp = data), data_alloc += CHUNK_gz - 1);
       bytes_read = gzread (gz_in, data + curpos, CHUNK_gz - 1);
@@ -132,7 +132,8 @@ int GZReader::LoadGZ(std::string s_filename, bool asStream, bool lazymode) {
       
       if (bytes_read < CHUNK_gz - 1) {
         if (gzeof (gz_in)) {
-          data = (unsigned char *)realloc((data_tmp = data), data_alloc -= (CHUNK_gz - 1) - bytes_read );
+          data = (unsigned char *)realloc((data_tmp = data), data_alloc -= (CHUNK_gz - 2) - bytes_read );
+          *(data + data_alloc - 1) = 0;
           break;
         }
         else {
@@ -150,7 +151,7 @@ int GZReader::LoadGZ(std::string s_filename, bool asStream, bool lazymode) {
       iss.str((char*)data);
       loaded = true; streamed = true; lazy = false;
     } else {
-      char *buffer_tmp;
+      char *buffer_tmp = NULL;
       buffer = (char*)realloc(buffer_tmp = buffer, curpos);
       memcpy(buffer, data, curpos);
       bufferLen = curpos;

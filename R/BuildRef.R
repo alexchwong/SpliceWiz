@@ -126,7 +126,8 @@
 #'   We recommend setting this to `FALSE` for the common genomes
 #'   (human and mouse), and to `TRUE` for genomes not supported by
 #'   `genome_type`. When set to false, the MappabilityExclusion default file
-#'   corresponding to `genome_type` will automatically be used.                       
+#'   corresponding to `genome_type` will automatically be used.
+#' @param verbose (default `TRUE`) If `FALSE`, will silence progress messages
 #' @return
 #' For `getResources`: creates the following local resources:
 #' * `reference_path/resource/genome.2bit`: Local copy of the genome sequences
@@ -284,12 +285,13 @@ NULL
 getResources <- function(
         reference_path = "./Reference",
         fasta = "", gtf = "",
-        overwrite = FALSE, force_download = FALSE
+        overwrite = FALSE, force_download = FALSE,
+        verbose = TRUE
 ) {
     reference_data <- .get_reference_data(
         reference_path = reference_path,
         fasta = fasta, gtf = gtf,
-        verbose = TRUE,
+        verbose = verbose,
         overwrite = overwrite, force_download = force_download,
         pseudo_fetch_fasta = TRUE, pseudo_fetch_gtf = TRUE
     )
@@ -305,10 +307,10 @@ buildRef <- function(
         overwrite = FALSE, force_download = FALSE,
         chromosome_aliases = NULL, genome_type = "",
         nonPolyARef = "", MappabilityRef = "", BlacklistRef = "",
-        useExtendedTranscripts = TRUE, lowMemoryMode = TRUE
-        
-    ) {
-    .validate_path(reference_path)
+        useExtendedTranscripts = TRUE, lowMemoryMode = TRUE,
+        verbose = TRUE
+) {
+    .validate_path(reference_path, subdirs = "resource")
     if (!overwrite && 
             file.exists(file.path(reference_path, "SpliceWiz.ref.gz"))) {
         .log("SpliceWiz reference already exists in given directory", "message")
@@ -316,7 +318,7 @@ buildRef <- function(
     }
     extra_files <- .fetch_genome_defaults(reference_path,
         genome_type, nonPolyARef, MappabilityRef, BlacklistRef,
-        force_download = force_download)
+        force_download = force_download, verbose = verbose)
     
     session <- shiny::getDefaultReactiveDomain()
 
@@ -324,7 +326,7 @@ buildRef <- function(
     dash_progress("Reading Reference Files", N_steps)
     reference_data <- .get_reference_data(
         reference_path = reference_path,
-        fasta = fasta, gtf = gtf, verbose = TRUE,
+        fasta = fasta, gtf = gtf, verbose = verbose,
         overwrite = overwrite, force_download = force_download,
         pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
 
@@ -332,45 +334,51 @@ buildRef <- function(
     reference_data$gtf_gr <- .validate_gtf_chromosomes(
         reference_data$genome, reference_data$gtf_gr)
     reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
-    .process_gtf(reference_data$gtf_gr, reference_path)
+    .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
     extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
     reference_data$gtf_gr <- NULL # To save memory, remove original gtf
     gc()
 
     # Check here whether fetching from TwoBitFile is problematic
     reference_data$genome <- .check_2bit_performance(reference_path,
-        reference_data$genome)        
+        reference_data$genome, verbose = verbose)        
 
     dash_progress("Processing introns", N_steps)
     chromosomes <- .convert_chromosomes(chromosome_aliases)
+    # save chromosomes for later
+    saveRDS(chromosomes, file.path(reference_path, "chromosomes.Rds"))
+    
     .process_introns(reference_path, reference_data$genome,
-        useExtendedTranscripts)
+        useExtendedTranscripts, verbose = verbose)
 
     dash_progress("Generating SpliceWiz Reference", N_steps)
-    .gen_irf(reference_path, extra_files, reference_data$genome, chromosomes)
+    .gen_irf(reference_path, extra_files, reference_data$genome, chromosomes,
+        verbose = verbose)
     gc()
 
     dash_progress("Annotating IR-NMD", N_steps)
     if(!is.null(session)) {
         shiny::withProgress(message = "Determining NMD Transcripts", {
-            .gen_nmd(reference_path, reference_data$genome)
+            .gen_nmd(reference_path, reference_data$genome,
+                verbose = verbose)
         })
     } else {
-        .gen_nmd(reference_path, reference_data$genome)
+        .gen_nmd(reference_path, reference_data$genome, verbose = verbose)
     }
 
     dash_progress("Annotating Splice Events", N_steps)
-    .gen_splice(reference_path)
+    .gen_splice(reference_path, verbose = verbose)
     if (file.exists(file.path(reference_path, "fst", "Splice.fst")) &
         file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
         dash_progress("Translating AS Peptides", N_steps)
-        .gen_splice_proteins(reference_path, reference_data$genome)
-        .log("Splice Annotations finished\n", "message")
+        .gen_splice_proteins(reference_path, reference_data$genome, 
+            verbose = verbose)
+        if(verbose) .log("Splice Annotations finished\n", "message")
     } else {
         dash_progress("No protein-coding splicing events detected", N_steps)
     }
 
-    message("Reference build finished")
+    if(verbose) message("Reference build finished")
     dash_progress("Reference build finished", N_steps)
 
     # Prepare a reference-specific cov_data for reference-only plots:
@@ -494,9 +502,7 @@ Get_GTF_file <- function(reference_path) {
 # Validation functions
 
 .validate_genome_type <- function(genome_type) {
-    if (genome_type != "") {
-return(TRUE)
-}
+    if (genome_type != "") return(TRUE)
     .log(paste("In buildRef(),",
         "genome_type not specified.",
         "This should be either one of 'hg38', 'hg19', 'mm10', 'mm9', or",
@@ -592,24 +598,26 @@ return(TRUE)
 
 .fetch_genome_defaults <- function(reference_path, genome_type,
         nonPolyARef = "", MappabilityRef = "", BlacklistRef = "",
-        force_download = FALSE
+        force_download = FALSE, verbose = TRUE
 ) {
+    if(!is_valid(genome_type)) genome_type = ""
     if (!is_valid(nonPolyARef)) {
         nonPolyAFile <- getNonPolyARef(genome_type)
         nonPolyAFile <- .parse_valid_file(nonPolyAFile,
-            "Reference generated without non-polyA reference")
+            "Reference generated without non-polyA reference", 
+            verbose = verbose)
     } else {
         nonPolyAFile <- .parse_valid_file(nonPolyARef,
             "Reference generated without non-polyA reference",
-            force_download = force_download)
+            force_download = force_download, verbose = verbose)
     }
     map_path <- file.path(normalizePath(reference_path), "Mappability")
     map_file <- file.path(map_path, "MappabilityExclusion.bed.gz")
     if (is_valid(MappabilityRef)) {
         MappabilityFile <- .parse_valid_file(MappabilityRef,
-            force_download = force_download)
+            force_download = force_download, verbose = verbose)
     } else if (file.exists(map_file)) {
-        MappabilityFile <- .parse_valid_file(map_file)
+        MappabilityFile <- .parse_valid_file(map_file, verbose = verbose)
     } else if (genome_type %in% c("hg38", "hg19", "mm9", "mm10")) {
         # Attempt to fetch resource from ExperimentHub
         map.gz <- NULL
@@ -621,7 +629,7 @@ return(TRUE)
             }, error = function(e) NULL
         )
         if(!is.null(map.gz)) {
-            MappabilityFile <- .parse_valid_file(map.gz)
+            MappabilityFile <- .parse_valid_file(map.gz, verbose = verbose)
         } else {
             .log(paste(
                 "Could not find Mappability Exclusion annotation from",
@@ -633,18 +641,33 @@ return(TRUE)
         }
     } else {
         MappabilityFile <- .parse_valid_file(MappabilityRef,
-            "Reference generated without Mappability reference")
+            "Reference generated without Mappability reference", 
+            verbose = verbose)
     }
     BlacklistFile <-
         .parse_valid_file(BlacklistRef,
             "Reference generated without Blacklist exclusion",
-            force_download = force_download)
+            force_download = force_download, verbose = verbose)
 
     # Check files are valid BED files; fail early if not
     .check_is_BED_or_RDS(nonPolyAFile)
     .check_is_BED_or_RDS(MappabilityFile)
     .check_is_BED_or_RDS(BlacklistFile)
 
+    # Save a copy of the 3 files into the "resource" folder
+    local.nonPolyAFile <- file.path(reference_path, "resource", 
+        "nonPolyAFile.resource")
+    local.MappabilityFile <- file.path(reference_path, "resource", 
+        "MappabilityFile.resource")
+    local.BlacklistFile <- file.path(reference_path, "resource", 
+        "BlacklistFile.resource")
+    if(file.exists(nonPolyAFile) && !file.exists(local.nonPolyAFile))
+        file.copy(nonPolyAFile, local.nonPolyAFile)
+    if(file.exists(MappabilityFile) && !file.exists(local.MappabilityFile))
+        file.copy(MappabilityFile, local.MappabilityFile)
+    if(file.exists(BlacklistFile) && !file.exists(local.BlacklistFile))
+        file.copy(BlacklistFile, local.BlacklistFile)
+        
     final <- list(
         nonPolyAFile = nonPolyAFile, MappabilityFile = MappabilityFile,
         BlacklistFile = BlacklistFile, genome_type = genome_type
@@ -791,12 +814,12 @@ return(TRUE)
 
 ################################################################################
 
-.fetch_genome_as_required <- function(genome, pseudo_fetch) {
+.fetch_genome_as_required <- function(genome, pseudo_fetch, verbose = TRUE) {
     if (!pseudo_fetch) {
-        .log("Importing genome sequences to memory...", "message",
+        if(verbose) .log("Importing genome sequences to memory...", "message",
             appendLF = FALSE)
         genome <- import(genome) # Fetch as DNAStringSet - avoid TwoBit lag
-        message("done")
+        if(verbose) message("done")
     }
     return(genome)
 }
@@ -823,18 +846,18 @@ return(TRUE)
         dash_progress("Saving copy of genome as TwoBit file", N_steps)
         .fetch_fasta_save_2bit(genome, reference_path, overwrite)
         dash_progress("Loading genome into memory", N_steps)
-        genome <- .fetch_genome_as_required(genome, pseudo_fetch)
+        genome <- .fetch_genome_as_required(genome, pseudo_fetch, verbose)
         return(genome)
     } else if (fasta == "") {
         twobit <- file.path(reference_path, "resource", "genome.2bit")
         if (file.exists(twobit)) {
             N_steps <- 1
             dash_progress("Loading genome into memory", N_steps)
-            .log("Connecting to genome TwoBitFile...", "message",
+            if(verbose) .log("Connecting to genome TwoBitFile...", "message",
                 appendLF = FALSE)
             genome <- Get_Genome(reference_path, validate = FALSE,
                 as_DNAStringSet = !pseudo_fetch)
-            message("done")
+            if(verbose) message("done")
             return(genome)
         } else {
             .log("Resource genome is not available; `fasta` parameter required")
@@ -846,16 +869,16 @@ return(TRUE)
             if (file.exists(twobit)) {
                 N_steps <- 1
                 dash_progress("Loading genome into memory", N_steps)
-                .log("Connecting to genome TwoBitFile...", "message",
-                    appendLF = FALSE)
+                if(verbose) .log("Connecting to genome TwoBitFile...", 
+                    "message", appendLF = FALSE)
                 genome <- Get_Genome(reference_path, validate = FALSE,
                     as_DNAStringSet = !pseudo_fetch)
-                message("done")
+                if(verbose) message("done")
                 return(genome)
             }
         }
         N_steps <- 4
-        .log("Converting FASTA to local TwoBitFile...", "message",
+        if(verbose) .log("Converting FASTA to local TwoBitFile...", "message",
             appendLF = FALSE)
         dash_progress("Downloading genome, if required...", N_steps)
         fasta_file <- .parse_valid_file(fasta, force_download = force_download)
@@ -867,17 +890,18 @@ return(TRUE)
         genome <- .fetch_fasta_file(fasta_file)
         dash_progress("Saving copy of genome as TwoBit file", N_steps)
         .fetch_fasta_save_2bit(genome, reference_path, overwrite)
-        message("done")
+        if(verbose) message("done")
 
         rm(genome)
         gc() # free memory before re-import
-        .log("Connecting to genome TwoBitFile...", "message", appendLF = FALSE)
+        if(verbose) .log("Connecting to genome TwoBitFile...", 
+            "message", appendLF = FALSE)
         dash_progress("Reloading genome from TwoBit file...", N_steps)
         genome <- Get_Genome(reference_path, validate = FALSE,
             as_DNAStringSet = !pseudo_fetch)
         # TwoBitFile's getSeq is slow on some linux systems (don't know why)
         # Importing TwoBitFile as a proper DNAStringSet
-        message("done")
+        if(verbose) message("done")
         return(genome)
     }
 }
@@ -892,25 +916,28 @@ return(TRUE)
 }
 
 .fetch_fasta_file <- function(fasta_file) {
-    # .log("Importing genome into memory...", "message", appendLF = FALSE)
     genome <- Biostrings::readDNAStringSet(fasta_file)
-    # message("done")
     return(genome)
 }
 
-.fetch_fasta_save_fasta <- function(genome, reference_path, overwrite) {
+.fetch_fasta_save_fasta <- function(
+    genome, reference_path, overwrite, verbose = TRUE
+) {
     genome.fa <- file.path(reference_path, "resource", "genome.fa")
     if (overwrite || !file.exists(genome.fa)) {
-        .log("Saving local copy as FASTA...", "message", appendLF = FALSE)
+        if(verbose) .log("Saving local copy as FASTA...", 
+            "message", appendLF = FALSE)
         if (overwrite && file.exists(genome.fa)) {
             file.remove(genome.fa)
         }
         rtracklayer::export(genome, genome.fa, "fasta")
-        message("done")
+        if(verbose) message("done")
     }
 }
 
-.fetch_fasta_save_2bit <- function(genome, reference_path, overwrite) {
+.fetch_fasta_save_2bit <- function(
+        genome, reference_path, overwrite, verbose = TRUE
+) {
     genome.2bit <- file.path(reference_path, "resource", "genome.2bit")
     if (is(genome, "TwoBitFile") && file.exists(genome.2bit) &&
             normalizePath(rtracklayer::path(genome)) ==
@@ -960,9 +987,10 @@ return(TRUE)
         if (file.exists(gtf_path)) {
             N_steps <- 1
             dash_progress("Loading gene annotation into memory", N_steps)
-            .log("Reading source GTF file...", "message", appendLF = FALSE)
+            if(verbose) .log("Reading source GTF file...", 
+                "message", appendLF = FALSE)
             gtf_gr <- rtracklayer::import(gtf_path, "gtf")
-            message("done")
+            if(verbose) message("done")
             return(gtf_gr)
         } else {
             .log(paste("Resource gene annotation is not available;",
@@ -975,9 +1003,10 @@ return(TRUE)
             if (file.exists(gtf_path)) {
                 N_steps <- 1
                 dash_progress("Loading gene annotation into memory", N_steps)
-                .log("Reading source GTF file...", "message", appendLF = FALSE)
+                if(verbose) .log("Reading source GTF file...", 
+                    "message", appendLF = FALSE)
                 gtf_gr <- rtracklayer::import(gtf_path, "gtf")
-                message("done")
+                if(verbose) message("done")
                 return(gtf_gr)
             }
         }
@@ -993,8 +1022,8 @@ return(TRUE)
         if (!file.exists(gtf_path) ||
                 normalizePath(gtf_file) != normalizePath(gtf_path)) {
             if (overwrite || !file.exists(gtf_path)) {
-                .log("Making local copy of GTF file...", "message",
-                    appendLF = FALSE)
+                if(verbose) .log("Making local copy of GTF file...", 
+                    "message", appendLF = FALSE)
                 if (substr(gtf_file, nchar(gtf_file) - 2,
                         nchar(gtf_file)) == ".gz") {
                     if (file.exists(gtf_path)) file.remove(gtf_path)
@@ -1003,14 +1032,15 @@ return(TRUE)
                     gzip(filename = gtf_file, destname = gtf_path,
                         remove = FALSE)
                 }
-                message("done")
+                if(verbose) message("done")
             }
         }
         dash_progress("Loading annotations into memory", N_steps)
         if (!pseudo_fetch) {
-            .log("Reading source GTF file...", "message", appendLF = FALSE)
+            if(verbose) .log("Reading source GTF file...", 
+                "message", appendLF = FALSE)
             gtf_gr <- rtracklayer::import(gtf_file, "gtf")
-            message("done")
+            if(verbose) message("done")
         } else {
             gtf_gr <- NULL
         }
@@ -1091,9 +1121,10 @@ return(TRUE)
         twobit <- rtracklayer::TwoBitFile(cache_loc)
         if (verbose) message("done")
         if (as_DNAStringSet) {
-            .log("Importing genome into memory...", "message", appendLF = FALSE)
+            if (verbose) .log("Importing genome into memory...", 
+                "message", appendLF = FALSE)
             genome <- rtracklayer::import(twobit)
-            message("done")
+            if (verbose) message("done")
             return(genome)
         }
         return(twobit)
@@ -1115,9 +1146,11 @@ return(TRUE)
     }
 }
 
-.parse_valid_file <- function(file, msg = "", force_download = FALSE) {
+.parse_valid_file <- function(
+    file, msg = "", force_download = FALSE, verbose = TRUE
+) {
     if (!is_valid(file)) {
-        .log(msg, type = "message")
+        if(verbose) .log(msg, type = "message")
         return("")
     } else if (any(startsWith(file, c("http", "ftp")))) {
         url <- file
@@ -1131,14 +1164,15 @@ return(TRUE)
         # either force_download == TRUE or nrow(res) == 0
         path <- tryCatch(BiocFileCache::bfcadd(bfc, url),
             error = function(err) {
-                .log(paste("Web resource not accessible -", url), "message")
+                if(verbose) 
+                    .log(paste("Web resource not accessible -", url), "message")
                 return(NA)
             }
         )
         if (identical(path, NA)) {
             # fetch local copy if available
             if (nrow(res) == 0) return("")
-            .log("Returning local copy from cache", "message")
+            if(verbose) .log("Returning local copy from cache", "message")
             return(.get_cache_file_path(cache, res$rpath[nrow(res)]))
         }
         # remove prior versions from cache to remove glut
@@ -1147,12 +1181,12 @@ return(TRUE)
             BiocFileCache::bfcremove(bfc, res$rid[-nrow(res)])
         return(.get_cache_file_path(cache, res$rpath[nrow(res)]))
     } else if (!file.exists(file)) {
-        .log(paste(file, "not found.", msg), type = "message")
+        if(verbose) .log(paste(file, "not found.", msg), type = "message")
         return("")
     } else if (file.exists(file)) {
         return(file)
     } else {
-        .log(msg, type = "message")
+        if(verbose) .log(msg, type = "message")
         return("")
     }
 }
@@ -1231,24 +1265,24 @@ return(TRUE)
 ################################################################################
 # Sub
 
-.process_gtf <- function(gtf_gr, reference_path) {
+.process_gtf <- function(gtf_gr, reference_path, verbose = TRUE) {
     # Create "fst" subdirectory if not exists
     .validate_path(reference_path, subdirs = "fst")
-    .log("Processing gtf file...", "message")
-    message("...genes")
-    Genes_group <- .process_gtf_genes(gtf_gr, reference_path)
-    message("...transcripts")
-    .process_gtf_transcripts(gtf_gr, reference_path)
-    message("...CDS")
-    .process_gtf_misc(gtf_gr, reference_path)
-    message("...exons")
-    .process_gtf_exons(gtf_gr, reference_path, Genes_group)
-    message("done")
+    if(verbose) .log("Processing gtf file...", "message")
+    if(verbose) message("...genes")
+    Genes_group <- .process_gtf_genes(gtf_gr, reference_path, verbose)
+    if(verbose) message("...transcripts")
+    .process_gtf_transcripts(gtf_gr, reference_path, verbose)
+    if(verbose) message("...CDS")
+    .process_gtf_misc(gtf_gr, reference_path, verbose)
+    if(verbose) message("...exons")
+    .process_gtf_exons(gtf_gr, reference_path, Genes_group, verbose)
+    if(verbose) message("done")
 }
 
 # Processes Genes
 # - includes computation of gene groups
-.process_gtf_genes <- function(gtf_gr, reference_path) {
+.process_gtf_genes <- function(gtf_gr, reference_path, verbose = TRUE) {
     Genes <- gtf_gr[gtf_gr$type == "gene"]
 
     # If genes are not annotated by "type" column, then have to do it manually
@@ -1302,7 +1336,7 @@ return(TRUE)
     return(final)
 }
 
-.process_gtf_transcripts <- function(gtf_gr, reference_path) {
+.process_gtf_transcripts <- function(gtf_gr, reference_path, verbose = TRUE) {
     Transcripts <- gtf_gr[gtf_gr$type == "transcript"]
 
     # If transcript are not annotated by "type" column, then do manually
@@ -1354,7 +1388,7 @@ return(TRUE)
     )
 }
 
-.process_gtf_misc <- function(gtf_gr, reference_path) {
+.process_gtf_misc <- function(gtf_gr, reference_path, verbose = TRUE) {
     # Proteins
     Proteins <- gtf_gr[gtf_gr$type == "CDS"]
     if (length(Proteins) == 0) {
@@ -1380,7 +1414,9 @@ return(TRUE)
     )
 }
 
-.process_gtf_exons <- function(gtf_gr, reference_path, Genes_group) {
+.process_gtf_exons <- function(
+    gtf_gr, reference_path, Genes_group, verbose = TRUE
+) {
     Exons <- gtf_gr[gtf_gr$type == "exon"]
     if (length(Exons) == 0) .log("No exons detected in reference!")
 
@@ -1488,7 +1524,7 @@ return(TRUE)
 # Fetch first and last 1000 exon sequences, then evaluates the ratio of times
 #   taken to fetch. A ratio of > 3 is evidence there is position-dependent
 #   loading lag (which is observed on some systems)
-.check_2bit_performance <- function(reference_path, genome) {
+.check_2bit_performance <- function(reference_path, genome, verbose = TRUE) {
     if(is(genome, "TwoBitFile")) {
         Exons <- as.data.table(
             read.fst(file.path(reference_path, "fst", "Exons.fst")),
@@ -1498,12 +1534,11 @@ return(TRUE)
             gr_end <- .grDT(Exons[seq(nrow(Exons) - 999, nrow(Exons))])
             bench_start <- system.time(getSeq(genome, gr_start))
             bench_end <- system.time(getSeq(genome, gr_end))
-            # message("TwoBit fetch benchmark start: ", unname(bench_start[3]), 
-                # ", end: ", unname(bench_end[3]))
             if(bench_start[3] > 0 && bench_end[3] / bench_start[3] > 3) {
-                .log(paste("SpliceWiz detected inefficient TwoBit retrieval,",
-                    " importing genome as DNAStringSet"),
-                    "message")
+                if(verbose) 
+                    .log(paste("SpliceWiz detected", 
+                    "inefficient TwoBit retrieval,",
+                    "importing genome as DNAStringSet"), "message")
                 return(rtracklayer::import(genome))
             }
         }
@@ -1514,19 +1549,20 @@ return(TRUE)
 ################################################################################
 # Sub
 
-.process_introns <- function(reference_path, genome,
-        useExtendedTranscripts = TRUE) {
-    .log("Processing introns...", "message")
+.process_introns <- function(
+    reference_path, genome, useExtendedTranscripts = TRUE, verbose = TRUE
+) {
+    if(verbose) .log("Processing introns...", "message")
 
-    message("...data")
+    if(verbose) message("...data")
     data <- .process_introns_data(reference_path, genome, 
         useExtendedTranscripts)
     gc()
     data[["candidate.introns"]] <- .process_introns_annotate(
         data[["candidate.introns"]], data[["Transcripts"]], genome,
-        data[["Proteins"]], data[["Exons"]]
+        data[["Proteins"]], data[["Exons"]], verbose = verbose
     )
-    message("...defining flanking exon clusters")
+    if(verbose) message("...defining flanking exon clusters")
     data[["candidate.introns"]] <- .process_introns_group(
         data[["candidate.introns"]], data[["Exons_group.stranded"]],
         data[["Exons_group.unstranded"]]
@@ -1534,7 +1570,7 @@ return(TRUE)
     gc()
     write.fst(data[["candidate.introns"]],
         file.path(reference_path, "fst", "junctions.fst"))
-    message("done")
+    if(verbose) message("done")
 }
 
 # Import data for intron processing; create list of candidate.introns
@@ -1588,20 +1624,21 @@ return(TRUE)
 #############################################################################
 
 # Annotate particulars for given junctions / introns
-.process_introns_annotate <- function(candidate.introns,
-        Transcripts, genome, Proteins, Exons) {
+.process_introns_annotate <- function(
+    candidate.introns, Transcripts, genome, Proteins, Exons, verbose = TRUE
+) {
     # Annotating Intron number, gene/transcript names, biotype:
-    message("...basic annotations")
+    if(verbose) message("...basic annotations")
     candidate.introns <- .process_introns_annotate_basics(
         candidate.introns, Transcripts)
 
     # Grab splice motifs
-    message("...splice motifs")
+    if(verbose) message("...splice motifs")
     candidate.introns <- .process_introns_annotate_splice_motifs(
         candidate.introns, genome)
 
     # Annotate TSL, protein_id, ccds_id:
-    message("...other info")
+    if(verbose) message("...other info")
     candidate.introns <- .process_introns_annotate_others(
         candidate.introns, Transcripts, Proteins, Exons
     )
@@ -1872,11 +1909,13 @@ return(TRUE)
 ################################################################################
 # Sub
 
-.gen_irf <- function(reference_path, extra_files, genome, chromosome_aliases) {
-    .log("Generating processBAM reference", "message")
+.gen_irf <- function(
+    reference_path, extra_files, genome, chromosome_aliases, verbose = TRUE
+) {
+    if(verbose) .log("Generating processBAM reference", "message")
 
     # Generating processBAM references
-    message("...prepping data")
+    if(verbose) message("...prepping data")
     data <- .gen_irf_prep_data(reference_path)
     data2 <- .gen_irf_prep_introns(
         data[["candidate.introns"]], data[["Exons"]], extra_files)
@@ -1884,30 +1923,32 @@ return(TRUE)
         data2[["introns.unique"]], data2[["exclude.directional"]],
         data[["Genes.rev"]], data[["Genes.Extended"]]
     )
-    message("...determining measurable introns (directional)")
+    if(verbose) message("...determining measurable introns (directional)")
     tmpdir.IntronCover.summa <- .gen_irf_export_introncover(
         .gen_irf_exclusion_zones(
             data2[["introns.unique"]], data2[["exclude.omnidirectional"]],
             data2[["exclude.directional"]], stranded = TRUE
         ), stranded = TRUE, reference_path, data2[["introns.unique"]]
     )
-    message("...determining measurable introns (non-directional)")
+    if(verbose) message("...determining measurable introns (non-directional)")
     tmpnd.IntronCover.summa <- .gen_irf_export_introncover(
         tmpnd.IntronCover <- .gen_irf_exclusion_zones(
             data2[["introns.unique"]], data2[["exclude.omnidirectional"]],
             data2[["exclude.directional"]], stranded = FALSE
         ), stranded = FALSE, reference_path, data2[["introns.unique"]]
     )
-    message("...writing ref-cover.bed")
+    if(verbose) message("...writing ref-cover.bed")
     ref.cover <- .gen_irf_refcover(reference_path)
-    message("...writing ref-ROI.bed")
+    if(verbose) message("...writing ref-ROI.bed")
     ref.ROI <- .gen_irf_ROI(reference_path, extra_files, genome,
         data[["Genes"]], data[["Transcripts"]])
-    message("...writing ref-read-continues.ref")
+    if(verbose) message("...writing ref-read-continues.ref")
     readcons <- .gen_irf_readcons(reference_path,
         tmpdir.IntronCover.summa, tmpnd.IntronCover.summa)
-    message("...writing ref-sj.ref")
+    if(verbose) message("...writing ref-sj.ref")
     ref.sj <- .gen_irf_sj(reference_path)
+    if(verbose) message("...writing ref-tj.ref")
+    ref.tj <- .gen_irf_tj(reference_path)
 
     chr <- data.frame(seqnames = names(GenomeInfoDb::seqinfo(genome)),
         seqlengths = unname(GenomeInfoDb::seqlengths(genome)))
@@ -1919,8 +1960,9 @@ return(TRUE)
     } else {
         chr$seqalias <- ""
     }
-    .gen_irf_final(reference_path, ref.cover, readcons, ref.ROI, ref.sj, chr)
-    message("processBAM reference generated")
+    .gen_irf_final(reference_path, ref.cover, readcons, ref.ROI, 
+        ref.sj, ref.tj, chr)
+    if(verbose) message("processBAM reference generated")
 }
 ################################################################################
 
@@ -2410,8 +2452,70 @@ return(TRUE)
     return(ref.sj)
 }
 
+.gen_irf_tj <- function(reference_path) {
+    # ref-tj.ref
+    # Reload candidate introns here, as we've filtered this before
+    candidate.introns <- as.data.table(
+        read.fst(file.path(reference_path, "fst", "junctions.fst"))
+    )
+    candidate.introns.pos <- candidate.introns[strand == "+"]
+    candidate.introns.neg <- candidate.introns[strand == "-"]
+    
+    # Sort by transcript_id, then by seqnames, start
+    setorderv(candidate.introns.pos, c(
+        "transcript_id", "seqnames", "start"))
+    setorderv(candidate.introns.neg, c(
+        "transcript_id", "seqnames", "start"))
+    
+    # Split left and right tandem junction
+    candidate.introns.pos.left <- candidate.introns.pos[
+        candidate.introns.pos[, 
+            .I[get("intron_number") != max(get("intron_number"))], 
+            by="transcript_id"]$V1]
+    candidate.introns.pos.right <- candidate.introns.pos[
+        candidate.introns.pos[, 
+            .I[get("intron_number") != 1], 
+            by="transcript_id"]$V1]
+
+    candidate.introns.neg.left <- candidate.introns.neg[
+        candidate.introns.neg[, 
+            .I[get("intron_number") != 1], 
+            by="transcript_id"]$V1]
+    candidate.introns.neg.right <- candidate.introns.neg[
+        candidate.introns.neg[, 
+            .I[get("intron_number") != max(get("intron_number"))], 
+            by="transcript_id"]$V1]
+    
+    # BED file conversion: start := start - 1
+    ref.tj <- as.data.table(
+        rbind(
+            data.frame(
+                seqnames = candidate.introns.pos.left$seqnames,
+                start1 = candidate.introns.pos.left$start - 1,
+                end1 = candidate.introns.pos.left$end,
+                start2 = candidate.introns.pos.right$start - 1,
+                end2 = candidate.introns.pos.right$end,
+                strand = "+"
+            ),
+            data.frame(
+                seqnames = candidate.introns.neg.left$seqnames,
+                start1 = candidate.introns.neg.left$start - 1,
+                end1 = candidate.introns.neg.left$end,
+                start2 = candidate.introns.neg.right$start - 1,
+                end2 = candidate.introns.neg.right$end,
+                strand = "-"
+            )
+        )
+    )
+    setorderv(ref.tj, c("seqnames", "start1", "end1", 
+        "start2", "end2", "strand"))
+    gc()
+    return(ref.tj)
+}
+
+
 .gen_irf_final <- function(reference_path,
-        ref.cover, readcons, ref.ROI, ref.sj,
+        ref.cover, readcons, ref.ROI, ref.sj, ref.tj,
         chromosome_aliases
 ) {
     IRF_file <- file.path(reference_path, "SpliceWiz.ref")
@@ -2433,6 +2537,11 @@ return(TRUE)
     fwrite(list("# ref-sj.ref"), IRF_file, append = TRUE,
         sep = "\t", eol = "\n", col.names = FALSE, scipen = 50)
     fwrite(ref.sj, IRF_file, append = TRUE,
+        sep = "\t", eol = "\n", col.names = FALSE, scipen = 50)
+
+    fwrite(list("# ref-tj.ref"), IRF_file, append = TRUE,
+        sep = "\t", eol = "\n", col.names = FALSE, scipen = 50)
+    fwrite(ref.tj, IRF_file, append = TRUE,
         sep = "\t", eol = "\n", col.names = FALSE, scipen = 50)
 
     if (!is.null(chromosome_aliases)) {
@@ -2464,12 +2573,13 @@ return(TRUE)
 
 # Determines which spliced / IR transcripts are NMD substrates
 # Assumes NMD substrates if PTC is < 50 nt from last EJC
-.gen_nmd <- function(reference_path, genome) {
+.gen_nmd <- function(reference_path, genome, verbose = TRUE) {
 
     Exons.tr <- .gen_nmd_exons_trimmed(reference_path)
     protein.introns <- .gen_nmd_protein_introns(reference_path, Exons.tr)
 
-    NMD.Table <- .gen_nmd_determine(Exons.tr, protein.introns, genome, 50)
+    NMD.Table <- .gen_nmd_determine(Exons.tr, protein.introns, genome, 50,
+        verbose = verbose)
     protein.introns.red <- unique(
         protein.introns[, c("intron_id", "intron_type")])
     NMD.Table[protein.introns.red, on = "intron_id",
@@ -2563,12 +2673,15 @@ return(TRUE)
 
 # Given a list of exons and introns, and genome sequence
 # - Generate a list of whether spliced or unspliced transcripts are NMD subs
-.gen_nmd_determine <- function(exon.DT, intron.DT, genome, threshold = 50) {
-    .log("Predicting NMD transcripts from genome sequence", "message")
+.gen_nmd_determine <- function(
+    exon.DT, intron.DT, genome, threshold = 50, verbose = TRUE
+) {
+    if(verbose) 
+        .log("Predicting NMD transcripts from genome sequence", "message")
     exon.DT <- exon.DT[,
         c("seqnames", "start", "end", "strand", "transcript_id")]
     exon_gr <- .grDT(exon.DT)
-    message("...exonic transcripts")
+    if(verbose) message("...exonic transcripts")
 
     set(exon.DT, , "seq", as.character(getSeq(genome, exon_gr)))
     final <- .gen_nmd_determine_spliced_exon(exon.DT, intron.DT,
@@ -2578,11 +2691,13 @@ return(TRUE)
     exon.DT.skinny <- exon.DT[, -("seq")]
     i_partition <- c(seq(1, nrow(intron.DT.use), by = 10000),
         nrow(intron.DT.use) + 1)
-    message("...retained introns")
-    pb <- txtProgressBar(max = length(i_partition) - 1, style = 3)
+    if(verbose) {
+        message("...retained introns")
+        pb <- txtProgressBar(max = length(i_partition) - 1, style = 3)
+    }
     l_seq <- 1000
     for (i in seq_len(length(i_partition) - 1)) {
-        setTxtProgressBar(pb, i)
+        if(verbose) setTxtProgressBar(pb, i)
         dash_progress("Determining NMD Transcripts: Calculating...",
             length(i_partition) - 1)
         intron.part <- intron.DT.use[
@@ -2614,9 +2729,11 @@ return(TRUE)
             final, intron.part.upstream, use_short = FALSE,
             threshold = threshold)
     }
-    setTxtProgressBar(pb, i)
-    close(pb)
-    message("done")
+    if(verbose) {
+        setTxtProgressBar(pb, i)
+        close(pb)
+        message("done")
+    }
     return(final)
 }
 
@@ -2824,45 +2941,48 @@ return(TRUE)
 # Sub
 
 # Generate a list of ASEs
-.gen_splice <- function(reference_path) {
-    .log("Annotating Splice Events", "message")
+.gen_splice <- function(reference_path, verbose = TRUE) {
+    if(verbose) .log("Annotating Splice Events", "message")
     candidate.introns <- as.data.table(
         read.fst(file.path(reference_path, "fst", "junctions.fst"))
     )
     introns.skipcoord <- .gen_splice_skipcoord(
         reference_path, candidate.introns)
 
-    message("Annotating Mutually-Exclusive-Exon Splice Events...",
+    if(verbose) message("Annotating Mutually-Exclusive-Exon Splice Events...",
         appendLF = FALSE
     )
     introns_found_MXE <- .gen_splice_MXE(introns.skipcoord)
-    message("done")
+    if(verbose) message("done")
 
     # annotate skipped junctions with two included junctions
-    message("Annotating Skipped-Exon Splice Events...", appendLF = FALSE)
+    if(verbose) message("Annotating Skipped-Exon Splice Events...", 
+        appendLF = FALSE)
     introns_found_SE <- .gen_splice_SE(introns.skipcoord, candidate.introns)
-    message("done")
+    if(verbose) message("done")
 
-    message("Annotating Alternate 5' / 3' Splice Site Splice Events...",
+    if(verbose) 
+        message("Annotating Alternate 5' / 3' Splice Site Splice Events...",
         appendLF = FALSE)
 
     introns_found_A5SS <- .gen_splice_A5SS(candidate.introns)
     introns_found_A3SS <- .gen_splice_A3SS(candidate.introns)
-    message("done")
+    if(verbose) message("done")
 
-    message("Annotating Alternate First / Last Exon Splice Events...",
+    if(verbose) 
+        message("Annotating Alternate First / Last Exon Splice Events...",
         appendLF = FALSE)
     # AFE/ALE
 
     introns_found_AFE <- .gen_splice_AFE(candidate.introns, introns_found_A5SS)
     introns_found_ALE <- .gen_splice_ALE(candidate.introns, introns_found_A3SS)
-    message("done")
+    if(verbose) message("done")
 
     # Annotate known RI's
-    message("Annotating known retained introns...",
+    if(verbose) message("Annotating known retained introns...",
         appendLF = FALSE)
     introns_found_RI <- .gen_splice_RI(candidate.introns, reference_path)
-    message("done")
+    if(verbose) message("done")
     gc()
 
     #   Filter for valid splicing
@@ -2878,9 +2998,9 @@ return(TRUE)
 
     if (nrow(AS_Table) > 0) {
         .gen_splice_save(AS_Table, candidate.introns, reference_path)
-        .log("Splice Annotations Filtered", "message")
+        if(verbose) .log("Splice Annotations Filtered", "message")
     } else {
-        message("No splice events found\n")
+        if(verbose) message("No splice events found\n")
     }
 }
 
@@ -3109,7 +3229,10 @@ return(TRUE)
 
 # Generate a list of AFE
 .gen_splice_AFE <- function(candidate.introns, introns_found_A5SS) {
-    introns_search_AFE <- candidate.introns[get("intron_number") == 1]
+    # There's no way a novel junction could be known to be the first exon
+    introns_search_AFE <- candidate.introns[
+        get("transcript_biotype") != "intron_novel_transcript"]
+    introns_search_AFE <- introns_search_AFE[get("intron_number") == 1]
     introns_search_AFE_pos <- introns_search_AFE[get("strand") == "+"]
     setorderv(introns_search_AFE_pos,
         c("seqnames", "intron_end", "intron_start"),
@@ -3179,7 +3302,10 @@ return(TRUE)
 
 # Generate a list of ALE
 .gen_splice_ALE <- function(candidate.introns, introns_found_A3SS) {
-    introns_search_ALE <- candidate.introns[candidate.introns[,
+    introns_search_ALE <- candidate.introns[
+        get("transcript_biotype") != "intron_novel_transcript"]
+        
+    introns_search_ALE <- introns_search_ALE[candidate.introns[,
         .I[get("intron_number") == max(get("intron_number"))],
         by = "transcript_id"]$V1]
     introns_search_ALE_pos <- introns_search_ALE[get("strand") == "+"]
@@ -3667,8 +3793,8 @@ return(TRUE)
 # Sub
 
 # Generate nucleotide and peptide sequences for ASE
-.gen_splice_proteins <- function(reference_path, genome) {
-    .log("Translating Alternate Splice Peptides...",
+.gen_splice_proteins <- function(reference_path, genome, verbose = TRUE) {
+    if(verbose) .log("Translating Alternate Splice Peptides...",
         "message", appendLF = FALSE)
 
     AS_Table <- as.data.table(
@@ -3715,7 +3841,7 @@ return(TRUE)
         c("AA_full_B") := paste0(get("AA_full_B"), get("AA_downstr_B"))]
     write.fst(as.data.frame(AS_Table.Extended),
         file.path(reference_path, "fst", "Splice.Extended.fst"))
-    message("done")
+    if(verbose) message("done")
 }
 
 # Generate upstream nucleotides

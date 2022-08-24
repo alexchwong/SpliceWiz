@@ -1,3 +1,11 @@
+Changes in version 0.99.3 (2022-08-24)
++ Added support for novel splicing
+  + This includes modifying the buildRef and (C++-internal) processBAM functions
+  to annotate and count tandem junctions, and collateData function to compile
+  SpliceWiz novel-ASE reference on-the-fly 
++ Added getter functions to view the SpliceWiz reference
++ Other misc bug fixes
+
 Changes in version 0.99.2 (2022-07-23)
 + Added wrapper functions to use the STAR aligner to process fastq files
 + Added "SpliceWiz cookbook" vignette to illustrate functions involving

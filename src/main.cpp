@@ -591,100 +591,6 @@ int ReadChrAlias(std::istringstream &IN,
 }
 
 // SpliceWiz reference reader:
-int readReference(std::string &reference_file, 
-    std::vector<std::string> &ref_names, 
-    std::vector<std::string> &ref_alias,
-    std::vector<uint32_t> &ref_lengths,
-    CoverageBlocksIRFinder &CB_template, 
-    SpansPoint &SP_template, 
-    FragmentsInROI &ROI_template,
-    JunctionCount &JC_template, 
-    bool verbose
-) { 
-  (void)(verbose);
-
-  if(!see_if_file_exists(reference_file)) {
-    cout << "File " << reference_file << " does not exist!\n";
-    return(-1);
-  }
-
-  GZReader * gz_in = new GZReader;
-  int ret = gz_in->LoadGZ(reference_file, true);   // streamed mode
-  if(ret != 0) return(-1);
-  
-  // Allows reference blocks to be read in any order
-  std::string headerCover ("ref-cover.bed");
-  std::string headerSpans ("ref-read-continues.ref");
-  std::string headerROI ("ref-ROI.bed");
-  std::string headerSJ ("ref-sj.ref");
-  std::string headerChr ("ref-chrs.ref");
-  std::string headerEOF ("EOF");
-  
-  bool doneCover = false;
-  bool doneSpans = false;
-  bool doneROI = false;
-  bool doneSJ = false;
-  bool doneChrs = false;
-  
-  std::string myLine;
-  std::string myBuffer;
-  
-  getline(gz_in->iss, myLine, '#');    // discard anything before the first hash
-  getline(gz_in->iss, myLine, '\n');   // Get block name
-  
-  // Check non-empty ref block name
-  if(myLine.size() == 0) {
-    cout << "Invalid SpliceWiz reference detected\n";
-    return(-1);
-  }
-
-  while(myLine.find(headerEOF)==std::string::npos) {
-    getline(gz_in->iss, myBuffer, '#');  // this is the data block
-
-    if(myLine.find(headerCover)!=std::string::npos && !doneCover) {
-      std::istringstream inCoverageBlocks;
-      inCoverageBlocks.str(myBuffer);
-      CB_template.loadRef(inCoverageBlocks);
-      doneCover = true;
-    } else if(myLine.find(headerSpans)!=std::string::npos && !doneSpans) {
-      SP_template.setSpanLength(5,4);
-      std::istringstream inSpansPoint;
-      inSpansPoint.str(myBuffer);
-      SP_template.loadRef(inSpansPoint);
-      doneSpans = true;
-    } else if(myLine.find(headerROI)!=std::string::npos && !doneROI) {
-      std::istringstream inFragmentsInROI;
-      inFragmentsInROI.str(myBuffer);
-      ROI_template.loadRef(inFragmentsInROI);
-      doneROI = true;
-    } else if(myLine.find(headerSJ)!=std::string::npos && !doneSJ) {
-      std::istringstream inJuncCount;
-      inJuncCount.str(myBuffer);
-      JC_template.loadRef(inJuncCount);
-      doneSJ = true;
-    } else if(myLine.find(headerChr)!=std::string::npos && !doneChrs) {
-      std::istringstream inChrAlias;
-      inChrAlias.str(myBuffer);
-      ReadChrAlias(inChrAlias, ref_names, ref_alias, ref_lengths);
-      doneChrs = true;
-    } else {
-      cout << "Error: Invalid SpliceWiz reference block detected\n";
-      return(-1);
-    }
-    // Get next data block name
-    getline(gz_in->iss, myLine, '\n');
-  }
-
-  delete gz_in;
-  
-  if(!doneCover || !doneSpans || !doneROI || !doneSJ) {
-    cout << "Error: Incomplete SpliceWiz reference detected\n";
-    return(-1);
-  }
-  return(0);
-}
-
-// SpliceWiz reference reader:
 int readReferenceToStrings(std::string &reference_file, 
     std::vector<std::string> &ref_names, 
     std::vector<std::string> &ref_alias,
@@ -693,6 +599,7 @@ int readReferenceToStrings(std::string &reference_file,
     std::string &SP_string,
     std::string &ROI_string,
     std::string &JC_string,
+    std::string &TJ_string,
     bool verbose
 ) { 
   (void)(verbose);
@@ -711,6 +618,7 @@ int readReferenceToStrings(std::string &reference_file,
   std::string headerSpans ("ref-read-continues.ref");
   std::string headerROI ("ref-ROI.bed");
   std::string headerSJ ("ref-sj.ref");
+  std::string headerTJ ("ref-tj.ref");
   std::string headerChr ("ref-chrs.ref");
   std::string headerEOF ("EOF");
   
@@ -718,6 +626,7 @@ int readReferenceToStrings(std::string &reference_file,
   bool doneSpans = false;
   bool doneROI = false;
   bool doneSJ = false;
+  bool doneTJ = false;
   bool doneChrs = false;
   
   std::string myLine;
@@ -747,6 +656,9 @@ int readReferenceToStrings(std::string &reference_file,
     } else if(myLine.find(headerSJ)!=std::string::npos && !doneSJ) {
       getline(gz_in->iss, JC_string, '#');
       doneSJ = true;
+    } else if(myLine.find(headerTJ)!=std::string::npos && !doneTJ) {
+      getline(gz_in->iss, TJ_string, '#');
+      doneTJ = true;
     } else if(myLine.find(headerChr)!=std::string::npos && !doneChrs) {
       getline(gz_in->iss, myBuffer, '#');
       std::istringstream inChrAlias;
@@ -766,6 +678,9 @@ int readReferenceToStrings(std::string &reference_file,
   if(!doneCover || !doneSpans || !doneROI || !doneSJ) {
     cout << "Error: Incomplete SpliceWiz reference detected\n";
     return(-1);
+  } else if(!doneTJ) {
+    cout << "Note: Tandem junction reference not detected. " <<
+      "Rebuild reference using SpliceWiz v0.99.3 or above.\n";
   }
   return(0);
 }
@@ -780,6 +695,7 @@ int SpliceWizCore(std::string const &bam_file,
     std::string &SP_string,
     std::string &ROI_string,
     std::string &JC_string,
+    std::string &TJ_string,
     bool const verbose,
     int n_threads,
     bool const multithreadedRead
@@ -842,6 +758,7 @@ int SpliceWizCore(std::string const &bam_file,
   std::vector<FragmentsInROI*> oROI;
   std::vector<FragmentsInChr*> oChr;
   std::vector<JunctionCount*> oJC;
+  std::vector<TandemJunctions*> oTJ;
   std::vector<FragmentsMap*> oFM;
   std::vector<BAM2blocks*> BBchild;
 
@@ -851,11 +768,15 @@ int SpliceWizCore(std::string const &bam_file,
     oROI.push_back(new FragmentsInROI(ROI_string));
     oChr.push_back(new FragmentsInChr);
     oJC.push_back(new JunctionCount(JC_string));
+    oTJ.push_back(new TandemJunctions(TJ_string));
     oFM.push_back(new FragmentsMap);
     BBchild.push_back(new BAM2blocks(bam_chr_name, bam_chr_len));
 
     BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&JunctionCount::ChrMapUpdate, &(*oJC.at(i)), std::placeholders::_1) );
     BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&JunctionCount::ProcessBlocks, &(*oJC.at(i)), std::placeholders::_1) );
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&TandemJunctions::ChrMapUpdate, &(*oTJ.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&TandemJunctions::ProcessBlocks, &(*oTJ.at(i)), std::placeholders::_1) );
     
     BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInChr::ChrMapUpdate, &(*oChr.at(i)), std::placeholders::_1) );
     BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInChr::ProcessBlocks, &(*oChr.at(i)), std::placeholders::_1) );
@@ -917,6 +838,7 @@ int SpliceWizCore(std::string const &bam_file,
     
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
       delete oJC.at(i);
+      delete oTJ.at(i);
       delete oChr.at(i);
       delete oSP.at(i);
       delete oROI.at(i);
@@ -943,6 +865,7 @@ int SpliceWizCore(std::string const &bam_file,
   // Combine objects:
     for(unsigned int i = 1; i < n_threads_to_use; i++) {
       oJC.at(0)->Combine(*oJC.at(i));
+      oTJ.at(0)->Combine(*oTJ.at(i));
       oChr.at(0)->Combine(*oChr.at(i));
       oSP.at(0)->Combine(*oSP.at(i));
       oROI.at(0)->Combine(*oROI.at(i));
@@ -950,6 +873,7 @@ int SpliceWizCore(std::string const &bam_file,
       oFM.at(0)->Combine(*oFM.at(i));
       
       delete oJC.at(i);
+      delete oTJ.at(i);
       delete oChr.at(i);
       delete oSP.at(i);
       delete oROI.at(i);
@@ -979,6 +903,7 @@ int SpliceWizCore(std::string const &bam_file,
     cout << "Error writing gzip-compressed output file\n";
     out.close();
     delete oJC.at(0);
+    delete oTJ.at(0);
     delete oChr.at(0);
     delete oSP.at(0);
     delete oROI.at(0);
@@ -1002,6 +927,7 @@ int SpliceWizCore(std::string const &bam_file,
   // Generate output but save this to strings:
   std::string myLine_ROI;
   std::string myLine_JC;
+  std::string myLine_TJ;
   std::string myLine_SP;
   std::string myLine_Chr;
   std::string myLine_ND;
@@ -1010,6 +936,7 @@ int SpliceWizCore(std::string const &bam_file,
   
   oROI.at(0)->WriteOutput(myLine_ROI, myLine_QC);
 	oJC.at(0)->WriteOutput(myLine_JC, myLine_QC);
+	oTJ.at(0)->WriteOutput(myLine_TJ, myLine_QC);
 	oSP.at(0)->WriteOutput(myLine_SP, myLine_QC);
 	oChr.at(0)->WriteOutput(myLine_Chr, myLine_QC);
 	oCB.at(0)->WriteOutput(myLine_ND, myLine_QC, *oJC.at(0), *oSP.at(0), *oFM.at(0), n_threads_to_use);
@@ -1024,6 +951,9 @@ int SpliceWizCore(std::string const &bam_file,
   
   outGZ.writeline("JC_seqname\tstart\tend\tstrand\ttotal\tpos\tneg");
   outGZ.writestring(myLine_JC); outGZ.writeline("");
+
+  outGZ.writeline("TJ_seqname\tstart1\tend1\tstart2\tend2\tstrand\ttotal\tpos\tneg");
+  outGZ.writestring(myLine_TJ); outGZ.writeline("");
   
   outGZ.writeline("SP_seqname\tcoord\ttotal\tpos\tneg");
   outGZ.writestring(myLine_SP); outGZ.writeline("");
@@ -1042,6 +972,7 @@ int SpliceWizCore(std::string const &bam_file,
   // destroy objects:
 
   delete oJC.at(0);
+  delete oTJ.at(0);
   delete oChr.at(0);
   delete oSP.at(0);
   delete oROI.at(0);
@@ -1102,6 +1033,7 @@ int SpliceWizMain(
   std::string SP_string;
   std::string ROI_string;
   std::string JC_string;
+  std::string TJ_string;
   
   std::vector<std::string> ref_names;
   std::vector<std::string> ref_alias;
@@ -1110,7 +1042,7 @@ int SpliceWizMain(
   int ret = 0;
   
   ret = readReferenceToStrings(s_ref, ref_names, ref_alias, ref_lengths,
-    CB_string, SP_string, ROI_string, JC_string, verbose
+    CB_string, SP_string, ROI_string, JC_string, TJ_string, verbose
   );
   if(ret != 0) {
     cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid NxtIRF-generated SpliceWiz reference\n";
@@ -1119,7 +1051,8 @@ int SpliceWizMain(
   // main:
   ret = SpliceWizCore(s_bam, s_output_txt, s_output_cov,
     ref_names, ref_alias, ref_lengths,
-    CB_string, SP_string, ROI_string, JC_string, verbose, use_threads, multiRead);
+    CB_string, SP_string, ROI_string, JC_string, TJ_string,
+    verbose, use_threads, multiRead);
     
   if(ret == -2) cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
   if(ret == -1) cout << "Error encountered processing " << s_bam << '\n';
@@ -1155,6 +1088,7 @@ int SpliceWizMain_multi(
   std::string SP_string;
   std::string ROI_string;
   std::string JC_string;
+  std::string TJ_string;
   
   std::vector<std::string> ref_names;
   std::vector<std::string> ref_alias;
@@ -1163,7 +1097,7 @@ int SpliceWizMain_multi(
   int ret = 0;
   
   ret = readReferenceToStrings(s_ref, ref_names, ref_alias, ref_lengths,
-    CB_string, SP_string, ROI_string, JC_string, verbose
+    CB_string, SP_string, ROI_string, JC_string, TJ_string, verbose
   );
   if(ret != 0) {
     cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid NxtIRF-generated SpliceWiz reference\n";
@@ -1181,7 +1115,8 @@ int SpliceWizMain_multi(
     auto check = start;
     int ret2 = SpliceWizCore(s_bam, s_output_txt, s_output_cov,
       ref_names, ref_alias, ref_lengths,
-      CB_string, SP_string, ROI_string, JC_string, verbose, use_threads, multiRead);
+      CB_string, SP_string, ROI_string, JC_string, TJ_string,
+      verbose, use_threads, multiRead);
     if(ret2 == -2) {
       cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
       // delete CB_template;
@@ -1455,7 +1390,7 @@ int c_BAM2COV(
   
 #else
 int c_BAM2COV(
-    std::string bam_file, std::string output_file, int n_threads
+    std::string bam_file, std::string output_file, int n_threads, bool multiRead
 ){	
 	bool verbose = true;
 #endif

@@ -52,6 +52,12 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
     covfile(out) <- se@metadata[["cov_file"]]
     sampleQC(out) <- se@metadata[["sampleQC"]]
     ref(out) <- se@metadata[["ref"]]
+
+    # Restore validity
+    if (!isTRUE(old)) {
+        S4_disableValidity(old)
+    }
+    validObject(out)
     return(out)
 }
 
@@ -66,17 +72,17 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
         return(txt)
     }
     rownames_rowData <- rowData(x)$EventName[
-        rowData(x)$EventType %in% c("IR", "SE", "MXE")
+        rowData(x)$EventType %in% c("IR", "SE", "MXE", "RI")
     ]
-    rownames_up_inc <- rownames(up_inc(x))
+    rownames_up_inc <- rownames(x@metadata[["Up_Inc"]])
     if (!identical(rownames_rowData, rownames_up_inc)) {
-        txt <- paste("Up_Inc events do not encompass all IR / SE / MXE events",
-            "in rowData")
+        txt <- paste("Up_Inc events do not encompass all IR / SE / MXE / RI",
+            "events in rowData")
         return(txt)
     }
-    rownames_down_inc <- rownames(down_inc(x))
+    rownames_down_inc <- rownames(x@metadata[["Down_Inc"]])
     if (!identical(rownames_rowData, rownames_down_inc)) {
-        txt <- paste("Down_Inc events do not encompass all IR / SE / MXE",
+        txt <- paste("Down_Inc events do not encompass all IR / SE / MXE / RI",
             "events in rowData")
         return(txt)
     }
@@ -98,14 +104,14 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
     ]
     rownames_up_exc <- rownames(up_exc(x))
     if (!identical(rownames_rowData, rownames_up_exc)) {
-        txt <- paste("Up_exc events do not encompass all IR / SE /",
-            "MXE events in rowData")
+        txt <- paste("Up_exc events do not encompass all MXE",
+            "events in rowData")
         return(txt)
     }
     rownames_down_exc <- rownames(down_exc(x))
     if (!identical(rownames_rowData, rownames_down_exc)) {
-        txt <- paste("Down_exc events do not encompass all IR / SE /",
-            "MXE events in rowData")
+        txt <- paste("Down_exc events do not encompass all MXE",
+            "events in rowData")
         return(txt)
     }
     NULL
@@ -187,16 +193,16 @@ simplify_NULL_dimnames <- function(dimnames)
 set_dimnames <- function(x, value)
 {
     if (!identical(dimnames(x), value)) {
-dimnames(x) <- value
-}
+        dimnames(x) <- value
+    }
     x
 }
 
 assay_withDimnames <- function(x, assay) {
     x_dimnames <- dimnames(x)
     if (is.null(x_dimnames)) {
-x_dimnames <- list(NULL, NULL)
-}
+        x_dimnames <- list(NULL, NULL)
+    }
     a_dimnames <- dimnames(assay)
     x_dimnames[[1]] <- x_dimnames[[1]][x_dimnames[[1]] %in% a_dimnames[[1]]]
     a_dimnames[c(1, 2)] <- x_dimnames
@@ -228,18 +234,22 @@ sampleQC_withDimnames <- function(x, df) {
     df[x_dimnames, , drop = FALSE]
 }
 
+################################## GETTERS #####################################
+
 #' @describeIn NxtSE-class Gets upstream included events (SE/MXE), or
 #'   upstream exon-intron spanning reads (IR)
 #' @export
 setMethod("up_inc", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     if (withDimnames) {
         assay_withDimnames(x, x@metadata[["Up_Inc"]][, , drop = FALSE])
-    } else {
+    } else if(nrow(x@metadata[["Up_Inc"]]) == 1) {
         x@metadata[["Up_Inc"]][, , drop = FALSE]
+    } else if(ncol(x@metadata[["Up_Inc"]]) == 1) {
+        x@metadata[["Up_Inc"]][, , drop = FALSE]
+    } else {
+        x@metadata[["Up_Inc"]]
     }
 })
-
-################################## GETTERS #####################################
 
 #' @describeIn NxtSE-class Gets downstream included events (SE/MXE), or
 #'   downstream exon-intron spanning reads (IR)
@@ -247,8 +257,12 @@ setMethod("up_inc", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
 setMethod("down_inc", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     if (withDimnames) {
         assay_withDimnames(x, x@metadata[["Down_Inc"]][, , drop = FALSE])
-    } else {
+    } else if(nrow(x@metadata[["Down_Inc"]]) == 1) {
         x@metadata[["Down_Inc"]][, , drop = FALSE]
+    } else if(ncol(x@metadata[["Down_Inc"]]) == 1) {
+        x@metadata[["Down_Inc"]][, , drop = FALSE]
+    } else {
+        x@metadata[["Down_Inc"]]
     }
 })
 
@@ -257,8 +271,12 @@ setMethod("down_inc", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
 setMethod("up_exc", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     if (withDimnames) {
         assay_withDimnames(x, x@metadata[["Up_Exc"]][, , drop = FALSE])
-    } else {
+    } else if(nrow(x@metadata[["Up_Exc"]]) == 1) {
         x@metadata[["Up_Exc"]][, , drop = FALSE]
+    } else if(ncol(x@metadata[["Up_Exc"]]) == 1) {
+        x@metadata[["Up_Exc"]][, , drop = FALSE]
+    } else {
+        x@metadata[["Up_Exc"]]
     }
 })
 
@@ -267,8 +285,12 @@ setMethod("up_exc", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
 setMethod("down_exc", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     if (withDimnames) {
         assay_withDimnames(x, x@metadata[["Down_Exc"]][, , drop = FALSE])
-    } else {
+    } else if(nrow(x@metadata[["Down_Exc"]]) == 1) {
         x@metadata[["Down_Exc"]][, , drop = FALSE]
+    } else if(ncol(x@metadata[["Down_Exc"]]) == 1) {
+        x@metadata[["Down_Exc"]][, , drop = FALSE]
+    } else {
+        x@metadata[["Down_Exc"]]
     }
 })
 
@@ -311,10 +333,10 @@ setMethod("realize_NxtSE", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     for (assayname in assay.todo) {
         assay(x, assayname) <- as.matrix(assay(x, assayname))
     }
-    up_inc(x) <- as.matrix(up_inc(x))
-    down_inc(x) <- as.matrix(down_inc(x))
-    up_exc(x) <- as.matrix(up_exc(x))
-    down_exc(x) <- as.matrix(down_exc(x))
+    up_inc(x, FALSE) <- as.matrix(x@metadata[["Up_Inc"]])
+    down_inc(x, FALSE) <- as.matrix(x@metadata[["Down_Inc"]])
+    up_exc(x, FALSE) <- as.matrix(x@metadata[["Up_Exc"]])
+    down_exc(x, FALSE) <- as.matrix(x@metadata[["Down_Exc"]])
     return(x)
 })
 
@@ -437,14 +459,16 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
         events_Exc <- events[events %in% rownames(metadata(x)[["Up_Exc"]])]
         samples <- colnames(x)[jj]
 
+        dontDrop <- !(length(events_Inc) == 1 | length(samples) == 1)
         up_inc(x, FALSE) <-
-            up_inc(x, FALSE)[events_Inc, samples, drop = FALSE]
+            up_inc(x, FALSE)[events_Inc, samples, drop = dontDrop]
         down_inc(x, FALSE) <-
-            down_inc(x, FALSE)[events_Inc, samples, drop = FALSE]
+            down_inc(x, FALSE)[events_Inc, samples, drop = dontDrop]
+        dontDrop <- !(length(events_Exc) == 1 | length(samples) == 1)
         up_exc(x, FALSE) <-
-            up_exc(x, FALSE)[events_Exc, samples, drop = FALSE]
+            up_exc(x, FALSE)[events_Exc, samples, drop = dontDrop]
         down_exc(x, FALSE) <-
-            down_exc(x, FALSE)[events_Exc, samples, drop = FALSE]
+            down_exc(x, FALSE)[events_Exc, samples, drop = dontDrop]
         covfile(x, FALSE) <- covfile(x, FALSE)[samples]
         sampleQC(x, FALSE) <- sampleQC(x, FALSE)[samples, , drop = FALSE]
     } else if (!missing(i)) {
@@ -452,21 +476,24 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
         events_Inc <- events[events %in% rownames(metadata(x)[["Up_Inc"]])]
         events_Exc <- events[events %in% rownames(metadata(x)[["Up_Exc"]])]
 
+        dontDrop <- !(length(events_Inc) == 1)
         up_inc(x, FALSE) <-
-            up_inc(x, FALSE)[events_Inc, , drop = FALSE]
+            up_inc(x, FALSE)[events_Inc, , drop = dontDrop]
         down_inc(x, FALSE) <-
-            down_inc(x, FALSE)[events_Inc, , drop = FALSE]
+            down_inc(x, FALSE)[events_Inc, , drop = dontDrop]
+        dontDrop <- !(length(events_Exc) == 1)
         up_exc(x, FALSE) <-
-            up_exc(x, FALSE)[events_Exc, , drop = FALSE]
+            up_exc(x, FALSE)[events_Exc, , drop = dontDrop]
         down_exc(x, FALSE) <-
-            down_exc(x, FALSE)[events_Exc, , drop = FALSE]
+            down_exc(x, FALSE)[events_Exc, , drop = dontDrop]
     } else if (!missing(j)) {
         samples <- colnames(x)[jj]
 
-        up_inc(x, FALSE) <- up_inc(x, FALSE)[, samples, drop = FALSE]
-        down_inc(x, FALSE) <- down_inc(x, FALSE)[, samples, drop = FALSE]
-        up_exc(x, FALSE) <- up_exc(x, FALSE)[, samples, drop = FALSE]
-        down_exc(x, FALSE) <- down_exc(x, FALSE)[, samples, drop = FALSE]
+        dontDrop <- !(length(samples) == 1)
+        up_inc(x, FALSE) <- up_inc(x, FALSE)[, samples, drop = dontDrop]
+        down_inc(x, FALSE) <- down_inc(x, FALSE)[, samples, drop = dontDrop]
+        up_exc(x, FALSE) <- up_exc(x, FALSE)[, samples, drop = dontDrop]
+        down_exc(x, FALSE) <- down_exc(x, FALSE)[, samples, drop = dontDrop]
         covfile(x, FALSE) <- covfile(x, FALSE)[samples]
         sampleQC(x, FALSE) <- sampleQC(x, FALSE)[samples, , drop = FALSE]
     }
@@ -487,10 +514,10 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         events_Exc <- events[events %in% rownames(metadata(x)[["Up_Exc"]])]
         samples <- colnames(x)[j]
 
-        up_inc(x)[events_Inc, samples] <- up_inc(value)
-        down_inc(x)[events_Inc, samples] <- down_inc(value)
-        up_exc(x)[events_Exc, samples] <- up_exc(value)
-        down_exc(x)[events_Exc, samples] <- down_exc(value)
+        up_inc(x, FALSE)[events_Inc, samples] <- up_inc(value, FALSE)
+        down_inc(x, FALSE)[events_Inc, samples] <- down_inc(value, FALSE)
+        up_exc(x, FALSE)[events_Exc, samples] <- up_exc(value, FALSE)
+        down_exc(x, FALSE)[events_Exc, samples] <- down_exc(value, FALSE)
         covfile(x)[samples] <- covfile(value)
         sampleQC(x)[samples, ] <- sampleQC(value)
     } else if (!missing(i)) {
@@ -498,16 +525,16 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         events_Inc <- events[events %in% rownames(metadata(x)[["Up_Inc"]])]
         events_Exc <- events[events %in% rownames(metadata(x)[["Up_Exc"]])]
 
-        up_inc(x)[events_Inc, ] <- up_inc(value)
-        down_inc(x)[events_Inc, ] <- down_inc(value)
-        up_exc(x)[events_Exc, ] <- up_exc(value)
-        down_exc(x)[events_Exc, ] <- down_exc(value)
+        up_inc(x, FALSE)[events_Inc, ] <- up_inc(value, FALSE)
+        down_inc(x, FALSE)[events_Inc, ] <- down_inc(value, FALSE)
+        up_exc(x, FALSE)[events_Exc, ] <- up_exc(value, FALSE)
+        down_exc(x, FALSE)[events_Exc, ] <- down_exc(value, FALSE)
     } else if (!missing(j)) {
         samples <- colnames(x)[j]
-        up_inc(x)[, samples] <- up_inc(value)
-        down_inc(x)[, samples] <- down_inc(value)
-        up_exc(x)[, samples] <- up_exc(value)
-        down_exc(x)[, samples] <- down_exc(value)
+        up_inc(x, FALSE)[, samples] <- up_inc(value, FALSE)
+        down_inc(x, FALSE)[, samples] <- down_inc(value, FALSE)
+        up_exc(x, FALSE)[, samples] <- up_exc(value, FALSE)
+        down_exc(x, FALSE)[, samples] <- down_exc(value, FALSE)
         covfile(x)[samples] <- covfile(value)
         sampleQC(x)[samples, ] <- sampleQC(value)
     }
@@ -531,7 +558,8 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
     metadata <- list()
     args <- list(...)
     tryCatch({
-        metadata$Up_Inc <- do.call(cbind, lapply(args, up_inc))
+        metadata$Up_Inc <- do.call(cbind, lapply(args, up_inc, 
+            withDimnames = FALSE))
     }, error = function(err) {
         stop(
             "failed to combine 'Up_Inc' in 'cbind(<",
@@ -539,7 +567,8 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
-        metadata$Down_Inc <- do.call(cbind, lapply(args, down_inc))
+        metadata$Down_Inc <- do.call(cbind, lapply(args, down_inc, 
+            withDimnames = FALSE))
     }, error = function(err) {
         stop(
             "failed to combine 'Down_Inc' in 'cbind(<",
@@ -547,7 +576,8 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
-        metadata$Up_Exc <- do.call(cbind, lapply(args, up_exc))
+        metadata$Up_Exc <- do.call(cbind, lapply(args, up_exc, 
+            withDimnames = FALSE))
     }, error = function(err) {
         stop(
             "failed to combine 'Up_Exc' in 'cbind(<",
@@ -555,7 +585,8 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
-        metadata$Down_Exc <- do.call(cbind, lapply(args, down_exc))
+        metadata$Down_Exc <- do.call(cbind, lapply(args, down_exc, 
+            withDimnames = FALSE))
     }, error = function(err) {
         stop(
             "failed to combine 'Down_Exc' in 'cbind(<",
@@ -602,7 +633,8 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
     metadata <- list()
     args <- list(...)
     tryCatch({
-        metadata$Up_Inc <- do.call(rbind, lapply(args, up_inc))
+        metadata$Up_Inc <- do.call(rbind, lapply(args, up_inc, 
+            withDimnames = FALSE))
     }, error = function(err) {
         stop(
             "failed to combine 'Up_Inc' in 'rbind(<",
@@ -610,7 +642,8 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
-        metadata$Down_Inc <- do.call(rbind, lapply(args, down_inc))
+        metadata$Down_Inc <- do.call(rbind, lapply(args, down_inc, 
+            withDimnames = FALSE))
     }, error = function(err) {
         stop(
             "failed to combine 'Down_Inc' in 'rbind(<",
@@ -618,7 +651,8 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
-        metadata$Up_Exc <- do.call(rbind, lapply(args, up_exc))
+        metadata$Up_Exc <- do.call(rbind, lapply(args, up_exc, 
+            withDimnames = FALSE))
     }, error = function(err) {
         stop(
             "failed to combine 'Up_Exc' in 'rbind(<",
@@ -626,7 +660,8 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
-        metadata$Down_Exc <- do.call(rbind, lapply(args, down_exc))
+        metadata$Down_Exc <- do.call(rbind, lapply(args, down_exc, 
+            withDimnames = FALSE))
     }, error = function(err) {
         stop(
             "failed to combine 'Down_Exc' in 'rbind(<",

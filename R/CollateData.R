@@ -52,11 +52,13 @@
 #' @param lowMemoryMode (default `TRUE`) `collateData()` will perform
 #'   optimizations to conserve memory if this is set to `TRUE`. Otherwise,
 #'   will prioritise performance.
-#' @param n_threads (default `1`) The number of threads to use. On low
-#'   memory systems, reduce the number of `n_threads` and `samples_per_block`
+#' @param n_threads (default `1`) The number of threads to use. If you run out
+#'   of memory, try lowering the number of threads
 #' @param overwrite (default `FALSE`) If `collateData()` has previously been run
 #'   using the same set of samples, it will not be overwritten unless this is
 #'   set to `TRUE`.
+#' @param detectNovelSplicing (default FALSE) Whether collateData will use
+#'   novel junction reads detected in samples to infer novel splice variants.
 #' @return `collateData()` writes to the directory given by `output_path`.
 #'   This output directory is portable (i.e. it can be moved to a different
 #'   location after running `collateData()` before running [makeSE]), but
@@ -88,9 +90,9 @@
 #' @export
 collateData <- function(Experiment, reference_path, output_path,
         IRMode = c("SpliceOver", "SpliceMax"),
+        detectNovelSplicing = FALSE,
         overwrite = FALSE, n_threads = 1,
         lowMemoryMode = TRUE
-        # samples_per_block = 16
 ) {
     IRMode <- match.arg(IRMode)
     if (IRMode == "")
@@ -145,6 +147,17 @@ collateData <- function(Experiment, reference_path, output_path,
     rm(sw.common)
     gc()
 
+    # Tandem junction compilation
+    if(detectNovelSplicing) {
+        dash_progress("Compiling Intron Retention List", N_steps)
+        tj.common <- .collateData_tj_merge(df.internal, jobs, BPPARAM_mod,
+            output_path)
+        write.fst(as.data.frame(tj.common), file.path(norm_output_path, 
+            "annotation", "tj.common.fst"))
+        rm(tj.common)
+        gc()    
+    }
+    
 # Reassign +/- based on junctions.fst annotation
     # Annotate junctions
     dash_progress("Tidying up splice junctions and intron retentions", N_steps)
@@ -152,11 +165,11 @@ collateData <- function(Experiment, reference_path, output_path,
     
     if(n_threads == 1) {
         .collateData_annotate(reference_path, norm_output_path, 
-            stranded, lowMemoryMode)
+            stranded, detectNovelSplicing, lowMemoryMode)
     } else {
         # perform task inside child thread, so we can dump the memory later
         .collateData_annotate_BPPARAM(reference_path, norm_output_path, 
-            stranded, lowMemoryMode)
+            stranded, detectNovelSplicing, lowMemoryMode)
     }
     message("done\n")
 
@@ -196,7 +209,14 @@ collateData <- function(Experiment, reference_path, output_path,
 
     .collateData_write_stats(df.internal, norm_output_path)
     .collateData_write_colData(df.internal, coverage_files, norm_output_path)
-    cov_data <- .prepare_covplot_data(reference_path)
+    
+    if(detectNovelSplicing) {
+        cov_data <- .prepare_covplot_data(reference_path,
+            file.path(norm_output_path, "Reference"))
+    } else {
+        cov_data <- .prepare_covplot_data(reference_path)
+    }
+    
     saveRDS(cov_data, file.path(norm_output_path, "annotation", "cov_data.Rds"))
 
     # NEW compile NxtSE:
@@ -206,7 +226,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
     .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.rds"))
     if (dir.exists(file.path(norm_output_path, "temp"))) {
-        # unlink(file.path(norm_output_path, "temp"), recursive = TRUE)
+        unlink(file.path(norm_output_path, "temp"), recursive = TRUE)
     }
     dash_progress("SpliceWiz (NxtSE) Collation Finished", N_steps)
     .log("SpliceWiz (NxtSE) Collation Finished", "message")
@@ -430,8 +450,10 @@ collateData <- function(Experiment, reference_path, output_path,
 # Sub
 
 # Compiles a unified list of detected splice junctions
-.collateData_junc_merge <- function(df.internal, jobs, BPPARAM_mod,
-        output_path) {
+.collateData_junc_merge <- function(
+        df.internal, jobs, BPPARAM_mod,
+        output_path
+) {
     temp_output_path <- file.path(output_path, "temp")
     n_jobs <- length(jobs)
 
@@ -547,6 +569,65 @@ collateData <- function(Experiment, reference_path, output_path,
     return(sw.common)
 }
 
+# Compiles a unified list of detected splice junctions
+.collateData_tj_merge <- function(df.internal, jobs, BPPARAM_mod,
+        output_path) {
+    temp_output_path <- file.path(output_path, "temp")
+    n_jobs <- length(jobs)
+
+    .log("Compiling Tandem Junction List...", "message", appendLF = FALSE)
+
+    # Extract junctions from processBAM output, save temp FST file
+    tj.list <- BiocParallel::bplapply(
+        seq_len(n_jobs),
+        function(x, jobs, df.internal, temp_output_path) {
+            suppressPackageStartupMessages({
+                requireNamespace("data.table")
+                requireNamespace("stats")
+            })
+            work <- jobs[[x]]
+            block <- df.internal[work]
+            tj.segment <- NULL
+            for (i in seq_len(length(work))) {
+
+                data.list <- get_multi_DT_from_gz(
+                    normalizePath(block$path[i]), c("TJ_seqname"))
+                tj <- data.list[["TJ_seqname"]]
+                setnames(tj, "TJ_seqname", "seqnames")
+                # Filter for novel tandem junctions only
+                tj <- tj[get("strand") == "."]
+
+                # 0-base to 1-base conversion
+                tj[, c("start1") := get("start1") + 1]
+                tj[, c("start2") := get("start2") + 1]
+                
+                if (is.null(tj.segment)) {
+                    tj.segment <- tj[, seq_len(6), with = FALSE]
+                } else {
+                    tj.segment <- merge(tj.segment,
+                        tj[, seq_len(6), with = FALSE], all = TRUE)
+                }
+            }
+            return(tj.segment)
+        }, jobs = jobs, df.internal = df.internal,
+            temp_output_path = temp_output_path, BPPARAM = BPPARAM_mod
+    )
+
+    # Combine list of individual junction dfs into unified list of junction
+    message("merging...", appendLF = FALSE)
+    tj.common <- NULL
+    for (i in seq_len(length(tj.list))) {
+        if (is.null(tj.common)) {
+            tj.common <- tj.list[[i]]
+        } else {
+            tj.common <- merge(tj.common, tj.list[[i]],
+                all = TRUE, by = colnames(tj.common))
+        }
+    }
+    message("done")
+    return(tj.common)
+}
+
 .collateData_stop_sw_mismatch <- function() {
     stopmsg <- paste(
         "Some processBAM outputs were generated",
@@ -562,26 +643,46 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Annotate processBAM introns and junctions according to given reference
 .collateData_annotate <- function(reference_path, norm_output_path,
-        stranded, lowMemoryMode = TRUE
+        stranded, detectNovelSplicing, lowMemoryMode = TRUE
 ) {
     message("...annotating splice junctions")
     .collateData_junc_annotate(2, reference_path, norm_output_path,
         lowMemoryMode)
+
+    if(detectNovelSplicing) {
+        message("...looking for novel exons")
+        .collateData_tj_annotate(2, reference_path, norm_output_path)
+    
+        # Assemble intron_novel_transcript reference from novel junctions and
+        # novel tandem junctions
+        .log(paste("Assembling novel splicing reference,",
+            "this may take up to 10 minutes..."), "message", appendLF = FALSE)
+        .collateData_assemble_novel_reference(2, reference_path, 
+            norm_output_path, lowMemoryMode)
+        use_ref_path <- file.path(norm_output_path, "Reference")
+        
+        message("done")
+        .log("Tidying up splice junctions and intron retentions (part 2)...",
+            "message")
+    } else {
+        use_ref_path <- reference_path
+    }
+        
     message("...grouping splice junctions")
-    .collateData_junc_group(2, reference_path, norm_output_path)
+    .collateData_junc_group(2, use_ref_path, norm_output_path)
 
     message("...grouping introns")
-    .collateData_sw_group(2, reference_path, norm_output_path, stranded)
+    .collateData_sw_group(2, use_ref_path, norm_output_path, stranded)
 
     message("...loading splice events")
-    .collateData_splice_anno(2, reference_path, norm_output_path)
+    .collateData_splice_anno(2, use_ref_path, norm_output_path)
 
     message("...compiling rowEvents")
-    .collateData_rowEvent(2, reference_path, norm_output_path)
+    .collateData_rowEvent(2, use_ref_path, norm_output_path)
 }
 
 .collateData_annotate_BPPARAM <- function(reference_path, norm_output_path,
-        stranded, lowMemoryMode = TRUE
+        stranded, detectNovelSplicing, lowMemoryMode = TRUE
 ) {
     BPPARAM_annotate <- .validate_threads(2)
     message("...annotating splice junctions")
@@ -593,11 +694,38 @@ collateData <- function(Experiment, reference_path, output_path,
         lowMemoryMode = lowMemoryMode,
         BPPARAM = BPPARAM_annotate
     )
+    if(detectNovelSplicing) {
+        message("...looking for novel exons")
+        tmp <- BiocParallel::bplapply(
+            seq_len(2),
+            .collateData_tj_annotate,
+            reference_path = reference_path, 
+            norm_output_path = norm_output_path,
+            BPPARAM = BPPARAM_annotate
+        )
+        .log(paste("Assembling novel splicing reference,",
+            "this may take up to 10 minutes..."), "message", appendLF = FALSE)
+        tmp <- BiocParallel::bplapply(
+            seq_len(2),
+            .collateData_assemble_novel_reference,
+            reference_path = reference_path, 
+            norm_output_path = norm_output_path,
+            lowMemoryMode = lowMemoryMode,
+            BPPARAM = BPPARAM_annotate
+        )
+        message("done")
+        .log("Tidying up splice junctions and intron retentions (part 2)...",
+            "message")
+        use_ref_path <- file.path(norm_output_path, "Reference")
+    } else {
+        use_ref_path <- reference_path
+    }  
+    
     message("...grouping splice junctions")
     tmp <- BiocParallel::bplapply(
         seq_len(2),
         .collateData_junc_group,
-        reference_path = reference_path, 
+        reference_path = use_ref_path, 
         norm_output_path = norm_output_path,
         BPPARAM = BPPARAM_annotate
     )
@@ -605,7 +733,7 @@ collateData <- function(Experiment, reference_path, output_path,
     tmp <- BiocParallel::bplapply(
         seq_len(2),
         .collateData_sw_group,
-        reference_path = reference_path, 
+        reference_path = use_ref_path, 
         norm_output_path = norm_output_path,
         stranded = stranded,
         BPPARAM = BPPARAM_annotate
@@ -614,7 +742,7 @@ collateData <- function(Experiment, reference_path, output_path,
     tmp <- BiocParallel::bplapply(
         seq_len(2),
         .collateData_splice_anno,
-        reference_path = reference_path, 
+        reference_path = use_ref_path, 
         norm_output_path = norm_output_path,
         BPPARAM = BPPARAM_annotate
     )
@@ -622,7 +750,7 @@ collateData <- function(Experiment, reference_path, output_path,
     tmp <- BiocParallel::bplapply(
         seq_len(2),
         .collateData_rowEvent,
-        reference_path = reference_path, 
+        reference_path = use_ref_path, 
         norm_output_path = norm_output_path,
         BPPARAM = BPPARAM_annotate
     )
@@ -730,6 +858,345 @@ collateData <- function(Experiment, reference_path, output_path,
     rm(junc.final, junc.common.anno, junc.common, junc.strand)
     gc()
 }
+
+# Annotate junction splice motifs
+.collateData_tj_annotate <- function(
+        threadID, reference_path, norm_output_path,
+        lowMemoryMode = TRUE
+) {
+    if(threadID != 2) return()
+
+    candidate.introns <- as.data.table(
+        read.fst(file.path(reference_path, "fst", "junctions.fst"))
+    )
+    introns.skipcoord <- .gen_splice_skipcoord(
+        reference_path, candidate.introns)
+        
+    junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "junc.common.annotated.fst")))
+        
+    tj.common <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "tj.common.fst")))
+    
+    # Strand assignment based on annotated junctions
+    
+    # First remove any tandem junctions not in junc.common
+    jc_events <- with(junc.common, 
+        paste0(seqnames, ":", start, "-", end, "/", strand))
+
+    jc_events_unstranded <- with(junc.common, 
+        paste0(seqnames, ":", start, "-", end))
+    
+    tj_event1 <- with(tj.common, paste0(seqnames, ":", start1, "-", end1))
+    tj_event2 <- with(tj.common, paste0(seqnames, ":", start2, "-", end2))
+    
+    tj.common <- tj.common[tj_event1 %in% jc_events_unstranded &
+        tj_event2 %in% jc_events_unstranded]
+
+    # Then, assemble a strand table
+    jc.strand <- data.frame(
+        event = jc_events_unstranded,
+        strand = junc.common$strand
+    )
+
+    tj_event1 <- with(tj.common, paste0(seqnames, ":", start1, "-", end1))
+    tj_event2 <- with(tj.common, paste0(seqnames, ":", start2, "-", end2))
+    
+    tj.strand <- as.data.table(data.frame(
+        strand1 = jc.strand$strand[match(tj_event1, jc.strand$event)],
+        strand2 = jc.strand$strand[match(tj_event2, jc.strand$event)],
+        stringsAsFactors = FALSE
+    ))
+    tj.strand$status <- ""
+    tj.strand[get("strand1") == "+" & get("strand2") == "+", 
+        c("status") := "+"]
+    tj.strand[get("strand1") == "-" & get("strand2") == "-", 
+        c("status") := "-"]
+    tj.strand[get("strand1") == "*", 
+        c("status") := get("strand2")]
+    tj.strand[get("strand2") == "*", 
+        c("status") := get("strand1")]
+
+    # Filter TJ based on matching strand
+    tj.common$strand <- tj.strand$status
+    tj.common <- tj.common[strand != ""]
+    
+    # Filter for TJ for which tandem interval does not match known skip_coord
+    skip_coord <- introns.skipcoord$skip_coord[
+        !is.na(introns.skipcoord$skip_coord)]
+    skip_coord <- unique(skip_coord)
+    tj_skip <- with(tj.common, paste0(seqnames, ":", 
+        start1, "-", end2, "/", strand))
+    
+    tj.common <- tj.common[tj_skip %in% skip_coord | tj_skip %in% jc_events]
+    
+    # Filter for TJ for which novel exon does not match 
+    #   any boundary with known exon
+    # Noting that if one boundary matches that of known exon, it is simply
+    #   an alt' splice site, not a novel casette exon
+    
+    exons_brief <- read.fst(
+        path = file.path(reference_path, "fst", "Exons.fst"),
+        columns = c("seqnames", "start", "end", "strand"),
+        as.data.table = TRUE
+    )
+    exons_brief <- unique(exons_brief)
+    exons_left <- with(exons_brief, paste0(seqnames, ":", start))
+    tj_exon_left <- with(tj.common, paste0(seqnames, ":", end1 + 1))
+    exons_right <- with(exons_brief, paste0(seqnames, ":", end))
+    tj_exon_right <- with(tj.common, paste0(seqnames, ":", start2 - 1))
+    
+    tj.common <- tj.common[!(tj_exon_left %in% exons_left) &
+        !(tj_exon_right %in% exons_right)]
+
+    write.fst(as.data.frame(tj.common), file.path(norm_output_path, 
+        "annotation", "tj.common.annotated.fst"))
+
+    # Cleanup
+    rm(candidate.introns, introns.skipcoord, junc.common, tj.common,
+        tj.strand, exons_brief)
+    gc()
+}
+
+################################################################################
+
+# Assemble novel transcripts and generate new reference
+
+.collateData_assemble_novel_reference <- function(
+    threadID, reference_path, norm_output_path, lowMemoryMode
+) {
+    if(threadID != 2) return()
+    
+    novel_ref_path <- file.path(norm_output_path, "Reference")
+    .validate_path(novel_ref_path, subdirs = "resource")
+    
+    settings <- readRDS(file.path(reference_path, "settings.Rds"))
+    local.nonPolyAFile <- file.path(reference_path, "resource", 
+        "nonPolyAFile.resource")
+    local.MappabilityFile <- file.path(reference_path, "resource", 
+        "MappabilityFile.resource")
+    local.BlacklistFile <- file.path(reference_path, "resource", 
+        "BlacklistFile.resource")
+    nonPolyARef <- settings$nonPolyARef
+    MappabilityRef <- settings$MappabilityRef
+    BlacklistRef <- settings$BlacklistRef
+    if(file.exists(local.nonPolyAFile)) 
+        nonPolyARef <- local.nonPolyAFile
+    if(file.exists(local.MappabilityFile)) 
+        MappabilityRef <- local.MappabilityFile
+    if(file.exists(local.BlacklistFile)) 
+        BlacklistRef <- local.BlacklistFile
+
+    extra_files <- .fetch_genome_defaults(novel_ref_path,
+        settings$genome_type, nonPolyARef, 
+        MappabilityRef, BlacklistRef,
+        force_download = FALSE, verbose = FALSE)
+
+    reference_data <- .get_reference_data(
+        reference_path = reference_path,
+        fasta = "", gtf = "", verbose = FALSE,
+        overwrite = FALSE, force_download = FALSE,
+        pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
+
+    reference_data$gtf_gr <- .validate_gtf_chromosomes(
+        reference_data$genome, reference_data$gtf_gr)
+    reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
+
+    # Insert novel gtf here
+    # reference_data$gtf_gr is a GRanges object
+    altSS_gtf <- .collateData_novel_assemble_altSS_transcripts(
+        reference_path, norm_output_path, reference_data$gtf_gr)
+    exon_gtf <- .collateData_novel_assemble_exon_transcripts(
+        reference_path, norm_output_path, reference_data$gtf_gr)
+    # Finish inserting novel gtf
+    
+    .process_gtf(c(reference_data$gtf_gr, altSS_gtf, exon_gtf), 
+        novel_ref_path, verbose = FALSE)
+    extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
+    reference_data$gtf_gr <- NULL # To save memory, remove original gtf
+    gc()
+    
+    reference_data$genome <- .check_2bit_performance(reference_path,
+        reference_data$genome, verbose = FALSE)
+    .process_introns(novel_ref_path, reference_data$genome, 
+        useExtendedTranscripts = TRUE, verbose = FALSE)
+    
+    chromosomes <- readRDS(file.path(reference_path, "chromosomes.Rds"))
+    .gen_irf(novel_ref_path, extra_files, reference_data$genome, chromosomes,
+        verbose = FALSE)
+
+    file.copy(file.path(reference_path, "fst", "IR.NMD.fst"),
+        file.path(novel_ref_path, "fst", "IR.NMD.fst"))
+    .gen_splice(novel_ref_path, verbose = FALSE)
+    
+    settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
+    # (TODO) - modify settings.Rds
+    saveRDS(settings.list, file.path(novel_ref_path, "settings.Rds"))
+}
+
+.collateData_novel_assemble_altSS_transcripts <- function(
+    reference_path, norm_output_path, gtf
+) {
+    # Load junc.common
+    junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "junc.common.annotated.fst")))
+    
+    # Filter out known junctions
+    known.junctions <- unique(as.data.table(read.fst(
+        file.path(reference_path, "fst", "junctions.fst"), 
+        columns = c("seqnames", "start", "end", "strand", "Event"))))
+        
+    junc.novel <- junc.common[!(get("Event") %in% known.junctions$Event)]
+    
+    # Filter for when there is at least 1 common splice site with knowns
+    kj.left <- with(known.junctions, GRanges(seqnames = seqnames,
+        ranges = IRanges(start, start), strand = strand))
+    nj.left <- with(junc.novel, GRanges(seqnames = seqnames,
+        ranges = IRanges(start, start), strand = strand))
+    kj.right <- with(known.junctions, GRanges(seqnames = seqnames,
+        ranges = IRanges(end, end), strand = strand))
+    nj.right <- with(junc.novel, GRanges(seqnames = seqnames,
+        ranges = IRanges(end, end), strand = strand))
+    OL_left <- findOverlaps(nj.left, kj.left)
+    OL_right <- findOverlaps(nj.left, kj.left)
+    
+    at_least_one_end <- unique(c(from(OL_left), from(OL_right)))
+    junc.novel <- junc.novel[at_least_one_end]
+
+    n_trans <- nrow(junc.novel)
+    gr_novel_leftExon <- with(junc.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = start - 50, end = start - 1),
+      strand = strand))
+    gr_novel_rightExon <- with(junc.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = end + 1, end = end + 50),
+      strand = strand))
+    gr_novel_transcript <- with(junc.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = start - 50, end = end + 50),
+      strand = strand))
+    gr_novel_gene <- gr_novel_transcript
+    
+    empty_mCol <- data.frame(matrix(ncol = ncol(mcols(gtf)), 
+        nrow = n_trans))
+    colnames(empty_mCol) <- colnames(mcols(gtf))
+
+    empty_mCol$source <- "novel"
+    empty_mCol$gene_biotype <- "intron_novel_transcript"
+    empty_mCol$transcript_biotype <- "intron_novel_transcript"
+
+    empty_mCol$gene_id <- paste0("novelSS", as.character(seq_len(n_trans)))
+    empty_mCol$gene_name <- paste0("novelSS", as.character(seq_len(n_trans)))
+
+    empty_mCol$transcript_id <- paste0("novelSS", 
+        as.character(seq_len(n_trans)))
+    empty_mCol$transcript_name <- paste0("novelSS", 
+        as.character(seq_len(n_trans)))
+
+    mcols(gr_novel_gene) <- empty_mCol
+    mcols(gr_novel_transcript) <- empty_mCol
+    mcols(gr_novel_leftExon) <- empty_mCol
+    mcols(gr_novel_rightExon) <- empty_mCol
+
+    mcols(gr_novel_gene)$type <- "gene"
+    mcols(gr_novel_gene)$transcript_id <- NA
+    mcols(gr_novel_gene)$transcript_name <- NA
+
+    mcols(gr_novel_transcript)$type <- "transcript"
+    mcols(gr_novel_leftExon)$type <- "exon"
+    mcols(gr_novel_rightExon)$type <- "exon"
+
+    mcols(gr_novel_leftExon)$exon_number <- ifelse(
+        strand(gr_novel_leftExon) == "+", 1, 2)
+    mcols(gr_novel_rightExon)$exon_number <- ifelse(
+        strand(gr_novel_rightExon) == "-", 1, 2)
+
+    mcols(gr_novel_leftExon)$exon_id <- paste0("novelSS", 
+        as.character(seq_len(n_trans)))
+    mcols(gr_novel_rightExon)$exon_id <- paste0("novelSS", 
+        as.character(n_trans + seq_len(n_trans)))
+    
+    new_gtf <- c(gr_novel_gene, gr_novel_transcript, 
+        gr_novel_leftExon, gr_novel_rightExon)
+    
+    rm(junc.common, known.junctions)
+    gc()
+    return(new_gtf)
+}
+
+.collateData_novel_assemble_exon_transcripts <- function(
+    reference_path, norm_output_path, gtf
+) {
+    # No need to filter tandem junctions as this was done in earlier step
+    tj.novel <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "tj.common.annotated.fst")))
+    
+    n_trans <- nrow(tj.novel)
+    gr_novel_leftExon <- with(tj.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = start1 - 50, end = start1 - 1),
+      strand = strand))
+    gr_novel_middleExon <- with(tj.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = end1 + 1, end = start2 - 1),
+      strand = strand))
+    gr_novel_rightExon <- with(tj.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = end2 + 1, end = end2 + 50),
+      strand = strand))
+    gr_novel_transcript <- with(tj.novel, GRanges(seqnames = seqnames,
+      ranges = IRanges(start = start1 - 50, end = end2 + 50),
+      strand = strand))
+    gr_novel_gene <- gr_novel_transcript
+
+    empty_mCol <- data.frame(matrix(ncol = ncol(mcols(gtf)), 
+        nrow = n_trans))
+    colnames(empty_mCol) <- colnames(mcols(gtf))
+
+    empty_mCol$source <- "novel"
+    empty_mCol$gene_biotype <- "intron_novel_transcript"
+    empty_mCol$transcript_biotype <- "intron_novel_transcript"
+
+    empty_mCol$gene_id <- paste0("novelExon", as.character(seq_len(n_trans)))
+    empty_mCol$gene_name <- paste0("novelExon", as.character(seq_len(n_trans)))
+
+    empty_mCol$transcript_id <- paste0("novelExon", 
+        as.character(seq_len(n_trans)))
+    empty_mCol$transcript_name <- paste0("novelExon", 
+        as.character(seq_len(n_trans)))
+
+    mcols(gr_novel_gene) <- empty_mCol
+    mcols(gr_novel_transcript) <- empty_mCol
+    mcols(gr_novel_leftExon) <- empty_mCol
+    mcols(gr_novel_middleExon) <- empty_mCol
+    mcols(gr_novel_rightExon) <- empty_mCol
+
+    mcols(gr_novel_gene)$type <- "gene"
+    mcols(gr_novel_gene)$transcript_id <- NA
+    mcols(gr_novel_gene)$transcript_name <- NA
+
+    mcols(gr_novel_transcript)$type <- "transcript"
+    mcols(gr_novel_leftExon)$type <- "exon"
+    mcols(gr_novel_middleExon)$type <- "exon"
+    mcols(gr_novel_rightExon)$type <- "exon"
+
+    mcols(gr_novel_leftExon)$exon_number <- ifelse(
+        strand(gr_novel_leftExon) == "+", 1, 3)
+    mcols(gr_novel_middleExon)$exon_number <- 2
+    mcols(gr_novel_rightExon)$exon_number <- ifelse(
+        strand(gr_novel_rightExon) == "-", 1, 3)
+
+    mcols(gr_novel_leftExon)$exon_id <- paste0("novelExon", 
+        as.character(seq_len(n_trans)))
+    mcols(gr_novel_middleExon)$exon_id <- paste0("novelExon", 
+        as.character(n_trans + seq_len(n_trans)))
+    mcols(gr_novel_rightExon)$exon_id <- paste0("novelExon", 
+        as.character(n_trans + seq_len(n_trans)))
+
+    new_gtf <- c(gr_novel_gene, gr_novel_transcript, 
+        gr_novel_leftExon, gr_novel_middleExon, gr_novel_rightExon)
+
+    rm(tj.novel)
+    gc()
+    return(new_gtf)
+}
+
+################################################################################
 
 # Use Exon Groups file to designate flanking exon islands to ALL junctions
 .collateData_junc_group <- function(
@@ -1826,7 +2293,9 @@ collateData <- function(Experiment, reference_path, output_path,
         if (buf_i >= samples_per_block | i == nrow(df.internal)) {
             for (stuff in stuff.todo) {
                 # write
-                h5write(as.matrix(do.call(cbind, matrices[[stuff]])),
+                mat <- as.matrix(do.call(cbind, matrices[[stuff]]))
+                mat[is.na(mat)] <- 0
+                h5write(mat,
                     file = h5filename, name = stuff,
                     index = list(NULL, seq(i - buf_i + 1, i))
                 )
@@ -2008,14 +2477,15 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Internals - compile reference data from genome, for quick access
 
-.prepare_covplot_data <- function(reference_path) {
+.prepare_covplot_data <- function(
+        reference_path, use_ref_path = reference_path) {
     .validate_reference(reference_path)
     genome <- Get_Genome(reference_path)
     data <- list(
         seqInfo = seqinfo(genome),
-        gene_list = .getGeneList(reference_path),
-        elem.DT = .loadViewRef(reference_path),
-        transcripts.DT = .loadTranscripts(reference_path)
+        gene_list = .getGeneList(use_ref_path),
+        elem.DT = .loadViewRef(use_ref_path),
+        transcripts.DT = .loadTranscripts(use_ref_path)
     )
     return(data)
 }

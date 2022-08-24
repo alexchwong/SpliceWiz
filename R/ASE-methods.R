@@ -383,8 +383,8 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
 .ASE_limma_contrast <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2) {
-    countData <- rbind(assay(se, "Included"),
-        assay(se, "Excluded"))
+    countData <- as.matrix(rbind(assay(se, "Included"),
+        assay(se, "Excluded")))
     rowData <- as.data.frame(rowData(se))
     colData <- colData(se)
     rownames(colData) <- colnames(se)
@@ -422,13 +422,16 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
     res$AveExpr <- res$AveExpr - min(res$AveExpr)
     res <- as.data.table(res)
+    
+    rm(fit, countData, countData_use)
+    gc()
     return(res)
 }
 
 .ASE_limma_contrast_ASE <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2) {
-    countData <- cbind(assay(se, "Included"),
-        assay(se, "Excluded"))
+    countData <- as.matrix(cbind(assay(se, "Included"),
+        assay(se, "Excluded")))
 
     rowData <- as.data.frame(rowData(se))
     colData <- as.data.frame(colData(se))
@@ -473,13 +476,16 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     res$EventName <- rownames(res)
     res$AveExpr <- res$AveExpr - min(res$AveExpr)
     res <- as.data.table(res)
+    
+    rm(fit, countData, countData_use)
+    gc()
     return(res)
 }
 
 .ASE_DESeq2_contrast <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2, BPPARAM) {
-    countData <- rbind(assay(se, "Included"),
-        assay(se, "Excluded"))
+    countData <- as.matrix(rbind(assay(se, "Included"),
+        assay(se, "Excluded")))
     rowData <- as.data.frame(rowData(se))
     colData <- colData(se)
     rownames(colData) <- colnames(se)
@@ -505,7 +511,6 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         dds_formula_reduced <- paste0("~1")
     }
 
-    countData <- as.matrix(countData)
     mode(countData) <- "integer"
     dds <- DESeq2::DESeqDataSetFromMatrix(
         countData = round(countData),
@@ -529,13 +534,16 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         )    
     }
     res$EventName <- rownames(res)
+
+    rm(dds, countData)
+    gc()
     return(as.data.table(res))
 }
 
 .ASE_DESeq2_contrast_ASE <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2, BPPARAM) {
-    countData <- cbind(assay(se, "Included"),
-        assay(se, "Excluded"))
+    countData <- as.matrix(cbind(assay(se, "Included"),
+        assay(se, "Excluded")))
     rowData <- as.data.frame(rowData(se))
     colData <- as.data.frame(colData(se))
     colData <- rbind(colData, colData)
@@ -575,7 +583,7 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
             # paste0(test_factor, ":ASE"),
             sep="+"))
     }
-    countData <- as.matrix(countData)
+
     mode(countData) <- "integer"
     dds <- DESeq2::DESeqDataSetFromMatrix(
         countData = countData,
@@ -600,8 +608,10 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
             parallel = TRUE, BPPARAM = BPPARAM)
         )
     }
-
     res$EventName <- rownames(res)
+    
+    rm(dds, countData)
+    gc()
     return(as.data.table(res))
 }
 
@@ -610,21 +620,25 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
     # NB add pseudocounts
     pseudocount <- 1
-    y <- assay(se, "Included") + pseudocount
-    m <- assay(se, "Included") + assay(se, "Excluded") + 2 * pseudocount
-
+    y <- as.matrix(assay(se, "Included") + pseudocount)
+    m <- as.matrix(
+        assay(se, "Included") + assay(se, "Excluded") + 2 * pseudocount
+    )
     colData <- as.data.frame(colData(se))
     groups <- factor(colData[, test_factor])
     shrink.method <- "WEB"
 
-    contrast.first <- which(levels(groups) == test_nom)
-    contrast.second <- which(levels(groups) == test_denom)
+    # carry over error from DoubleExpSeq version 1.1
+    contrast.first <- which(unique(groups) == test_nom)
+    contrast.second <- which(unique(groups) == test_denom)
 
     res <- DoubleExpSeq::DBGLM1(
         as.matrix(y), as.matrix(m), groups, shrink.method,
         contrast=c(contrast.first,contrast.second),
         fdr.level=0.05, use.all.groups=TRUE)
 
+    rm(y, m)
+    gc()
     return(cbind(data.table(EventName = rownames(res$All)),
         as.data.table(res$All)))
 }

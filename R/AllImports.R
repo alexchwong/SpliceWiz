@@ -1,7 +1,7 @@
 #' @useDynLib SpliceWiz, .registration = TRUE
 #' @import NxtIRFdata
 #' @import ompBAM
-#' @importFrom methods as is coerce callNextMethod new
+#' @importFrom methods as is coerce callNextMethod new validObject
 #' @importFrom parallel detectCores
 #' @importFrom stats as.formula model.matrix qt runif na.omit prcomp aggregate
 #' @importFrom utils download.file packageVersion getFromNamespace
@@ -22,7 +22,7 @@
 #' @importFrom Biostrings readDNAStringSet DNAStringSet translate
 #' @importFrom BSgenome getSeq
 #' @importFrom DelayedArray qlogis plogis rowMeans DelayedArray rowSums
-#' @importFrom DelayedMatrixStats rowSds
+#' @importFrom DelayedMatrixStats rowSds rowAnyNAs
 #' @importFrom genefilter rowttests
 #' @importFrom GenomeInfoDb sortSeqlevels seqinfo seqlengths seqlevels<- 
 #' @importFrom GenomeInfoDb seqlevels seqlevelsStyle seqlevelsStyle<-

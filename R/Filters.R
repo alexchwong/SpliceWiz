@@ -192,6 +192,10 @@ runFilter <- function(se, filterObj) {
         res <- ifelse(sum * 100 / ncol(depth) >= usePC, TRUE, FALSE)
     }
     res[!(rowData(se)$EventType %in% filterObj@EventTypes)] <- TRUE
+    
+    rm(depth)
+    if(exists("depth.subset")) rm(depth.subset)
+    gc()
     return(res)
 }
 
@@ -222,6 +226,10 @@ runFilter <- function(se, filterObj) {
         res <- ifelse(sum * 100 / ncol(cov) >= usePC, TRUE, FALSE)
     }
     res[!(rowData(se)$EventType %in% filterObj@EventTypes)] <- TRUE
+
+    rm(depth, cov)
+    if(exists("cov.subset")) rm(cov.subset)
+    gc()
     return(res)
 }
 
@@ -281,6 +289,14 @@ runFilter <- function(se, filterObj) {
         res <- ifelse(sum * 100 / ncol(Up_Inc) >= usePC, TRUE, FALSE)
     }
     res[!(rowData(se)$EventType %in% filterObj@EventTypes)] <- TRUE
+
+    rm(Up_Inc, Down_Inc, Up_Exc, Down_Exc, 
+        minDepth.Inc, minDepth.Exc, IntronDepth, Excluded)
+    if(exists("Up_Inc.subset")) {
+        rm(Up_Inc.subset, Down_Inc.subset, IntronDepth.subset,
+            Up_Exc.subset, Down_Exc.subset, Excluded.subset)
+    }
+    gc()
     return(res)
 }
 
@@ -318,6 +334,8 @@ runFilter <- function(se, filterObj) {
     
     sum <- rowSums(truth_total)
     
+    rm(truth_inc_temp, truth_inc, truth_exc, truth_total)
+    gc()
     return(sum)
 }
 

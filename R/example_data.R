@@ -9,6 +9,9 @@
 #' \linkS4class{NxtSE} object. The steps to reproduce this object is shown
 #' in the example code in [makeSE]
 #'
+#' @param novelSplicing Whether to import an example NxtSE with novel splice
+#'   event discovery.
+#'
 #' @return
 #' In `SpliceWiz_example_bams()`: returns a 2-column data frame containing
 #'   sample names and BAM paths of the example dataset.
@@ -61,9 +64,14 @@ SpliceWiz_example_bams <- function() {
 #' object that was pre-generated using the SpliceWiz example reference and 
 #' example BAM files
 #' @export
-SpliceWiz_example_NxtSE <- function() {
-    se <- readRDS(system.file("extdata",
-        "example_NxtSE.Rds", package = "SpliceWiz"))
+SpliceWiz_example_NxtSE <- function(novelSplicing = FALSE) {
+    if(!novelSplicing) {
+        se <- readRDS(system.file("extdata",
+            "example_NxtSE.Rds", package = "SpliceWiz"))
+    } else {
+        se <- readRDS(system.file("extdata",
+            "example_NxtSE_novel.Rds", package = "SpliceWiz"))    
+    }
     covs <- findSamples(system.file("extdata", package = "SpliceWiz"), ".cov")
     covfile(se) <- covs$path
     se

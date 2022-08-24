@@ -62,6 +62,71 @@ like these, where available.
 </details>
 \
 
+# What's New?
+
+<details>
+<summary>What's New: Novel splice detection in version 0.99.3</summary>
+\
+In version 0.99.3, SpliceWiz offers detection of novel events in addition to
+annotated events. How this works:
+
+* SpliceWiz compiles counts of all junctions (split reads) compatible with
+splice junction events (having compatible donor / acceptor splice motifs)
+* Additionally, it also compiles counts of "tandem junction" (hereafter TJ) 
+which are reads that are split into 3 or more segments, compatible with the 
+observation of excision of 2 or more introns in sequenced reads
+* Novel junctions that share a common coordinate with that of an annotated
+junction are retained, and are used to construct "novel transcripts" - which
+are new transcripts that contain the observed junction. These are primarily
+used to construct novel A5SS / A3SS events when paired with known junctions
+* Novel TJ that share bounding coordinates (the two outermost coordinates)
+with that of annotated TJs are retained, and are used to construct 
+"novel transcripts" with two boundary exons flanking the observed "novel exon".
+These are used to construct novel MXE / SE events involving cryptic exons.
+
+Novel ASE detection is integrated into the SpliceWiz pipeline at the collation
+step. After compilation and processing of novel junctions / TJ's, the
+novel transcripts are appended to the transcript annotation, which is then used
+to re-construct the SpliceWiz reference. This reference is contained in the
+"Annotation" subfolder of the output folder of `collateData()` function.
+
+**TL/DR - how to enable novel ASE mode**
+
+* To enable analysis involving both annotated and novel ASEs, simply set
+`detectNovelSplicing = TRUE` when running `collateData()`. For example:
+
+```{r, eval = FALSE}
+
+# Usual pipeline:
+ref_path <- file.path(tempdir(), "Reference")
+buildRef(
+    reference_path = ref_path,
+    fasta = chrZ_genome(),
+    gtf = chrZ_gtf()
+)
+
+pb_path <- file.path(tempdir(), "pb_output")
+processBAM(
+    bamfiles = bams$path,
+    sample_names = bams$sample,
+    reference_path = ref_path,
+    output_path = pb_path
+)
+
+# Modified pipeline - collateData with novel ASE discovery:
+
+nxtse_path <- file.path(tempdir(), "NxtSE_output")
+collateData(
+    Experiment = expr,
+    reference_path = ref_path,
+    output_path = nxtse_path,
+    detectNovelSplicing = TRUE     ## NEW ##
+)
+```
+
+</details>
+\
+
 # Workflow from a glance
 
 The basic steps of SpliceWiz are as follows:
@@ -170,6 +235,16 @@ buildRef(
     fasta = chrZ_genome(),
     gtf = chrZ_gtf()
 )
+```
+
+(NEW in version >= 0.99.3)
+The SpliceWiz reference can be viewed as data frames using various getter
+functions. For example, to view the annotated alternative splicing events (ASE):
+
+```{r, results='hide', message = FALSE, warning = FALSE}
+df <- viewASE(ref_path)
+
+# See ?View-Reference-methods for a comprehensive list of getter functions
 ```
 
 <details>

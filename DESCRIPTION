@@ -83,6 +83,7 @@ Collate: AllImports.R
 	utils.R
 	File_finders.R
 	BuildRef.R
+    ViewRef.R
 	STAR_utils.R
 	Mappability.R
 	ProcessBAM.R

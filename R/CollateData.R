@@ -968,7 +968,7 @@ collateData <- function(Experiment, reference_path, output_path,
     if(threadID != 2) return()
     
     novel_ref_path <- file.path(norm_output_path, "Reference")
-    .validate_path(novel_ref_path)
+    .validate_path(novel_ref_path, subdirs = "resource")
     
     settings <- readRDS(file.path(reference_path, "settings.Rds"))
     local.nonPolyAFile <- file.path(reference_path, "resource", 

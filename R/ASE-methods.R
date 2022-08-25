@@ -1,7 +1,7 @@
 #' Differential Alternative Splicing Event analysis
 #'
-#' Use Limma, DESeq2 or DoubleExpSeq wrapper functions to test for differential 
-#' Alternative Splice Events
+#' Use Limma, DESeq2, DoubleExpSeq and satuRn wrapper functions to test for
+#' differential Alternative Splice Events (ASEs)
 #'
 #' @details
 #'
@@ -26,9 +26,12 @@
 #' as the column of numeric values containing time series data. The `test_nom`
 #' and `test_denom` parameters must be left blank. See example below.
 #'
-#' Using **DoubleExpSeq**, included and excluded counts are modelled using
+#' Using **DoubleExpSeq**, included and excluded counts are modeled using
 #' the generalized beta prime distribution, using empirical Bayes shrinkage
 #' to estimate dispersion.
+#'
+#' Using **satuRn**, included and excluded counts are modeled using
+#' the quasi-binomial distribution in a generalised linear model.
 #'
 #' **EventType** are as follow:
 #' * `IR` = intron retention (IR-ratio) - all introns are considered
@@ -114,6 +117,14 @@
 #'     DESeq2 results for differential testing for
 #'     raw included / excluded counts only
 #'
+#'   **satuRn specific output**
+#'   * estimates, se, df, t, pval, regular_FDR:
+#'     estimated log-odds ratio, standard error, degrees of freedom, (Wald) t
+#'     statistic, nominal p-value and associated false discovery rate
+#'   * empirical_pval, empirical_FDR: nominal p value and associated FDR
+#'     computed by estimating the null distribution of the test statistic
+#'     empirically (by satuRn).
+#'
 #'   **DoubleExp specific output**
 #'   * MLE_nom, MLE_denom: Maximum likelihood expectation of PSI values for the 
 #"     two groups. `nom` and
@@ -125,10 +136,12 @@
 #'   * Dispersion_Reduced, Dispersion_Full: Dispersion values for reduced and
 #'     full models. See [DoubleExpSeq::DBGLM1] for details.
 #' @examples
-#' # see ?makeSE on example code of generating this NxtSE object
+#' # Load the NxtSE object and set up the annotations
+#' # - see ?makeSE on example code of generating this NxtSE object
 #' se <- SpliceWiz_example_NxtSE()
 #'
 #' colData(se)$treatment <- rep(c("A", "B"), each = 3)
+#' colData(se)$replicate <- rep(c("P","Q","R"), 2)
 #'
 #' require("limma")
 #' res_limma <- ASE_limma(se, "treatment", "A", "B")
@@ -136,6 +149,9 @@
 #' require("DoubleExpSeq")
 #' res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 #'
+#' require("satuRn")
+#' res_sat <- ASE_satuRn(se, "treatment", "A", "B")
+#' 
 #' require("DESeq2")
 #' res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")
 #' 
@@ -160,6 +176,11 @@
 #' the binomial family, with application to differential exon skipping.'
 #' Ann. Appl. Stat. 10(2): 690-725.
 #' \url{https://doi.org/10.1214/15-AOAS871}
+#'
+#' Gilis J, Vitting-Seerup K, Van den Berge K, Clement L (2021). 'Scalable
+#' analysis of differential transcript usage for bulk and single-cell
+#' RNA-sequencing applications.' F1000Research 2021, 10:374.
+#' \url{https://doi.org/10.12688/f1000research.51749.1}
 #' @md
 NULL
 
@@ -307,6 +328,30 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
     res.ASE <- res.ASE[!is.na(get("P.Value"))]
     setorderv(res.ASE, "P.Value")
+    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
+        test_nom, test_denom)
+    return(res.ASE)
+}
+
+#' @describeIn ASE-methods Use satuRn to perform differential ASE analysis of
+#'   a filtered NxtSE object
+#' @export
+ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
+        batch1 = "", batch2 = "",
+        filter_antiover = TRUE, filter_antinear = FALSE) {
+
+    .check_package_installed("satuRn", "1.4.2")
+    .ASE_check_args(colData(se), test_factor,
+        test_nom, test_denom, batch1, batch2)
+    se_use <- .ASE_filter(
+        se, filter_antiover, filter_antinear)
+
+    .log("Performing satuRn contrast for included / excluded counts",
+        "message")
+    rowData <- as.data.frame(rowData(se_use))
+    res.ASE <- .ASE_satuRn_contrast(se_use,
+        test_factor, test_nom, test_denom,
+        batch1, batch2)
     res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
         test_nom, test_denom)
     return(res.ASE)
@@ -641,6 +686,81 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     gc()
     return(cbind(data.table(EventName = rownames(res$All)),
         as.data.table(res$All)))
+}
+
+.ASE_satuRn_contrast <- function(se, test_factor, test_nom, test_denom,
+        batch1, batch2) {
+    countData <- as.matrix(rbind(assay(se, "Included"),
+        assay(se, "Excluded")))
+    rowData <- as.data.frame(rowData(se))
+    colData <- colData(se)
+    rownames(colData) <- colnames(se)
+    colnames(countData) <- rownames(colData)
+    
+    txInfo <- as.data.frame(matrix(data = NA, nrow = 2 * nrow(se), ncol = 2))
+    colnames(txInfo) <- c("isoform_id", "gene_id")
+    txInfo$isoform_id <- c(
+        paste("Inc", rowData$EventName, sep=":"), 
+        paste("Exc", rowData$EventName, sep=":")
+    )
+    txInfo$gene_id <- rep(rowData$EventName, 2)
+    
+    rownames(countData) <- txInfo$isoform_id
+
+    condition_factor <- factor(colData[, test_factor])
+    if(batch2 != "") {
+        batch2_factor <- colData[, batch2]
+        batch1_factor <- colData[, batch1]
+        formula1 <- ~0 + batch1_factor + batch2_factor +
+            condition_factor
+    } else if(batch1 != "") {
+        batch1_factor <- colData[, batch1]
+        formula1 <- ~0 + batch1_factor + condition_factor
+    } else {
+        formula1 <- ~0 + condition_factor
+    }
+    design1 <- model.matrix(formula1)
+    contrast <- rep(0, ncol(design1))
+    contrast_a <- paste0("condition_factor", test_nom)
+    contrast_b <- paste0("condition_factor", test_denom)
+    contrast[which(colnames(design1) == contrast_b)] <- -1
+    contrast[which(colnames(design1) == contrast_a)] <- 1
+
+    contrast <- matrix(contrast, ncol = 1)
+    colnames(contrast) <- "Contrast1"
+
+    sumExp <- SummarizedExperiment(
+        assays = list(counts = countData),
+        colData = colData,
+        rowData = txInfo
+    )
+    sumExp <- satuRn::fitDTU(
+        object = sumExp,
+        formula = formula1,
+        verbose = FALSE
+    )
+    sumExp <- satuRn::testDTU(
+        object = sumExp,
+        contrasts = contrast,
+        diagplot1 = FALSE,
+        diagplot2 = FALSE,
+        sort = FALSE
+    )
+
+    res <- as.data.frame(rowData(sumExp)[["fitDTUResult_Contrast1"]])
+    res <- res[substr(rownames(res), 1, 4) == "Inc:",]
+    rownames(res) <- substr(rownames(res), 5, nchar(rownames(res)))
+    res.ASE <- as.data.table(cbind(
+        data.frame(EventName = rownames(res), stringsAsFactors = FALSE),
+        res
+    ))
+    setorderv(res.ASE, "pval")
+    res.ASE <- res.ASE[!is.na(get("estimates"))]
+    res.ASE[, c("log2estimates") := list(get("estimates") / log(2))]
+
+    rm(res, sumExp, countData)
+    gc()
+    return(res.ASE)
 }
 
 .ASE_add_diag <- function(res, se, test_factor, test_nom, test_denom) {

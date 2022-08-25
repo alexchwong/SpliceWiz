@@ -5,6 +5,7 @@
 \alias{ASE_limma}
 \alias{ASE_DESeq}
 \alias{ASE_DoubleExpSeq}
+\alias{ASE_satuRn}
 \title{Differential Alternative Splicing Event analysis}
 \usage{
 ASE_limma(
@@ -35,6 +36,17 @@ ASE_DoubleExpSeq(
   test_factor,
   test_nom,
   test_denom,
+  filter_antiover = TRUE,
+  filter_antinear = FALSE
+)
+
+ASE_satuRn(
+  se,
+  test_factor,
+  test_nom,
+  test_denom,
+  batch1 = "",
+  batch2 = "",
   filter_antiover = TRUE,
   filter_antinear = FALSE
 )
@@ -100,6 +112,16 @@ DESeq2 results for differential testing for
 raw included / excluded counts only
 }
 
+\strong{satuRn specific output}
+\itemize{
+\item estimates, se, df, t, pval, regular_FDR:
+estimated log-odds ratio, standard error, degrees of freedom, (Wald) t
+statistic, nominal p-value and associated false discovery rate
+\item empirical_pval, empirical_FDR: nominal p value and associated FDR
+computed by estimating the null distribution of the test statistic
+empirically (by satuRn).
+}
+
 \strong{DoubleExp specific output}
 \itemize{
 \item MLE_nom, MLE_denom: Maximum likelihood expectation of PSI values for the
@@ -113,8 +135,8 @@ full models. See \link[DoubleExpSeq:DBGLM1]{DoubleExpSeq::DBGLM1} for details.
 }
 }
 \description{
-Use Limma, DESeq2 or DoubleExpSeq wrapper functions to test for differential
-Alternative Splice Events
+Use Limma, DESeq2, DoubleExpSeq and satuRn wrapper functions to test for
+differential Alternative Splice Events (ASEs)
 }
 \details{
 Using \strong{limma}, SpliceWiz models included and excluded counts as log-normal
@@ -138,9 +160,12 @@ time series differential analysis, run \code{ASE_DESeq()} specifying \code{test_
 as the column of numeric values containing time series data. The \code{test_nom}
 and \code{test_denom} parameters must be left blank. See example below.
 
-Using \strong{DoubleExpSeq}, included and excluded counts are modelled using
+Using \strong{DoubleExpSeq}, included and excluded counts are modeled using
 the generalized beta prime distribution, using empirical Bayes shrinkage
 to estimate dispersion.
+
+Using \strong{satuRn}, included and excluded counts are modeled using
+the quasi-binomial distribution in a generalised linear model.
 
 \strong{EventType} are as follow:
 \itemize{
@@ -194,19 +219,27 @@ a filtered NxtSE object
 \item \code{ASE_DoubleExpSeq}: Use DoubleExpSeq to perform differential ASE analysis
 of a filtered NxtSE object (uses double exponential beta-binomial model)
 to estimate group dispersions, followed by LRT
+
+\item \code{ASE_satuRn}: Use satuRn to perform differential ASE analysis of
+a filtered NxtSE object
 }}
 
 \examples{
-# see ?makeSE on example code of generating this NxtSE object
+# Load the NxtSE object and set up the annotations
+# - see ?makeSE on example code of generating this NxtSE object
 se <- SpliceWiz_example_NxtSE()
 
 colData(se)$treatment <- rep(c("A", "B"), each = 3)
+colData(se)$replicate <- rep(c("P","Q","R"), 2)
 
 require("limma")
 res_limma <- ASE_limma(se, "treatment", "A", "B")
 
 require("DoubleExpSeq")
 res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
+
+require("satuRn")
+res_sat <- ASE_satuRn(se, "treatment", "A", "B")
 
 require("DESeq2")
 res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")
@@ -232,4 +265,9 @@ Ruddy S, Johnson M, Purdom E (2016). 'Shrinkage of dispersion parameters in
 the binomial family, with application to differential exon skipping.'
 Ann. Appl. Stat. 10(2): 690-725.
 \url{https://doi.org/10.1214/15-AOAS871}
+
+Gilis J, Vitting-Seerup K, Van den Berge K, Clement L (2021). 'Scalable
+analysis of differential transcript usage for bulk and single-cell
+RNA-sequencing applications.' F1000Research 2021, 10:374.
+\url{https://doi.org/10.12688/f1000research.51749.1}
 }

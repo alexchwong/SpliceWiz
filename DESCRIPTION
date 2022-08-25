@@ -60,7 +60,8 @@ Imports:
 	XML
 Suggests: 
     knitr, rmarkdown, openssl, crayon, egg,
-    DESeq2, limma, DoubleExpSeq, Rsubread, testthat (>= 3.0.0)
+    DESeq2, limma, DoubleExpSeq, satuRn,
+    Rsubread, testthat (>= 3.0.0)
 LinkingTo: 
     ompBAM,
     Rcpp,

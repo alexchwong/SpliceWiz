@@ -1064,6 +1064,8 @@ collateData <- function(Experiment, reference_path, output_path,
     junc.novel <- junc.novel[at_least_one_end]
 
     n_trans <- nrow(junc.novel)
+    if(n_trans < 1) return(NULL)
+    
     gr_novel_leftExon <- with(junc.novel, GRanges(seqnames = seqnames,
       ranges = IRanges(start = start - 50, end = start - 1),
       strand = strand))
@@ -1130,6 +1132,8 @@ collateData <- function(Experiment, reference_path, output_path,
         "annotation", "tj.common.annotated.fst")))
     
     n_trans <- nrow(tj.novel)
+    if(n_trans < 1) return(NULL)
+    
     gr_novel_leftExon <- with(tj.novel, GRanges(seqnames = seqnames,
       ranges = IRanges(start = start1 - 50, end = start1 - 1),
       strand = strand))

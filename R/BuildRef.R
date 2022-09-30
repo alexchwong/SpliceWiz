@@ -2643,31 +2643,36 @@ Get_GTF_file <- function(reference_path) {
         UTR5$transcript_id
     ))
     UTR5.introns <- as.data.table(UTR5.introns)
+    setnames(UTR5.introns, "group_name", "transcript_id")
+    
     UTR3 <- Misc[get("type") == "three_prime_utr"]
     UTR3.introns <- .grlGaps(split(
         makeGRangesFromDataFrame(as.data.frame(UTR3)),
         UTR3$transcript_id
     ))
     UTR3.introns <- as.data.table(UTR3.introns)
+    setnames(UTR3.introns, "group_name", "transcript_id")
 
     CDS.introns <- .grlGaps(split(
         makeGRangesFromDataFrame(as.data.frame(Exons.tr)),
         Exons.tr$transcript_id
     ))
     CDS.introns <- as.data.table(CDS.introns)
+    setnames(CDS.introns, "group_name", "transcript_id")
 
+    protein.introns[CDS.introns,
+        on = c("seqnames", "start", "end", "strand", "transcript_id"),
+        c("intron_type") := "CDS"
+    ]
     protein.introns[UTR5.introns,
-        on = c("seqnames", "start", "end", "strand"),
+        on = c("seqnames", "start", "end", "strand", "transcript_id"),
         c("intron_type") := "UTR5"
     ]
     protein.introns[UTR3.introns,
-        on = c("seqnames", "start", "end", "strand"),
+        on = c("seqnames", "start", "end", "strand", "transcript_id"),
         c("intron_type") := "UTR3"
     ]
-    protein.introns[CDS.introns,
-        on = c("seqnames", "start", "end", "strand"),
-        c("intron_type") := "CDS"
-    ]
+
     return(protein.introns)
 }
 

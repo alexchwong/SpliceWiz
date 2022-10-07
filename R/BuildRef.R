@@ -626,17 +626,14 @@ Get_GTF_file <- function(reference_path) {
                     genome_type, as_type = "bed.gz", 
                     path = map_path, overwrite = TRUE
                 )
-            }, error = function(e) NULL
+            }, error = function(e) {
+                message(e)
+                NULL
+            }
         )
         if(!is.null(map.gz)) {
             MappabilityFile <- .parse_valid_file(map.gz, verbose = verbose)
         } else {
-            .log(paste(
-                "Could not find Mappability Exclusion annotation from",
-                "ExperimentHub. Please ensure Bioconductor is updated to",
-                "version 3.14 or above. Alternatively, type",
-                "?buildRef for a link to the github repository containing",
-                "the required resource."))
             MappabilityFile <- ""
         }
     } else {
@@ -689,8 +686,9 @@ Get_GTF_file <- function(reference_path) {
     if (is_valid(filename)) {
         is_RDS <- FALSE
         tryCatch({
-                readRDS(filename)
-                is_RDS <- TRUE
+                x <- readRDS(filename)
+                # Check if file is an RDS of a GRanges file
+                if(is(x, "GenomicRanges")) is_RDS <- TRUE
             }, error = function(e) NULL
         )
         if(!is_RDS) {

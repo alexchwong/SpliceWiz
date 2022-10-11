@@ -635,6 +635,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         colData = .DESeq_colData_sanitise(colData),
         design = as.formula(dds_formula)
     )
+    sizeFactors(dds) <- 1
     message("ASE_DESeq: Profiling differential ASE")
     if(!is_valid(test_nom) | !is_valid(test_denom)) {
         dds <- DESeq2::DESeq(dds, test = "LRT",

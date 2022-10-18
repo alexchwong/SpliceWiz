@@ -21,6 +21,7 @@ plotCoverage(
   track_names = tracks,
   condition,
   selected_transcripts,
+  plotJunctions = FALSE,
   plot_involved_transcripts = FALSE,
   condense_tracks = FALSE,
   stack_tracks = FALSE,
@@ -95,6 +96,11 @@ names of individual samples.}
 or transcript names of transcripts
 to be displayed on the gene annotation track. Useful to remove minor
 isoforms that are not relevant to the samples being displayed.}
+
+\item{plotJunctions}{(default \code{FALSE}) If \code{TRUE}, sashimi plot junction arcs
+are plotted. Currently only implemented for plots of individual samples.
+Values are not strand-specific (i.e. they may come from split reads from
+either strand)}
 
 \item{plot_involved_transcripts}{(default \code{FALSE}) If \code{TRUE}, only
 transcripts involved in the selected \code{Event} or pair of \code{Event}s will be

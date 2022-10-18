@@ -82,6 +82,10 @@
 #'   or transcript names of transcripts
 #'   to be displayed on the gene annotation track. Useful to remove minor
 #'   isoforms that are not relevant to the samples being displayed.
+#' @param plotJunctions (default `FALSE`) If `TRUE`, sashimi plot junction arcs
+#'   are plotted. Currently only implemented for plots of individual samples.
+#'   Values are not strand-specific (i.e. they may come from split reads from
+#'   either strand)
 #' @param plot_involved_transcripts (default `FALSE`) If `TRUE`, only 
 #'   transcripts involved in the selected `Event` or pair of `Event`s will be
 #'   displayed.
@@ -181,6 +185,7 @@ plotCoverage <- function(
         track_names = tracks,
         condition,
         selected_transcripts,
+        plotJunctions = FALSE,
         plot_involved_transcripts = FALSE,
         condense_tracks = FALSE,
         stack_tracks = FALSE,
@@ -231,7 +236,8 @@ plotCoverage <- function(
         stack_tracks = stack_tracks,
         plot_involved_transcripts = plot_involved_transcripts,
         graph_mode = "Pan", conf.int = 0.95,
-        t_test = t_test, condensed = condense_tracks
+        t_test = t_test, condensed = condense_tracks,
+        plotJunctions = plotJunctions
     )
     if (norm_event != "")
         args[["highlight_events"]] <- 
@@ -952,7 +958,8 @@ getCoverageBins <- function(file, region, bins = 2000,
     transcripts, elems, highlight_events = "", selected_transcripts = "",
     plot_involved_transcripts = FALSE,
     stack_tracks, graph_mode, conf.int = 0.95,
-    t_test = FALSE, condensed = FALSE
+    t_test = FALSE, condensed = FALSE,
+    plotJunctions = FALSE
 ) {
     args <- as.list(match.call())
     if (is.null(track_names)) args$track_names <- unlist(tracks)
@@ -1518,6 +1525,10 @@ determine_compatible_events <- function(
     cur_zoom <- floor(log((view_end - view_start) / 50) / log(3))
     gp_track <- pl_track <- list()
     data.list <- list()
+    junc_df <- .plot_cov_fn_indiv_retrieve_jn(
+        view_chr, view_start, view_end, view_strand,
+        unlist(tracks), ...
+    )
     for (i in seq_len(4)) {
         if (length(tracks) >= i && is_valid(tracks[[i]])) {
             track_samples <- tracks[[i]]
@@ -1527,15 +1538,36 @@ determine_compatible_events <- function(
                 df <- .internal_get_coverage_as_df("sample", filename,
                     view_chr, view_start, view_end, view_strand)
                 df <- bin_df(df, max(1, 3^(cur_zoom - 4)))
+                dfJn <- .plot_cov_fn_indiv_make_jn_arcs(df, junc_df, 
+                    track_samples, 0.1 * max(df$sample))
+                dtJn <- as.data.table(dfJn)
+                dtJn[, c("xlabel", "ylabel") := list(
+                    mean(get("x")), mean(get("y"))), 
+                    by = c("junction", "value")
+                ]
+                dtJn <- unique(dtJn[, 
+                    c("junction", "value", "xlabel", "ylabel"), with = FALSE])
+                dfJnSum <- as.data.frame(dtJn)
                 data.list[[i]] <- as.data.table(df)
                 if ("sample" %in% colnames(df)) {
-                    gp_track[[i]] <- ggplot() +
-                    geom_hline(yintercept = 0) +
-                    geom_line(data = df,
-                        aes(x = get("x"), y = get("sample"))) +
-                    theme_white_legend
+                    # df$label <- paste0(df$x, ": ", df$sample)
+                    gp_track[[i]] <- ggplot(df, 
+                            aes_string(x = "x", y = "sample")) +
+                        geom_hline(yintercept = 0) +
+                        geom_line() +
+                        theme_white_legend
+                    if(is(dfJn, "data.frame")) {
+                        gp_track[[i]] <- gp_track[[i]] +
+                            geom_line(data = dfJn, 
+                                aes_string(x = "x", y = "yarc",
+                                    group = "junction"), 
+                                    color = "darkred") +
+                            geom_text(data = dfJnSum, 
+                                aes_string(x = "xlabel", y = "ylabel",
+                                    label = "value"))
+                    }
                     pl_track[[i]] <- ggplotly(gp_track[[i]],
-                        tooltip = c("x", "y")
+                        tooltip = c("x", "y", "group")
                     )
                     pl_track[[i]] <- pl_track[[i]] %>% layout(
                         yaxis = list(
@@ -1561,6 +1593,82 @@ determine_compatible_events <- function(
     return(list(
         gp_track = gp_track, pl_track = pl_track
     ))
+}
+
+.plot_cov_fn_indiv_retrieve_jn <- function(
+        view_chr, view_start, view_end, view_strand,
+        samples_to_get,
+        se = NULL,
+        plotJunctions = FALSE,
+        ...
+) {
+    if(plotJunctions) {
+        gr_select <- GRanges(view_chr, 
+            IRanges(view_start, view_end), view_strand)
+        OL <- findOverlaps(junc_gr(se), gr_select)
+        junc_counts_select  <- as.data.frame(junc_counts(se)[
+            unique(from(OL)),samples_to_get])
+        
+        # Unstrand junction counts summation
+        if(view_strand == "*") {
+            junc_counts_select$rownames <- substr(rownames(junc_counts_select), 1, 
+                nchar(rownames(junc_counts_select )) - 2)
+            junc_counts_select <- as.data.table(junc_counts_select)
+            junc_counts_select <- junc_counts_select[, 
+                lapply(.SD, sum, na.rm=TRUE), by = "rownames",
+                .SDcols = samples_to_get]  
+        } else {
+            junc_counts_select$rownames <- rownames(junc_counts_select)
+            junc_counts_select <- as.data.table(junc_counts_select)
+        }
+        final <- as.data.frame(junc_counts_select[, samples_to_get, 
+            with = FALSE])
+        rownames(final) <- junc_counts_select$rownames
+        return(final)
+    } else {
+        return(NA)
+    }
+}
+
+.plot_cov_fn_indiv_make_jn_arcs <- function(
+        df, junc_df, sample,
+        arcHeight = 0,
+        juncThreshold = 0.01
+) {
+    if(!is(junc_df, "data.frame")) return(NA)
+    junc_df_indiv <- junc_df[, sample, drop = FALSE]
+    colnames(junc_df_indiv) <- "juncVal"
+    
+    gr <- coord2GR(rownames(junc_df_indiv))
+    junc_df_indiv$juncStart <- start(gr)
+    junc_df_indiv$juncEnd <- end(gr)
+    
+    df$lead <- data.table::shift(df$sample, type = "lead")
+    df$lag <- data.table::shift(df$sample, type = "lag")
+    df$max <- rowMaxs(as.matrix(df[, c("sample", "lead", "lag")]),
+        na.rm = TRUE)
+    df$max[is.na(df$max)] <- 0
+    
+    maxY <- max(df$sample)
+    final <- c()
+    for(i in seq_len(nrow(junc_df_indiv))) {
+        if(junc_df_indiv$juncVal[i] > juncThreshold * maxY) {
+            leftY <- df$max[
+                which.min(abs(df$x - junc_df_indiv$juncStart[i]))]
+            rightY <- df$max[
+                which.min(abs(df$x - junc_df_indiv$juncEnd[i]))]
+            outdf <- data.frame(
+                x = seq(junc_df_indiv$juncStart[i], junc_df_indiv$juncEnd[i],
+                    length.out = 90),
+                y = seq(leftY, rightY, length.out = 90)
+            )
+            outdf$yarc <- outdf$y + sinpi(seq(0,1,length.out = 90)) * arcHeight
+            outdf$junction <- rownames(junc_df_indiv)[i]
+            outdf$value <- junc_df_indiv$juncVal[i]
+            final <- rbind(final, outdf)
+        }
+    }
+    return(final)
 }
 
 # Combine multiple tracks into a plotly plot

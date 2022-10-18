@@ -52,6 +52,9 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
     covfile(out) <- se@metadata[["cov_file"]]
     sampleQC(out) <- se@metadata[["sampleQC"]]
     ref(out) <- se@metadata[["ref"]]
+    junc_PSI(out) <- se@metadata[["junc_PSI"]]
+    junc_counts(out) <- se@metadata[["junc_counts"]]
+    junc_gr(out) <- se@metadata[["junc_gr"]]
 
     # Restore validity
     if (!isTRUE(old)) {
@@ -323,11 +326,33 @@ setMethod("ref", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     x@metadata[["ref"]]
 })
 
+#' @describeIn NxtSE-class Getter for junction PSI DelayedMatrix; 
+#' primarily used in plotCoverage()
+#' @export
+setMethod("junc_PSI", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
+    x@metadata[["junc_PSI"]]
+})
+
+#' @describeIn NxtSE-class Getter for junction counts DelayedMatrix; 
+#' primarily used in plotCoverage()
+#' @export
+setMethod("junc_counts", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
+    x@metadata[["junc_counts"]]
+})
+
+#' @describeIn NxtSE-class Getter for junction GenomicRanges coordinates; 
+#' primarily used in plotCoverage()
+#' @export
+setMethod("junc_gr", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
+    x@metadata[["junc_gr"]]
+})
+
 #' @describeIn NxtSE-class Converts all DelayedMatrix assays as matrices
 #'   (i.e. performs all delayed calculation and loads resulting object
 #'   to RAM)
 #' @export
-setMethod("realize_NxtSE", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
+setMethod("realize_NxtSE", c("NxtSE"), function(x, includeJunctions = FALSE,
+        withDimnames = TRUE, ...) {
     assay.todo <- c("Included", "Excluded", "Depth", "Coverage",
         "minDepth")
     for (assayname in assay.todo) {
@@ -337,6 +362,12 @@ setMethod("realize_NxtSE", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     down_inc(x, FALSE) <- as.matrix(x@metadata[["Down_Inc"]])
     up_exc(x, FALSE) <- as.matrix(x@metadata[["Up_Exc"]])
     down_exc(x, FALSE) <- as.matrix(x@metadata[["Down_Exc"]])
+
+    # New: also realize junc_PSI and junc_counts
+    if(includeJunctions) {
+        junc_PSI(x) <- as.matrix(x@metadata[["junc_PSI"]])
+        junc_counts(x) <- as.matrix(x@metadata[["junc_counts"]])    
+    }
     return(x)
 })
 
@@ -429,6 +460,24 @@ setReplaceMethod("ref", c("NxtSE"), function(x, value)
     x
 })
 
+setReplaceMethod("junc_PSI", c("NxtSE"), function(x, value)
+{
+    x@metadata[["junc_PSI"]] <- value
+    x
+})
+
+setReplaceMethod("junc_counts", c("NxtSE"), function(x, value)
+{
+    x@metadata[["junc_counts"]] <- value
+    x
+})
+
+setReplaceMethod("junc_gr", c("NxtSE"), function(x, value)
+{
+    x@metadata[["junc_gr"]] <- value
+    x
+})
+
 ################################ SUBSETTERS ####################################
 
 #' @describeIn NxtSE-class Subsets a NxtSE object
@@ -471,6 +520,8 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
             down_exc(x, FALSE)[events_Exc, samples, drop = dontDrop]
         covfile(x, FALSE) <- covfile(x, FALSE)[samples]
         sampleQC(x, FALSE) <- sampleQC(x, FALSE)[samples, , drop = FALSE]
+        junc_PSI(x, FALSE) <- junc_PSI(x, FALSE)[, samples, drop = FALSE]
+        junc_counts(x, FALSE) <- junc_counts(x, FALSE)[, samples, drop = FALSE]
     } else if (!missing(i)) {
         events <- rownames(x)[ii]
         events_Inc <- events[events %in% rownames(metadata(x)[["Up_Inc"]])]
@@ -496,6 +547,8 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
         down_exc(x, FALSE) <- down_exc(x, FALSE)[, samples, drop = dontDrop]
         covfile(x, FALSE) <- covfile(x, FALSE)[samples]
         sampleQC(x, FALSE) <- sampleQC(x, FALSE)[samples, , drop = FALSE]
+        junc_PSI(x, FALSE) <- junc_PSI(x, FALSE)[, samples, drop = FALSE]
+        junc_counts(x, FALSE) <- junc_counts(x, FALSE)[, samples, drop = FALSE]
     }
     callNextMethod()
 
@@ -520,6 +573,8 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         down_exc(x, FALSE)[events_Exc, samples] <- down_exc(value, FALSE)
         covfile(x)[samples] <- covfile(value)
         sampleQC(x)[samples, ] <- sampleQC(value)
+        junc_PSI(x, FALSE)[, samples] <- junc_PSI(value)
+        junc_counts(x, FALSE)[, samples] <- junc_counts(value)
     } else if (!missing(i)) {
         events <- rownames(x)[i]
         events_Inc <- events[events %in% rownames(metadata(x)[["Up_Inc"]])]
@@ -537,6 +592,8 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         down_exc(x, FALSE)[, samples] <- down_exc(value, FALSE)
         covfile(x)[samples] <- covfile(value)
         sampleQC(x)[samples, ] <- sampleQC(value)
+        junc_PSI(x, FALSE)[, samples] <- junc_PSI(value)
+        junc_counts(x, FALSE)[, samples] <- junc_counts(value)
     }
 
     callNextMethod()
@@ -594,6 +651,24 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
+        metadata$junc_PSI <- do.call(cbind, lapply(args, junc_PSI, 
+            withDimnames = FALSE))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'junc_PSI' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_counts <- do.call(cbind, lapply(args, junc_counts, 
+            withDimnames = FALSE))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'junc_counts' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
         metadata$cov_file <- do.call(c, lapply(args, covfile))
     }, error = function(err) {
         stop(
@@ -617,6 +692,30 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+    tryCatch({
+        metadata$junc_PSI <- junc_PSI(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'cov_file' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_counts <- junc_counts(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'cov_file' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_gr <- junc_gr(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'cov_file' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })    
     BG_replaceSlots(out, metadata = metadata, check = FALSE)
 })
 
@@ -692,5 +791,29 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+    tryCatch({
+        metadata$junc_PSI <- junc_PSI(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'cov_file' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_counts <- junc_counts(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'cov_file' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_gr <- junc_gr(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'cov_file' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })    
     BG_replaceSlots(out, metadata = metadata, check = FALSE)
 })

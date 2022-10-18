@@ -107,8 +107,4 @@ covfile_df <- findSamples(covfile_path, ".cov")
 
 covfile(se) <- covfile_df$path
 
-# Check that the produced object is identical to the example NxtSE
-
-example_se <- SpliceWiz_example_NxtSE()
-identical(se, example_se) # should return TRUE
 }

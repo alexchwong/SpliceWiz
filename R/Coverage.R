@@ -1540,19 +1540,23 @@ determine_compatible_events <- function(
                 df <- bin_df(df, max(1, 3^(cur_zoom - 4)))
                 dfJn <- .plot_cov_fn_indiv_make_jn_arcs(df, junc_df, 
                     track_samples, 0.1 * max(df$sample))
-                dtJn <- as.data.table(dfJn)
-                dtJn[, c("xlabel", "ylabel") := list(
-                    mean(get("x")), mean(get("y"))), 
-                    by = c("junction", "value")
-                ]
-                dtJn <- unique(dtJn[, 
-                    c("junction", "value", "xlabel", "ylabel"), with = FALSE])
-                dfJnSum <- as.data.frame(dtJn)
+                if(is(dfJn, "data.frame")) {
+                    dtJn <- as.data.table(dfJn)
+                    dtJn[, c("xlabel", "ylabel") := list(
+                        mean(get("x")), mean(get("y"))), 
+                        by = c("junction", "value")
+                    ]
+                    dtJn <- unique(dtJn[, 
+                        c("junction", "value", "xlabel", "ylabel"), with = FALSE])
+                    dfJnSum <- as.data.frame(dtJn)                
+                } else {
+                    dfJnSum <- NA
+                }
                 data.list[[i]] <- as.data.table(df)
                 if ("sample" %in% colnames(df)) {
-                    # df$label <- paste0(df$x, ": ", df$sample)
+                    df$label <- paste0(df$x, ": ", df$sample)
                     gp_track[[i]] <- ggplot(df, 
-                            aes_string(x = "x", y = "sample")) +
+                        aes_string(x = "x", y = "sample", label = "label")) +
                         geom_hline(yintercept = 0) +
                         geom_line() +
                         theme_white_legend
@@ -1560,14 +1564,14 @@ determine_compatible_events <- function(
                         gp_track[[i]] <- gp_track[[i]] +
                             geom_line(data = dfJn, 
                                 aes_string(x = "x", y = "yarc",
-                                    group = "junction"), 
+                                    group = "junction", label = "junction"), 
                                     color = "darkred") +
                             geom_text(data = dfJnSum, 
                                 aes_string(x = "xlabel", y = "ylabel",
                                     label = "value"))
                     }
                     pl_track[[i]] <- ggplotly(gp_track[[i]],
-                        tooltip = c("x", "y", "group")
+                        tooltip = c("label")
                     )
                     pl_track[[i]] <- pl_track[[i]] %>% layout(
                         yaxis = list(

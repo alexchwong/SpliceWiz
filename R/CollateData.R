@@ -2425,6 +2425,13 @@ collateData <- function(Experiment, reference_path, output_path,
     rownames(se@metadata[["junc_counts"]]) <- junc_gr_df$Event
     se@metadata[["junc_gr"]] <- .grDT(junc_gr_df)
 
+    colnames(metadata(se)$Up_Inc) <- colData$sample
+    colnames(metadata(se)$Down_Inc) <- colData$sample
+    colnames(metadata(se)$Up_Exc) <- colData$sample
+    colnames(metadata(se)$Down_Exc) <- colData$sample
+    colnames(metadata(se)$junc_PSI) <- colData$sample
+    colnames(metadata(se)$junc_counts) <- colData$sample
+    
     colData.Rds <- readRDS(file.path(collate_path, "colData.Rds"))
     if ("df.files" %in% names(colData.Rds) &&
         "cov_file" %in% colnames(colData.Rds$df.files)) {

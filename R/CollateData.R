@@ -2156,18 +2156,18 @@ collateData <- function(Experiment, reference_path, output_path,
     h5filename <- file.path(norm_output_path, "data.h5")
     assays <- list()
     for (assay in assay.todo) {
-        h5writeDimnames(list(rowname_lists$EventName, df.internal$sample),
-            h5filename, assay)
+        # h5writeDimnames(list(rowname_lists$EventName, df.internal$sample),
+            # h5filename, assay)
         assays[[assay]] <- HDF5Array(h5filename, assay)
     }
     for (inc in inc.todo) {
-        h5writeDimnames(list(rowname_lists$Inc_Events, df.internal$sample),
-            h5filename, inc)
+        # h5writeDimnames(list(rowname_lists$Inc_Events, df.internal$sample),
+            # h5filename, inc)
         assays[[inc]] <- HDF5Array(h5filename, inc)
     }
     for (exc in exc.todo) {
-        h5writeDimnames(list(rowname_lists$Exc_Events, df.internal$sample),
-            h5filename, exc)
+        # h5writeDimnames(list(rowname_lists$Exc_Events, df.internal$sample),
+            # h5filename, exc)
         assays[[exc]] <- HDF5Array(h5filename, exc)
     }
     
@@ -2177,8 +2177,8 @@ collateData <- function(Experiment, reference_path, output_path,
             "The H5 file chunk size is already optimized."
         ), "message")
     for (junc in junc.todo) {
-        h5writeDimnames(list(rowname_lists$junc_rownames, df.internal$sample),
-            h5filename, junc)
+        # h5writeDimnames(list(rowname_lists$junc_rownames, df.internal$sample),
+            # h5filename, junc)
         assays[[junc]] <- HDF5Array(h5filename, junc)
     }
     return(assays)

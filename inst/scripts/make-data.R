@@ -53,7 +53,7 @@ make_example_NxtSE <- function() {
     covfile(se) <- rep("", 6)
     
     # Convert from HDF5-linked se to in-memory se:
-    se <- realize_NxtSE(se)
+    se <- realize_NxtSE(se, includeJunctions = TRUE)
     
     saveRDS(se, "../extdata/example_NxtSE.Rds")
 
@@ -71,7 +71,7 @@ make_example_NxtSE <- function() {
     covfile(se) <- rep("", 6)
     
     # Convert from HDF5-linked se to in-memory se:
-    se <- realize_NxtSE(se)
+    se <- realize_NxtSE(se, includeJunctions = TRUE)
     
     saveRDS(se, "../extdata/example_NxtSE_novel.Rds")
 }

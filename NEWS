@@ -1,3 +1,19 @@
+Changes in version 0.99.4 (2022-10-19)
++ New feature: plotCoverage now implements junction counts (sashimi plot style).
+Currently it is only implemented for plotting tracks of individual samples
++ NxtSE object now has 3 getter functions junc_PSI(), junc_counts() and
+junc_gr() for getting (prelim) PSIs, counts and GRanges of junction counts.
+The first two are DelayedMatrices linked using the makeSE() function. These
+matrices are never subsetted by row but only by column. Furthermore, they are
+only realized as on-memory matrices upon calling realize_NxtSE() and setting
+`includeJunctions = TRUE`
++ Bugfix: ASE_DESeq2: previously, inclusion / exclusion counts were normalised
+prior to differential analysis using DESeq2. This is now fixed by specifying
+sizefilters() <- 1
++ Bugfix: NMD data for introns - some 3'-UTR introns were mislabeled as CDS 
+introns - now fixed
++ BUGFIX: fixed errors in ALE reference generation for novel reference
+
 Changes in version 0.99.3 (2022-08-24)
 + Added support for novel splicing
   + This includes modifying the buildRef and (C++-internal) processBAM functions

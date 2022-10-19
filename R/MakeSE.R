@@ -95,10 +95,6 @@
 #'
 #' covfile(se) <- covfile_df$path
 #'
-#' # Check that the produced object is identical to the example NxtSE
-#'
-#' example_se <- SpliceWiz_example_NxtSE()
-#' identical(se, example_se) # should return TRUE
 #' @md
 #' @export
 makeSE <- function(
@@ -128,6 +124,15 @@ makeSE <- function(
     } else {
         se@metadata[["cov_file"]] <- normalizePath(covfiles)
     }
+
+    # New: add junc_PSI and junc_counts as DelayedMatrices
+    se@metadata[["junc_PSI"]] <- HDF5Array(
+        file.path(normalizePath(collate_path),
+        "data.h5"), "junc_PSI")[, colnames(se), drop = FALSE]
+    se@metadata[["junc_counts"]] <- HDF5Array(
+        file.path(normalizePath(collate_path),
+        "data.h5"), "junc_counts")[, colnames(se), drop = FALSE]
+    se@metadata[["junc_gr"]] <- coord2GR(rownames(se@metadata[["junc_PSI"]]))
 
     # Encapsulate as NxtSE object
     se <- as(se, "NxtSE")

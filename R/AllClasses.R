@@ -17,6 +17,9 @@
 #' @param value The value to replace. Must be a matrix for the 
 #'   up_inc<-, down_inc<-, up_exc<- and down_exc<- replacers, 
 #'   and a character vector for covfile<-
+#' @param includeJunctions When realizing a NxtSE object, include whether
+#'   junction counts and PSIs should be realized into memory. Not recommended
+#'   for general use, as they are only used for coverage plots.
 #' @return See Functions section (below) for details
 #' @examples
 #'
@@ -111,6 +114,9 @@
 #' sampleQC sampleQC,NxtSE-method
 #' sampleQC<- sampleQC<-,NxtSE-method
 #' ref ref,NxtSE-method
+#' junc_PSI junc_PSI,NxtSE-method
+#' junc_counts junc_counts,NxtSE-method
+#' junc_gr junc_gr,NxtSE-method
 #' realize_NxtSE realize_NxtSE,NxtSE-method
 #' coerce,SummarizedExperiment,NxtSE-method
 #' @md

@@ -47,7 +47,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         # Choose mappability file
         observe({  
             shinyFileChoose(input, "file_mappa", roots = volumes(), 
-                session = session, filetypes = c("bed", "txt", "gz"))
+                session = session, filetypes = c("bed", "txt", "gz", "rds"))
             if(!is.null(input$file_mappa)){
                 # updateSelectInput(session = session, 
                     # inputId = "newref_genome_type", 
@@ -385,6 +385,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         temp <- get_mappability_exclusion(
             genome_type, as_type = "bed", path)
     }, error = function(e) {
+        message(e)
         temp <- ""
     })
     if(file.exists(temp)) {

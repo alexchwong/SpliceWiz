@@ -41,7 +41,9 @@ setGeneric("assayNames<-",
 # NxtSE specific functions:
 
 setGeneric("realize_NxtSE", 
-    function(x, withDimnames=TRUE, ...) standardGeneric("realize_NxtSE"))
+    function(x, includeJunctions = FALSE, withDimnames=TRUE, ...)
+    standardGeneric("realize_NxtSE"))
+
 
 setGeneric("up_inc", 
     function(x, withDimnames=TRUE, ...) standardGeneric("up_inc"))
@@ -64,6 +66,15 @@ setGeneric("sampleQC",
 setGeneric("ref", 
     function(x, withDimnames=TRUE, ...) standardGeneric("ref"))
 
+setGeneric("junc_PSI", 
+    function(x, withDimnames=TRUE, ...) standardGeneric("junc_PSI"))
+
+setGeneric("junc_counts", 
+    function(x, withDimnames=TRUE, ...) standardGeneric("junc_counts"))
+
+setGeneric("junc_gr", 
+    function(x, withDimnames=TRUE, ...) standardGeneric("junc_gr"))
+
 setGeneric("up_inc<-",
     function(x, withDimnames=TRUE, ..., value) standardGeneric("up_inc<-"))
 
@@ -84,3 +95,12 @@ setGeneric("sampleQC<-",
     
 setGeneric("ref<-",
     function(x, withDimnames=TRUE, ..., value) standardGeneric("ref<-"))
+    
+setGeneric("junc_PSI<-",
+    function(x, withDimnames=TRUE, ..., value) standardGeneric("junc_PSI<-"))
+    
+setGeneric("junc_counts<-",
+    function(x, withDimnames=TRUE, ..., value) standardGeneric("junc_counts<-"))
+    
+setGeneric("junc_gr<-",
+    function(x, withDimnames=TRUE, ..., value) standardGeneric("junc_gr<-"))

@@ -881,14 +881,16 @@ collateData <- function(Experiment, reference_path, output_path,
     # Strand assignment based on annotated junctions
     
     # First remove any tandem junctions not in junc.common
-    jc_events <- with(junc.common, 
-        paste0(seqnames, ":", start, "-", end, "/", strand))
+    jc_events <- paste0(junc.common$seqnames, ":", 
+        junc.common$start, "-", junc.common$end, "/", junc.common$strand)
 
-    jc_events_unstranded <- with(junc.common, 
-        paste0(seqnames, ":", start, "-", end))
+    jc_events_unstranded <- paste0(junc.common$seqnames, ":", 
+        junc.common$start, "-", junc.common$end)
     
-    tj_event1 <- with(tj.common, paste0(seqnames, ":", start1, "-", end1))
-    tj_event2 <- with(tj.common, paste0(seqnames, ":", start2, "-", end2))
+    tj_event1 <- paste0(tj.common$seqnames, ":", 
+        tj.common$start1, "-", tj.common$end1)
+    tj_event2 <- paste0(tj.common$seqnames, ":", 
+        tj.common$start2, "-", tj.common$end2)
     
     tj.common <- tj.common[tj_event1 %in% jc_events_unstranded &
         tj_event2 %in% jc_events_unstranded]
@@ -899,8 +901,10 @@ collateData <- function(Experiment, reference_path, output_path,
         strand = junc.common$strand
     )
 
-    tj_event1 <- with(tj.common, paste0(seqnames, ":", start1, "-", end1))
-    tj_event2 <- with(tj.common, paste0(seqnames, ":", start2, "-", end2))
+    tj_event1 <- paste0(tj.common$seqnames, ":", 
+        tj.common$start1, "-", tj.common$end1)
+    tj_event2 <- paste0(tj.common$seqnames, ":", 
+        tj.common$start2, "-", tj.common$end2)
     
     tj.strand <- as.data.table(data.frame(
         strand1 = jc.strand$strand[match(tj_event1, jc.strand$event)],
@@ -925,8 +929,8 @@ collateData <- function(Experiment, reference_path, output_path,
     skip_coord <- introns.skipcoord$skip_coord[
         !is.na(introns.skipcoord$skip_coord)]
     skip_coord <- unique(skip_coord)
-    tj_skip <- with(tj.common, paste0(seqnames, ":", 
-        start1, "-", end2, "/", strand))
+    tj_skip <- paste0(tj.common$seqnames, ":", 
+        tj.common$start1, "-", tj.common$end2, "/", tj.common$strand)
     
     tj.common <- tj.common[tj_skip %in% skip_coord | tj_skip %in% jc_events]
     
@@ -941,10 +945,10 @@ collateData <- function(Experiment, reference_path, output_path,
         as.data.table = TRUE
     )
     exons_brief <- unique(exons_brief)
-    exons_left <- with(exons_brief, paste0(seqnames, ":", start))
-    tj_exon_left <- with(tj.common, paste0(seqnames, ":", end1 + 1))
-    exons_right <- with(exons_brief, paste0(seqnames, ":", end))
-    tj_exon_right <- with(tj.common, paste0(seqnames, ":", start2 - 1))
+    exons_left <- paste0(exons_brief$seqnames, ":", exons_brief$start)
+    tj_exon_left <- paste0(tj.common$seqnames, ":", tj.common$end1 + 1)
+    exons_right <- paste0(exons_brief$seqnames, ":", exons_brief$end)
+    tj_exon_right <- paste0(tj.common$seqnames, ":", tj.common$start2 - 1)
     
     tj.common <- tj.common[!(tj_exon_left %in% exons_left) &
         !(tj_exon_right %in% exons_right)]
@@ -1064,6 +1068,8 @@ collateData <- function(Experiment, reference_path, output_path,
     junc.novel <- junc.novel[at_least_one_end]
 
     n_trans <- nrow(junc.novel)
+    if(n_trans < 1) return(NULL)
+    
     gr_novel_leftExon <- with(junc.novel, GRanges(seqnames = seqnames,
       ranges = IRanges(start = start - 50, end = start - 1),
       strand = strand))
@@ -1130,18 +1136,20 @@ collateData <- function(Experiment, reference_path, output_path,
         "annotation", "tj.common.annotated.fst")))
     
     n_trans <- nrow(tj.novel)
-    gr_novel_leftExon <- with(tj.novel, GRanges(seqnames = seqnames,
-      ranges = IRanges(start = start1 - 50, end = start1 - 1),
-      strand = strand))
-    gr_novel_middleExon <- with(tj.novel, GRanges(seqnames = seqnames,
-      ranges = IRanges(start = end1 + 1, end = start2 - 1),
-      strand = strand))
-    gr_novel_rightExon <- with(tj.novel, GRanges(seqnames = seqnames,
-      ranges = IRanges(start = end2 + 1, end = end2 + 50),
-      strand = strand))
-    gr_novel_transcript <- with(tj.novel, GRanges(seqnames = seqnames,
-      ranges = IRanges(start = start1 - 50, end = end2 + 50),
-      strand = strand))
+    if(n_trans < 1) return(NULL)
+    
+    gr_novel_leftExon <- GRanges(seqnames = tj.novel$seqnames,
+      ranges = IRanges(start = tj.novel$start1 - 50, end = tj.novel$start1 - 1),
+      strand = tj.novel$strand)
+    gr_novel_middleExon <- GRanges(seqnames = tj.novel$seqnames,
+      ranges = IRanges(start = tj.novel$end1 + 1, end = tj.novel$start2 - 1),
+      strand = tj.novel$strand)
+    gr_novel_rightExon <- GRanges(seqnames = tj.novel$seqnames,
+      ranges = IRanges(start = tj.novel$end2 + 1, end = tj.novel$end2 + 50),
+      strand = tj.novel$strand)
+    gr_novel_transcript <- GRanges(seqnames = tj.novel$seqnames,
+      ranges = IRanges(start = tj.novel$start1 - 50, end = tj.novel$end2 + 50),
+      strand = tj.novel$strand)
     gr_novel_gene <- gr_novel_transcript
 
     empty_mCol <- data.frame(matrix(ncol = ncol(mcols(gtf)), 

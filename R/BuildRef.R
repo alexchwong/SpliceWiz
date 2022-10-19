@@ -626,17 +626,14 @@ Get_GTF_file <- function(reference_path) {
                     genome_type, as_type = "bed.gz", 
                     path = map_path, overwrite = TRUE
                 )
-            }, error = function(e) NULL
+            }, error = function(e) {
+                message(e)
+                NULL
+            }
         )
         if(!is.null(map.gz)) {
             MappabilityFile <- .parse_valid_file(map.gz, verbose = verbose)
         } else {
-            .log(paste(
-                "Could not find Mappability Exclusion annotation from",
-                "ExperimentHub. Please ensure Bioconductor is updated to",
-                "version 3.14 or above. Alternatively, type",
-                "?buildRef for a link to the github repository containing",
-                "the required resource."))
             MappabilityFile <- ""
         }
     } else {
@@ -689,8 +686,9 @@ Get_GTF_file <- function(reference_path) {
     if (is_valid(filename)) {
         is_RDS <- FALSE
         tryCatch({
-                readRDS(filename)
-                is_RDS <- TRUE
+                x <- readRDS(filename)
+                # Check if file is an RDS of a GRanges file
+                if(is(x, "GenomicRanges")) is_RDS <- TRUE
             }, error = function(e) NULL
         )
         if(!is_RDS) {
@@ -2643,31 +2641,36 @@ Get_GTF_file <- function(reference_path) {
         UTR5$transcript_id
     ))
     UTR5.introns <- as.data.table(UTR5.introns)
+    setnames(UTR5.introns, "group_name", "transcript_id")
+    
     UTR3 <- Misc[get("type") == "three_prime_utr"]
     UTR3.introns <- .grlGaps(split(
         makeGRangesFromDataFrame(as.data.frame(UTR3)),
         UTR3$transcript_id
     ))
     UTR3.introns <- as.data.table(UTR3.introns)
+    setnames(UTR3.introns, "group_name", "transcript_id")
 
     CDS.introns <- .grlGaps(split(
         makeGRangesFromDataFrame(as.data.frame(Exons.tr)),
         Exons.tr$transcript_id
     ))
     CDS.introns <- as.data.table(CDS.introns)
+    setnames(CDS.introns, "group_name", "transcript_id")
 
+    protein.introns[CDS.introns,
+        on = c("seqnames", "start", "end", "strand", "transcript_id"),
+        c("intron_type") := "CDS"
+    ]
     protein.introns[UTR5.introns,
-        on = c("seqnames", "start", "end", "strand"),
+        on = c("seqnames", "start", "end", "strand", "transcript_id"),
         c("intron_type") := "UTR5"
     ]
     protein.introns[UTR3.introns,
-        on = c("seqnames", "start", "end", "strand"),
+        on = c("seqnames", "start", "end", "strand", "transcript_id"),
         c("intron_type") := "UTR3"
     ]
-    protein.introns[CDS.introns,
-        on = c("seqnames", "start", "end", "strand"),
-        c("intron_type") := "CDS"
-    ]
+
     return(protein.introns)
 }
 
@@ -3305,7 +3308,7 @@ Get_GTF_file <- function(reference_path) {
     introns_search_ALE <- candidate.introns[
         get("transcript_biotype") != "intron_novel_transcript"]
         
-    introns_search_ALE <- introns_search_ALE[candidate.introns[,
+    introns_search_ALE <- introns_search_ALE[introns_search_ALE[,
         .I[get("intron_number") == max(get("intron_number"))],
         by = "transcript_id"]$V1]
     introns_search_ALE_pos <- introns_search_ALE[get("strand") == "+"]

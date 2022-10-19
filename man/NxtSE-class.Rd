@@ -30,6 +30,12 @@
 \alias{sampleQC<-,NxtSE-method}
 \alias{ref}
 \alias{ref,NxtSE-method}
+\alias{junc_PSI}
+\alias{junc_PSI,NxtSE-method}
+\alias{junc_counts}
+\alias{junc_counts,NxtSE-method}
+\alias{junc_gr}
+\alias{junc_gr,NxtSE-method}
 \alias{realize_NxtSE}
 \alias{realize_NxtSE,NxtSE-method}
 \alias{coerce,SummarizedExperiment,NxtSE-method}
@@ -56,7 +62,13 @@ NxtSE(...)
 
 \S4method{ref}{NxtSE}(x, withDimnames = TRUE, ...)
 
-\S4method{realize_NxtSE}{NxtSE}(x, withDimnames = TRUE, ...)
+\S4method{junc_PSI}{NxtSE}(x, withDimnames = TRUE, ...)
+
+\S4method{junc_counts}{NxtSE}(x, withDimnames = TRUE, ...)
+
+\S4method{junc_gr}{NxtSE}(x, withDimnames = TRUE, ...)
+
+\S4method{realize_NxtSE}{NxtSE}(x, includeJunctions = FALSE, withDimnames = TRUE, ...)
 
 \S4method{up_inc}{NxtSE}(x, withDimnames = TRUE) <- value
 
@@ -87,6 +99,10 @@ SummarizedExperiment()}
 \item{withDimnames}{(default TRUE) Whether exported assays should be
 supplied with row and column names of the NxtSE object.
 See \linkS4class{SummarizedExperiment}}
+
+\item{includeJunctions}{When realizing a NxtSE object, include whether
+junction counts and PSIs should be realized into memory. Not recommended
+for general use, as they are only used for coverage plots.}
 
 \item{value}{The value to replace. Must be a matrix for the
 up_inc<-, down_inc<-, up_exc<- and down_exc<- replacers,
@@ -129,6 +145,15 @@ of the samples
 
 \item \code{ref,NxtSE-method}: Retrieves a list of annotation data associated
 with this NxtSE object; primarily used in plotCoverage()
+
+\item \code{junc_PSI,NxtSE-method}: Getter for junction PSI DelayedMatrix;
+primarily used in plotCoverage()
+
+\item \code{junc_counts,NxtSE-method}: Getter for junction counts DelayedMatrix;
+primarily used in plotCoverage()
+
+\item \code{junc_gr,NxtSE-method}: Getter for junction GenomicRanges coordinates;
+primarily used in plotCoverage()
 
 \item \code{realize_NxtSE,NxtSE-method}: Converts all DelayedMatrix assays as matrices
 (i.e. performs all delayed calculation and loads resulting object

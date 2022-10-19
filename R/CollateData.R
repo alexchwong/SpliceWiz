@@ -2401,9 +2401,18 @@ collateData <- function(Experiment, reference_path, output_path,
 
     metadata(se)$Up_Inc <- assays[["Up_Inc"]]
     metadata(se)$Down_Inc <- assays[["Down_Inc"]]
+    rownames(metadata(se)$Up_Inc) <- rowData(se)$EventName[
+        rowData(se)$EventType %in% c("IR", "MXE", "SE", "RI")]
+    rownames(metadata(se)$Down_Inc) <- rowData(se)$EventName[
+        rowData(se)$EventType %in% c("IR", "MXE", "SE", "RI")]
+    
     metadata(se)$Up_Exc <- assays[["Up_Exc"]]
     metadata(se)$Down_Exc <- assays[["Down_Exc"]]
-
+    rownames(metadata(se)$Up_Exc) <- rowData(se)$EventName[
+        rowData(se)$EventType %in% c("MXE")]
+    rownames(metadata(se)$Down_Exc) <- rowData(se)$EventName[
+        rowData(se)$EventType %in% c("MXE")]
+        
     se@metadata[["junc_PSI"]] <- assays[["junc_PSI"]]
     se@metadata[["junc_counts"]] <- assays[["junc_counts"]]
 

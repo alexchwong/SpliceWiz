@@ -125,6 +125,18 @@ makeSE <- function(
         se@metadata[["cov_file"]] <- normalizePath(covfiles)
     }
 
+    # Compatibility with SpliceWiz version < 0.99.5
+    if(!("junc_PSI" %in% names(se@metadata))) {
+        se@metadata[["junc_PSI"]] <- HDF5Array(
+            file.path(normalizePath(collate_path),
+            "data.h5"), "junc_PSI")[, colnames(se), drop = FALSE]
+        se@metadata[["junc_counts"]] <- HDF5Array(
+            file.path(normalizePath(collate_path),
+            "data.h5"), "junc_counts")[, colnames(se), drop = FALSE]
+        se@metadata[["junc_gr"]] <- 
+            coord2GR(rownames(se@metadata[["junc_PSI"]]))
+    }
+    
     # Encapsulate as NxtSE object
     se <- as(se, "NxtSE")
 
@@ -230,10 +242,16 @@ makeSE <- function(
         se@metadata[["Up_Exc"]], path)
     se@metadata[["Down_Exc"]] <- .collateData_expand_assay_path(
         se@metadata[["Down_Exc"]], path)
-    se@metadata[["junc_PSI"]] <- .collateData_expand_assay_path(
-        se@metadata[["junc_PSI"]], path)
-    se@metadata[["junc_counts"]] <- .collateData_expand_assay_path(
-        se@metadata[["junc_counts"]], path)
+    
+    if(
+            "junc_PSI" %in% names(se@metadata) &&
+            is(se@metadata[["junc_PSI"]], "DelayedMatrix")
+    ) {
+        se@metadata[["junc_PSI"]] <- .collateData_expand_assay_path(
+            se@metadata[["junc_PSI"]], path)
+        se@metadata[["junc_counts"]] <- .collateData_expand_assay_path(
+            se@metadata[["junc_counts"]], path)    
+    }
     return(se)
 }
 

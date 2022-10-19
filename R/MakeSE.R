@@ -125,15 +125,6 @@ makeSE <- function(
         se@metadata[["cov_file"]] <- normalizePath(covfiles)
     }
 
-    # New: add junc_PSI and junc_counts as DelayedMatrices
-    se@metadata[["junc_PSI"]] <- HDF5Array(
-        file.path(normalizePath(collate_path),
-        "data.h5"), "junc_PSI")[, colnames(se), drop = FALSE]
-    se@metadata[["junc_counts"]] <- HDF5Array(
-        file.path(normalizePath(collate_path),
-        "data.h5"), "junc_counts")[, colnames(se), drop = FALSE]
-    se@metadata[["junc_gr"]] <- coord2GR(rownames(se@metadata[["junc_PSI"]]))
-
     # Encapsulate as NxtSE object
     se <- as(se, "NxtSE")
 
@@ -239,20 +230,27 @@ makeSE <- function(
         se@metadata[["Up_Exc"]], path)
     se@metadata[["Down_Exc"]] <- .collateData_expand_assay_path(
         se@metadata[["Down_Exc"]], path)
+    se@metadata[["junc_PSI"]] <- .collateData_expand_assay_path(
+        se@metadata[["junc_PSI"]], path)
+    se@metadata[["junc_counts"]] <- .collateData_expand_assay_path(
+        se@metadata[["junc_counts"]], path)
     return(se)
 }
 
 # Iterates through introns; removes overlapping minor introns
 .makeSE_iterate_IR <- function(se, collate_path) {
 
-    junc_PSI <- HDF5Array(file.path(normalizePath(collate_path),
-        "data.h5"), "junc_PSI")[, colnames(se), drop = FALSE]
-
+    junc_PSI <- junc_PSI(se)
+    
     se.IR <- se[rowData(se)$EventType == "IR", , drop = FALSE]
-    se.coords <- rowData(se.IR)$EventRegion[
-        rowData(se.IR)$EventRegion %in% rownames(junc_PSI)]
-    se.coords.gr <- coord2GR(se.coords)
-    names(se.coords.gr) <- se.coords
+
+    row_to_junc <- match(rowData(se.IR)$EventRegion, rownames(junc_PSI))
+    names(row_to_junc) <- rowData(se.IR)$EventRegion
+    row_to_junc <- row_to_junc[!is.na(row_to_junc)]
+    
+    se.coords <- names(row_to_junc)
+    se.coords.gr <- junc_gr(se)[row_to_junc]
+    names(se.coords.gr) <- names(row_to_junc)
     
     if (length(se.coords.gr) > 0) {
         .log(paste("Iterating through IR events to determine introns",

@@ -231,6 +231,9 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("SpliceWiz (NxtSE) Collation Finished", N_steps)
     .log("SpliceWiz (NxtSE) Collation Finished", "message")
     .restore_threads(originalSWthreads)
+    
+    # Return invisible
+    invisible(NULL)
 }
 
 
@@ -2132,6 +2135,7 @@ collateData <- function(Experiment, reference_path, output_path,
     fst::write.fst(as.data.frame(templates$junc[, junc.todo, with = FALSE]),
         file.path(norm_output_path, "temp",
                 paste("junc_psi", sample, "fst.tmp", sep = ".")))
+
 }
 
 ################################################################################
@@ -2448,6 +2452,10 @@ collateData <- function(Experiment, reference_path, output_path,
         se@metadata[["Up_Exc"]])
     se@metadata[["Down_Exc"]] <- .collateData_simplify_assay_path(
         se@metadata[["Down_Exc"]])
+    se@metadata[["junc_PSI"]] <- .collateData_simplify_assay_path(
+        se@metadata[["junc_PSI"]])
+    se@metadata[["junc_counts"]] <- .collateData_simplify_assay_path(
+        se@metadata[["junc_counts"]])
     saveRDS(se, filepath)
 }
 

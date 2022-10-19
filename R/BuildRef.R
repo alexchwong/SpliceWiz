@@ -3308,7 +3308,7 @@ Get_GTF_file <- function(reference_path) {
     introns_search_ALE <- candidate.introns[
         get("transcript_biotype") != "intron_novel_transcript"]
         
-    introns_search_ALE <- introns_search_ALE[candidate.introns[,
+    introns_search_ALE <- introns_search_ALE[introns_search_ALE[,
         .I[get("intron_number") == max(get("intron_number"))],
         by = "transcript_id"]$V1]
     introns_search_ALE_pos <- introns_search_ALE[get("strand") == "+"]

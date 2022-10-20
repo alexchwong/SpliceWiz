@@ -314,6 +314,13 @@ runFilter <- function(se, filterObj) {
     num_RI <- sum(EventTypeVec == "RI")
     num_samples <- ncol(Up_Inc)
 
+    tmpIncTRUE <- DelayedArray(
+        matrix(TRUE, nrow = num_other, ncol = num_samples))
+    tmpExcTRUE1 <- DelayedArray(
+        matrix(TRUE, nrow = num_IR, ncol = num_samples))
+    tmpExcTRUE2 <- DelayedArray(
+        matrix(TRUE, nrow = num_SE + num_other + num_RI, ncol = num_samples))
+        
     truth_inc_temp <- 
         # abs(log2(Up_Inc + 1) - log2(IntronDepth + 1)) < maximum &
         # abs(log2(Down_Inc + 1) - log2(IntronDepth + 1)) < maximum
@@ -322,19 +329,19 @@ runFilter <- function(se, filterObj) {
 
     truth_inc <- rbind(
         truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),],
-        matrix(TRUE, nrow = num_other, ncol = num_samples),
+        tmpIncTRUE,
         truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),]
     )
         
     truth_exc <- rbind(
-        matrix(TRUE, nrow = num_IR, ncol = num_samples),
+        tmpExcTRUE1,
         (
             # abs(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
             # abs(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
             -(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
             -(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
         ),
-        matrix(TRUE, nrow = num_SE + num_other + num_RI, ncol = num_samples)
+        tmpExcTRUE2
     )
     
     truth_total <- truth_inc & truth_exc

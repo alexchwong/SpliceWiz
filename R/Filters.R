@@ -246,9 +246,10 @@ runFilter <- function(se, filterObj) {
         rowData$EventType %in% c("IR", "MXE", "SE", "RI"), ]
     minDepth.Inc <- Up_Inc + Down_Inc
     # do not test if depth below threshold
-    Up_Inc[minDepth.Inc < minDepth] <- IntronDepth[minDepth.Inc < minDepth]
-    Down_Inc[minDepth.Inc < minDepth] <- IntronDepth[minDepth.Inc < minDepth]
-
+    # Up_Inc[minDepth.Inc < minDepth] <- IntronDepth[minDepth.Inc < minDepth]
+    # Down_Inc[minDepth.Inc < minDepth] <- IntronDepth[minDepth.Inc < minDepth]
+    IntronDepth[minDepth.Inc < minDepth] <- 0
+    
     Excluded <- assay(se, "Excluded")[
         rowData$EventType %in% c("MXE"), ]
     Up_Exc <- up_exc(se)
@@ -258,7 +259,7 @@ runFilter <- function(se, filterObj) {
     # Up_Exc[minDepth.Exc < minDepth] <- Excluded[minDepth.Exc < minDepth]
     # Down_Exc[minDepth.Exc < minDepth] <- Excluded[minDepth.Exc < minDepth]
     Excluded[minDepth.Exc < minDepth] <- 0
-    
+
     sum_res <- rep(0, nrow(se))
     if (!is.null(cond_vec)) {
         for (cond in unique(cond_vec)) {
@@ -314,8 +315,10 @@ runFilter <- function(se, filterObj) {
     num_samples <- ncol(Up_Inc)
 
     truth_inc_temp <- 
-        abs(log2(Up_Inc + 1) - log2(IntronDepth + 1)) < maximum &
-        abs(log2(Down_Inc + 1) - log2(IntronDepth + 1)) < maximum
+        # abs(log2(Up_Inc + 1) - log2(IntronDepth + 1)) < maximum &
+        # abs(log2(Down_Inc + 1) - log2(IntronDepth + 1)) < maximum
+        -(log2(Up_Inc + 1) - log2(IntronDepth + 1)) < maximum &
+        -(log2(Down_Inc + 1) - log2(IntronDepth + 1)) < maximum
 
     truth_inc <- rbind(
         truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),],

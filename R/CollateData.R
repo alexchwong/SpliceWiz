@@ -2446,6 +2446,8 @@ collateData <- function(Experiment, reference_path, output_path,
         collate_path, "annotation", "cov_data.Rds"
     ))
 
+    metadata(se)$BuildVersion <- collateData_version
+
     return(se)
 }
 

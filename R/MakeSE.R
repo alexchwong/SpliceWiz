@@ -252,6 +252,21 @@ makeSE <- function(
         se@metadata[["junc_counts"]] <- .collateData_expand_assay_path(
             se@metadata[["junc_counts"]], path)    
     }
+    
+    if(
+            !("BuildVersion" %in% names(se@metadata)) ||
+            metadata(se)$BuildVersion < collateData_version
+    ) {
+        .log(paste(
+            "NB: This NxtSE was generated with an older version of SpliceWiz",
+            "(version",
+            ifelse(
+                "BuildVersion" %in% names(se@metadata),
+                metadata(se)$BuildVersion,
+                "< 0.99.5"
+            ), ")"
+        ), "warning")
+    }
     return(se)
 }
 

@@ -392,7 +392,7 @@ buildRef <- function(
     settings.list$MappabilityRef <- MappabilityRef
     settings.list$BlacklistRef <- BlacklistRef
     settings.list$useExtendedTranscripts <- useExtendedTranscripts
-    settings.list$BuildVersion <- buildref_version
+    settings.list$BuildVersion <- buildRef_version
 
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
 }
@@ -555,11 +555,11 @@ Get_GTF_file <- function(reference_path) {
     }
     settings.list <- readRDS(file.path(ref, "settings.Rds"))
     if (!("BuildVersion" %in% names(settings.list)) ||
-            settings.list[["BuildVersion"]] < buildref_version) {
+            settings.list[["BuildVersion"]] < buildRef_version) {
         .log(paste(from_str,
             "in reference_path =", reference_path,
             "SpliceWiz reference is earlier than current version",
-            buildref_version))
+            buildRef_version))
     }
 }
 
@@ -584,7 +584,7 @@ Get_GTF_file <- function(reference_path) {
     }
     settings.list <- readRDS(file.path(ref, "settings.Rds"))
     if (!("BuildVersion" %in% names(settings.list)) ||
-            settings.list[["BuildVersion"]] < buildref_version) {
+            settings.list[["BuildVersion"]] < buildRef_version) {
         .log(paste(from_str,
             "in reference_path =", reference_path,
             "reference was built using an earlier version of SpliceWiz (",
@@ -796,7 +796,7 @@ Get_GTF_file <- function(reference_path) {
         ah_genome = ah_genome_use, ah_transcriptome = ah_gtf_use,
         reference_path = reference_path
     )
-    settings.list$BuildVersion <- buildref_version
+    settings.list$BuildVersion <- buildRef_version
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
 
     settings.list <- readRDS(file.path(reference_path, "settings.Rds"))

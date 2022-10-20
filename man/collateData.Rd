@@ -10,6 +10,9 @@ collateData(
   output_path,
   IRMode = c("SpliceOver", "SpliceMax"),
   detectNovelSplicing = FALSE,
+  novelJn_minSamples = 3,
+  novelJn_countThreshold = 10,
+  novelJn_minSamplesAboveThreshold = 1,
   overwrite = FALSE,
   n_threads = 1,
   lowMemoryMode = TRUE
@@ -37,7 +40,24 @@ Valid options are \code{SpliceOver} and \code{SpliceMax}.
 See details}
 
 \item{detectNovelSplicing}{(default FALSE) Whether collateData will use
-novel junction reads detected in samples to infer novel splice variants.}
+novel junction reads detected in samples to infer novel splice variants.
+All tandem split reads (those bridging two consecutive splice junctions)
+are used, as well as novel split reads that satisfy abundance criteria
+(see \code{novelJn_minSamples}, \code{novelJn_minSamplesAboveThreshold}, and
+\code{novelJn_countThreshold}) are used to synthesise a dataset-specific
+SpliceWiz reference. See details.}
+
+\item{novelJn_minSamples}{(default 3) Novel junctions are included in
+building of novel reference  if number samples with non-zero counts
+exceeds this number.}
+
+\item{novelJn_countThreshold}{(default 10) Threshold of split-reads across
+novel junctions; used in conjunction with
+\code{novelJn_minSamplesAboveThreshold}}
+
+\item{novelJn_minSamplesAboveThreshold}{(default 1) Novel junctions are
+included in building of novel reference if novel junction reads are
+above a pre-defined threshold exceeds this number}
 
 \item{overwrite}{(default \code{FALSE}) If \code{collateData()} has previously been run
 using the same set of samples, it will not be overwritten unless this is
@@ -93,6 +113,19 @@ transcripts). For introns that are internal to a single exon cluster
 (i.e. akin to "known-exon" introns from IRFinder), \code{SpliceOver}
 uses \link[GenomicRanges:findOverlaps-methods]{GenomicRanges::findOverlaps} to sum all splice reads that overlap
 the same genomic region as the intron of interest.
+
+Detection of novel ASEs:  When \code{detectNovelSplicing} is set to \code{TRUE},
+novel junctions (split reads across unannotated junctions from samples
+of the dataset being collated) are used in conjunction with the reference
+to compile a list of novel ASEs. To avoid being overwhelmed by a large
+number of false positive novel junctions (often due to mis-alignments),
+a simple filtering strategy is used. This involves including novel
+junctions only if it occurs in a minimum number of samples (default 3),
+or if the number of split reads of a novel junction is above a pre-defined
+threshold (default 10) in a certain number of samples (default 1). These
+parameters can be set using \code{novelJn_minSamples},
+\code{novelJn_countThreshold} and \code{novelJn_minSamplesAboveThreshold}
+respectively.
 }
 \examples{
 buildRef(

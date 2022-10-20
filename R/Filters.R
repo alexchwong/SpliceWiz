@@ -327,23 +327,44 @@ runFilter <- function(se, filterObj) {
         -(log2(Up_Inc + 1) - log2(IntronDepth + 1)) < maximum &
         -(log2(Down_Inc + 1) - log2(IntronDepth + 1)) < maximum
 
-    truth_inc <- rbind(
-        truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),],
-        tmpIncTRUE,
-        truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),]
-    )
-        
-    truth_exc <- rbind(
-        tmpExcTRUE1,
-        (
-            # abs(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
-            # abs(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
-            -(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
-            -(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
-        ),
-        tmpExcTRUE2
-    )
-    
+    if(is(truth_inc_temp, "DelayedArray")) {
+        truth_inc <- rbind(
+            truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),],
+            tmpIncTRUE,
+            truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),]
+        )    
+    } else {
+        truth_inc <- rbind(
+            truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),],
+            as.matrix(tmpIncTRUE),
+            truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),]
+        )    
+    }
+
+    if(is(Excluded, "DelayedArray")) {
+        truth_exc <- rbind(
+            tmpExcTRUE1,
+            (
+                # abs(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
+                # abs(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
+                -(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
+                -(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
+            ),
+            tmpExcTRUE2
+        )
+    } else {
+        truth_exc <- rbind(
+            as.matrix(tmpExcTRUE1),
+            (
+                # abs(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
+                # abs(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
+                -(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
+                -(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
+            ),
+            as.matrix(tmpExcTRUE2)
+        ) 
+    }
+
     truth_total <- truth_inc & truth_exc
     
     sum <- rowSums(truth_total)

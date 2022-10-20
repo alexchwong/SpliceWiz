@@ -255,9 +255,10 @@ runFilter <- function(se, filterObj) {
     Down_Exc <- down_exc(se)
     minDepth.Exc <- Up_Exc + Down_Exc
     # do not test if depth below threshold
-    Up_Exc[minDepth.Exc < minDepth] <- Excluded[minDepth.Exc < minDepth]
-    Down_Exc[minDepth.Exc < minDepth] <- Excluded[minDepth.Exc < minDepth]
-
+    # Up_Exc[minDepth.Exc < minDepth] <- Excluded[minDepth.Exc < minDepth]
+    # Down_Exc[minDepth.Exc < minDepth] <- Excluded[minDepth.Exc < minDepth]
+    Excluded[minDepth.Exc < minDepth] <- 0
+    
     sum_res <- rep(0, nrow(se))
     if (!is.null(cond_vec)) {
         for (cond in unique(cond_vec)) {
@@ -325,8 +326,10 @@ runFilter <- function(se, filterObj) {
     truth_exc <- rbind(
         matrix(TRUE, nrow = num_IR, ncol = num_samples),
         (
-            abs(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
-            abs(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
+            # abs(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
+            # abs(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
+            -(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
+            -(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
         ),
         matrix(TRUE, nrow = num_SE + num_other + num_RI, ncol = num_samples)
     )

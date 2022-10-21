@@ -2505,6 +2505,7 @@ Get_GTF_file <- function(reference_path) {
             )
         )
     )
+    ref.tj <- unique(ref.tj)
     setorderv(ref.tj, c("seqnames", "start1", "end1", 
         "start2", "end2", "strand"))
     gc()

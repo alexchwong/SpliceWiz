@@ -102,18 +102,17 @@ makeMatrix <- function(
     mat <- mat[rowSums(is.na(mat)) < na.percent.max * ncol(mat), , drop = FALSE]
     if (method == "PSI") {
         # essentially M/Cov
-        return(mat)
     } else if (method == "logit") {
         mat <- qlogis(mat)
         mat[mat > logit_max] <- logit_max
         mat[mat < -logit_max] <- -logit_max
-        return(mat)
     } else if (method == "Z-score") {
         mat <- mat - rowMeans(mat)
         mat <- mat / rowSds(mat)
-        return(mat)
     }
-
+    rm(inc, exc)
+    gc()
+    return(as.matrix(mat))
 }
 
 
@@ -143,11 +142,15 @@ makeMeanPSI <- function(
             mat.cond[mat.cond < -logit_max] <- -logit_max
             df$newcond <- plogis(rowMeans(mat.cond, na.rm = TRUE))
             colnames(df)[ncol(df)] <- paste(condition, cond, sep = "_")
+            rm(mat.cond)
+            gc()
         } else {
             .log(paste(
                 cond, "not found in", condition, "-", cond, "ignored"
             ), "message")
         }
     }
+    rm(mat, inc, exc)
+    gc()
     return(df)
 }

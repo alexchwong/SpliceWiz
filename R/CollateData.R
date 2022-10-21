@@ -1194,6 +1194,10 @@ collateData <- function(Experiment, reference_path, output_path,
             countJuncThresholdSamples >= minSamplesAboveJuncThreshold
     ]
     
+    # Write filtered novel junctions as temp file
+    write.fst(junc.novel, file.path(norm_output_path, 
+        "annotation", "junc.novel.filtered.fst"))
+    
     # Filter for when there is at least 1 common splice site with knowns
     kj.left <- with(known.junctions, GRanges(seqnames = seqnames,
         ranges = IRanges(start, start), strand = strand))
@@ -1276,6 +1280,27 @@ collateData <- function(Experiment, reference_path, output_path,
     # No need to filter tandem junctions as this was done in earlier step
     tj.novel <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "tj.common.annotated.fst")))
+    
+    junc.novel <- as.data.table(read.fst(file.path(norm_output_path, 
+        "annotation", "junc.novel.filtered.fst")))
+    
+    # Filter tj.novel by junc.novel
+    setnames(tj.novel, c("start1", "end1"), c("start", "end"))
+    tmp <- tj.novel[!junc.novel, on = c("seqnames", "start", "end", "strand")]
+    tj.novel <- tj.novel[!tmp, on = colnames(tj.novel)]
+    setnames(tj.novel, c("start", "end"), c("start1", "end1"))
+
+    setnames(tj.novel, c("start2", "end2"), c("start", "end"))
+    tmp <- tj.novel[!junc.novel, on = c("seqnames", "start", "end", "strand")]
+    tj.novel <- tj.novel[!tmp, on = colnames(tj.novel)]
+    setnames(tj.novel, c("start", "end"), c("start2", "end2"))
+    
+    rm(junc.novel, tmp)
+    gc()
+
+    # Write filtered tandem junctions as temp file
+    write.fst(tj.novel, file.path(norm_output_path, 
+        "annotation", "tj.novel.filtered.fst"))
     
     n_trans <- nrow(tj.novel)
     if(n_trans < 1) return(NULL)

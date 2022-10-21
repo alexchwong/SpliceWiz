@@ -774,7 +774,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         paste0("AvgPSI_", test_denom))
     res <- cbind(
         res[,c("EventName")],
-        as.data.table(diag[,2:3]),
+        as.data.table(round(diag[,-1], 4)),
         res[,-c("EventName")]
     )
     res <- rowData.DT[res, on = "EventName"]
@@ -795,7 +795,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     }
     res <- cbind(
         res[,c("EventName")],
-        as.data.table(diag[,-1]),
+        as.data.table(round(diag[,-1], 4)),
         res[,-c("EventName")]
     )
     res <- rowData.DT[res, on = "EventName"]

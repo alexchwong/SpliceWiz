@@ -13,6 +13,7 @@ collateData(
   novelJn_minSamples = 3,
   novelJn_countThreshold = 10,
   novelJn_minSamplesAboveThreshold = 1,
+  novelJn_requireOneAnnotatedSJ = TRUE,
   overwrite = FALSE,
   n_threads = 1,
   lowMemoryMode = TRUE
@@ -58,6 +59,11 @@ novel junctions; used in conjunction with
 \item{novelJn_minSamplesAboveThreshold}{(default 1) Novel junctions are
 included in building of novel reference if novel junction reads are
 above a pre-defined threshold exceeds this number}
+
+\item{novelJn_requireOneAnnotatedSJ}{(default \code{TRUE}) The default requires
+novel junctions to have one annotated splice site. If this is disabled,
+collateData will include novel junctions where neither splice site is
+annotated.}
 
 \item{overwrite}{(default \code{FALSE}) If \code{collateData()} has previously been run
 using the same set of samples, it will not be overwritten unless this is

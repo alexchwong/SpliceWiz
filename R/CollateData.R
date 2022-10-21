@@ -86,6 +86,10 @@
 #' @param novelJn_minSamplesAboveThreshold (default 1) Novel junctions are 
 #'   included in building of novel reference if novel junction reads are
 #'   above a pre-defined threshold exceeds this number
+#' @param novelJn_requireOneAnnotatedSJ (default `TRUE`) The default requires
+#'   novel junctions to have one annotated splice site. If this is disabled,
+#'   collateData will include novel junctions where neither splice site is
+#'   annotated.
 #' @return `collateData()` writes to the directory given by `output_path`.
 #'   This output directory is portable (i.e. it can be moved to a different
 #'   location after running `collateData()` before running [makeSE]), but
@@ -119,7 +123,8 @@ collateData <- function(Experiment, reference_path, output_path,
         IRMode = c("SpliceOver", "SpliceMax"),
         detectNovelSplicing = FALSE,
         novelJn_minSamples = 3, novelJn_countThreshold = 10,
-        novelJn_minSamplesAboveThreshold = 1,       
+        novelJn_minSamplesAboveThreshold = 1,
+        novelJn_requireOneAnnotatedSJ = TRUE,
         overwrite = FALSE, n_threads = 1,
         lowMemoryMode = TRUE
 ) {
@@ -163,7 +168,7 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Compiling Junction List", N_steps)
     .collateData_junc_merge(df.internal, jobs, BPPARAM_mod, norm_output_path)
     .collateData_junc_stats(df.internal, jobs, BPPARAM_mod, norm_output_path,
-        juncThreshold = 10)
+        juncThreshold = novelJn_countThreshold)
 
     dash_progress("Compiling Intron Retention List", N_steps)
     .collateData_sw_merge(df.internal, jobs, BPPARAM_mod, 
@@ -183,12 +188,18 @@ collateData <- function(Experiment, reference_path, output_path,
     if(n_threads == 1) {
         .collateData_annotate(reference_path, norm_output_path, 
             stranded, detectNovelSplicing, lowMemoryMode,
-            minSamplesWithJunc = 3, minSamplesAboveJuncThreshold = 1)
+            minSamplesWithJunc = novelJn_minSamples, 
+            minSamplesAboveJuncThreshold = novelJn_minSamplesAboveThreshold,
+            novelJn_requireOneAnnotatedSJ = novelJn_requireOneAnnotatedSJ
+        )
     } else {
         # perform task inside child thread, so we can dump the memory later
         .collateData_annotate_BPPARAM(reference_path, norm_output_path, 
             stranded, detectNovelSplicing, lowMemoryMode,
-            minSamplesWithJunc = 3, minSamplesAboveJuncThreshold = 1)
+            minSamplesWithJunc = novelJn_minSamples, 
+            minSamplesAboveJuncThreshold = novelJn_minSamplesAboveThreshold,
+            novelJn_requireOneAnnotatedSJ = novelJn_requireOneAnnotatedSJ
+        )
     }
     message("done\n")
 
@@ -764,7 +775,8 @@ collateData <- function(Experiment, reference_path, output_path,
 # Annotate processBAM introns and junctions according to given reference
 .collateData_annotate <- function(reference_path, norm_output_path,
         stranded, detectNovelSplicing, lowMemoryMode = TRUE,
-        minSamplesWithJunc = 3, minSamplesAboveJuncThreshold = 1
+        minSamplesWithJunc = 3, minSamplesAboveJuncThreshold = 1,
+        novelJn_requireOneAnnotatedSJ = TRUE
 ) {
     message("...annotating splice junctions")
     .collateData_junc_annotate(2, reference_path, norm_output_path,
@@ -780,7 +792,8 @@ collateData <- function(Experiment, reference_path, output_path,
             "this may take up to 10 minutes..."), "message", appendLF = FALSE)
         .collateData_assemble_novel_reference(2, reference_path, 
             norm_output_path, lowMemoryMode,
-            minSamplesWithJunc, minSamplesAboveJuncThreshold)
+            minSamplesWithJunc, minSamplesAboveJuncThreshold,
+            novelJn_requireOneAnnotatedSJ)
         use_ref_path <- file.path(norm_output_path, "Reference")
         
         message("done")
@@ -805,7 +818,8 @@ collateData <- function(Experiment, reference_path, output_path,
 
 .collateData_annotate_BPPARAM <- function(reference_path, norm_output_path,
         stranded, detectNovelSplicing, lowMemoryMode = TRUE,
-        minSamplesWithJunc = 3, minSamplesAboveJuncThreshold = 1
+        minSamplesWithJunc = 3, minSamplesAboveJuncThreshold = 1,
+        novelJn_requireOneAnnotatedSJ = TRUE
 ) {
     BPPARAM_annotate <- .validate_threads(2)
     message("...annotating splice junctions")
@@ -836,6 +850,7 @@ collateData <- function(Experiment, reference_path, output_path,
             lowMemoryMode = lowMemoryMode,
             minSamplesWithJunc = minSamplesWithJunc,
             minSamplesAboveJuncThreshold = minSamplesAboveJuncThreshold,
+            novelJn_requireOneAnnotatedSJ = novelJn_requireOneAnnotatedSJ,
             BPPARAM = BPPARAM_annotate
         )
         message("done")
@@ -1101,7 +1116,8 @@ collateData <- function(Experiment, reference_path, output_path,
 
 .collateData_assemble_novel_reference <- function(
     threadID, reference_path, norm_output_path, lowMemoryMode,
-    minSamplesWithJunc, minSamplesAboveJuncThreshold
+    minSamplesWithJunc, minSamplesAboveJuncThreshold,
+    novelJn_requireOneAnnotatedSJ
 ) {
     if(threadID != 2) return()
     
@@ -1144,7 +1160,8 @@ collateData <- function(Experiment, reference_path, output_path,
     # reference_data$gtf_gr is a GRanges object
     altSS_gtf <- .collateData_novel_assemble_altSS_transcripts(
         reference_path, norm_output_path, reference_data$gtf_gr,
-        minSamplesWithJunc, minSamplesAboveJuncThreshold)
+        minSamplesWithJunc, minSamplesAboveJuncThreshold,
+        novelJn_requireOneAnnotatedSJ)
     exon_gtf <- .collateData_novel_assemble_exon_transcripts(
         reference_path, norm_output_path, reference_data$gtf_gr)
     # Finish inserting novel gtf
@@ -1175,7 +1192,8 @@ collateData <- function(Experiment, reference_path, output_path,
 
 .collateData_novel_assemble_altSS_transcripts <- function(
     reference_path, norm_output_path, gtf,
-    minSamplesWithJunc, minSamplesAboveJuncThreshold
+    minSamplesWithJunc, minSamplesAboveJuncThreshold,
+    novelJn_requireOneAnnotatedSJ = TRUE
 ) {
     # Load junc.common
     junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
@@ -1199,19 +1217,21 @@ collateData <- function(Experiment, reference_path, output_path,
         "annotation", "junc.novel.filtered.fst"))
     
     # Filter for when there is at least 1 common splice site with knowns
-    kj.left <- with(known.junctions, GRanges(seqnames = seqnames,
-        ranges = IRanges(start, start), strand = strand))
-    nj.left <- with(junc.novel, GRanges(seqnames = seqnames,
-        ranges = IRanges(start, start), strand = strand))
-    kj.right <- with(known.junctions, GRanges(seqnames = seqnames,
-        ranges = IRanges(end, end), strand = strand))
-    nj.right <- with(junc.novel, GRanges(seqnames = seqnames,
-        ranges = IRanges(end, end), strand = strand))
-    OL_left <- findOverlaps(nj.left, kj.left)
-    OL_right <- findOverlaps(nj.left, kj.left)
-    
-    at_least_one_end <- unique(c(from(OL_left), from(OL_right)))
-    junc.novel <- junc.novel[at_least_one_end]
+    if(novelJn_requireOneAnnotatedSJ) {
+        kj.left <- with(known.junctions, GRanges(seqnames = seqnames,
+            ranges = IRanges(start, start), strand = strand))
+        nj.left <- with(junc.novel, GRanges(seqnames = seqnames,
+            ranges = IRanges(start, start), strand = strand))
+        kj.right <- with(known.junctions, GRanges(seqnames = seqnames,
+            ranges = IRanges(end, end), strand = strand))
+        nj.right <- with(junc.novel, GRanges(seqnames = seqnames,
+            ranges = IRanges(end, end), strand = strand))
+        OL_left <- findOverlaps(nj.left, kj.left)
+        OL_right <- findOverlaps(nj.left, kj.left)
+        
+        at_least_one_end <- unique(c(from(OL_left), from(OL_right)))
+        junc.novel <- junc.novel[at_least_one_end]    
+    }
 
     n_trans <- nrow(junc.novel)
     if(n_trans < 1) return(NULL)

@@ -98,9 +98,7 @@ to be displayed on the gene annotation track. Useful to remove minor
 isoforms that are not relevant to the samples being displayed.}
 
 \item{plotJunctions}{(default \code{FALSE}) If \code{TRUE}, sashimi plot junction arcs
-are plotted. Currently only implemented for plots of individual samples.
-Values are not strand-specific (i.e. they may come from split reads from
-either strand)}
+are plotted. Currently only implemented for plots of individual samples.}
 
 \item{plot_involved_transcripts}{(default \code{FALSE}) If \code{TRUE}, only
 transcripts involved in the selected \code{Event} or pair of \code{Event}s will be
@@ -218,11 +216,11 @@ p$ggplot
 p <- plotGenome(se, coordinates = "chrZ:10000-20000")
 p$ggplot
 
-# Return a list of ggplot and plotly objects
+# Return a list of ggplot and plotly objects, also plotting junction counts
 p <- plotCoverage(
     se = se,
     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
-    tracks = colnames(se)[1:4]
+    tracks = colnames(se)[1:4], plotJunctions = TRUE
 )
 
 # Display as a a static ggplot (requires the `egg` package to be installed):

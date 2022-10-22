@@ -84,8 +84,6 @@
 #'   isoforms that are not relevant to the samples being displayed.
 #' @param plotJunctions (default `FALSE`) If `TRUE`, sashimi plot junction arcs
 #'   are plotted. Currently only implemented for plots of individual samples.
-#'   Values are not strand-specific (i.e. they may come from split reads from
-#'   either strand)
 #' @param plot_involved_transcripts (default `FALSE`) If `TRUE`, only 
 #'   transcripts involved in the selected `Event` or pair of `Event`s will be
 #'   displayed.
@@ -137,11 +135,11 @@
 #' p <- plotGenome(se, coordinates = "chrZ:10000-20000")
 #' p$ggplot
 #'
-#' # Return a list of ggplot and plotly objects
+#' # Return a list of ggplot and plotly objects, also plotting junction counts
 #' p <- plotCoverage(
 #'     se = se,
 #'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
-#'     tracks = colnames(se)[1:4]
+#'     tracks = colnames(se)[1:4], plotJunctions = TRUE
 #' )
 #'
 #' # Display as a a static ggplot (requires the `egg` package to be installed):
@@ -962,6 +960,20 @@ getCoverageBins <- function(file, region, bins = 2000,
     plotJunctions = FALSE
 ) {
     args <- as.list(match.call())
+    
+    # Automatically flips strand if all samples are reversely stranded
+    
+    args$view_strand_jn <- args$view_strand
+    if(args$view_strand != "*") {
+        if(all(sampleQC(args$se)$strand == -1)) {
+            if(args$view_strand == "+") {
+                args$view_strand <- "-"
+            } else {
+                args$view_strand <- "+"
+            }
+        }
+    }
+    
     if (is.null(track_names)) args$track_names <- unlist(tracks)
     p_ref <- .plot_view_ref_fn(
         view_chr, view_start, view_end,
@@ -1526,7 +1538,7 @@ determine_compatible_events <- function(
     gp_track <- pl_track <- list()
     data.list <- list()
     junc_df <- .plot_cov_fn_indiv_retrieve_jn(
-        view_chr, view_start, view_end, view_strand,
+        view_chr, view_start, view_end,
         unlist(tracks), ...
     )
     for (i in seq_len(4)) {
@@ -1600,21 +1612,22 @@ determine_compatible_events <- function(
 }
 
 .plot_cov_fn_indiv_retrieve_jn <- function(
-        view_chr, view_start, view_end, view_strand,
+        view_chr, view_start, view_end,
         samples_to_get,
+        view_strand_jn,
         se = NULL,
         plotJunctions = FALSE,
         ...
 ) {
     if(plotJunctions) {
         gr_select <- GRanges(view_chr, 
-            IRanges(view_start, view_end), view_strand)
+            IRanges(view_start, view_end), view_strand_jn)
         OL <- findOverlaps(junc_gr(se), gr_select)
         junc_counts_select  <- as.data.frame(junc_counts(se)[
             unique(from(OL)),samples_to_get])
         
         # Unstrand junction counts summation
-        if(view_strand == "*") {
+        if(view_strand_jn == "*") {
             junc_counts_select$rownames <- substr(rownames(junc_counts_select), 1, 
                 nchar(rownames(junc_counts_select )) - 2)
             junc_counts_select <- as.data.table(junc_counts_select)

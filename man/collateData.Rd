@@ -10,6 +10,7 @@ collateData(
   output_path,
   IRMode = c("SpliceOver", "SpliceMax"),
   detectNovelSplicing = FALSE,
+  forceStrandAgnostic = FALSE,
   novelJn_minSamples = 3,
   novelJn_countThreshold = 10,
   novelJn_minSamplesAboveThreshold = 1,
@@ -47,6 +48,10 @@ are used, as well as novel split reads that satisfy abundance criteria
 (see \code{novelJn_minSamples}, \code{novelJn_minSamplesAboveThreshold}, and
 \code{novelJn_countThreshold}) are used to synthesise a dataset-specific
 SpliceWiz reference. See details.}
+
+\item{forceStrandAgnostic}{(default \code{FALSE}) In poorly-prepared stranded
+libraries, it may be better to quantify in unstranded mode. Set this to
+\code{TRUE} if your stranded libraries may be contaminated with unstranded reads}
 
 \item{novelJn_minSamples}{(default 3) Novel junctions are included in
 building of novel reference  if number samples with non-zero counts

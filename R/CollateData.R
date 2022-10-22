@@ -90,6 +90,9 @@
 #'   novel junctions to have one annotated splice site. If this is disabled,
 #'   collateData will include novel junctions where neither splice site is
 #'   annotated.
+#' @param forceStrandAgnostic (default `FALSE`) In poorly-prepared stranded
+#'   libraries, it may be better to quantify in unstranded mode. Set this to
+#'   `TRUE` if your stranded libraries may be contaminated with unstranded reads
 #' @return `collateData()` writes to the directory given by `output_path`.
 #'   This output directory is portable (i.e. it can be moved to a different
 #'   location after running `collateData()` before running [makeSE]), but
@@ -121,7 +124,7 @@
 #' @export
 collateData <- function(Experiment, reference_path, output_path,
         IRMode = c("SpliceOver", "SpliceMax"),
-        detectNovelSplicing = FALSE,
+        detectNovelSplicing = FALSE, forceStrandAgnostic = FALSE,
         novelJn_minSamples = 3, novelJn_countThreshold = 10,
         novelJn_minSamplesAboveThreshold = 1,
         novelJn_requireOneAnnotatedSJ = TRUE,
@@ -163,7 +166,7 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Compiling Sample Stats", N_steps)
     .log("Compiling Sample Stats", "message")
     df.internal <- .collateData_stats(df.internal, jobs, BPPARAM_mod)
-    stranded <- !any(df.internal$strand == 0)
+    stranded <- !any(df.internal$strand == 0) & !forceStrandAgnostic
 
     dash_progress("Compiling Junction List", N_steps)
     .collateData_junc_merge(df.internal, jobs, BPPARAM_mod, norm_output_path)

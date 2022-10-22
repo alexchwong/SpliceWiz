@@ -1504,7 +1504,7 @@ determine_compatible_events <- function(
                             label = "value"))
             }
             pl_track[[i]] <- ggplotly(gp_track[[i]],
-                tooltip = c("x", "y", "ymin", "ymax")
+                tooltip = c("x", "y", "ymin", "ymax", "label")
             )
             pl_track[[i]] <- pl_track[[i]] %>% layout(
                 yaxis = list(rangemode = "tozero", fixedrange = TRUE)
@@ -1734,7 +1734,8 @@ determine_compatible_events <- function(
                 y = seq(leftY, rightY, length.out = 90)
             )
             outdf$yarc <- outdf$y + sinpi(seq(0,1,length.out = 90)) * arcHeight
-            outdf$junction <- rownames(junc_df_indiv)[i]
+            outdf$junction <- paste0(rownames(junc_df_indiv)[i], ": ", 
+                junc_df_indiv$juncVal[i])
             outdf$value <- junc_df_indiv$juncVal[i]
             final <- rbind(final, outdf)
         }
@@ -1777,9 +1778,10 @@ determine_compatible_events <- function(
                 y = seq(leftY, rightY, length.out = 90)
             )
             outdf$yarc <- outdf$y + sinpi(seq(0,1,length.out = 90)) * arcHeight
-            outdf$junction <- rownames(junc_df_PSI)[i]
-            outdf$value <- paste0(round(100 * junc_df_PSI$PSImean[i], 2), "+/-", 
-                round(100 * junc_df_PSI$PSIsd[i]))
+            outdf$value <- paste0(round(100 * junc_df_PSI$PSImean[i], 1), "+/-", 
+                round(100 * junc_df_PSI$PSIsd[i], 1), " %")
+            outdf$junction <- paste0(rownames(junc_df_indiv)[i], ": ", 
+                outdf$value)
             final <- rbind(final, outdf)
         }
     }

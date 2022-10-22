@@ -1780,7 +1780,7 @@ determine_compatible_events <- function(
             outdf$yarc <- outdf$y + sinpi(seq(0,1,length.out = 90)) * arcHeight
             outdf$value <- paste0(round(100 * junc_df_PSI$PSImean[i], 1), "+/-", 
                 round(100 * junc_df_PSI$PSIsd[i], 1), " %")
-            outdf$junction <- paste0(rownames(junc_df_indiv)[i], ": ", 
+            outdf$junction <- paste0(rownames(junc_df_PSI)[i], ": ", 
                 outdf$value)
             final <- rbind(final, outdf)
         }

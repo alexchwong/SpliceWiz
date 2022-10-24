@@ -373,7 +373,7 @@ server_vis_volcano <- function(
             if(input$adjP_volc) {
                 p <- p + labs(y = "Adjusted P Value (-log10)")
             } else {
-                p <- p + labs(x = "Nominal P Value (-log10)")            
+                p <- p + labs(y = "Nominal P Value (-log10)")            
             }
             
             p <- p + labs(color = "Selected")

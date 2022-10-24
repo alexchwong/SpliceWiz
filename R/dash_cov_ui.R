@@ -80,6 +80,8 @@ ui_cov <- function(id) {
                     choices = c("(none)")),
                 selectInput(ns('track4_cov'), 'Track 4', width = '100%',
                     choices = c("(none)")),
+                shinyWidgets::switchInput(ns("plot_Jn_cov"), 
+                    label = "Plot Junctions", labelWidth = "150px"),
                 shinyWidgets::switchInput(ns("stack_tracks_cov"), 
                     label = "Stack Traces", labelWidth = "150px"),
                 shinyWidgets::switchInput(ns("pairwise_t_cov"), 

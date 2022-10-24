@@ -84,7 +84,7 @@
 #'   isoforms that are not relevant to the samples being displayed.
 #' @param plotJunctions (default `FALSE`) If `TRUE`, sashimi plot junction arcs
 #'   are plotted. Currently only implemented for plots of individual samples.
-#' @param plot_involved_transcripts (default `FALSE`) If `TRUE`, only 
+#' @param plot_key_isoforms (default `FALSE`) If `TRUE`, only 
 #'   transcripts involved in the selected `Event` or pair of `Event`s will be
 #'   displayed.
 #' @param condense_tracks (default `FALSE`) Whether to collapse the
@@ -161,7 +161,7 @@
 #'     se = se,
 #'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
 #'     tracks = colnames(se)[1:4],
-#'     plot_involved_transcripts = TRUE
+#'     plot_key_isoforms = TRUE
 #' )
 #' as_ggplot_cov(p)
 #' @name plotCoverage
@@ -185,7 +185,7 @@ plotCoverage <- function(
         condition,
         selected_transcripts,
         plotJunctions = FALSE,
-        plot_involved_transcripts = FALSE,
+        plot_key_isoforms = FALSE,
         condense_tracks = FALSE,
         stack_tracks = FALSE,
         t_test = FALSE,
@@ -233,7 +233,7 @@ plotCoverage <- function(
         se = se, avail_files = covfile(se),
         transcripts = cov_data$transcripts.DT, elems = cov_data$elem.DT,
         stack_tracks = stack_tracks,
-        plot_involved_transcripts = plot_involved_transcripts,
+        plot_key_isoforms = plot_key_isoforms,
         graph_mode = "Pan", conf.int = 0.95,
         t_test = t_test, condensed = condense_tracks,
         plotJunctions = plotJunctions
@@ -955,7 +955,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     view_chr, view_start, view_end, view_strand,
     norm_event, condition, tracks = list(), track_names = NULL, se, avail_files,
     transcripts, elems, highlight_events = "", selected_transcripts = "",
-    plot_involved_transcripts = FALSE,
+    plot_key_isoforms = FALSE,
     stack_tracks, graph_mode, conf.int = 0.95,
     t_test = FALSE, condensed = FALSE,
     plotJunctions = FALSE
@@ -981,7 +981,7 @@ getCoverageBins <- function(file, region, bins = 2000,
         transcripts, elems, highlight_events,
         condensed = condensed,
         selected_transcripts = selected_transcripts,
-        plot_involved_transcripts = plot_involved_transcripts
+        plot_key_isoforms = plot_key_isoforms
     )
     data.t_test <- list()
     cur_zoom <- floor(log((view_end - view_start) / 50) / log(3))
@@ -1028,13 +1028,13 @@ getCoverageBins <- function(file, region, bins = 2000,
     view_chr, view_start, view_end,
     transcripts, elems, highlight_events = "",
     condensed = FALSE, selected_transcripts = "",
-    plot_involved_transcripts = FALSE
+    plot_key_isoforms = FALSE
 ) {
     DTlist <- .plot_view_ref_fn_getDTlist(
         view_chr, view_start, view_end,
         transcripts, elems, highlight_events,
         condensed, selected_transcripts,
-        plot_involved_transcripts
+        plot_key_isoforms
     )
     DTplotlist <- .plot_view_ref_fn_groupDTlist(DTlist,
         view_chr, view_start, view_end, highlight_events)
@@ -1047,7 +1047,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     view_chr, view_start, view_end,
     transcripts, elems, highlight_events = "",
     condensed = FALSE, selected_transcripts = "",
-    plot_involved_transcripts = FALSE
+    plot_key_isoforms = FALSE
 ) {
     transcripts.DT <- transcripts[
         get("seqnames") == view_chr &
@@ -1098,9 +1098,9 @@ getCoverageBins <- function(file, region, bins = 2000,
     # highlight_events is of syntax chrX:10000-11000/-
     if (length(highlight_events) > 1 || highlight_events != "")
         reduced.DT <- determine_compatible_events(
-            reduced.DT, highlight_events, plot_involved_transcripts)
+            reduced.DT, highlight_events, plot_key_isoforms)
 
-    if(plot_involved_transcripts) {
+    if(plot_key_isoforms) {
         transcripts.DT <- transcripts.DT[
             get("transcript_id") %in% reduced.DT$transcript_id]
     }
@@ -1112,7 +1112,7 @@ getCoverageBins <- function(file, region, bins = 2000,
 }
 
 determine_compatible_events <- function(
-        reduced.DT, highlight_events, plot_involved_transcripts
+        reduced.DT, highlight_events, plot_key_isoforms
 ) {
     introns <- reduced.DT[get("type") == "intron"]
     introns[, c("highlight") := "0"]
@@ -1177,7 +1177,7 @@ determine_compatible_events <- function(
                 c("highlight") := highlight_id]
         }
     }
-    if(plot_involved_transcripts) {
+    if(plot_key_isoforms) {
         introns <- introns[get("transcript_id") %in% tr_filter]
         exons <- exons[get("transcript_id") %in% tr_filter]
         misc <- misc[get("transcript_id") %in% tr_filter]

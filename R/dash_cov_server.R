@@ -66,8 +66,9 @@ server_cov <- function(
                 input, session, settings_Cov$event.ranges)
         })
         observeEvent(list(
-            input$refresh_coverage, input$stack_tracks_cov,
-            input$graph_mode_cov, input$pairwise_t_cov, input$condense_cov
+            input$refresh_coverage, input$plot_Jn_cov, input$stack_tracks_cov,
+            input$graph_mode_cov, input$pairwise_t_cov, input$condense_cov,
+            input$plot_key_iso
         ), {
             settings_Cov$trigger <- runif(1)
         })
@@ -380,7 +381,9 @@ server_cov_get_all_tracks <- function(input) {
         
         condense_tracks = input$condense_cov,
         stack_tracks = input$stack_tracks_cov,
-        t_test = input$pairwise_t_cov
+        t_test = input$pairwise_t_cov,
+        plotJunctions = input$plot_Jn_cov,
+        plot_key_isoforms = input$plot_key_iso
 
         # graph_mode = input$graph_mode_cov,
     )

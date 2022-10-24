@@ -10,8 +10,11 @@ ui_DE <- function(id) {
     if(.check_package_installed("DoubleExpSeq", "1.1", "silent")) {
         DE_opts <- c(DE_opts, "DoubleExpSeq")
     }
+    if(.check_package_installed("satuRn", "1.4.2", "silent")) {
+        DE_opts <- c(DE_opts, "satuRn")
+    }
     if(is.null(DE_opts)) {
-        DE_opts <- ("(none) - please install limma, DESeq2 or DoubleExpSeq")
+        DE_opts <- ("(none) - please install limma, DESeq2, DoubleExpSeq, or satuRn")
     }
     fluidRow(
         .ui_notice(),
@@ -29,6 +32,17 @@ ui_DE <- function(id) {
                 c("(none)")),
             selectInput(ns('batch2_DE'), 'Batch Factor 2', 
                 c("(none)")),
+            shinyWidgets::radioGroupButtons(ns("de_IRmode"), 
+                label = "Intron Retention analysis (mode)",
+                    justified = FALSE,
+                choiceNames = c(
+                    "All Introns (IR-Ratio)", 
+                    "Annotated IR events (IR-Ratio)", 
+                    "Annotated IR events (binary PSI)"
+                ), 
+                choiceValues = c("all", "annotated", "annotated_binary"),
+                checkIcon = list(yes = icon("ok", lib = "glyphicon"))
+            ),
             shinyWidgets::switchInput(ns("adjP_DE"), 
                 label = "Sort by Adjusted P Values", 
                 value = TRUE, labelWidth = "120px"),

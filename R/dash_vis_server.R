@@ -324,6 +324,9 @@ server_vis_volcano <- function(
             if("pvalue" %in% colnames(res)) {
                 df.volc$pvalue <- res$pvalue
                 df.volc$padj <- res$padj
+            } else if("regular_FDR" %in% colnames(res)) {
+                df.volc$pvalue <- res$pval
+                df.volc$padj <- res$regular_FDR
             } else {
                 df.volc$pvalue <- res$P.Value
                 df.volc$padj <- res$adj.P.Val

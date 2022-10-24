@@ -50,6 +50,7 @@ ASE_satuRn(
   test_denom,
   batch1 = "",
   batch2 = "",
+  n_threads = 1,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE

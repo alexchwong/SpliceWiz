@@ -314,7 +314,7 @@ ui_ddb_build_expr <- function(id, color = "danger") {
             value = 1),
         numericInput(ns("nsOpt_Threshold"), 
             label = "Threshold split read count", value = 10),
-        br(),br(),
+        br(),#br(),
 
         tags$h4("Collate Experiment"),
         actionButton(ns("run_collate_expr"), "Run collateData()"),

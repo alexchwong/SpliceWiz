@@ -362,12 +362,14 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 #' @export
 ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
+        n_threads = 1,
         IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE) {
 
     .check_package_installed("satuRn", "1.4.2")
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, batch1, batch2)
+    BPPARAM_mod <- .validate_threads(n_threads)
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear, IRmode)
 
@@ -376,7 +378,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     rowData <- as.data.frame(rowData(se_use))
     res.ASE <- .ASE_satuRn_contrast(se_use,
         test_factor, test_nom, test_denom,
-        batch1, batch2)
+        batch1, batch2, BPPARAM_mod)
     res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
         test_nom, test_denom)
     return(res.ASE)
@@ -725,7 +727,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 }
 
 .ASE_satuRn_contrast <- function(se, test_factor, test_nom, test_denom,
-        batch1, batch2) {
+        batch1, batch2, BPPARAM) {
     countData <- as.matrix(rbind(assay(se, "Included"),
         assay(se, "Excluded")))
     rowData <- as.data.frame(rowData(se))
@@ -770,11 +772,22 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         colData = colData,
         rowData = txInfo
     )
-    sumExp <- satuRn::fitDTU(
-        object = sumExp,
-        formula = formula1,
-        verbose = FALSE
-    )
+    if(BPPARAM$workers > 1) {
+        sumExp <- satuRn::fitDTU(
+            object = sumExp,
+            formula = formula1,
+            verbose = FALSE,
+            parallel = FALSE,
+            BPPARAM = BPPARAM
+        )    
+    } else {
+        sumExp <- satuRn::fitDTU(
+            object = sumExp,
+            formula = formula1,
+            verbose = FALSE,
+            parallel = FALSE
+        )
+    }
     sumExp <- satuRn::testDTU(
         object = sumExp,
         contrasts = contrast,

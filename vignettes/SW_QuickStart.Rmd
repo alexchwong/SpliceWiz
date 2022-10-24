@@ -179,7 +179,10 @@ colData(se)$treatment <- rep(c("A", "B"), each = 3)
 p <- plotCoverage(
     se = se,
     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
-    tracks = colnames(se)[1:4], plotJunctions = TRUE
+    tracks = colnames(se)[1:4], 
+    
+        ## NEW ##
+    plotJunctions = TRUE
 )
 ```
 
@@ -198,7 +201,10 @@ if(interactive()) {
 p <- plotCoverage(
     se = se,
     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
-    tracks = c("A", "B"), condition = "treatment", plotJunctions = TRUE
+    tracks = c("A", "B"), condition = "treatment", 
+
+        ## NEW ##
+    plotJunctions = TRUE
 )
 
 ```
@@ -256,6 +262,34 @@ brew install libomp
 ```
 </details> 
 \
+
+<details>
+<summary>Installing statistical package dependencies (Optional)</summary>
+\
+SpliceWiz uses established statistical tools to perform alternative splicing
+differential analysis:
+
+* limma: models included and excluded counts as log-normal distributions
+* DESeq2: models included and excluded counts as negative binomial distributions
+* DoubleExpSeq: models included and excluded counts using beta binomial
+distributions
+* satuRn: models included and excluded counts using quasi-binomial 
+distributions.
+
+To install all of these packages:
+
+```{r eval=FALSE}
+
+install.packages("DoubleExpSeq")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install(c("DESeq2", "limma", "satuRn"))
+```
+</details> 
+\
+
 
 ## Loading SpliceWiz
 
@@ -333,8 +367,9 @@ functions. For example, to view the annotated alternative splicing events (ASE):
 ```{r, results='hide', message = FALSE, warning = FALSE}
 df <- viewASE(ref_path)
 
-# See ?View-Reference-methods for a comprehensive list of getter functions
 ```
+
+See `?View-Reference-methods` for a comprehensive list of getter functions
 
 <details>
 <summary>Using the GUI</summary>
@@ -343,7 +378,7 @@ After starting the SpliceWiz GUI in demo mode,
 click the `Reference` tab from the menu side bar. The following interface
 will be shown:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Reference GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Reference GUI"}
 knitr::include_graphics("img/buildRef.jpg")
 ```
 
@@ -505,13 +540,13 @@ SpliceWiz GUI in demo mode. Then,
 click the `Experiment` tab from the menu side bar. The following interface
 will be shown:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Experiment GUI"}
+```{r, echo=FALSE, out.width='8000pt', fig.align = 'center', fig.cap="Experiment GUI"}
 knitr::include_graphics("img/Expr_empty.jpg")
 ```
 
 Click on (2) `Define Project Folders` to bring up the following drop-down
 box:
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Define Project Folders"}
+```{r, echo=FALSE, out.width='480pt', fig.align = 'center', fig.cap="Define Project Folders"}
 knitr::include_graphics("img/Expr_drop_2.jpg")
 ```
 
@@ -649,6 +684,40 @@ collateData(
     output_path = nxtse_path
 )
 ```
+\
+<details>
+<summary>What is the `collateData()` function</summary>
+\
+`collateData()` combines the `processBAM()` output files of multiple samples and
+builds a single database. `collateData()` creates a number of files in the
+chosen output directory. These outputs can then be imported into the R session
+as a `NxtSE` data object for downstream analysis.
+
+At minimum, `collateData()` takes the following parameters:
+
+* `Experiment` : The 2- or 3- column data frame. The first column should contain
+(unique) sample names. The second and (optional) third columns contain the 
+`"txt.gz"` and `"cov"` file paths
+* `reference_path` : The directory containing the SpliceWiz reference
+* `output_path` : The directory where the output of `processBAM()` should go
+
+`collateData()` can take some optional parameters:
+
+* `IRMode` : Whether to use SpliceWiz's `SpliceOver` method, or IRFinder's 
+`SpliceMax` method, to determine total spliced transcript abundance. Briefly,
+`SpliceMax` considers junction reads that have either flanking splice site
+coordinate. `SpliceOver` considers additional junction reads that splices
+across exon clusters in common. Exon clusters are groups of mutually-overlapping
+exons. `SpliceOver` is the default option.
+* `overwrite` : Whether files in the output directory should be overwritten
+* `n_threads` : Use multi-threaded operations where possible
+* `lowMemoryMode` : Minimise memory usage where possible. Note that most of the
+collateData pipeline will be single-threaded if this is set to `TRUE`.
+
+`collateData()` is a memory-intensive operation when run using multiple threads.
+We estimate it can use up to 6-7 Gb per thread. `lowMemoryMode` will minimise
+RAM usage to ~ 8 Gb, but will be slower and run on a single thread.\
+</details>
 
 \
 <details>
@@ -726,7 +795,7 @@ After running the Reference and processBAM steps as indicated in the previous
 sections (of the GUI instructions), click `Construct Experiment`.
 Your interface should now look like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="collateData GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="collateData GUI"}
 knitr::include_graphics("img/Expr_cd.jpg")
 ```
 
@@ -746,40 +815,6 @@ To collate the experiment, click on (6) `Run collateData()`.
 An alert pop-up should be displayed when this process is complete.
 
 To clear all the setting on the Experiment page, click (7).
-</details>
-
-\
-<details>
-<summary>What is the `collateData()` function</summary>
-\
-`collateData()` combines the `processBAM()` output files of multiple samples and
-builds a single database. `collateData()` creates a number of files in the
-chosen output directory. These outputs can then be imported into the R session
-as a `NxtSE` data object for downstream analysis.
-
-At minimum, `collateData()` takes the following parameters:
-
-* `Experiment` : The 2- or 3- column data frame. The first column should contain
-(unique) sample names. The second and (optional) third columns contain the 
-`"txt.gz"` and `"cov"` file paths
-* `reference_path` : The directory containing the SpliceWiz reference
-* `output_path` : The directory where the output of `processBAM()` should go
-
-`collateData()` can take some optional parameters:
-
-* `IRMode` : Whether to use SpliceWiz's `SpliceOver` method, or IRFinder's 
-`SpliceMax` method, to determine total spliced transcript abundance. Briefly,
-`SpliceMax` considers junction reads that have either flanking splice site
-coordinate. `SpliceOver` considers additional junction reads that splices
-across exon clusters in common. Exon clusters are groups of mutually-overlapping
-exons. `SpliceOver` is the default option.
-* `overwrite` : Whether files in the output directory should be overwritten
-* `n_threads` : Use multi-threaded operations where possible
-* `lowMemoryMode` : Minimise memory usage where possible
-
-`collateData()` is a memory-intensive operation when run using multiple threads.
-We estimate it can use up to 6-7 Gb per thread. `lowMemoryMode` will minimise
-RAM usage to ~ 8 Gb, but will be slower and run on a single thread.\
 </details>
 \
 
@@ -802,7 +837,7 @@ After running the steps in the previous GUI sections, navigate to `Analysis`
 and then click the `Load Experiment` on the menu bar. The display should
 look like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
+```{r, echo=FALSE, out.width='480pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
 knitr::include_graphics("img/Expr_load_empty.jpg")
 ```
 
@@ -810,7 +845,7 @@ First, click the `Open Folder containing NxtSE` to open the dropdown, then
 click `Choose Folder (NxtSE)`. Select the `NxtSE` directory. The interface
 should now look like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
 knitr::include_graphics("img/Expr_load_folder.jpg")
 ```
 
@@ -889,7 +924,7 @@ After following the previous GUI sections, with the NxtSE loaded, click on
 `Review Annotations`. Then, click `Edit Interactively`. Your interface should
 now look like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="NxtSE Annotations GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="NxtSE Annotations GUI"}
 knitr::include_graphics("img/Expr_anno_empty.jpg")
 ```
 
@@ -898,7 +933,7 @@ appeared, type in a name `condition`, then click `Add`. Then, click `batch`
 and again click `Add`. Then, click on each empty cell and fill in the fields
 as shown:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="NxtSE Annotations GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="NxtSE Annotations GUI"}
 knitr::include_graphics("img/Expr_anno_filled.jpg")
 ```
 
@@ -985,7 +1020,7 @@ se.filtered <- se[applyFilters(se),]
 After following the GUI tutorials in the prior sections, click on `Analysis`
 and then `Filters` from the menu bar. It should look like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Filters - GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Filters - GUI"}
 knitr::include_graphics("img/Filters_empty.jpg")
 ```
 
@@ -994,7 +1029,7 @@ To load SpliceWiz's default filters, click the top right button
 `Apply Filters`. After the filters have been run, your session should now look
 like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="SpliceWiz default filters- GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="SpliceWiz default filters- GUI"}
 knitr::include_graphics("img/Filters_applied.jpg")
 ```
 </details>
@@ -1038,7 +1073,7 @@ After running the previous sections (of the GUI instructions), click `Analysis`
 and then `Differential Expression Analysis` on the menu side bar. It should look
 something like this (but with empty fields):
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Differential Expression GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Differential Expression GUI"}
 knitr::include_graphics("img/DE_empty.jpg")
 ```
 
@@ -1051,9 +1086,16 @@ Once differential expression analysis has finished, your session should look
 like below. The output is a DT-based data table equivalent to the `ASE_limma()`
 function.
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Differential Expression (limma) GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Differential Expression (limma) GUI"}
 knitr::include_graphics("img/DE_limma.jpg")
 ```
+
+NB: The interface allows users to choose to sort the results either by nominal
+or (multiple-testing) adjusted P values
+
+NB2: There are 3 different ways Intron Retention events can be quantified and
+analysed - see "What are the different ways intron retention is measured?" below
+for further details.
 
 </details>
 \
@@ -1072,6 +1114,8 @@ robust results. Time series analysis is also available for this mode
 package uses the beta-binomial distribution to model isoform counts. The method
 is at least as fast as `limma`, but for now it is restricted to analysis
 between two groups (i.e. batch correction is not implemented)
+* (New in 0.99.4+) `ASE_satuRn` uses the new `satuRn` package which models 
+counts using the quasi-binomial distribution.
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 # Requires limma to be installed:
@@ -1089,7 +1133,8 @@ res_deseq <- ASE_DESeq(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
-    test_denom = "A"
+    test_denom = "A",
+    n_threads = 1
 )
 
 # Requires DoubleExpSeq to be installed:
@@ -1099,6 +1144,16 @@ res_DES <- ASE_DoubleExpSeq(
     test_factor = "condition",
     test_nom = "B",
     test_denom = "A"
+)
+
+# Requires satuRn to be installed:
+require("satuRn")
+res_saturn <- ASE_satuRn(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A",
+    n_threads = 1
 )
 ```
 \
@@ -1170,9 +1225,9 @@ res_limma_annotated_binaryIR <- ASE_limma(
 <details>
 <summary>Can I account for batch factors?</summary>
 \
-`ASE_limma` and `ASE_DESeq` can accept up to 2 categories of batches from which
-to normalize. For example, to normalize the analysis by the `batch` category,
-one would run:
+`ASE_limma`, `ASE_DESeq` and `ASE_satuRn` can accept up to 2 categories of 
+batches from which to normalize. For example, to normalize the analysis by the 
+`batch` category, one would run:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 require("limma")
@@ -1250,7 +1305,7 @@ After following the previous sections including differential analysis, navigate
 to `Display` and then `Volcano Plot`. The default volcano plot (top 1000 ASEs)
 will be automatically generated as a plotly object:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Volcano Plot - GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Volcano Plot - GUI"}
 knitr::include_graphics("img/Vis_volcano.jpg")
 ```
 
@@ -1312,7 +1367,7 @@ For now, change the `Variable` to `condition`, `X-axis condition` to `A` and
 `Y-axis condition` to `B`. A scatter plot should be automatically generated as
 follows:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Scatter plot - GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Scatter plot - GUI"}
 knitr::include_graphics("img/Vis_scatter.jpg")
 ```
 
@@ -1326,14 +1381,14 @@ SpliceWiz GUI generates plotly interactive figures. For volcano and scatter
 plots, points of interest can be selected using the lasso or box select tools.
 For example, we can select the top hits from the faceted volcano plot as shown:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Volcano plot - selecting ASEs of interest via the GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Volcano plot - selecting ASEs of interest via the GUI"}
 knitr::include_graphics("img/Vis_volcano_select.jpg")
 ```
 
 These ASEs of interest will then be highlighted in other plots, for example
 scatter plot:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Scatter plot - highlighted ASE events"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Scatter plot - highlighted ASE events"}
 knitr::include_graphics("img/Vis_scatter_highlighted.jpg")
 ```
 </details>
@@ -1417,7 +1472,7 @@ pheatmap(mat, annotation_col = anno_col_df)
 Navigate to `Display`, then `Heatmap` in the menu side bar. A heatmap will be
 automatically generated:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Heatmap - GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Heatmap - GUI"}
 knitr::include_graphics("img/Vis_heatmap.jpg")
 ```
 

@@ -100,7 +100,10 @@
 #'     formed by novel splicing only.
 #'   * AvgPSI_nom, Avg_PSI_denom: the average percent spliced in / percent
 #'     IR levels for the two conditions being contrasted. `nom` and `denom` in
-#'     column names are replaced with the condition names
+#'     column names are replaced with the condition names. Note this is a
+#'     geometric mean, based on the arithmetic mean of logit PSI values.
+#'   * deltaPSI: The difference in PSI between the mean values of the two
+#'     conditions.
 #'
 #'   **limma specific output**
 #'   * logFC, AveExpr, t, P.Value, adj.P.Val, B: limma topTable columns of

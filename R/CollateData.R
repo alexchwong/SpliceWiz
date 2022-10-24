@@ -139,6 +139,15 @@ collateData <- function(Experiment, reference_path, output_path,
     originalSWthreads <- .getSWthreads()
     setSWthreads(1) # try this to prevent memory leak
     BPPARAM_mod <- .validate_threads(n_threads)
+    if(!is.numeric(novelSplicing_minSamples)) 
+        novelSplicing_minSamples <- 0
+    if(!is.numeric(novelSplicing_countThreshold)) 
+        novelSplicing_countThreshold <- 0
+    if(!is.numeric(novelSplicing_minSamplesAboveThreshold))
+        novelSplicing_minSamplesAboveThreshold <- 0
+    if(!is.logical(novelSplicing_requireOneAnnotatedSJ))
+        novelSplicing_requireOneAnnotatedSJ <- TRUE
+    if(!is.logical(novelSplicing)) novelSplicing <- FALSE
 
     N_steps <- 8
     dash_progress("Validating Experiment; checking COV files...", N_steps)
@@ -192,16 +201,20 @@ collateData <- function(Experiment, reference_path, output_path,
         .collateData_annotate(reference_path, norm_output_path, 
             stranded, novelSplicing, lowMemoryMode,
             minSamplesWithJunc = novelSplicing_minSamples, 
-            minSamplesAboveJuncThreshold = novelSplicing_minSamplesAboveThreshold,
-            novelSplicing_requireOneAnnotatedSJ = novelSplicing_requireOneAnnotatedSJ
+            minSamplesAboveJuncThreshold = 
+                novelSplicing_minSamplesAboveThreshold,
+            novelSplicing_requireOneAnnotatedSJ =
+                novelSplicing_requireOneAnnotatedSJ
         )
     } else {
         # perform task inside child thread, so we can dump the memory later
         .collateData_annotate_BPPARAM(reference_path, norm_output_path, 
             stranded, novelSplicing, lowMemoryMode,
             minSamplesWithJunc = novelSplicing_minSamples, 
-            minSamplesAboveJuncThreshold = novelSplicing_minSamplesAboveThreshold,
-            novelSplicing_requireOneAnnotatedSJ = novelSplicing_requireOneAnnotatedSJ
+            minSamplesAboveJuncThreshold = 
+                novelSplicing_minSamplesAboveThreshold,
+            novelSplicing_requireOneAnnotatedSJ =
+                novelSplicing_requireOneAnnotatedSJ
         )
     }
     message("done\n")
@@ -1020,8 +1033,8 @@ collateData <- function(Experiment, reference_path, output_path,
     candidate.introns <- as.data.table(
         read.fst(file.path(reference_path, "fst", "junctions.fst"))
     )
-    introns.skipcoord <- .gen_splice_skipcoord(
-        reference_path, candidate.introns)
+    # introns.skipcoord <- .gen_splice_skipcoord(
+        # reference_path, candidate.introns)
         
     junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "junc.common.annotated.fst")))
@@ -1077,13 +1090,13 @@ collateData <- function(Experiment, reference_path, output_path,
     tj.common <- tj.common[strand != ""]
     
     # Filter for TJ for which tandem interval does not match known skip_coord
-    skip_coord <- introns.skipcoord$skip_coord[
-        !is.na(introns.skipcoord$skip_coord)]
-    skip_coord <- unique(skip_coord)
-    tj_skip <- paste0(tj.common$seqnames, ":", 
-        tj.common$start1, "-", tj.common$end2, "/", tj.common$strand)
+    # skip_coord <- introns.skipcoord$skip_coord[
+        # !is.na(introns.skipcoord$skip_coord)]
+    # skip_coord <- unique(skip_coord)
+    # tj_skip <- paste0(tj.common$seqnames, ":", 
+        # tj.common$start1, "-", tj.common$end2, "/", tj.common$strand)
     
-    tj.common <- tj.common[tj_skip %in% skip_coord | tj_skip %in% jc_events]
+    # tj.common <- tj.common[tj_skip %in% skip_coord | tj_skip %in% jc_events]
     
     # Filter for TJ for which novel exon does not match 
     #   any boundary with known exon
@@ -1108,7 +1121,8 @@ collateData <- function(Experiment, reference_path, output_path,
         "annotation", "tj.common.annotated.fst"))
 
     # Cleanup
-    rm(candidate.introns, introns.skipcoord, junc.common, tj.common,
+    # rm(introns.skipcoord)
+    rm(candidate.introns, junc.common, tj.common,
         tj.strand, exons_brief)
     gc()
 }

@@ -39,8 +39,10 @@ ui_expr <- function(id) {
                     ui_ddb_demo_load(id, color = "danger"), br(),
                     ui_ddb_project_dir(id, color = "default"), br(), # br(),
                     ui_ddb_sw_path(id, color = "default"), br(), # br(),
-                    ui_ddb_build_annos(id, color = "default"), br(), # br(),                   
-                    ui_ddb_build_expr(id, color = "default"), # br(), # br(),
+                    ui_ddb_build_annos(id, color = "default"), br(), #br(),
+                    ui_ddb_build_expr(id, color = "default"), # br(),
+                    # ui_ddb_novel_splicing_settings(id, color = "default"), 
+                    # br(),
                 )
             ),
             column(8,
@@ -298,12 +300,54 @@ ui_ddb_build_expr <- function(id, color = "danger") {
         color = color,
         icon = icon("flask", lib = "font-awesome"),
 
+        shinyWidgets::switchInput(ns("novel_splicing_on"), 
+            label = "Look for Novel Splicing", labelWidth = "200px"),
+        br(),
+        shinyWidgets::switchInput(ns("novel_splicing_sameJunc"), 
+            label = "Only Include novel reads with one annotated splice site",
+            labelWidth = "200px", value = TRUE),
+
+        numericInput(ns("nsOpt_minSamples"), 
+            label = "Minimum samples with junctions", value = 3),  
+        numericInput(ns("nsOpt_minSamplesThreshold"), 
+            label = "Minimum samples with junctions above threshold", 
+            value = 1),
+        numericInput(ns("nsOpt_Threshold"), 
+            label = "Threshold split read count", value = 10),
+        br(),br(),
+
         tags$h4("Collate Experiment"),
         actionButton(ns("run_collate_expr"), "Run collateData()"),
         br(),br(),
         
         tags$h4("Clear Experiment"),
         actionButton(ns("clear_expr"), "Clear Experiment")
+    )
+}
+
+ui_ddb_novel_splicing_settings <- function(id, color = "danger") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "expr_ddb_expr_ns_settings",
+        id = id,
+        title = "Novel Splicing",
+        color = color,
+        icon = icon("flask", lib = "font-awesome"),
+
+        shinyWidgets::switchInput(ns("novel_splicing_on"), 
+            label = "Look for Novel Splicing", labelWidth = "200px"),
+        br(),
+        shinyWidgets::switchInput(ns("novel_splicing_sameJunc"), 
+            label = "Only Include novel reads with one annotated splice site",
+            labelWidth = "200px", value = TRUE),
+
+        numericInput(ns("nsOpt_minSamples"), 
+            label = "Minimum samples with junctions", value = 3),  
+        numericInput(ns("nsOpt_minSamplesThreshold"), 
+            label = "Minimum samples with junctions above threshold", 
+            value = 1),
+        numericInput(ns("nsOpt_Threshold"), 
+            label = "Threshold split read count", value = 10),
     )
 }
 

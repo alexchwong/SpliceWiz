@@ -90,7 +90,10 @@ and is use to guide the \link{plotCoverage} function.
 formed by novel splicing only.
 \item AvgPSI_nom, Avg_PSI_denom: the average percent spliced in / percent
 IR levels for the two conditions being contrasted. \code{nom} and \code{denom} in
-column names are replaced with the condition names
+column names are replaced with the condition names. Note this is a
+geometric mean, based on the arithmetic mean of logit PSI values.
+\item deltaPSI: The difference in PSI between the mean values of the two
+conditions.
 }
 
 \strong{limma specific output}

@@ -361,7 +361,14 @@ server_expr <- function(
                     collateData(
                         Experiment, reference_path, output_path, 
                         n_threads = get_threads_reactive(),
-                        lowMemoryMode = get_memmode_reactive()
+                        lowMemoryMode = get_memmode_reactive(),
+                        novelSplicing = input$novel_splicing_on,
+                        novelSplicing_requireOneAnnotatedSJ = 
+                            input$novel_splicing_sameJunc,
+                        novelSplicing_minSamples = input$nsOpt_minSamples,
+                        novelSplicing_minSamplesAboveThreshold = 
+                            input$nsOpt_minSamplesThreshold,
+                        novelSplicing_countThreshold  = input$nsOpt_Threshold
                     )
                 })
                 Expr_Update_colData(

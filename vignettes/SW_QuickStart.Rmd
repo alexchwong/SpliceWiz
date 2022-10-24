@@ -1105,6 +1105,69 @@ res_DES <- ASE_DoubleExpSeq(
 </details>
 \
 <details>
+<summary>What are the different ways intron retention is measured?</summary>
+\
+Intron retention can be measured via two approaches.
+
+The first (and preferred) approach is using IR-ratio. We presume that every
+intron is potentially retained (thus ignoring annotation). Given this results in
+many overlapping introns, SpliceWiz adjusts for this via the following:
+
+* Where there are mutually-overlapping introns, the less abundant intron is
+removed from the analysis. Abundance is estimated across the entire dataset, and
+less-abundant overlapping introns are removed at the `makeSE()` step.
+* IR-ratio measures included (intronic) abundance using an identical approach
+to IRFinder, i.e., it calculates the trimmed mean of sequencing depth across the
+intron, excluding annotated outliers (other exons, intronic elements). Given we
+cannot assume whether the exact intron corresponds to the major isoform, we
+estimate splicing abundance by summing junction reads that share either exon
+cluster as the intron of interest (`SpliceOver` method in SpliceWiz). 
+Alternately, users can choose to use IRFinder's `SpliceMax` method, summing
+junction reads that share either splice junction with the intron of interest.
+This choice is also made by the user at the `makeSE()` step.
+
+At the differential analysis step, users can choose the following:
+
+* `IRmode = "all"` - all introns are potentially retained, use IR-ratio to 
+quantify IR (`EventType = "IR"`)
+* `IRmode = "annotated"` - only annotated retained intron events are considered,
+but use IR-ratio to quantify IR (`EventType = "IR"`)
+* `IRmode = "annotated_binary"` - only annotated retained intron events are
+considered, use PSI to quantify IR - which considers the IR-transcript and
+the transcript isoform with the exactly-spliced intron as binary alternatives.
+Splicing of overlapping introns are not considered in PSI quantitation.
+
+
+```{r, results='hide', message = FALSE, warning = FALSE}
+res_limma_allIntrons <- ASE_limma(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A",
+    IRmode = "all"
+)
+
+res_limma_annotatedIR <- ASE_limma(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A",
+    IRmode = "annotated"
+)
+
+res_limma_annotated_binaryIR <- ASE_limma(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A",
+    IRmode = "annotated_binary"
+)
+```
+\
+<\details>
+\
+
+<details>
 <summary>Can I account for batch factors?</summary>
 \
 `ASE_limma` and `ASE_DESeq` can accept up to 2 categories of batches from which

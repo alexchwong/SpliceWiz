@@ -15,6 +15,7 @@ ASE_limma(
   test_denom,
   batch1 = "",
   batch2 = "",
+  IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE
 )
@@ -27,6 +28,7 @@ ASE_DESeq(
   batch1 = "",
   batch2 = "",
   n_threads = 1,
+  IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE
 )
@@ -36,6 +38,7 @@ ASE_DoubleExpSeq(
   test_factor,
   test_nom,
   test_denom,
+  IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE
 )
@@ -47,6 +50,7 @@ ASE_satuRn(
   test_denom,
   batch1 = "",
   batch2 = "",
+  IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE
 )
@@ -67,6 +71,18 @@ ASE. Usually the "control" condition}
 
 \item{batch1, batch2}{(Optional, limma and DESeq2 only) One or two condition
 types containing batch information to account for.}
+
+\item{IRmode}{(default \code{all}) Choose the approach to quantify IR events.
+Default \code{all} considers all introns as potentially retained, and calculates
+IR-ratio based on total splicing across the intron using the "SpliceOver"
+or "SpliceMax" approach (see \link{collateData}). Other options include
+\code{annotated} which calculates IR-ratios for annotated introns only, and
+\code{annotated_binary} which calculates PSI considering the "included"
+isoform as the IR-transcript, and the "excluded" transcript is
+quantified from splice counts only across the exact intron
+(but not that of overlapping introns). IR-ratio are denoted as "IR" events,
+whereas PSIs calculated using IR and intron-spliced binary alternatives are
+denoted as "RI" events.}
 
 \item{filter_antiover, filter_antinear}{Whether to remove novel IR events that
 overlap over or near anti-sense genes. Default will exclude antiover but
@@ -181,23 +197,30 @@ the quasi-binomial distribution in a generalised linear model.
 \item \code{RI} = (known / annotated) intron retention (PSI).
 }
 
-NB: SpliceWiz separately considers known "RI" and novel "IR" events
-separately:
+NB: SpliceWiz measures intron retention events using two different
+approaches, the choice of which is left to the user - see \link{ASE-methods}:
 \itemize{
-\item For \strong{IR} (all introns are putative IR events), differential analysis
-is performed on IR-ratio, which is similar to PSI, but the "excluded isoform"
-includes \strong{all} spliced transcripts that contain an overlapping intron, as
-estimated via the \code{SpliceMax} and \code{SpliceOver} methods - see \link{collateData}.
-\item For \strong{RI} (annotated retained introns), differential analysis is performed
-on PSI, whereby the "excluded" isoform is one that splice across the
-same \strong{exact} intron as the intron of interest.
+\item \strong{IR} (intron retention) events: considers all introns to be potentially
+retained. Given in most scenarios there may be uncertainty as to which of the
+many mutually-overlapping introns are spliced to produce the major isoform,
+SpliceWiz adopts the IRFinder approach by using the IR-ratio. The "included"
+isoform is the relative abundance of the IR-transcript, as approximated by
+the trimmed-mean depth of coverage across the intron (excluding outliers
+including exons of other transcripts, intronic elements such as snoRNAs,
+etc). The "excluded isoform" includes \strong{all} spliced transcripts that
+contain an overlapping intron, as estimated via SpliceWiz's \code{SpliceOver} and
+IRFinder's \code{SpliceMax} methods - see \link{collateData}.
+\item \strong{RI} (annotated retained introns) considers only annotated retained
+introns, i.e., those annotated within the given reference. These are
+quantified using PSI, considering the included (IR-transcript) and excluded
+(splicing of the exact intron) as binary alternatives.
 }
 
 SpliceWiz considers "included" counts as those that represent abundance of
 the "included" isoform, whereas "excluded" counts represent the abundance of
 the "excluded" isoform.
-For consistency, it applies a convention whereby
-the "included" transcript is one where its splice junctions
+To allow comparison between modalities, SpliceWiz applies a convention
+whereby the "included" transcript is one where its splice junctions
 are by definition shorter than those of "excluded" transcripts.
 Specifically, this means the included / excluded isoforms are as follows:\tabular{ccc}{
    EventType \tab Included \tab Excluded \cr

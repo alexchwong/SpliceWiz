@@ -43,21 +43,28 @@
 #' * `A3SS` = alternate 3'-splice site
 #' * `RI` = (known / annotated) intron retention (PSI).
 #'
-#' NB: SpliceWiz separately considers known "RI" and novel "IR" events 
-#'   separately:
-#' * For **IR** (all introns are putative IR events), differential analysis
-#' is performed on IR-ratio, which is similar to PSI, but the "excluded isoform"
-#' includes **all** spliced transcripts that contain an overlapping intron, as
-#' estimated via the `SpliceMax` and `SpliceOver` methods - see [collateData].
-#' * For **RI** (annotated retained introns), differential analysis is performed
-#' on PSI, whereby the "excluded" isoform is one that splice across the 
-#' same **exact** intron as the intron of interest. 
+#' NB: SpliceWiz measures intron retention events using two different 
+#'   approaches, the choice of which is left to the user - see [ASE-methods]:
+#' * **IR** (intron retention) events: considers all introns to be potentially
+#' retained. Given in most scenarios there may be uncertainty as to which of the
+#' many mutually-overlapping introns are spliced to produce the major isoform,
+#' SpliceWiz adopts the IRFinder approach by using the IR-ratio. The "included"
+#' isoform is the relative abundance of the IR-transcript, as approximated by
+#' the trimmed-mean depth of coverage across the intron (excluding outliers
+#' including exons of other transcripts, intronic elements such as snoRNAs, 
+#' etc). The "excluded isoform" includes **all** spliced transcripts that 
+#' contain an overlapping intron, as estimated via SpliceWiz's `SpliceOver` and 
+#' IRFinder's `SpliceMax` methods - see [collateData].
+#' * **RI** (annotated retained introns) considers only annotated retained 
+#' introns, i.e., those annotated within the given reference. These are
+#' quantified using PSI, considering the included (IR-transcript) and excluded
+#' (splicing of the exact intron) as binary alternatives. 
 #'
 #' SpliceWiz considers "included" counts as those that represent abundance of 
 #' the "included" isoform, whereas "excluded" counts represent the abundance of 
 #' the "excluded" isoform.
-#' For consistency, it applies a convention whereby
-#' the "included" transcript is one where its splice junctions
+#' To allow comparison between modalities, SpliceWiz applies a convention 
+#' whereby the "included" transcript is one where its splice junctions
 #' are by definition shorter than those of "excluded" transcripts.
 #' Specifically, this means the included / excluded isoforms are as follows:
 #'
@@ -82,6 +89,17 @@
 #'   ASE. Usually the "control" condition
 #' @param batch1,batch2 (Optional, limma and DESeq2 only) One or two condition
 #'   types containing batch information to account for.
+#' @param IRmode (default `all`) Choose the approach to quantify IR events.
+#'   Default `all` considers all introns as potentially retained, and calculates
+#'   IR-ratio based on total splicing across the intron using the "SpliceOver"
+#'   or "SpliceMax" approach (see [collateData]). Other options include 
+#'   `annotated` which calculates IR-ratios for annotated introns only, and
+#'   `annotated_binary` which calculates PSI considering the "included"
+#'   isoform as the IR-transcript, and the "excluded" transcript is
+#'   quantified from splice counts only across the exact intron 
+#'   (but not that of overlapping introns). IR-ratio are denoted as "IR" events,
+#'   whereas PSIs calculated using IR and intron-spliced binary alternatives are
+#'   denoted as "RI" events.
 #' @param filter_antiover,filter_antinear Whether to remove novel IR events that
 #'   overlap over or near anti-sense genes. Default will exclude antiover but
 #'   not antinear introns. These are ignored if strand-specific RNA-seq 
@@ -191,13 +209,15 @@ NULL
 #' @export
 ASE_limma <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
+        IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE) {
 
     .check_package_installed("limma", "3.44.0")
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, batch1, batch2)
+    IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
-        se, filter_antiover, filter_antinear)
+        se, filter_antiover, filter_antinear, IRmode)
 
     .log("Performing limma contrast for included / excluded counts separately",
         "message")
@@ -241,6 +261,7 @@ ASE_limma <- function(se, test_factor, test_nom, test_denom,
 ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
         n_threads = 1,
+        IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE) {
     .check_package_installed("DESeq2", "1.30.0")
     .ASE_check_args(colData(se), test_factor,
@@ -248,7 +269,7 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
         allowTimeSeries = TRUE)
     BPPARAM_mod <- .validate_threads(n_threads)
     se_use <- .ASE_filter(
-        se, filter_antiover, filter_antinear)
+        se, filter_antiover, filter_antinear, IRmode)
 
     .log("Performing DESeq2 contrast for included / excluded counts separately",
         "message")
@@ -299,13 +320,14 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
 #' @export
 ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         # batch1 = "", batch2 = "",
+        IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE) {
 
     .check_package_installed("DoubleExpSeq", "1.1")
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, "", "")
     se_use <- .ASE_filter(
-        se, filter_antiover, filter_antinear)
+        se, filter_antiover, filter_antinear, IRmode)
 
     .log("Running DoubleExpSeq::DBGLM1() on given data", "message")
     res.ASE <- .ASE_DoubleExpSeq_contrast_ASE(se_use,
@@ -340,13 +362,14 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 #' @export
 ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
+        IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE) {
 
     .check_package_installed("satuRn", "1.4.2")
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, batch1, batch2)
     se_use <- .ASE_filter(
-        se, filter_antiover, filter_antinear)
+        se, filter_antiover, filter_antinear, IRmode)
 
     .log("Performing satuRn contrast for included / excluded counts",
         "message")
@@ -413,7 +436,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 }
 
 # Filter antiover and antinear
-.ASE_filter <- function(se, filter_antiover, filter_antinear) {
+.ASE_filter <- function(se, filter_antiover, filter_antinear, IRmode) {
     se_use <- se
     if(filter_antiover) {
         se_use <- se_use[
@@ -423,8 +446,18 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         se_use <- se_use[
             !grepl("anti-near", rowData(se_use)$EventName),]
     }
-    se_use <- se_use[
-        !grepl("known-exon", rowData(se_use)$EventName),]
+    
+    if(IRmode == "all") {
+        se_use <- se_use[rowData(se_use)$EventType != "RI",]
+    } else if(IRmode == "annotated") {
+        se_use <- se_use[rowData(se_use)$EventType != "RI",]
+        se_use <- se_use[
+            rowData(se_use)$EventType != "IR" | 
+            rowData(se_use)$is_annotated_IR,]
+    } else {
+        se_use <- se_use[rowData(se_use)$EventType != "IR",]    
+    }
+
     return(se_use)
 }
 

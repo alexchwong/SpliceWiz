@@ -1837,10 +1837,9 @@ collateData <- function(Experiment, reference_path, output_path,
     IR_NMD <- read.fst(file.path(reference_path, "fst", "IR.NMD.fst"),
         as.data.table = TRUE)
     candidate.introns <- as.data.table(
-        read.fst(file.path(reference_path, "fst", "junctions.fst")))
+        read.fst(file.path(reference_path, "fst", "junctions.fst")))   
 
     # Prioritise candidate.introns based on transcript importance
-
     rowEvent.Extended[get("EventType") == "IR",
         c("intron_id") := tstrsplit(get("EventName"), split = "/")[[2]]]
     rowEvent.Extended[, c("Inc_Is_Protein_Coding") := FALSE]
@@ -1914,6 +1913,21 @@ collateData <- function(Experiment, reference_path, output_path,
     
     rowEvent.Extended[get("EventType") %in% c("MXE", "SE"),
         c("is_always_first_intron", "is_always_last_intron") := list(NA,NA)]
+
+    # Convert IR to `annotated`
+    rowEvent.Extended[, c("is_annotated_IR") := FALSE]
+
+    Exons <- read.fst(file.path(reference_path, "fst", "Exons.fst"),
+        as.data.table = TRUE)
+    OL <- findOverlaps(
+        coord2GR(unlist(
+            rowEvent.Extended[get("EventType") == "IR", "EventRegion"]
+        )), 
+        .grDT(Exons),
+        type = "within"
+    )
+    rowEvent.Extended[unique(OL@from), c("is_annotated_IR") := TRUE]
+
     write.fst(as.data.frame(rowEvent.Extended), 
         file.path(norm_output_path, "rowEvent.fst"))
 

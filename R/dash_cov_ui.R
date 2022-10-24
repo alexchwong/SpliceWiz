@@ -86,6 +86,8 @@ ui_cov <- function(id) {
                     label = "Stack Traces", labelWidth = "150px"),
                 shinyWidgets::switchInput(ns("pairwise_t_cov"), 
                     label = "Pairwise t-test", labelWidth = "150px"),
+                shinyWidgets::switchInput(ns("plot_key_iso"), 
+                    label = "Display Key Isoforms", labelWidth = "150px"),
                 shinyWidgets::switchInput(ns("condense_cov"), 
                     label = "Condensed Tracks", labelWidth = "150px"),
                 # shinySaveButton(ns("saveplot_cov"), 

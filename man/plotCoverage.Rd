@@ -229,10 +229,11 @@ as_ggplot_cov(p)
 # Display the plotly-based interactive Coverage plot:
 p$final_plot
 
-# Plot by condition "treatment"
+# Plot by condition "treatment", including provisional PSIs
 p <- plotCoverage(
-    se, rowData(se)$EventName[1],
-    tracks = c("A", "B"), condition = "treatment"
+    se = se,
+    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+    tracks = c("A", "B"), condition = "treatment", plotJunctions = TRUE
 )
 as_ggplot_cov(p)
 

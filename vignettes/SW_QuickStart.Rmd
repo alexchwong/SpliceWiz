@@ -93,7 +93,7 @@ to re-construct the SpliceWiz reference. This reference is contained in the
 **TL/DR - how to enable novel ASE mode**
 
 * To enable analysis involving both annotated and novel ASEs, simply set
-`detectNovelSplicing = TRUE` when running `collateData()`. For example:
+`novelSplicing = TRUE` when running `collateData()`. For example:
 
 ```{r, eval = FALSE}
 
@@ -120,7 +120,7 @@ collateData(
     Experiment = expr,
     reference_path = ref_path,
     output_path = nxtse_path,
-    detectNovelSplicing = TRUE     ## NEW ##
+    novelSplicing = TRUE     ## NEW ##
 )
 ```
 

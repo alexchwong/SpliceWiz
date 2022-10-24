@@ -96,9 +96,8 @@
 #'   * EventRegion: The genomic coordinates the event occupies. This spans the
 #'     most upstream and most downstream splice junction involved in the ASE,
 #'     and is use to guide the [plotCoverage] function.
-#'   * NMD_direction: Indicates whether one isoform is a NMD substrate. +1 means
-#'     included isoform is NMD, -1 means the excluded isoform is NMD, and 0
-#'     means there is no change in NMD status (i.e. both / neither are NMD)
+#'   * flags: Indicates which isoforms are NMD substrates and/or which are
+#'     formed by novel splicing only.
 #'   * AvgPSI_nom, Avg_PSI_denom: the average percent spliced in / percent
 #'     IR levels for the two conditions being contrasted. `nom` and `denom` in
 #'     column names are replaced with the condition names
@@ -764,14 +763,36 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     return(res.ASE)
 }
 
+# Adds human-readable labels
+.ASE_add_flags <- function(res) {
+    res[, c("flags") := ""]
+    res[get("NMD_direction") == 1, 
+        c("flags") := paste0(get("flags"), ";Inc-NMD")]
+    res[get("NMD_direction") == -1, 
+        c("flags") := paste0(get("flags"), ";Exc-NMD")]
+    res[
+        get("EventType") != "IR" & 
+        grepl("novel", tstrsplit(EventName, split = ";", fixed = TRUE)[[1]]), 
+        c("flags") := paste0(get("flags"), ";Inc-novel")]
+    res[
+        get("EventType") != "IR" & 
+        grepl("novel", tstrsplit(EventName, split = ";", fixed = TRUE)[[2]]), 
+        c("flags") := paste0(get("flags"), ";Exc-novel")]
+    res[get("flags") != "", c("flags") := 
+        substr(get("flags"), 2, nchar(get("flags")))]
+    return(res[, c("EventName","EventType","EventRegion", "flags")])
+}
+
 .ASE_add_diag <- function(res, se, test_factor, test_nom, test_denom) {
     rowData <- as.data.frame(rowData(se))
-    rowData.DT <- as.data.table(rowData[,
-        c("EventName","EventType","EventRegion", "NMD_direction")])
+    rowData.DT <- .ASE_add_flags(as.data.table(rowData[,
+        c("EventName","EventType","EventRegion", "NMD_direction")]))
+        
     diag <- makeMeanPSI(se, res$EventName,
         test_factor, list(test_nom, test_denom))
     colnames(diag)[2:3] <- c(paste0("AvgPSI_", test_nom),
         paste0("AvgPSI_", test_denom))
+    diag$deltaPSI <- diag[, 2] - diag[, 3]
     res <- cbind(
         res[,c("EventName")],
         as.data.table(round(diag[,-1], 4)),
@@ -786,8 +807,8 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         conditionList
 ) {
     rowData <- as.data.frame(rowData(se))
-    rowData.DT <- as.data.table(rowData[,
-        c("EventName","EventType","EventRegion", "NMD_direction")])
+    rowData.DT <- .ASE_add_flags(as.data.table(rowData[,
+        c("EventName","EventType","EventRegion", "NMD_direction")]))
     diag <- makeMeanPSI(se, res$EventName,
         test_factor, conditionList)
     for(i in seq_len(length(conditionList))) {

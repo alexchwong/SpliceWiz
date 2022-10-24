@@ -86,9 +86,8 @@ and \link{plotCoverage}
 \item EventRegion: The genomic coordinates the event occupies. This spans the
 most upstream and most downstream splice junction involved in the ASE,
 and is use to guide the \link{plotCoverage} function.
-\item NMD_direction: Indicates whether one isoform is a NMD substrate. +1 means
-included isoform is NMD, -1 means the excluded isoform is NMD, and 0
-means there is no change in NMD status (i.e. both / neither are NMD)
+\item flags: Indicates which isoforms are NMD substrates and/or which are
+formed by novel splicing only.
 \item AvgPSI_nom, Avg_PSI_denom: the average percent spliced in / percent
 IR levels for the two conditions being contrasted. \code{nom} and \code{denom} in
 column names are replaced with the condition names

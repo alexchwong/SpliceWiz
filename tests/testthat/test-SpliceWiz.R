@@ -19,7 +19,7 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
     collateData(expr, 
         reference_path = file.path(tempdir(), "Reference"),
         output_path = file.path(tempdir(), "Collated_output"),
-        detectNovelSplicing = FALSE
+        novelSplicing = FALSE
     )
 
     se <- makeSE(collate_path = file.path(tempdir(), "Collated_output"))

@@ -2,11 +2,11 @@
 
 globalVariables(c(":=", "."))
 
-ASE_version <- "0.99.5"
+ASE_version <- "0.99.4"
 
-collateData_version <- "0.99.5"
+collateData_version <- "0.99.4"
 
-buildRef_version <- "0.99.5"
+buildRef_version <- "0.99.4"
 
 is.nan.data.frame <- function(x) do.call(cbind, lapply(x, is.nan))
 

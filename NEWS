@@ -1,4 +1,4 @@
-Changes in version 0.99.5 (2022-10-25)
+Changes in version 0.99.4 (2022-10-26)
 + Major feature: Junctions (split read counts and PSIs) are now visualized in
 coverage plots! Individual tracks are now marked by sashimi-plot style arcs 
 labeled with their corresponding split-read counts.
@@ -7,6 +7,8 @@ donor-acceptor) are labeled with provisional PSIs. These are calculated based
 on the proportion of total split reads that utilise either either exon group 
 from which the split read arises. This is enabled by setting 
 plotJunctions = TRUE in the plotCoverage() function.
++ New Feature: Users can use the satuRn package to perform quasi-binomial
+modelling of ASE counts.
 + New Feature: Reduced false positive novel ASEs. This was achieved by 
 filtering of novel junctions by their abundance, allowing removal of low 
 abundance novel junctions that may arise from mis-alignment or read errors. 
@@ -20,22 +22,15 @@ class of functions. Choices are "all" (all introns, IR-ratio), "annotated"
 + Performance improvement: Row and column names have been removed from all
 assays stored in H5 database. This substantially improves loading and
 performance of NxtSE objects utilising on-disk (un-realized) memory.
-+ Minor improvement: plotCoverage() now correctly plots the correct strand.
-Note datasets compiled from a mix of different strandedness protocols are not
-supported, as samples are assumed to be sequenced from the same protocol.
-+ Bugfix: broken annotation of ALEs for novel splice reference now fixed.
-
-Changes in version 0.99.4 (2022-10-19)
-+ New feature: Users can use the satuRn package to perform quasi-binomial
-modelling of ASE counts.
-+ New feature: plotCoverage now implements junction counts (sashimi plot style).
-Currently it is only implemented for plotting tracks of individual samples
 + NxtSE object now has 3 getter functions junc_PSI(), junc_counts() and
 junc_gr() for getting (prelim) PSIs, counts and GRanges of junction counts.
 The first two are DelayedMatrices linked using the makeSE() function. These
 matrices are never subsetted by row but only by column. Furthermore, they are
 only realized as on-memory matrices upon calling realize_NxtSE() and setting
-`includeJunctions = TRUE`
+`includeJunctions = TRUE`+ Minor improvement: plotCoverage() now correctly plots the correct strand.
+Note datasets compiled from a mix of different strandedness protocols are not
+supported, as samples are assumed to be sequenced from the same protocol.
++ Bugfix: broken annotation of ALEs for novel splice reference now fixed.
 + Bugfix: ASE_DESeq2: previously, inclusion / exclusion counts were normalised
 prior to differential analysis using DESeq2. This is now fixed by specifying
 sizefilters() <- 1

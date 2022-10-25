@@ -147,9 +147,9 @@ collateData(
 \
 
 <details>
-<summary>What's New: Visualising junction reads in coverage plots (version 0.99.5+)</summary>
+<summary>What's New: Visualising junction reads in coverage plots (version 0.99.4+)</summary>
 \
-In version 0.99.5, SpliceWiz visualises split/junction reads in individual
+In version 0.99.4, SpliceWiz visualises split/junction reads in individual
 samples and in sample groups
 
 For individual sample coverage plots (i.e. when `condition` is not set), 
@@ -1545,14 +1545,14 @@ if(interactive()) {
 ```
 \
 <details>
-<summary>Plotting junction counts (new in 0.99.5+)</summary>
+<summary>Plotting junction counts (new in 0.99.4+)</summary>
 \
 
 Sashimi plots, first popularised by MISO, are coverage plots with arcs that
 denote split reads. They are each labelled by a number denoting the number of
 split reads spanning the corresponding junctions.
 
-In SpliceWiz (>=0.99.5) junctions can be plotted by setting 
+In SpliceWiz (>=0.99.4) junctions can be plotted by setting 
 `plotJunctions = TRUE` from within `plotCoverage()`
 
 ```{r, eval = Sys.info()["sysname"] != "Darwin"}

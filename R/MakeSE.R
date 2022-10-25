@@ -125,7 +125,7 @@ makeSE <- function(
         se@metadata[["cov_file"]] <- normalizePath(covfiles)
     }
 
-    # Compatibility with SpliceWiz version < 0.99.5
+    # Compatibility with SpliceWiz version < 0.99.4
     if(!("junc_PSI" %in% names(se@metadata))) {
         se@metadata[["junc_PSI"]] <- HDF5Array(
             file.path(normalizePath(collate_path),
@@ -263,7 +263,7 @@ makeSE <- function(
             ifelse(
                 "BuildVersion" %in% names(se@metadata),
                 metadata(se)$BuildVersion,
-                "< 0.99.5"
+                "< 0.99.4"
             ), ")"
         ), "warning")
     }

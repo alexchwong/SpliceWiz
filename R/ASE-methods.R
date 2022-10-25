@@ -268,6 +268,8 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
         test_nom, test_denom, batch1, batch2,
         allowTimeSeries = TRUE)
     BPPARAM_mod <- .validate_threads(n_threads)
+    
+    IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear, IRmode)
 
@@ -326,6 +328,8 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     .check_package_installed("DoubleExpSeq", "1.1")
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, "", "")
+        
+    IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear, IRmode)
 
@@ -370,6 +374,8 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, batch1, batch2)
     BPPARAM_mod <- .validate_threads(n_threads)
+
+    IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear, IRmode)
 

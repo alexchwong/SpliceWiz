@@ -1673,6 +1673,7 @@ determine_compatible_events <- function(
             junc_counts_select$rownames <- rownames(junc_counts_select)
             junc_counts_select <- as.data.table(junc_counts_select)
         }
+        if(nrow(junc_counts_select) == 0) return(NA)
         final <- as.data.frame(junc_counts_select[, samples_to_get, 
             with = FALSE])
         rownames(final) <- junc_counts_select$rownames
@@ -1693,6 +1694,8 @@ determine_compatible_events <- function(
         gr_select <- GRanges(view_chr, 
             IRanges(view_start, view_end), view_strand_jn)
         OL <- findOverlaps(junc_gr(se), gr_select)
+        
+        if(length(unique(from(OL))) == 0) return(NA)
         final  <- as.data.frame(junc_PSI(se)[
             unique(from(OL)),])
         return(final)

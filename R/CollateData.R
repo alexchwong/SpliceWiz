@@ -804,12 +804,14 @@ collateData <- function(Experiment, reference_path, output_path,
     
         # Assemble intron_novel_transcript reference from novel junctions and
         # novel tandem junctions
-        .log(paste("Assembling novel splicing reference,",
-            "this may take up to 10 minutes..."), "message", appendLF = FALSE)
-        .collateData_assemble_novel_reference(2, reference_path, 
+        .log(paste("Assembling novel splicing reference:"), "message")
+        .collateData_assemble_novel_reference(
+            2, reference_path, 
             norm_output_path, lowMemoryMode,
             minSamplesWithJunc, minSamplesAboveJuncThreshold,
-            novelSplicing_requireOneAnnotatedSJ)
+            novelSplicing_requireOneAnnotatedSJ,
+            verbose = TRUE
+        )
         use_ref_path <- file.path(norm_output_path, "Reference")
         
         message("done")
@@ -856,7 +858,7 @@ collateData <- function(Experiment, reference_path, output_path,
             norm_output_path = norm_output_path,
             BPPARAM = BPPARAM_annotate
         )
-        .log(paste("Assembling novel splicing reference,",
+        .log(paste("Assembling novel splicing reference in dedicated thread,",
             "this may take up to 10 minutes..."), "message", appendLF = FALSE)
         tmp <- BiocParallel::bplapply(
             seq_len(2),
@@ -1134,7 +1136,8 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_assemble_novel_reference <- function(
     threadID, reference_path, norm_output_path, lowMemoryMode,
     minSamplesWithJunc, minSamplesAboveJuncThreshold,
-    novelSplicing_requireOneAnnotatedSJ
+    novelSplicing_requireOneAnnotatedSJ,
+    verbose = FALSE
 ) {
     if(threadID != 2) return()
     
@@ -1163,6 +1166,7 @@ collateData <- function(Experiment, reference_path, output_path,
         MappabilityRef, BlacklistRef,
         force_download = FALSE, verbose = FALSE)
 
+    if(verbose) message("...loading reference FASTA/GTF")
     reference_data <- .get_reference_data(
         reference_path = reference_path,
         fasta = "", gtf = "", verbose = FALSE,
@@ -1173,6 +1177,7 @@ collateData <- function(Experiment, reference_path, output_path,
         reference_data$genome, reference_data$gtf_gr)
     reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
 
+    if(verbose) message("...injecting novel transcripts to GTF")
     # Insert novel gtf here
     # reference_data$gtf_gr is a GRanges object
     novel_gtf <- .collateData_novel_assemble_transcripts(
@@ -1181,6 +1186,7 @@ collateData <- function(Experiment, reference_path, output_path,
         novelSplicing_requireOneAnnotatedSJ)
     # Finish inserting novel gtf
     
+    if(verbose) message("...processing GTF")
     .process_gtf(c(reference_data$gtf_gr, novel_gtf), 
         novel_ref_path, verbose = FALSE)
     extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
@@ -1188,6 +1194,7 @@ collateData <- function(Experiment, reference_path, output_path,
     rm(novel_gtf)
     gc()
     
+    if(verbose) message("...processing introns from GTF")
     reference_data$genome <- .check_2bit_performance(reference_path,
         reference_data$genome, verbose = FALSE)
     .process_introns(novel_ref_path, reference_data$genome, 
@@ -1203,11 +1210,14 @@ collateData <- function(Experiment, reference_path, output_path,
     file.copy(file.path(reference_path, "fst", "Introns.ND.fst"),
         file.path(novel_ref_path, "fst", "Introns.ND.fst"))
     file.copy(file.path(reference_path, "SpliceWiz.ref.gz"),
-        file.path(novel_ref_path, "SpliceWiz.ref.gz"))
-        
+        file.path(novel_ref_path, "SpliceWiz.ref.gz"))       
     file.copy(file.path(reference_path, "fst", "IR.NMD.fst"),
         file.path(novel_ref_path, "fst", "IR.NMD.fst"))
     
+    rm(reference_data)
+    gc()
+
+    if(verbose) message("...annotating alternative splicing events")
     .gen_splice(novel_ref_path, verbose = FALSE)
     
     settings.list <- readRDS(file.path(reference_path, "settings.Rds"))

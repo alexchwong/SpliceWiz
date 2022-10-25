@@ -65,7 +65,7 @@ like these, where available.
 # What's New?
 
 <details>
-<summary>What's New: Novel splice detection in version 0.99.3</summary>
+<summary>What's New: Novel splice detection (version 0.99.3+) </summary>
 \
 In version 0.99.3, SpliceWiz offers detection of novel events in addition to
 annotated events. How this works:
@@ -147,7 +147,7 @@ collateData(
 \
 
 <details>
-<summary>What's New: Visualising junction reads in coverage plots (0.99.5+)</summary>
+<summary>What's New: Visualising junction reads in coverage plots (version 0.99.5+)</summary>
 \
 In version 0.99.5, SpliceWiz visualises split/junction reads in individual
 samples and in sample groups

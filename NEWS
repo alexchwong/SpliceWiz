@@ -1,4 +1,4 @@
-Changes in version 0.99.5 (2022-10-?)
+Changes in version 0.99.5 (2022-10-25)
 + Major feature: Junctions (split read counts and PSIs) are now visualized in
 coverage plots! Individual tracks are now marked by sashimi-plot style arcs 
 labeled with their corresponding split-read counts.

@@ -81,6 +81,7 @@ setreactive_DE <- function() {
         DE_Var = NULL,
         nom_DE = NULL,
         denom_DE = NULL,
+        IRmode_DE = NULL,
         
         DT_DE_rows_all = NULL,
         DT_DE_rows_selected = NULL,

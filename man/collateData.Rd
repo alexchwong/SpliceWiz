@@ -9,7 +9,12 @@ collateData(
   reference_path,
   output_path,
   IRMode = c("SpliceOver", "SpliceMax"),
-  detectNovelSplicing = FALSE,
+  novelSplicing = FALSE,
+  forceStrandAgnostic = FALSE,
+  novelSplicing_minSamples = 3,
+  novelSplicing_countThreshold = 10,
+  novelSplicing_minSamplesAboveThreshold = 1,
+  novelSplicing_requireOneAnnotatedSJ = TRUE,
   overwrite = FALSE,
   n_threads = 1,
   lowMemoryMode = TRUE
@@ -36,8 +41,34 @@ collated dataset}
 Valid options are \code{SpliceOver} and \code{SpliceMax}.
 See details}
 
-\item{detectNovelSplicing}{(default FALSE) Whether collateData will use
-novel junction reads detected in samples to infer novel splice variants.}
+\item{novelSplicing}{(default FALSE) Whether collateData will use
+novel junction reads detected in samples to infer novel splice variants.
+All tandem split reads (those bridging two consecutive splice junctions)
+are used, as well as novel split reads that satisfy abundance criteria
+(see \code{novelSplicing_minSamples}, \code{novelSplicing_minSamplesAboveThreshold}, and
+\code{novelSplicing_countThreshold}) are used to synthesise a dataset-specific
+SpliceWiz reference. See details.}
+
+\item{forceStrandAgnostic}{(default \code{FALSE}) In poorly-prepared stranded
+libraries, it may be better to quantify in unstranded mode. Set this to
+\code{TRUE} if your stranded libraries may be contaminated with unstranded reads}
+
+\item{novelSplicing_minSamples}{(default 3) Novel junctions are included in
+building of novel reference  if number samples with non-zero counts
+exceeds this number.}
+
+\item{novelSplicing_countThreshold}{(default 10) Threshold of split-reads across
+novel junctions; used in conjunction with
+\code{novelSplicing_minSamplesAboveThreshold}}
+
+\item{novelSplicing_minSamplesAboveThreshold}{(default 1) Novel junctions are
+included in building of novel reference if novel junction reads are
+above a pre-defined threshold exceeds this number}
+
+\item{novelSplicing_requireOneAnnotatedSJ}{(default \code{TRUE}) The default requires
+novel junctions to have one annotated splice site. If this is disabled,
+collateData will include novel junctions where neither splice site is
+annotated.}
 
 \item{overwrite}{(default \code{FALSE}) If \code{collateData()} has previously been run
 using the same set of samples, it will not be overwritten unless this is
@@ -93,6 +124,19 @@ transcripts). For introns that are internal to a single exon cluster
 (i.e. akin to "known-exon" introns from IRFinder), \code{SpliceOver}
 uses \link[GenomicRanges:findOverlaps-methods]{GenomicRanges::findOverlaps} to sum all splice reads that overlap
 the same genomic region as the intron of interest.
+
+Detection of novel ASEs:  When \code{novelSplicing} is set to \code{TRUE},
+novel junctions (split reads across unannotated junctions from samples
+of the dataset being collated) are used in conjunction with the reference
+to compile a list of novel ASEs. To avoid being overwhelmed by a large
+number of false positive novel junctions (often due to mis-alignments),
+a simple filtering strategy is used. This involves including novel
+junctions only if it occurs in a minimum number of samples (default 3),
+or if the number of split reads of a novel junction is above a pre-defined
+threshold (default 10) in a certain number of samples (default 1). These
+parameters can be set using \code{novelSplicing_minSamples},
+\code{novelSplicing_countThreshold} and \code{novelSplicing_minSamplesAboveThreshold}
+respectively.
 }
 \examples{
 buildRef(

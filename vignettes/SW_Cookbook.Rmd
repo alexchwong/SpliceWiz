@@ -443,6 +443,9 @@ collateData(
 )
 ```
 
+* NB: Novel splicing detection can be enabled by setting `novelSplicing = TRUE`.
+See the SpliceWiz Quick-Start vignette for more details.
+
 Then, the collated data can be imported as a `NxtSE` object, which is an object
 that inherits `SummarizedExperiment` and has specialized containers to hold
 additional data required by SpliceWiz.

@@ -204,8 +204,10 @@ viewGenes <- function(reference_path) {
     excl_columns <- c(
         "score", "phase",
         "transcript_id", "transcript_version", "transcript_name",
-        "transcript_source", "transcript_biotype", "tag",                      "transcript_support_level", "ccds_id", 
-        "exon_number", "exon_id", "exon_version", "protein_id",               "protein_version", "gene_display_name", 
+        "transcript_source", "transcript_biotype", "tag",
+        "transcript_support_level", "ccds_id", 
+        "exon_number", "exon_id", "exon_version", "protein_id",
+        "protein_version", "gene_display_name", 
         "gene_group_stranded", "gene_group_unstranded"
     )
     
@@ -247,7 +249,8 @@ viewTranscripts <- function(reference_path) {
     tmp <- read.fst(targetFile)
     excl_columns <- c(
         "score", "phase",
-        "exon_number", "exon_id", "exon_version", "protein_id",               "protein_version"
+        "exon_number", "exon_id", "exon_version", "protein_id",
+        "protein_version"
     )
     
     tmp <- tmp[, colnames(tmp)[!colnames(tmp) %in% excl_columns]]

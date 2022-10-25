@@ -175,11 +175,11 @@ runFilter <- function(se, filterObj) {
     cond_vec <- .runFilter_cond_vec(se, filterObj)
     usePC <- filterObj@pcTRUE
 
-    depth <- as.matrix(assay(se, "Depth"))
+    depth <- assay(se, "Depth")
     sum_res <- rep(0, nrow(se))
     if (!is.null(cond_vec)) {
         for (cond in unique(cond_vec)) {
-            depth.subset <- depth[, which(cond_vec == cond)]
+            depth.subset <- depth[, which(cond_vec == cond), drop = FALSE]
             sum <- rowSums(depth.subset >= filterObj@minimum)
             sum_res <- sum_res +
                 ifelse(sum * 100 / ncol(depth.subset) >= usePC, 1, 0)
@@ -206,14 +206,14 @@ runFilter <- function(se, filterObj) {
     usePC <- filterObj@pcTRUE
     minDepth <- filterObj@minDepth
 
-    cov <- as.matrix(assay(se, "Coverage"))
-    depth <- as.matrix(assay(se, "minDepth"))
+    cov <- assay(se, "Coverage")
+    depth <- assay(se, "minDepth")
     cov[depth < minDepth] <- 1 # do not test if depth below threshold
 
     sum_res <- rep(0, nrow(se))
     if (!is.null(cond_vec)) {
         for (cond in unique(cond_vec)) {
-            cov.subset <- cov[, which(cond_vec == cond)]
+            cov.subset <- cov[, which(cond_vec == cond), drop = FALSE]
             sum <- rowSums(cov.subset >= filterObj@minimum / 100)
             sum_res <- sum_res +
                 ifelse(sum * 100 / ncol(cov.subset) >= usePC, 1, 0)
@@ -240,33 +240,36 @@ runFilter <- function(se, filterObj) {
     usePC <- filterObj@pcTRUE
     minDepth <- filterObj@minDepth
 
-    Up_Inc <- as.matrix(up_inc(se))
-    Down_Inc <- as.matrix(down_inc(se))
-    IntronDepth <- as.matrix(assay(se, "Included")[
-        rowData$EventType %in% c("IR", "MXE", "SE", "RI"), ])
+    Up_Inc <- up_inc(se)
+    Down_Inc <- down_inc(se)
+    IntronDepth <- assay(se, "Included")[
+        rowData$EventType %in% c("IR", "MXE", "SE", "RI"), ]
     minDepth.Inc <- Up_Inc + Down_Inc
     # do not test if depth below threshold
-    Up_Inc[minDepth.Inc < minDepth] <- IntronDepth[minDepth.Inc < minDepth]
-    Down_Inc[minDepth.Inc < minDepth] <- IntronDepth[minDepth.Inc < minDepth]
-
-    Excluded <- as.matrix(assay(se, "Excluded")[
-        rowData$EventType %in% c("MXE"), ])
-    Up_Exc <- as.matrix(up_exc(se))
-    Down_Exc <- as.matrix(down_exc(se))
+    # Up_Inc[minDepth.Inc < minDepth] <- IntronDepth[minDepth.Inc < minDepth]
+    # Down_Inc[minDepth.Inc < minDepth] <- IntronDepth[minDepth.Inc < minDepth]
+    IntronDepth[minDepth.Inc < minDepth] <- 0
+    
+    Excluded <- assay(se, "Excluded")[
+        rowData$EventType %in% c("MXE"), ]
+    Up_Exc <- up_exc(se)
+    Down_Exc <- down_exc(se)
     minDepth.Exc <- Up_Exc + Down_Exc
     # do not test if depth below threshold
-    Up_Exc[minDepth.Exc < minDepth] <- Excluded[minDepth.Exc < minDepth]
-    Down_Exc[minDepth.Exc < minDepth] <- Excluded[minDepth.Exc < minDepth]
+    # Up_Exc[minDepth.Exc < minDepth] <- Excluded[minDepth.Exc < minDepth]
+    # Down_Exc[minDepth.Exc < minDepth] <- Excluded[minDepth.Exc < minDepth]
+    Excluded[minDepth.Exc < minDepth] <- 0
 
     sum_res <- rep(0, nrow(se))
     if (!is.null(cond_vec)) {
         for (cond in unique(cond_vec)) {
-            Up_Inc.subset <- Up_Inc[, which(cond_vec == cond)]
-            Down_Inc.subset <- Down_Inc[, which(cond_vec == cond)]
-            IntronDepth.subset <- IntronDepth[, which(cond_vec == cond)]
-            Up_Exc.subset <- Up_Exc[, which(cond_vec == cond)]
-            Down_Exc.subset <- Down_Exc[, which(cond_vec == cond)]
-            Excluded.subset <- Excluded[, which(cond_vec == cond)]
+            Up_Inc.subset <- Up_Inc[, which(cond_vec == cond), drop = FALSE]
+            Down_Inc.subset <- Down_Inc[, which(cond_vec == cond), drop = FALSE]
+            IntronDepth.subset <- IntronDepth[, which(cond_vec == cond),
+                drop = FALSE]
+            Up_Exc.subset <- Up_Exc[, which(cond_vec == cond), drop = FALSE]
+            Down_Exc.subset <- Down_Exc[, which(cond_vec == cond), drop = FALSE]
+            Excluded.subset <- Excluded[, which(cond_vec == cond), drop = FALSE]
 
             sum <- .runFilter_data_consistency_truths(
                 Up_Inc.subset, Down_Inc.subset, 
@@ -311,25 +314,57 @@ runFilter <- function(se, filterObj) {
     num_RI <- sum(EventTypeVec == "RI")
     num_samples <- ncol(Up_Inc)
 
-    truth_inc_temp <- 
-        abs(log2(Up_Inc + 1) - log2(IntronDepth + 1)) < maximum &
-        abs(log2(Down_Inc + 1) - log2(IntronDepth + 1)) < maximum
-
-    truth_inc <- rbind(
-        truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),],
-        matrix(TRUE, nrow = num_other, ncol = num_samples),
-        truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),]
-    )
+    tmpIncTRUE <- DelayedArray(
+        matrix(TRUE, nrow = num_other, ncol = num_samples))
+    tmpExcTRUE1 <- DelayedArray(
+        matrix(TRUE, nrow = num_IR, ncol = num_samples))
+    tmpExcTRUE2 <- DelayedArray(
+        matrix(TRUE, nrow = num_SE + num_other + num_RI, ncol = num_samples))
         
-    truth_exc <- rbind(
-        matrix(TRUE, nrow = num_IR, ncol = num_samples),
-        (
-            abs(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
-            abs(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
-        ),
-        matrix(TRUE, nrow = num_SE + num_other + num_RI, ncol = num_samples)
-    )
-    
+    truth_inc_temp <- 
+        # abs(log2(Up_Inc + 1) - log2(IntronDepth + 1)) < maximum &
+        # abs(log2(Down_Inc + 1) - log2(IntronDepth + 1)) < maximum
+        -(log2(Up_Inc + 1) - log2(IntronDepth + 1)) < maximum &
+        -(log2(Down_Inc + 1) - log2(IntronDepth + 1)) < maximum
+
+    if(is(truth_inc_temp, "DelayedArray")) {
+        truth_inc <- rbind(
+            truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),],
+            tmpIncTRUE,
+            truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),]
+        )    
+    } else {
+        truth_inc <- rbind(
+            truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),],
+            as.matrix(tmpIncTRUE),
+            truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),]
+        )    
+    }
+
+    if(is(Excluded, "DelayedArray")) {
+        truth_exc <- rbind(
+            tmpExcTRUE1,
+            (
+                # abs(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
+                # abs(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
+                -(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
+                -(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
+            ),
+            tmpExcTRUE2
+        )
+    } else {
+        truth_exc <- rbind(
+            as.matrix(tmpExcTRUE1),
+            (
+                # abs(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
+                # abs(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
+                -(log2(Up_Exc + 1) - log2(Excluded + 1)) < maximum &
+                -(log2(Down_Exc + 1) - log2(Excluded + 1)) < maximum
+            ),
+            as.matrix(tmpExcTRUE2)
+        ) 
+    }
+
     truth_total <- truth_inc & truth_exc
     
     sum <- rowSums(truth_total)

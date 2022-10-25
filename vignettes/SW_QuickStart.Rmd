@@ -65,35 +65,40 @@ like these, where available.
 # What's New?
 
 <details>
-<summary>What's New: Novel splice detection in version 0.99.3</summary>
+<summary>What's New: Novel splice detection (version 0.99.3+) </summary>
 \
 In version 0.99.3, SpliceWiz offers detection of novel events in addition to
 annotated events. How this works:
 
 * SpliceWiz compiles counts of all junctions (split reads) compatible with
 splice junction events (having compatible donor / acceptor splice motifs)
-* Additionally, it also compiles counts of "tandem junction" (hereafter TJ) 
-which are reads that are split into 3 or more segments, compatible with the 
-observation of excision of 2 or more introns in sequenced reads
-* Novel junctions that share a common coordinate with that of an annotated
-junction are retained, and are used to construct "novel transcripts" - which
-are new transcripts that contain the observed junction. These are primarily
-used to construct novel A5SS / A3SS events when paired with known junctions
-* Novel TJ that share bounding coordinates (the two outermost coordinates)
-with that of annotated TJs are retained, and are used to construct 
-"novel transcripts" with two boundary exons flanking the observed "novel exon".
-These are used to construct novel MXE / SE events involving cryptic exons.
+* Additionally, it also uses "tandem junction" to identify novel exons
+(tandem junctions are reads that are split into 3 or more segments, arising from
+splicing of 2+ consecutive introns from a short-read sequence).
+
+To reduce false positives in novel splicing detection, SpliceWiz provides 
+several filters to reduce the number of novel junctions fed into the analysis:
+
+* Novel junctions that are lowly expressed (only in a small number of samples)
+are removed. The minimum number of samples required to retain a novel junction
+is set using `novelSplicing_minSamples` parameter
+* Alternately, junctions are retained if its expression exceeds a certain
+threshold (set using `novelSplicing_countThreshold`) in a smaller number of
+samples (set using `novelSplicing_minSamplesAboveThreshold`)
+* Further, novel junctions can be filtered by requiring at least one end to be
+an annotated splice site (this is enabled using 
+`novelSplicing_requireOneAnnotatedSJ = TRUE`)
 
 Novel ASE detection is integrated into the SpliceWiz pipeline at the collation
 step. After compilation and processing of novel junctions / TJ's, the
 novel transcripts are appended to the transcript annotation, which is then used
 to re-construct the SpliceWiz reference. This reference is contained in the
-"Annotation" subfolder of the output folder of `collateData()` function.
+"Reference" subfolder of the output folder of `collateData()` function.
 
 **TL/DR - how to enable novel ASE mode**
 
 * To enable analysis involving both annotated and novel ASEs, simply set
-`detectNovelSplicing = TRUE` when running `collateData()`. For example:
+`novelSplicing = TRUE` when running `collateData()`. For example:
 
 ```{r, eval = FALSE}
 
@@ -120,8 +125,98 @@ collateData(
     Experiment = expr,
     reference_path = ref_path,
     output_path = nxtse_path,
-    detectNovelSplicing = TRUE     ## NEW ##
+    
+        ## NEW ##
+    novelSplicing = TRUE,
+        # switches on novel splice detection
+    
+    novelSplicing_requireOneAnnotatedSJ = TRUE,
+        # novel junctions must share one annotated splice site
+
+    novelSplicing_minSamples = 3,
+        # retain junctions observed in 3+ samples (of any non-zero expression)
+    
+    novelSplicing_minSamplesAboveThreshold = 1,
+        # only 1 sample required if its junction count exceeds a set threshold
+    novelSplicing_countThreshold = 10  
+        # threshold for previous parameter
 )
+```
+
+</details>
+\
+
+<details>
+<summary>What's New: Visualising junction reads in coverage plots (version 0.99.5+)</summary>
+\
+In version 0.99.5, SpliceWiz visualises split/junction reads in individual
+samples and in sample groups
+
+For individual sample coverage plots (i.e. when `condition` is not set), 
+junction counts for each sample are plotted. Samples with low junction counts
+(less than 0.01x of the track height) are omitted to reduce clutter.
+
+For group-normalized coverage plots (where coverage of multiple samples in a
+condition group are combined), junctions are instead labeled by their
+"provisional PSIs". These PSIs are calculated per junction (instead of per ASE).
+This is done by determining the ratio of junction counts as a proportion of
+all junction reads that share a common exon cluster as the junction being
+assessed.
+
+**TL/DR - how to enable junction plotting**
+
+* To enable plotting of junctions, set `plotJunctions = TRUE` from within
+`plotCoverage()`
+
+```{r}
+# Retrieve example NxtSE object
+se <- SpliceWiz_example_NxtSE()
+
+# Assign annotation of the experimental conditions
+colData(se)$treatment <- rep(c("A", "B"), each = 3)
+
+# Return a list of ggplot and plotly objects, also plotting junction counts
+p <- plotCoverage(
+    se = se,
+    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+    tracks = colnames(se)[1:4], 
+    
+        ## NEW ##
+    plotJunctions = TRUE
+)
+```
+
+```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
+if(interactive()) {
+    # Display as plotly object
+    p$final_plot
+} else {
+    # Display as ggplot
+    as_ggplot_cov(p)
+}
+```
+
+```{r}
+# Plot by condition "treatment", including provisional PSIs
+p <- plotCoverage(
+    se = se,
+    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+    tracks = c("A", "B"), condition = "treatment", 
+
+        ## NEW ##
+    plotJunctions = TRUE
+)
+
+```
+
+```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
+if(interactive()) {
+    # Display as plotly object
+    p$final_plot
+} else {
+    # Display as ggplot
+    as_ggplot_cov(p)
+}
 ```
 
 </details>
@@ -145,7 +240,7 @@ The basic steps of SpliceWiz are as follows:
 
 ## Installation
 
-To install SpliceWiz, start R (version "4.2") and enter: 
+To install SpliceWiz, start R (version "4.2.1") and enter: 
 
 ```{r eval=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -167,6 +262,34 @@ brew install libomp
 ```
 </details> 
 \
+
+<details>
+<summary>Installing statistical package dependencies (Optional)</summary>
+\
+SpliceWiz uses established statistical tools to perform alternative splicing
+differential analysis:
+
+* limma: models included and excluded counts as log-normal distributions
+* DESeq2: models included and excluded counts as negative binomial distributions
+* DoubleExpSeq: models included and excluded counts using beta binomial
+distributions
+* satuRn: models included and excluded counts using quasi-binomial 
+distributions.
+
+To install all of these packages:
+
+```{r eval=FALSE}
+
+install.packages("DoubleExpSeq")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install(c("DESeq2", "limma", "satuRn"))
+```
+</details> 
+\
+
 
 ## Loading SpliceWiz
 
@@ -244,8 +367,9 @@ functions. For example, to view the annotated alternative splicing events (ASE):
 ```{r, results='hide', message = FALSE, warning = FALSE}
 df <- viewASE(ref_path)
 
-# See ?View-Reference-methods for a comprehensive list of getter functions
 ```
+
+See `?View-Reference-methods` for a comprehensive list of getter functions
 
 <details>
 <summary>Using the GUI</summary>
@@ -254,12 +378,23 @@ After starting the SpliceWiz GUI in demo mode,
 click the `Reference` tab from the menu side bar. The following interface
 will be shown:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Reference GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Reference GUI"}
 knitr::include_graphics("img/buildRef.jpg")
 ```
 
-To build the demo reference using the GUI, click on the `Load Demo FASTA/GTF`
-(5), and then click `Build Reference` (6)
+(1) The first step to building a SpliceWiz reference is to select a directory in
+which to create the reference. 
+
+(2) SpliceWiz provides an interface to retrieve the genome sequence (FASTA) and transcriptome annotation (GTF) files from the Ensembl FTP server, by first selecting the "Release" and then "Species" from the drop-down boxes.
+
+(3) Alternatively, users can provide their own FASTA and GTF files. 
+
+(4) Human (hg38, hg19) and mouse genomes (mm10, mm9) have the option of
+further refining IR analysis using built-in mappability exclusion annotations,
+allowing SpliceWiz to ignore intronic regions of low mappability.
+
+For now, to continue with the demo and create the reference using the GUI, 
+click on the `Load Demo FASTA/GTF` (5), and then click `Build Reference` (6)
 </details>
 \
 
@@ -405,13 +540,13 @@ SpliceWiz GUI in demo mode. Then,
 click the `Experiment` tab from the menu side bar. The following interface
 will be shown:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Experiment GUI"}
+```{r, echo=FALSE, out.width='8000pt', fig.align = 'center', fig.cap="Experiment GUI"}
 knitr::include_graphics("img/Expr_empty.jpg")
 ```
 
 Click on (2) `Define Project Folders` to bring up the following drop-down
 box:
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Define Project Folders"}
+```{r, echo=FALSE, out.width='480pt', fig.align = 'center', fig.cap="Define Project Folders"}
 knitr::include_graphics("img/Expr_drop_2.jpg")
 ```
 
@@ -551,23 +686,6 @@ collateData(
 ```
 \
 <details>
-<summary>Using the GUI</summary>
-\
-After running the Reference and processBAM steps as indicated in the previous
-sections (of the GUI instructions), your interface should currently look like
-this:
-
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="collateData GUI"}
-knitr::include_graphics("img/Expr_cd.jpg")
-```
-
-To collate the experiment, click `Construct Experiment` to open the dropdown
-box, then click `Run collateData()`. An alert pop-up should be displayed when
-this process is complete.
-</details>
-
-\
-<details>
 <summary>What is the `collateData()` function</summary>
 \
 `collateData()` combines the `processBAM()` output files of multiple samples and
@@ -593,11 +711,110 @@ across exon clusters in common. Exon clusters are groups of mutually-overlapping
 exons. `SpliceOver` is the default option.
 * `overwrite` : Whether files in the output directory should be overwritten
 * `n_threads` : Use multi-threaded operations where possible
-* `lowMemoryMode` : Minimise memory usage where possible
+* `lowMemoryMode` : Minimise memory usage where possible. Note that most of the
+collateData pipeline will be single-threaded if this is set to `TRUE`.
 
 `collateData()` is a memory-intensive operation when run using multiple threads.
 We estimate it can use up to 6-7 Gb per thread. `lowMemoryMode` will minimise
 RAM usage to ~ 8 Gb, but will be slower and run on a single thread.\
+</details>
+
+\
+<details>
+<summary>Enabling novel splicing detection</summary>
+\
+Novel splicing detection can be switched on by setting `novelSplicing = TRUE`
+from within the `collateData()` function:
+
+```{r, results='hide', message = FALSE, warning = FALSE}
+# Modified pipeline - collateData with novel ASE discovery:
+
+nxtse_path <- file.path(tempdir(), "NxtSE_output_novel")
+collateData(
+    Experiment = expr,
+    reference_path = ref_path,
+    output_path = nxtse_path,
+    novelSplicing = TRUE     ## NEW ##
+)
+```
+
+`collateData()` uses split reads that are not annotated introns to help 
+construct hypothetical minimal transcripts. These are then injected into the
+original transcriptome annotation (GTF) file, whereby the SpliceWiz reference
+is rebuilt. The new SpliceWiz reference (which contains these novel transcripts)
+is then used to collate the samples.
+
+To reduce false positives in novel splicing detection, SpliceWiz provides 
+several filters to reduce the number of novel junctions fed into the analysis:
+
+* Novel junctions that are lowly expressed (only in a small number of samples)
+are removed. The minimum number of samples required to retain a novel junction
+is set using `novelSplicing_minSamples` parameter
+* Alternately, junctions are retained if its expression exceeds a certain
+threshold (set using `novelSplicing_countThreshold`) in a smaller number of
+samples (set using `novelSplicing_minSamplesAboveThreshold`)
+* Further, novel junctions can be filtered by requiring at least one end to be
+an annotated splice site (this is enabled using 
+`novelSplicing_requireOneAnnotatedSJ = TRUE`).
+
+For example, if one wished to retain novel reads seen in 3 or more samples, or
+novel spliced reads with 10 or more counts in at least 1 sample, and requiring
+at least one end of a novel junction being an annotated splice site:
+
+```{r eval = FALSE}
+nxtse_path <- file.path(tempdir(), "NxtSE_output_novel")
+collateData(
+    Experiment = expr,
+    reference_path = ref_path,
+    output_path = nxtse_path,
+    
+        ## NEW ##
+    novelSplicing = TRUE,
+        # switches on novel splice detection
+    
+    novelSplicing_requireOneAnnotatedSJ = TRUE,
+        # novel junctions must share one annotated splice site
+
+    novelSplicing_minSamples = 3,
+        # retain junctions observed in 3+ samples (of any non-zero expression)
+    
+    novelSplicing_minSamplesAboveThreshold = 1,
+        # only 1 sample required if its junction count exceeds a set threshold
+    novelSplicing_countThreshold = 10  
+        # threshold for previous parameter
+)
+```
+
+</details>
+
+\
+<details>
+<summary>Using the GUI</summary>
+\
+After running the Reference and processBAM steps as indicated in the previous
+sections (of the GUI instructions), click `Construct Experiment`.
+Your interface should now look like this:
+
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="collateData GUI"}
+knitr::include_graphics("img/Expr_cd.jpg")
+```
+
+This drop-down dialog box contains several parameters related to novel splicing
+detection:
+
+(1) Toggle on/off novel splice detection
+(2) Restrict novel junction reads to having one annotated splice site
+(3) Filter novel junction counts based on any expression 
+(min number of samples set here)
+(4) Filter novel junction counts based on expression threshold 
+(min number of samples set here)
+(5) Threshold split read count (expression threshold based novel junction 
+filter)
+
+To collate the experiment, click on (6) `Run collateData()`. 
+An alert pop-up should be displayed when this process is complete.
+
+To clear all the setting on the Experiment page, click (7).
 </details>
 \
 
@@ -620,7 +837,7 @@ After running the steps in the previous GUI sections, navigate to `Analysis`
 and then click the `Load Experiment` on the menu bar. The display should
 look like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
+```{r, echo=FALSE, out.width='480pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
 knitr::include_graphics("img/Expr_load_empty.jpg")
 ```
 
@@ -628,7 +845,7 @@ First, click the `Open Folder containing NxtSE` to open the dropdown, then
 click `Choose Folder (NxtSE)`. Select the `NxtSE` directory. The interface
 should now look like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
 knitr::include_graphics("img/Expr_load_folder.jpg")
 ```
 
@@ -707,7 +924,7 @@ After following the previous GUI sections, with the NxtSE loaded, click on
 `Review Annotations`. Then, click `Edit Interactively`. Your interface should
 now look like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="NxtSE Annotations GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="NxtSE Annotations GUI"}
 knitr::include_graphics("img/Expr_anno_empty.jpg")
 ```
 
@@ -716,7 +933,7 @@ appeared, type in a name `condition`, then click `Add`. Then, click `batch`
 and again click `Add`. Then, click on each empty cell and fill in the fields
 as shown:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="NxtSE Annotations GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="NxtSE Annotations GUI"}
 knitr::include_graphics("img/Expr_anno_filled.jpg")
 ```
 
@@ -803,7 +1020,7 @@ se.filtered <- se[applyFilters(se),]
 After following the GUI tutorials in the prior sections, click on `Analysis`
 and then `Filters` from the menu bar. It should look like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Filters - GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Filters - GUI"}
 knitr::include_graphics("img/Filters_empty.jpg")
 ```
 
@@ -812,7 +1029,7 @@ To load SpliceWiz's default filters, click the top right button
 `Apply Filters`. After the filters have been run, your session should now look
 like this:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="SpliceWiz default filters- GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="SpliceWiz default filters- GUI"}
 knitr::include_graphics("img/Filters_applied.jpg")
 ```
 </details>
@@ -856,7 +1073,7 @@ After running the previous sections (of the GUI instructions), click `Analysis`
 and then `Differential Expression Analysis` on the menu side bar. It should look
 something like this (but with empty fields):
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Differential Expression GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Differential Expression GUI"}
 knitr::include_graphics("img/DE_empty.jpg")
 ```
 
@@ -869,9 +1086,16 @@ Once differential expression analysis has finished, your session should look
 like below. The output is a DT-based data table equivalent to the `ASE_limma()`
 function.
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Differential Expression (limma) GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Differential Expression (limma) GUI"}
 knitr::include_graphics("img/DE_limma.jpg")
 ```
+
+NB: The interface allows users to choose to sort the results either by nominal
+or (multiple-testing) adjusted P values
+
+NB2: There are 3 different ways Intron Retention events can be quantified and
+analysed - see "What are the different ways intron retention is measured?" below
+for further details.
 
 </details>
 \
@@ -890,6 +1114,8 @@ robust results. Time series analysis is also available for this mode
 package uses the beta-binomial distribution to model isoform counts. The method
 is at least as fast as `limma`, but for now it is restricted to analysis
 between two groups (i.e. batch correction is not implemented)
+* (New in 0.99.4+) `ASE_satuRn` uses the new `satuRn` package which models 
+counts using the quasi-binomial distribution.
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 # Requires limma to be installed:
@@ -907,7 +1133,8 @@ res_deseq <- ASE_DESeq(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
-    test_denom = "A"
+    test_denom = "A",
+    n_threads = 1
 )
 
 # Requires DoubleExpSeq to be installed:
@@ -918,16 +1145,89 @@ res_DES <- ASE_DoubleExpSeq(
     test_nom = "B",
     test_denom = "A"
 )
+
+# Requires satuRn to be installed:
+require("satuRn")
+res_saturn <- ASE_satuRn(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A",
+    n_threads = 1
+)
 ```
 \
 </details>
 \
 <details>
+<summary>What are the different ways intron retention is measured?</summary>
+\
+Intron retention can be measured via two approaches.
+
+The first (and preferred) approach is using IR-ratio. We presume that every
+intron is potentially retained (thus ignoring annotation). Given this results in
+many overlapping introns, SpliceWiz adjusts for this via the following:
+
+* Where there are mutually-overlapping introns, the less abundant intron is
+removed from the analysis. Abundance is estimated across the entire dataset, and
+less-abundant overlapping introns are removed at the `makeSE()` step.
+* IR-ratio measures included (intronic) abundance using an identical approach
+to IRFinder, i.e., it calculates the trimmed mean of sequencing depth across the
+intron, excluding annotated outliers (other exons, intronic elements). Given we
+cannot assume whether the exact intron corresponds to the major isoform, we
+estimate splicing abundance by summing junction reads that share either exon
+cluster as the intron of interest (`SpliceOver` method in SpliceWiz). 
+Alternately, users can choose to use IRFinder's `SpliceMax` method, summing
+junction reads that share either splice junction with the intron of interest.
+This choice is also made by the user at the `makeSE()` step.
+
+At the differential analysis step, users can choose the following:
+
+* `IRmode = "all"` - all introns are potentially retained, use IR-ratio to 
+quantify IR (`EventType = "IR"`)
+* `IRmode = "annotated"` - only annotated retained intron events are considered,
+but use IR-ratio to quantify IR (`EventType = "IR"`)
+* `IRmode = "annotated_binary"` - only annotated retained intron events are
+considered, use PSI to quantify IR - which considers the IR-transcript and
+the transcript isoform with the exactly-spliced intron as binary alternatives.
+Splicing of overlapping introns are not considered in PSI quantitation.
+
+
+```{r, results='hide', message = FALSE, warning = FALSE}
+res_limma_allIntrons <- ASE_limma(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A",
+    IRmode = "all"
+)
+
+res_limma_annotatedIR <- ASE_limma(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A",
+    IRmode = "annotated"
+)
+
+res_limma_annotated_binaryIR <- ASE_limma(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A",
+    IRmode = "annotated_binary"
+)
+```
+\
+<\details>
+\
+
+<details>
 <summary>Can I account for batch factors?</summary>
 \
-`ASE_limma` and `ASE_DESeq` can accept up to 2 categories of batches from which
-to normalize. For example, to normalize the analysis by the `batch` category,
-one would run:
+`ASE_limma`, `ASE_DESeq` and `ASE_satuRn` can accept up to 2 categories of 
+batches from which to normalize. For example, to normalize the analysis by the 
+`batch` category, one would run:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 require("limma")
@@ -1005,7 +1305,7 @@ After following the previous sections including differential analysis, navigate
 to `Display` and then `Volcano Plot`. The default volcano plot (top 1000 ASEs)
 will be automatically generated as a plotly object:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Volcano Plot - GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Volcano Plot - GUI"}
 knitr::include_graphics("img/Vis_volcano.jpg")
 ```
 
@@ -1067,7 +1367,7 @@ For now, change the `Variable` to `condition`, `X-axis condition` to `A` and
 `Y-axis condition` to `B`. A scatter plot should be automatically generated as
 follows:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Scatter plot - GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Scatter plot - GUI"}
 knitr::include_graphics("img/Vis_scatter.jpg")
 ```
 
@@ -1081,14 +1381,14 @@ SpliceWiz GUI generates plotly interactive figures. For volcano and scatter
 plots, points of interest can be selected using the lasso or box select tools.
 For example, we can select the top hits from the faceted volcano plot as shown:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Volcano plot - selecting ASEs of interest via the GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Volcano plot - selecting ASEs of interest via the GUI"}
 knitr::include_graphics("img/Vis_volcano_select.jpg")
 ```
 
 These ASEs of interest will then be highlighted in other plots, for example
 scatter plot:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Scatter plot - highlighted ASE events"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Scatter plot - highlighted ASE events"}
 knitr::include_graphics("img/Vis_scatter_highlighted.jpg")
 ```
 </details>
@@ -1172,7 +1472,7 @@ pheatmap(mat, annotation_col = anno_col_df)
 Navigate to `Display`, then `Heatmap` in the menu side bar. A heatmap will be
 automatically generated:
 
-```{r, echo=FALSE, out.width='640pt', fig.align = 'center', fig.cap="Heatmap - GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Heatmap - GUI"}
 knitr::include_graphics("img/Vis_heatmap.jpg")
 ```
 
@@ -1222,7 +1522,7 @@ can be compared across samples.
 First, lets obtain a list of differential events with delta PSI > 5%:
 
 ```{r}
-res_limma.filtered <- subset(res_limma, abs(AvgPSI_A - AvgPSI_B) > 0.05)
+res_limma.filtered <- subset(res_limma, abs(deltaPSI) > 0.05)
 ```
 
 Plot up to 4 individual samples using `plotCoverage()`:
@@ -1243,6 +1543,36 @@ if(interactive()) {
 }
 
 ```
+\
+<details>
+<summary>Plotting junction counts (new in 0.99.5+)</summary>
+\
+
+Sashimi plots, first popularised by MISO, are coverage plots with arcs that
+denote split reads. They are each labelled by a number denoting the number of
+split reads spanning the corresponding junctions.
+
+In SpliceWiz (>=0.99.5) junctions can be plotted by setting 
+`plotJunctions = TRUE` from within `plotCoverage()`
+
+```{r, eval = Sys.info()["sysname"] != "Darwin"}
+p <- plotCoverage(
+    se = se,
+    Event = res_limma.filtered$EventName[1],
+    tracks = colnames(se)[c(1,2,4,5)],
+    plotJunctions = TRUE
+)
+
+if(interactive()) {
+    # Display as plotly object
+    p$final_plot
+} else {
+    # Display as ggplot
+    as_ggplot_cov(p)
+}
+```
+\
+</details>
 \
 
 <details>
@@ -1284,6 +1614,41 @@ p <- plotCoverage(
     Event = res_limma.filtered$EventName[1],
     tracks = c("A", "B"),
     condition = "condition",
+    plotJunctions = TRUE,
+)
+
+if(interactive()) {
+    # Display as plotly object
+    p$final_plot
+} else {
+    # Display as ggplot
+    as_ggplot_cov(p)
+}
+```
+
+Note that junctions are labelled not by their counts (which are different
+between replicates of a group, and are dependent on gene expression and 
+sequencing depth). Instead, SpliceWiz labels junction arcs by the mean +/- sd of
+ "provisional PSI". These are PSI estimates calculated for each sample, based on 
+the ratio of the junction read count as a proportion of total spliced read 
+counts that share either exon cluster with that of the assessed junction.
+
+\
+<details>
+<summary>How do I stack conditions together to better visualize their coverage differences?</summary>
+\
+
+Differences in group-normalized coverage are best visualized when the traces
+are stacked together in the same track. To do this, set `stack_tracks = TRUE`
+from within `plotCoverage()`. Note this is only enabled when plotting
+group-normalized coverage plots (i.e., when `condition` is set).
+
+```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
+p <- plotCoverage(
+    se = se,
+    Event = res_limma.filtered$EventName[1],
+    tracks = c("A", "B"),
+    condition = "condition",
     stack_tracks = TRUE,
 )
 
@@ -1295,6 +1660,9 @@ if(interactive()) {
     as_ggplot_cov(p)
 }
 ```
+\
+</details>
+\
 
 <details>
 <summary>What are the shaded ribbons in this plot?</summary>
@@ -1344,13 +1712,18 @@ selected ASE event. This ensures that exon depths are normalized to unity. Only
 applicable to `View` by `condition`
 * (12) Condition: select which category of condition to contrast
 * (13) Tracks: select either individual samples, or experimental conditions
-* (14) Stack traces: if on, all traces are output onto the same track
+* (14) Plot Junctions: Plot split read counts when viewing by individual 
+samples, or provisional PSI values (calculated based on split reads across
+exon clusters) when viewing by conditions. Not plotted when stack traces is ON.
+* (15) Stack traces: if on, all traces are output onto the same track
 (view by condition only)
-* (15) Pairwise t-test (only applicable to view by condition, 2 tracks 
+* (16) Pairwise t-test (only applicable to view by condition, 2 tracks 
 highlighted only). A pairwise t-test of normalized coverages will be performed,
 and per-window t-test results (-log10 transformed) will be displayed. Higher
 values indicate higher significance
-* (16) Condensed tracks: whether the individual transcripts `OFF` or collapsed
+* (17) Display Key Isoforms: Only plots transcripts that contain at least one
+of the two alternate isoforms being plotted.
+* (18) Condensed tracks: whether the individual transcripts `OFF` or collapsed
 combined transcripts `ON` is displayed
 \
 

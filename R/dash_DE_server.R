@@ -103,7 +103,14 @@ server_DE <- function(
             updateSelectInput(session = session, inputId = "batch2_DE", 
                 selected = settings_DE$batchVar2)
         })
-
+        
+        observeEvent(settings_DE$IRmode_DE, {
+            req(settings_DE$IRmode_DE)
+            shinyWidgets::updateRadioGroupButtons(
+                session = session, inputId = "de_IRmode", 
+                selected = settings_DE$IRmode_DE)
+        })
+        
         observe({
             output$warning_DE <- renderText({
                 validate(need(get_se(), 
@@ -174,6 +181,8 @@ server_DE <- function(
                 updateSelectInput(session = session, inputId = "batch2_DE", 
                     selected = "(none)")
             }
+            settings_DE$IRmode_DE <- input$de_IRmode
+            
             req(input$method_DE)
             settings_DE$method <- input$method_DE
 
@@ -181,17 +190,23 @@ server_DE <- function(
                 withProgress(message = 'Running DESeq2...', value = 0, {
                     if(settings_DE$nom_DE != "(time series)") {
                         res.ASE <- ASE_DESeq(
-                            get_se(), settings_DE$DE_Var, 
-                            settings_DE$nom_DE, settings_DE$denom_DE,
-                            settings_DE$batchVar1, settings_DE$batchVar2,
-                            n_threads = get_threads()
+                            se = get_se(), 
+                            test_factor = settings_DE$DE_Var, 
+                            test_nom = settings_DE$nom_DE, 
+                            test_denom = settings_DE$denom_DE,
+                            batch1 = settings_DE$batchVar1, 
+                            batch2 = settings_DE$batchVar2,
+                            n_threads = get_threads(),
+                            IRmode = settings_DE$IRmode_DE
                         )                    
                     } else {
                         res.ASE <- ASE_DESeq(
-                            get_se(), settings_DE$DE_Var, 
+                            se = get_se(), 
+                            test_factor = settings_DE$DE_Var, 
                             batch1 = settings_DE$batchVar1, 
                             batch2 = settings_DE$batchVar2,
-                            n_threads = get_threads()
+                            n_threads = get_threads(),
+                            IRmode = settings_DE$IRmode_DE
                         )
                     }
                     
@@ -205,9 +220,13 @@ server_DE <- function(
             } else if(settings_DE$method == "limma") {
                 withProgress(message = 'Running limma...', value = 0, {
                     res.ASE <- ASE_limma(
-                        get_se(), settings_DE$DE_Var, 
-                        settings_DE$nom_DE, settings_DE$denom_DE,
-                        settings_DE$batchVar1, settings_DE$batchVar2
+                        se = get_se(), 
+                        test_factor = settings_DE$DE_Var, 
+                        test_nom = settings_DE$nom_DE, 
+                        test_denom = settings_DE$denom_DE,
+                        batch1 = settings_DE$batchVar1, 
+                        batch2 = settings_DE$batchVar2,
+                        IRmode = settings_DE$IRmode_DE
                     )
                     if(!input$adjP_DE) {
                         setorderv(res.ASE, "P.Value")
@@ -218,13 +237,34 @@ server_DE <- function(
             } else if(settings_DE$method == "DoubleExpSeq") {
                 withProgress(message = 'Running DoubleExpSeq...', value = 0, {
                     res.ASE <- ASE_DoubleExpSeq(
-                        get_se(), settings_DE$DE_Var, 
-                        settings_DE$nom_DE, settings_DE$denom_DE
+                        se = get_se(), 
+                        test_factor = settings_DE$DE_Var, 
+                        test_nom = settings_DE$nom_DE, 
+                        test_denom = settings_DE$denom_DE,
+                        IRmode = settings_DE$IRmode_DE
                     )
                     if(!input$adjP_DE) {
                         setorderv(res.ASE, "P.Value")
                     } else {
                         setorderv(res.ASE, "adj.P.Val")
+                    }
+                })
+            } else if(settings_DE$method == "satuRn") {
+                withProgress(message = 'Running satuRn...', value = 0, {
+                    res.ASE <- ASE_satuRn(
+                        se = get_se(), 
+                        test_factor = settings_DE$DE_Var, 
+                        test_nom = settings_DE$nom_DE, 
+                        test_denom = settings_DE$denom_DE,
+                        batch1 = settings_DE$batchVar1, 
+                        batch2 = settings_DE$batchVar2,
+                        IRmode = settings_DE$IRmode_DE,
+                        n_threads = get_threads()
+                    )
+                    if(!input$adjP_DE) {
+                        setorderv(res.ASE, "pval")
+                    } else {
+                        setorderv(res.ASE, "regular_FDR")
                     }
                 })
             }
@@ -248,6 +288,8 @@ server_DE <- function(
             settings_DE$res_settings$denom_DE <- settings_DE$denom_DE
             settings_DE$res_settings$batchVar1 <- settings_DE$batchVar1
             settings_DE$res_settings$batchVar2 <- settings_DE$batchVar2
+            settings_DE$res_settings$IRmode_DE <- settings_DE$IRmode_DE
+            settings_DE$res_settings$BuildVersion <- ASE_version
         })
 
         observeEvent(settings_DE$res, {
@@ -269,6 +311,7 @@ server_DE <- function(
         observeEvent(input$save_DE, {
             req(settings_DE$res)
             req(length(settings_DE$res_settings) > 0)
+            req("BuildVersion" %in% names(settings_DE$res_settings))
 
             selectedfile <- parseSavePath(volumes(), input$save_DE)
             req(selectedfile$datapath)
@@ -277,7 +320,20 @@ server_DE <- function(
                 res = settings_DE$res, 
                 settings = settings_DE$res_settings, 
                 filters = settings_DE$filters)
-            saveRDS(save_DE,selectedfile$datapath)
+                
+            output$warning_DE <- renderText({
+                validate(need(
+                    tryCatch({
+                        saveRDS(save_DE,selectedfile$datapath)
+                        TRUE
+                        }, error = function(e) {                            
+                            message(e)
+                            FALSE
+                        }
+                    ),
+                    "An error occurred attempting to save to file."
+                ))
+            })
         })
         
         observe({
@@ -288,13 +344,34 @@ server_DE <- function(
             req(input$load_DE)
             file_selected <- parseFilePaths(volumes(), input$load_DE)
             req(file_selected$datapath)
-            load_DE <- readRDS(as.character(file_selected$datapath))
-            req(all(c("res", "settings") %in% names(load_DE)))
 
+            load_DE <- NULL
+            retVal <- tryCatch({
+                load_DE <- readRDS(as.character(file_selected$datapath))
+                TRUE
+            }, error = function(e) {                            
+                message(e)
+                FALSE
+            })
+
+            output$warning_DE <- renderText({
+                validate(need(retVal,
+                    "An error occurred attempting to load from file."
+                ))
+            })
+            
+            req(all(c("res", "settings") %in% names(load_DE)))
             # check all parameters exist in colData(se)
             output$warning_DE <- renderText({
                 validate(need(get_se(), 
                     "Please load experiment via 'Experiment' tab"))
+                validate(need(
+                        "BuildVersion" %in% names(load_DE$settings) &&
+                        load_DE$settings$BuildVersion >= ASE_version, 
+                    paste(
+                        "This differential expression Rds was produced with",
+                        "SpliceWiz version 0.99.4 or below."
+                    )))
                 
                 "Experiment Loaded"
             })
@@ -310,7 +387,9 @@ server_DE <- function(
             req(any(unlist(colData[,load_DE$settings$DE_Var]) == 
                 load_DE$settings$denom_DE))
             req(load_DE$settings$method %in% 
-                c("DESeq2", "limma", "DoubleExpSeq"))
+                c("DESeq2", "limma", "DoubleExpSeq", "satuRn"))
+            req(load_DE$settings$IRmode_DE %in% 
+                c("all", "annotated", "annotated_binary"))
 
             settings_DE$res <- load_DE$res
             settings_DE$res_settings$method <- load_DE$settings$method
@@ -319,6 +398,9 @@ server_DE <- function(
             settings_DE$res_settings$denom_DE <- load_DE$settings$denom_DE
             settings_DE$res_settings$batchVar1 <- load_DE$settings$batchVar1
             settings_DE$res_settings$batchVar2 <- load_DE$settings$batchVar2
+            settings_DE$res_settings$IRmode_DE <- load_DE$settings$IRmode_DE
+            settings_DE$res_settings$BuildVersion <- 
+                load_DE$settings$BuildVersion
 
             settings_DE$method <- settings_DE$res_settings$method
             settings_DE$DE_Var <- settings_DE$res_settings$DE_Var
@@ -326,6 +408,7 @@ server_DE <- function(
             settings_DE$denom_DE <- settings_DE$res_settings$denom_DE
             settings_DE$batchVar1 <- settings_DE$res_settings$batchVar1
             settings_DE$batchVar2 <- settings_DE$res_settings$batchVar2
+            settings_DE$IRmode_DE <- settings_DE$res_settings$IRmode_DE
 
             if("filters" %in% names(load_DE)) {
                 settings_DE$filters <- load_DE$filters

@@ -76,8 +76,8 @@ server_vis_diag <- function(
             } else {
                 df.diag$selected <- FALSE
             }
-            df.diag$NMD_direction <- get_de()$NMD_direction[
-                match(df.diag$EventName, get_de()$EventName)]
+            df.diag$NMD_direction <- .getNMDcode(get_de()$flags[
+                match(df.diag$EventName, get_de()$EventName)])
             
             settings_Diag$plot_ini <- TRUE
             if(input$NMD_diag == TRUE) {
@@ -243,7 +243,7 @@ server_vis_diag <- function(
     df.volc <- data.frame(
         EventName = res$EventName, 
         EventType = res$EventType, 
-        NMD_direction = res$NMD_direction,
+        NMD_direction = .getNMDcode(res$flags),
         log2FoldChange = res[, get(units)]
     )
     return(df.volc)
@@ -324,6 +324,9 @@ server_vis_volcano <- function(
             if("pvalue" %in% colnames(res)) {
                 df.volc$pvalue <- res$pvalue
                 df.volc$padj <- res$padj
+            } else if("regular_FDR" %in% colnames(res)) {
+                df.volc$pvalue <- res$pval
+                df.volc$padj <- res$regular_FDR
             } else {
                 df.volc$pvalue <- res$P.Value
                 df.volc$padj <- res$adj.P.Val
@@ -373,7 +376,7 @@ server_vis_volcano <- function(
             if(input$adjP_volc) {
                 p <- p + labs(y = "Adjusted P Value (-log10)")
             } else {
-                p <- p + labs(x = "Nominal P Value (-log10)")            
+                p <- p + labs(y = "Nominal P Value (-log10)")            
             }
             
             p <- p + labs(color = "Selected")
@@ -493,4 +496,10 @@ server_vis_heatmap <- function(
         })
 
     })
+}
+
+.getNMDcode <- function(vec) {
+    IncIsNMD <- grepl("Inc-NMD", vec)
+    ExcIsNMD <- grepl("Exc-NMD", vec)
+    return(ifelse(IncIsNMD, 1, ifelse(ExcIsNMD, -1, 0)))
 }

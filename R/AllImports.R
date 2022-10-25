@@ -41,7 +41,7 @@
 #' @importFrom plotly highlight orca
 #' @importFrom rhdf5 h5createFile h5createDataset h5delete h5write h5createGroup
 #' @importFrom rtracklayer import export TwoBitFile track
-#' @importFrom S4Vectors metadata Rle metadata<- SimpleList 
+#' @importFrom S4Vectors mcols metadata Rle metadata<- SimpleList 
 #' @importFrom S4Vectors from to setValidity2 DataFrame
 #' @importFrom S4Vectors bindCOLS bindROWS getListElement setListElement
 #' @importFrom SummarizedExperiment SummarizedExperiment 

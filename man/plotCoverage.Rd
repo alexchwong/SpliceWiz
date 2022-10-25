@@ -22,7 +22,7 @@ plotCoverage(
   condition,
   selected_transcripts,
   plotJunctions = FALSE,
-  plot_involved_transcripts = FALSE,
+  plot_key_isoforms = FALSE,
   condense_tracks = FALSE,
   stack_tracks = FALSE,
   t_test = FALSE,
@@ -98,11 +98,9 @@ to be displayed on the gene annotation track. Useful to remove minor
 isoforms that are not relevant to the samples being displayed.}
 
 \item{plotJunctions}{(default \code{FALSE}) If \code{TRUE}, sashimi plot junction arcs
-are plotted. Currently only implemented for plots of individual samples.
-Values are not strand-specific (i.e. they may come from split reads from
-either strand)}
+are plotted. Currently only implemented for plots of individual samples.}
 
-\item{plot_involved_transcripts}{(default \code{FALSE}) If \code{TRUE}, only
+\item{plot_key_isoforms}{(default \code{FALSE}) If \code{TRUE}, only
 transcripts involved in the selected \code{Event} or pair of \code{Event}s will be
 displayed.}
 
@@ -218,11 +216,11 @@ p$ggplot
 p <- plotGenome(se, coordinates = "chrZ:10000-20000")
 p$ggplot
 
-# Return a list of ggplot and plotly objects
+# Return a list of ggplot and plotly objects, also plotting junction counts
 p <- plotCoverage(
     se = se,
     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
-    tracks = colnames(se)[1:4]
+    tracks = colnames(se)[1:4], plotJunctions = TRUE
 )
 
 # Display as a a static ggplot (requires the `egg` package to be installed):
@@ -231,10 +229,11 @@ as_ggplot_cov(p)
 # Display the plotly-based interactive Coverage plot:
 p$final_plot
 
-# Plot by condition "treatment"
+# Plot by condition "treatment", including provisional PSIs
 p <- plotCoverage(
-    se, rowData(se)$EventName[1],
-    tracks = c("A", "B"), condition = "treatment"
+    se = se,
+    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+    tracks = c("A", "B"), condition = "treatment", plotJunctions = TRUE
 )
 as_ggplot_cov(p)
 
@@ -243,7 +242,7 @@ p <- plotCoverage(
     se = se,
     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
     tracks = colnames(se)[1:4],
-    plot_involved_transcripts = TRUE
+    plot_key_isoforms = TRUE
 )
 as_ggplot_cov(p)
 }

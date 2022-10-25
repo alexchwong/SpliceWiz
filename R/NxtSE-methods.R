@@ -124,14 +124,14 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
 # Will validate if all files are COV, or if all are empty
 .valid.NxtSE.meta_cov <- function(x) {
     cov_files <- metadata(x)[["cov_file"]]
-    if (!all(file.exists(cov_files) | cov_files == "")) {
+    if (!all(file.exists(cov_files) | all(cov_files == ""))) {
         txt <- paste(
             "Some coverage files are not found:",
             paste(cov_files[!file.exists(cov_files)], collapse = " ")
         )
         return(txt)
     }
-    if (!isCOV(cov_files)) {
+    if (!(isCOV(cov_files) | all(cov_files == ""))) {
         txt <- "Some coverage files are not validated"
         return(txt)
     }

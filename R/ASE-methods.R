@@ -43,21 +43,28 @@
 #' * `A3SS` = alternate 3'-splice site
 #' * `RI` = (known / annotated) intron retention (PSI).
 #'
-#' NB: SpliceWiz separately considers known "RI" and novel "IR" events 
-#'   separately:
-#' * For **IR** (all introns are putative IR events), differential analysis
-#' is performed on IR-ratio, which is similar to PSI, but the "excluded isoform"
-#' includes **all** spliced transcripts that contain an overlapping intron, as
-#' estimated via the `SpliceMax` and `SpliceOver` methods - see [collateData].
-#' * For **RI** (annotated retained introns), differential analysis is performed
-#' on PSI, whereby the "excluded" isoform is one that splice across the 
-#' same **exact** intron as the intron of interest. 
+#' NB: SpliceWiz measures intron retention events using two different 
+#'   approaches, the choice of which is left to the user - see [ASE-methods]:
+#' * **IR** (intron retention) events: considers all introns to be potentially
+#' retained. Given in most scenarios there may be uncertainty as to which of the
+#' many mutually-overlapping introns are spliced to produce the major isoform,
+#' SpliceWiz adopts the IRFinder approach by using the IR-ratio. The "included"
+#' isoform is the relative abundance of the IR-transcript, as approximated by
+#' the trimmed-mean depth of coverage across the intron (excluding outliers
+#' including exons of other transcripts, intronic elements such as snoRNAs, 
+#' etc). The "excluded isoform" includes **all** spliced transcripts that 
+#' contain an overlapping intron, as estimated via SpliceWiz's `SpliceOver` and 
+#' IRFinder's `SpliceMax` methods - see [collateData].
+#' * **RI** (annotated retained introns) considers only annotated retained 
+#' introns, i.e., those annotated within the given reference. These are
+#' quantified using PSI, considering the included (IR-transcript) and excluded
+#' (splicing of the exact intron) as binary alternatives. 
 #'
 #' SpliceWiz considers "included" counts as those that represent abundance of 
 #' the "included" isoform, whereas "excluded" counts represent the abundance of 
 #' the "excluded" isoform.
-#' For consistency, it applies a convention whereby
-#' the "included" transcript is one where its splice junctions
+#' To allow comparison between modalities, SpliceWiz applies a convention 
+#' whereby the "included" transcript is one where its splice junctions
 #' are by definition shorter than those of "excluded" transcripts.
 #' Specifically, this means the included / excluded isoforms are as follows:
 #'
@@ -82,6 +89,17 @@
 #'   ASE. Usually the "control" condition
 #' @param batch1,batch2 (Optional, limma and DESeq2 only) One or two condition
 #'   types containing batch information to account for.
+#' @param IRmode (default `all`) Choose the approach to quantify IR events.
+#'   Default `all` considers all introns as potentially retained, and calculates
+#'   IR-ratio based on total splicing across the intron using the "SpliceOver"
+#'   or "SpliceMax" approach (see [collateData]). Other options include 
+#'   `annotated` which calculates IR-ratios for annotated introns only, and
+#'   `annotated_binary` which calculates PSI considering the "included"
+#'   isoform as the IR-transcript, and the "excluded" transcript is
+#'   quantified from splice counts only across the exact intron 
+#'   (but not that of overlapping introns). IR-ratio are denoted as "IR" events,
+#'   whereas PSIs calculated using IR and intron-spliced binary alternatives are
+#'   denoted as "RI" events.
 #' @param filter_antiover,filter_antinear Whether to remove novel IR events that
 #'   overlap over or near anti-sense genes. Default will exclude antiover but
 #'   not antinear introns. These are ignored if strand-specific RNA-seq 
@@ -96,12 +114,14 @@
 #'   * EventRegion: The genomic coordinates the event occupies. This spans the
 #'     most upstream and most downstream splice junction involved in the ASE,
 #'     and is use to guide the [plotCoverage] function.
-#'   * NMD_direction: Indicates whether one isoform is a NMD substrate. +1 means
-#'     included isoform is NMD, -1 means the excluded isoform is NMD, and 0
-#'     means there is no change in NMD status (i.e. both / neither are NMD)
+#'   * flags: Indicates which isoforms are NMD substrates and/or which are
+#'     formed by novel splicing only.
 #'   * AvgPSI_nom, Avg_PSI_denom: the average percent spliced in / percent
 #'     IR levels for the two conditions being contrasted. `nom` and `denom` in
-#'     column names are replaced with the condition names
+#'     column names are replaced with the condition names. Note this is a
+#'     geometric mean, based on the arithmetic mean of logit PSI values.
+#'   * deltaPSI: The difference in PSI between the mean values of the two
+#'     conditions.
 #'
 #'   **limma specific output**
 #'   * logFC, AveExpr, t, P.Value, adj.P.Val, B: limma topTable columns of
@@ -189,13 +209,15 @@ NULL
 #' @export
 ASE_limma <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
+        IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE) {
 
     .check_package_installed("limma", "3.44.0")
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, batch1, batch2)
+    IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
-        se, filter_antiover, filter_antinear)
+        se, filter_antiover, filter_antinear, IRmode)
 
     .log("Performing limma contrast for included / excluded counts separately",
         "message")
@@ -239,14 +261,17 @@ ASE_limma <- function(se, test_factor, test_nom, test_denom,
 ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
         n_threads = 1,
+        IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE) {
     .check_package_installed("DESeq2", "1.30.0")
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, batch1, batch2,
         allowTimeSeries = TRUE)
     BPPARAM_mod <- .validate_threads(n_threads)
+    
+    IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
-        se, filter_antiover, filter_antinear)
+        se, filter_antiover, filter_antinear, IRmode)
 
     .log("Performing DESeq2 contrast for included / excluded counts separately",
         "message")
@@ -297,13 +322,16 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
 #' @export
 ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
         # batch1 = "", batch2 = "",
+        IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE) {
 
     .check_package_installed("DoubleExpSeq", "1.1")
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, "", "")
+        
+    IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
-        se, filter_antiover, filter_antinear)
+        se, filter_antiover, filter_antinear, IRmode)
 
     .log("Running DoubleExpSeq::DBGLM1() on given data", "message")
     res.ASE <- .ASE_DoubleExpSeq_contrast_ASE(se_use,
@@ -338,20 +366,25 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 #' @export
 ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
+        n_threads = 1,
+        IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE) {
 
     .check_package_installed("satuRn", "1.4.2")
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, batch1, batch2)
+    BPPARAM_mod <- .validate_threads(n_threads)
+
+    IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
-        se, filter_antiover, filter_antinear)
+        se, filter_antiover, filter_antinear, IRmode)
 
     .log("Performing satuRn contrast for included / excluded counts",
         "message")
     rowData <- as.data.frame(rowData(se_use))
     res.ASE <- .ASE_satuRn_contrast(se_use,
         test_factor, test_nom, test_denom,
-        batch1, batch2)
+        batch1, batch2, BPPARAM_mod)
     res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
         test_nom, test_denom)
     return(res.ASE)
@@ -411,7 +444,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 }
 
 # Filter antiover and antinear
-.ASE_filter <- function(se, filter_antiover, filter_antinear) {
+.ASE_filter <- function(se, filter_antiover, filter_antinear, IRmode) {
     se_use <- se
     if(filter_antiover) {
         se_use <- se_use[
@@ -421,8 +454,18 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         se_use <- se_use[
             !grepl("anti-near", rowData(se_use)$EventName),]
     }
-    se_use <- se_use[
-        !grepl("known-exon", rowData(se_use)$EventName),]
+    
+    if(IRmode == "all") {
+        se_use <- se_use[rowData(se_use)$EventType != "RI",]
+    } else if(IRmode == "annotated") {
+        se_use <- se_use[rowData(se_use)$EventType != "RI",]
+        se_use <- se_use[
+            rowData(se_use)$EventType != "IR" | 
+            rowData(se_use)$is_annotated_IR,]
+    } else {
+        se_use <- se_use[rowData(se_use)$EventType != "IR",]    
+    }
+
     return(se_use)
 }
 
@@ -690,7 +733,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 }
 
 .ASE_satuRn_contrast <- function(se, test_factor, test_nom, test_denom,
-        batch1, batch2) {
+        batch1, batch2, BPPARAM) {
     countData <- as.matrix(rbind(assay(se, "Included"),
         assay(se, "Excluded")))
     rowData <- as.data.frame(rowData(se))
@@ -735,11 +778,22 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         colData = colData,
         rowData = txInfo
     )
-    sumExp <- satuRn::fitDTU(
-        object = sumExp,
-        formula = formula1,
-        verbose = FALSE
-    )
+    if(BPPARAM$workers > 1) {
+        sumExp <- satuRn::fitDTU(
+            object = sumExp,
+            formula = formula1,
+            verbose = FALSE,
+            parallel = FALSE,
+            BPPARAM = BPPARAM
+        )    
+    } else {
+        sumExp <- satuRn::fitDTU(
+            object = sumExp,
+            formula = formula1,
+            verbose = FALSE,
+            parallel = FALSE
+        )
+    }
     sumExp <- satuRn::testDTU(
         object = sumExp,
         contrasts = contrast,
@@ -764,17 +818,39 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     return(res.ASE)
 }
 
+# Adds human-readable labels
+.ASE_add_flags <- function(res) {
+    res[, c("flags") := ""]
+    res[get("NMD_direction") == 1, 
+        c("flags") := paste0(get("flags"), ";Inc-NMD")]
+    res[get("NMD_direction") == -1, 
+        c("flags") := paste0(get("flags"), ";Exc-NMD")]
+    res[
+        get("EventType") != "IR" & 
+        grepl("novel", tstrsplit(EventName, split = ";", fixed = TRUE)[[1]]), 
+        c("flags") := paste0(get("flags"), ";Inc-novel")]
+    res[
+        get("EventType") != "IR" & 
+        grepl("novel", tstrsplit(EventName, split = ";", fixed = TRUE)[[2]]), 
+        c("flags") := paste0(get("flags"), ";Exc-novel")]
+    res[get("flags") != "", c("flags") := 
+        substr(get("flags"), 2, nchar(get("flags")))]
+    return(res[, c("EventName","EventType","EventRegion", "flags")])
+}
+
 .ASE_add_diag <- function(res, se, test_factor, test_nom, test_denom) {
     rowData <- as.data.frame(rowData(se))
-    rowData.DT <- as.data.table(rowData[,
-        c("EventName","EventType","EventRegion", "NMD_direction")])
+    rowData.DT <- .ASE_add_flags(as.data.table(rowData[,
+        c("EventName","EventType","EventRegion", "NMD_direction")]))
+        
     diag <- makeMeanPSI(se, res$EventName,
         test_factor, list(test_nom, test_denom))
     colnames(diag)[2:3] <- c(paste0("AvgPSI_", test_nom),
         paste0("AvgPSI_", test_denom))
+    diag$deltaPSI <- diag[, 2] - diag[, 3]
     res <- cbind(
         res[,c("EventName")],
-        as.data.table(diag[,2:3]),
+        as.data.table(round(diag[,-1], 4)),
         res[,-c("EventName")]
     )
     res <- rowData.DT[res, on = "EventName"]
@@ -786,8 +862,8 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         conditionList
 ) {
     rowData <- as.data.frame(rowData(se))
-    rowData.DT <- as.data.table(rowData[,
-        c("EventName","EventType","EventRegion", "NMD_direction")])
+    rowData.DT <- .ASE_add_flags(as.data.table(rowData[,
+        c("EventName","EventType","EventRegion", "NMD_direction")]))
     diag <- makeMeanPSI(se, res$EventName,
         test_factor, conditionList)
     for(i in seq_len(length(conditionList))) {
@@ -795,7 +871,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     }
     res <- cbind(
         res[,c("EventName")],
-        as.data.table(diag[,-1]),
+        as.data.table(round(diag[,-1], 4)),
         res[,-c("EventName")]
     )
     res <- rowData.DT[res, on = "EventName"]

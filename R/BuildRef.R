@@ -334,6 +334,7 @@ buildRef <- function(
     reference_data$gtf_gr <- .validate_gtf_chromosomes(
         reference_data$genome, reference_data$gtf_gr)
     reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
+    
     .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
     extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
     reference_data$gtf_gr <- NULL # To save memory, remove original gtf
@@ -392,7 +393,7 @@ buildRef <- function(
     settings.list$MappabilityRef <- MappabilityRef
     settings.list$BlacklistRef <- BlacklistRef
     settings.list$useExtendedTranscripts <- useExtendedTranscripts
-    settings.list$BuildVersion <- buildref_version
+    settings.list$BuildVersion <- buildRef_version
 
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
 }
@@ -555,11 +556,11 @@ Get_GTF_file <- function(reference_path) {
     }
     settings.list <- readRDS(file.path(ref, "settings.Rds"))
     if (!("BuildVersion" %in% names(settings.list)) ||
-            settings.list[["BuildVersion"]] < buildref_version) {
+            settings.list[["BuildVersion"]] < buildRef_version) {
         .log(paste(from_str,
             "in reference_path =", reference_path,
             "SpliceWiz reference is earlier than current version",
-            buildref_version))
+            buildRef_version))
     }
 }
 
@@ -584,7 +585,7 @@ Get_GTF_file <- function(reference_path) {
     }
     settings.list <- readRDS(file.path(ref, "settings.Rds"))
     if (!("BuildVersion" %in% names(settings.list)) ||
-            settings.list[["BuildVersion"]] < buildref_version) {
+            settings.list[["BuildVersion"]] < buildRef_version) {
         .log(paste(from_str,
             "in reference_path =", reference_path,
             "reference was built using an earlier version of SpliceWiz (",
@@ -796,7 +797,7 @@ Get_GTF_file <- function(reference_path) {
         ah_genome = ah_genome_use, ah_transcriptome = ah_gtf_use,
         reference_path = reference_path
     )
-    settings.list$BuildVersion <- buildref_version
+    settings.list$BuildVersion <- buildRef_version
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
 
     settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
@@ -1194,7 +1195,7 @@ Get_GTF_file <- function(reference_path) {
 # - also fix missing gene_name and transcript_names in newer Ensembl refs
 .fix_gtf <- function(gtf_gr) {
 
-    if ("gene_name" %in% names(S4Vectors::mcols(gtf_gr))) {
+    if ("gene_name" %in% names(mcols(gtf_gr))) {
         gtf_gr$gene_name[is.na(gtf_gr$gene_name)] <-
             gtf_gr$gene_id[is.na(gtf_gr$gene_name)]
         gtf_gr$gene_name <- gsub("/", "_", gtf_gr$gene_name)
@@ -1210,7 +1211,7 @@ Get_GTF_file <- function(reference_path) {
         if(length(dup_gene_names) > 0) {
             for(dup_gene in dup_gene_names) {
                 # Use raw transcript id instead of transcript name
-                if ("transcript_name" %in% names(S4Vectors::mcols(gtf_gr))) {
+                if ("transcript_name" %in% names(mcols(gtf_gr))) {
                     gtf_gr$transcript_name[gtf_gr$gene_name == dup_gene] <-
                         gtf_gr$transcript_id[gtf_gr$gene_name == dup_gene]
                 }
@@ -1227,20 +1228,35 @@ Get_GTF_file <- function(reference_path) {
         gtf_gr$gene_name <- gtf_gr$gene_id
     }
 
-    if ("transcript_name" %in% names(S4Vectors::mcols(gtf_gr))) {
+    # Ensure the following columns are found in the fixed gtf:
+    # - transcript_name, gene_biotype, transcript_biotype,
+    # - transcript_support_level
+    if ("transcript_name" %in% names(mcols(gtf_gr))) {
         gtf_gr$transcript_name[is.na(gtf_gr$transcript_name)] <-
             gtf_gr$transcript_id[is.na(gtf_gr$transcript_name)]
         gtf_gr$transcript_name <- gsub("/", "_", gtf_gr$transcript_name)
     } else {
         gtf_gr$transcript_name <- gtf_gr$transcript_id
     }
-    if (!("gene_biotype" %in% names(S4Vectors::mcols(gtf_gr)))) {
-        gtf_gr$gene_biotype <- "protein_coding"
+    if (!("gene_biotype" %in% names(mcols(gtf_gr)))) {
+        if("gene_type" %in% names(mcols(gtf_gr))) {
+            colnames(mcols(gtf_gr))[
+                which(colnames(mcols(gtf_gr))) == "gene_type"
+            ] <- "gene_biotype"
+        } else {
+            gtf_gr$gene_biotype <- "protein_coding"     
+        }
     }
-    if (!("transcript_biotype" %in% names(S4Vectors::mcols(gtf_gr)))) {
-        gtf_gr$transcript_biotype <- "protein_coding"
+    if (!("transcript_biotype" %in% names(mcols(gtf_gr)))) {
+        if("transcript_type" %in% names(mcols(gtf_gr))) {
+            colnames(mcols(gtf_gr))[
+                which(colnames(mcols(gtf_gr))) == "transcript_type"
+            ] <- "transcript_biotype"
+        } else {
+            gtf_gr$transcript_biotype <- "protein_coding"        
+        }
     }
-    if (!("transcript_support_level" %in% names(S4Vectors::mcols(gtf_gr)))) {
+    if (!("transcript_support_level" %in% names(mcols(gtf_gr)))) {
         gtf_gr$transcript_support_level <- 1
     }
 
@@ -1300,6 +1316,17 @@ Get_GTF_file <- function(reference_path) {
 
     Genes <- GenomeInfoDb::sortSeqlevels(Genes)
     Genes <- sort(Genes)
+    
+    # Fix gene_biotype and transcript_biotype tags
+    if ("gene_biotype" %in% names(mcols(Genes))) {
+        # do nothing
+    } else if ("gene_type" %in% names(mcols(Genes))) {
+        colnames(mcols(Genes))[which(colnames(mcols(Genes)) ==
+            "gene_type")] <- "gene_biotype"
+    } else {
+        mcols(Genes)$gene_biotype <- "protein_coding"
+    }
+
     Genes$gene_display_name <- paste0(Genes$gene_name, " (", Genes$gene_id, ")")
 
     # Annotate gene_groups_stranded
@@ -1357,30 +1384,6 @@ Get_GTF_file <- function(reference_path) {
     Transcripts <- GenomeInfoDb::sortSeqlevels(Transcripts)
     Transcripts <- sort(Transcripts)
 
-    # Fix gene_biotype and transcript_biotype tags
-    if ("gene_biotype" %in% names(mcols(Transcripts))) {
-        # do nothing
-    } else if ("gene_type" %in% names(mcols(Transcripts))) {
-        colnames(mcols(Transcripts))[which(colnames(mcols(Transcripts)) ==
-            "gene_type")] <- "gene_biotype"
-    } else {
-        mcols(Transcripts)$gene_biotype <- "protein_coding"
-    }
-    if ("transcript_biotype" %in% names(mcols(Transcripts))) {
-        # do nothing
-    } else if ("transcript_type" %in% names(mcols(Transcripts))) {
-        colnames(mcols(Transcripts))[which(colnames(mcols(Transcripts)) ==
-            "transcript_type")] <- "transcript_biotype"
-    } else {
-        mcols(Transcripts)$transcript_biotype <- "protein_coding"
-    }
-    if ("transcript_support_level" %in% names(mcols(Transcripts))) {
-        Transcripts$transcript_support_level <-
-            tstrsplit(Transcripts$transcript_support_level, split = " ")[[1]]
-        Transcripts$transcript_support_level[
-            is.na(Transcripts$transcript_support_level)
-        ] <- "NA"
-    }
     write.fst(as.data.frame(Transcripts),
         file.path(reference_path, "fst", "Transcripts.fst")
     )
@@ -1420,19 +1423,6 @@ Get_GTF_file <- function(reference_path) {
 
     Exons <- GenomeInfoDb::sortSeqlevels(Exons)
     Exons <- sort(Exons)
-
-    # transcript_biotype is very important field.
-    #   If Gencode, this is transcript_type.
-    #   In rare case we do not have this field
-    #   This next bit ensures transcript_biotype exists.
-    if ("transcript_biotype" %in% names(mcols(Exons))) {
-    } else if ("transcript_type" %in% names(mcols(Exons))) {
-        colnames(mcols(Exons))[
-            which(colnames(mcols(Exons)) == "transcript_type")
-        ] <- "transcript_biotype"
-    } else {
-        mcols(Exons)$transcript_biotype <- "protein_coding"
-    }
 
     # Assign gene groups then bake exon-groups into Exons
     tmp.Exons_group.stranded <- .process_exon_groups(
@@ -2505,6 +2495,7 @@ Get_GTF_file <- function(reference_path) {
             )
         )
     )
+    ref.tj <- unique(ref.tj)
     setorderv(ref.tj, c("seqnames", "start1", "end1", 
         "start2", "end2", "strand"))
     gc()
@@ -3234,7 +3225,7 @@ Get_GTF_file <- function(reference_path) {
 .gen_splice_AFE <- function(candidate.introns, introns_found_A5SS) {
     # There's no way a novel junction could be known to be the first exon
     introns_search_AFE <- candidate.introns[
-        get("transcript_biotype") != "intron_novel_transcript"]
+        get("transcript_biotype") != "novel_transcript"]
     introns_search_AFE <- introns_search_AFE[get("intron_number") == 1]
     introns_search_AFE_pos <- introns_search_AFE[get("strand") == "+"]
     setorderv(introns_search_AFE_pos,
@@ -3306,7 +3297,7 @@ Get_GTF_file <- function(reference_path) {
 # Generate a list of ALE
 .gen_splice_ALE <- function(candidate.introns, introns_found_A3SS) {
     introns_search_ALE <- candidate.introns[
-        get("transcript_biotype") != "intron_novel_transcript"]
+        get("transcript_biotype") != "novel_transcript"]
         
     introns_search_ALE <- introns_search_ALE[introns_search_ALE[,
         .I[get("intron_number") == max(get("intron_number"))],

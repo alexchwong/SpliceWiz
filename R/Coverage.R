@@ -84,9 +84,7 @@
 #'   isoforms that are not relevant to the samples being displayed.
 #' @param plotJunctions (default `FALSE`) If `TRUE`, sashimi plot junction arcs
 #'   are plotted. Currently only implemented for plots of individual samples.
-#'   Values are not strand-specific (i.e. they may come from split reads from
-#'   either strand)
-#' @param plot_involved_transcripts (default `FALSE`) If `TRUE`, only 
+#' @param plot_key_isoforms (default `FALSE`) If `TRUE`, only 
 #'   transcripts involved in the selected `Event` or pair of `Event`s will be
 #'   displayed.
 #' @param condense_tracks (default `FALSE`) Whether to collapse the
@@ -137,11 +135,11 @@
 #' p <- plotGenome(se, coordinates = "chrZ:10000-20000")
 #' p$ggplot
 #'
-#' # Return a list of ggplot and plotly objects
+#' # Return a list of ggplot and plotly objects, also plotting junction counts
 #' p <- plotCoverage(
 #'     se = se,
 #'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
-#'     tracks = colnames(se)[1:4]
+#'     tracks = colnames(se)[1:4], plotJunctions = TRUE
 #' )
 #'
 #' # Display as a a static ggplot (requires the `egg` package to be installed):
@@ -150,10 +148,11 @@
 #' # Display the plotly-based interactive Coverage plot:
 #' p$final_plot
 #'
-#' # Plot by condition "treatment"
+#' # Plot by condition "treatment", including provisional PSIs
 #' p <- plotCoverage(
-#'     se, rowData(se)$EventName[1],
-#'     tracks = c("A", "B"), condition = "treatment"
+#'     se = se,
+#'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+#'     tracks = c("A", "B"), condition = "treatment", plotJunctions = TRUE
 #' )
 #' as_ggplot_cov(p)
 #'
@@ -162,7 +161,7 @@
 #'     se = se,
 #'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
 #'     tracks = colnames(se)[1:4],
-#'     plot_involved_transcripts = TRUE
+#'     plot_key_isoforms = TRUE
 #' )
 #' as_ggplot_cov(p)
 #' @name plotCoverage
@@ -186,7 +185,7 @@ plotCoverage <- function(
         condition,
         selected_transcripts,
         plotJunctions = FALSE,
-        plot_involved_transcripts = FALSE,
+        plot_key_isoforms = FALSE,
         condense_tracks = FALSE,
         stack_tracks = FALSE,
         t_test = FALSE,
@@ -234,7 +233,7 @@ plotCoverage <- function(
         se = se, avail_files = covfile(se),
         transcripts = cov_data$transcripts.DT, elems = cov_data$elem.DT,
         stack_tracks = stack_tracks,
-        plot_involved_transcripts = plot_involved_transcripts,
+        plot_key_isoforms = plot_key_isoforms,
         graph_mode = "Pan", conf.int = 0.95,
         t_test = t_test, condensed = condense_tracks,
         plotJunctions = plotJunctions
@@ -956,19 +955,33 @@ getCoverageBins <- function(file, region, bins = 2000,
     view_chr, view_start, view_end, view_strand,
     norm_event, condition, tracks = list(), track_names = NULL, se, avail_files,
     transcripts, elems, highlight_events = "", selected_transcripts = "",
-    plot_involved_transcripts = FALSE,
+    plot_key_isoforms = FALSE,
     stack_tracks, graph_mode, conf.int = 0.95,
     t_test = FALSE, condensed = FALSE,
     plotJunctions = FALSE
 ) {
     args <- as.list(match.call())
+    
+    # Automatically flips strand if all samples are reversely stranded
+    
+    args$view_strand_jn <- args$view_strand
+    if(args$view_strand != "*") {
+        if(all(sampleQC(args$se)$strand == -1)) {
+            if(args$view_strand == "+") {
+                args$view_strand <- "-"
+            } else {
+                args$view_strand <- "+"
+            }
+        }
+    }
+    
     if (is.null(track_names)) args$track_names <- unlist(tracks)
     p_ref <- .plot_view_ref_fn(
         view_chr, view_start, view_end,
         transcripts, elems, highlight_events,
         condensed = condensed,
         selected_transcripts = selected_transcripts,
-        plot_involved_transcripts = plot_involved_transcripts
+        plot_key_isoforms = plot_key_isoforms
     )
     data.t_test <- list()
     cur_zoom <- floor(log((view_end - view_start) / 50) / log(3))
@@ -1015,13 +1028,13 @@ getCoverageBins <- function(file, region, bins = 2000,
     view_chr, view_start, view_end,
     transcripts, elems, highlight_events = "",
     condensed = FALSE, selected_transcripts = "",
-    plot_involved_transcripts = FALSE
+    plot_key_isoforms = FALSE
 ) {
     DTlist <- .plot_view_ref_fn_getDTlist(
         view_chr, view_start, view_end,
         transcripts, elems, highlight_events,
         condensed, selected_transcripts,
-        plot_involved_transcripts
+        plot_key_isoforms
     )
     DTplotlist <- .plot_view_ref_fn_groupDTlist(DTlist,
         view_chr, view_start, view_end, highlight_events)
@@ -1034,7 +1047,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     view_chr, view_start, view_end,
     transcripts, elems, highlight_events = "",
     condensed = FALSE, selected_transcripts = "",
-    plot_involved_transcripts = FALSE
+    plot_key_isoforms = FALSE
 ) {
     transcripts.DT <- transcripts[
         get("seqnames") == view_chr &
@@ -1085,9 +1098,9 @@ getCoverageBins <- function(file, region, bins = 2000,
     # highlight_events is of syntax chrX:10000-11000/-
     if (length(highlight_events) > 1 || highlight_events != "")
         reduced.DT <- determine_compatible_events(
-            reduced.DT, highlight_events, plot_involved_transcripts)
+            reduced.DT, highlight_events, plot_key_isoforms)
 
-    if(plot_involved_transcripts) {
+    if(plot_key_isoforms) {
         transcripts.DT <- transcripts.DT[
             get("transcript_id") %in% reduced.DT$transcript_id]
     }
@@ -1099,7 +1112,7 @@ getCoverageBins <- function(file, region, bins = 2000,
 }
 
 determine_compatible_events <- function(
-        reduced.DT, highlight_events, plot_involved_transcripts
+        reduced.DT, highlight_events, plot_key_isoforms
 ) {
     introns <- reduced.DT[get("type") == "intron"]
     introns[, c("highlight") := "0"]
@@ -1164,7 +1177,7 @@ determine_compatible_events <- function(
                 c("highlight") := highlight_id]
         }
     }
-    if(plot_involved_transcripts) {
+    if(plot_key_isoforms) {
         introns <- introns[get("transcript_id") %in% tr_filter]
         exons <- exons[get("transcript_id") %in% tr_filter]
         misc <- misc[get("transcript_id") %in% tr_filter]
@@ -1328,8 +1341,12 @@ determine_compatible_events <- function(
     depth_min <- 10 # depth required for sample to be included in averages
 
     data.list <- list()
+    junc.list <- list()
     data.t_test <- fac <- NULL
     max_tracks <- 0
+    
+    junc_PSI <- .plot_cov_fn_retrieve_PSI(view_chr, view_start, view_end, 
+        se = se, ...)
     for (i in seq_len(4)) {
         if (length(tracks) >= i && is_valid(tracks[[i]])) {
             track_samples <- tracks[[i]]
@@ -1340,9 +1357,13 @@ determine_compatible_events <- function(
             event_norms <- assay(se, "Depth")[norm_event, samples]
             samples <- samples[event_norms >= depth_min]
             event_norms <- event_norms[event_norms >= depth_min]
-
+            junc_PSI_track <- NA
+            
             if (length(avail_files[samples]) > 0 &&
                     all(file.exists(avail_files[samples]))) {
+                if(is(junc_PSI, "data.frame")) 
+                    junc_PSI_track <- junc_PSI[, samples]
+
                 df <- as.data.frame(.internal_get_coverage_as_df(
                     samples, avail_files[samples],
                     view_chr, view_start, view_end, view_strand))
@@ -1377,13 +1398,15 @@ determine_compatible_events <- function(
                 DT <- as.data.table(df)
                 DT <- DT[, c("x", "mean", "ci", "track")]
                 data.list[[i]] <- DT
+                junc.list[[i]] <- junc_PSI_track
                 max_tracks <- max_tracks + 1
             }
         }
     }
     return(list(
         data.list = data.list, data.t_test = data.t_test,
-        fac = fac, max_tracks = max_tracks
+        fac = fac, max_tracks = max_tracks,
+        junc.list = junc.list
     ))
 }
 
@@ -1446,6 +1469,20 @@ determine_compatible_events <- function(
     for (i in seq_len(4)) {
         if (length(calcs$data.list) >= i && !is.null(calcs$data.list[[i]])) {
             df <- as.data.frame(calcs$data.list[[i]])
+            dfJn <- .plot_cov_fn_PSI_make_jn_arcs(df, calcs$junc.list[[i]],
+                0.1 * max(df$mean))
+            if(is(dfJn, "data.frame")) {
+                dtJn <- as.data.table(dfJn)
+                dtJn[, c("xlabel", "ylabel") := list(
+                    mean(get("x")), mean(get("y"))), 
+                    by = c("junction", "value")
+                ]
+                dtJn <- unique(dtJn[, 
+                    c("junction", "value", "xlabel", "ylabel"), with = FALSE])
+                dfJnSum <- as.data.frame(dtJn)                
+            } else {
+                dfJnSum <- NA
+            }
             gp_track[[i]] <- ggplot() +
                 geom_hline(yintercept = 0) +
                 geom_ribbon(data = df, alpha = 0.2, colour = NA,
@@ -1456,8 +1493,18 @@ determine_compatible_events <- function(
                     aes(x = get("x"), y = get("mean"))) +
                 labs(y = paste(args$condition, args$tracks[[i]])) +
                 theme_white_legend
+            if(is(dfJn, "data.frame")) {
+                gp_track[[i]] <- gp_track[[i]] +
+                    geom_line(data = dfJn, 
+                        aes_string(x = "x", y = "yarc",
+                            group = "junction", label = "junction"), 
+                            color = "darkred") +
+                    geom_text(data = dfJnSum, 
+                        aes_string(x = "xlabel", y = "ylabel",
+                            label = "value"))
+            }
             pl_track[[i]] <- ggplotly(gp_track[[i]],
-                tooltip = c("x", "y", "ymin", "ymax")
+                tooltip = c("x", "y", "ymin", "ymax", "label")
             )
             pl_track[[i]] <- pl_track[[i]] %>% layout(
                 yaxis = list(rangemode = "tozero", fixedrange = TRUE)
@@ -1526,7 +1573,7 @@ determine_compatible_events <- function(
     gp_track <- pl_track <- list()
     data.list <- list()
     junc_df <- .plot_cov_fn_indiv_retrieve_jn(
-        view_chr, view_start, view_end, view_strand,
+        view_chr, view_start, view_end,
         unlist(tracks), ...
     )
     for (i in seq_len(4)) {
@@ -1600,21 +1647,22 @@ determine_compatible_events <- function(
 }
 
 .plot_cov_fn_indiv_retrieve_jn <- function(
-        view_chr, view_start, view_end, view_strand,
+        view_chr, view_start, view_end,
         samples_to_get,
+        view_strand_jn,
         se = NULL,
         plotJunctions = FALSE,
         ...
 ) {
     if(plotJunctions) {
         gr_select <- GRanges(view_chr, 
-            IRanges(view_start, view_end), view_strand)
+            IRanges(view_start, view_end), view_strand_jn)
         OL <- findOverlaps(junc_gr(se), gr_select)
         junc_counts_select  <- as.data.frame(junc_counts(se)[
             unique(from(OL)),samples_to_get])
         
         # Unstrand junction counts summation
-        if(view_strand == "*") {
+        if(view_strand_jn == "*") {
             junc_counts_select$rownames <- substr(rownames(junc_counts_select), 1, 
                 nchar(rownames(junc_counts_select )) - 2)
             junc_counts_select <- as.data.table(junc_counts_select)
@@ -1625,9 +1673,31 @@ determine_compatible_events <- function(
             junc_counts_select$rownames <- rownames(junc_counts_select)
             junc_counts_select <- as.data.table(junc_counts_select)
         }
+        if(nrow(junc_counts_select) == 0) return(NA)
         final <- as.data.frame(junc_counts_select[, samples_to_get, 
             with = FALSE])
         rownames(final) <- junc_counts_select$rownames
+        return(final)
+    } else {
+        return(NA)
+    }
+}
+
+.plot_cov_fn_retrieve_PSI <- function(
+        view_chr, view_start, view_end,
+        view_strand_jn,
+        se = NULL,
+        plotJunctions = FALSE,
+        ...
+) {
+    if(plotJunctions) {
+        gr_select <- GRanges(view_chr, 
+            IRanges(view_start, view_end), view_strand_jn)
+        OL <- findOverlaps(junc_gr(se), gr_select)
+        
+        if(length(unique(from(OL))) == 0) return(NA)
+        final  <- as.data.frame(junc_PSI(se)[
+            unique(from(OL)),])
         return(final)
     } else {
         return(NA)
@@ -1667,8 +1737,54 @@ determine_compatible_events <- function(
                 y = seq(leftY, rightY, length.out = 90)
             )
             outdf$yarc <- outdf$y + sinpi(seq(0,1,length.out = 90)) * arcHeight
-            outdf$junction <- rownames(junc_df_indiv)[i]
+            outdf$junction <- paste0(rownames(junc_df_indiv)[i], ": ", 
+                junc_df_indiv$juncVal[i])
             outdf$value <- junc_df_indiv$juncVal[i]
+            final <- rbind(final, outdf)
+        }
+    }
+    return(final)
+}
+
+.plot_cov_fn_PSI_make_jn_arcs <- function(
+        df, junc_df,
+        arcHeight = 0,
+        juncThreshold = 0.01
+) {
+    if(!is(junc_df, "data.frame")) return(NA)
+    junc_df_PSI <- data.frame(
+        PSImean = rowMeans(as.matrix(junc_df)),
+        PSIsd = rowSds(as.matrix(junc_df))
+    )
+    rownames(junc_df_PSI) <- rownames(junc_df)
+    
+    gr <- coord2GR(rownames(junc_df_PSI))
+    junc_df_PSI$juncStart <- start(gr)
+    junc_df_PSI$juncEnd <- end(gr)
+    
+    df$lead <- data.table::shift(df$mean, type = "lead")
+    df$lag <- data.table::shift(df$mean, type = "lag")
+    df$max <- rowMaxs(as.matrix(df[, c("mean", "lead", "lag")]),
+        na.rm = TRUE)
+    df$max[is.na(df$max)] <- 0
+
+    final <- c()
+    for(i in seq_len(nrow(junc_df_PSI))) {
+        if(junc_df_PSI$PSImean[i] > juncThreshold) {
+            leftY <- df$max[
+                which.min(abs(df$x - junc_df_PSI$juncStart[i]))]
+            rightY <- df$max[
+                which.min(abs(df$x - junc_df_PSI$juncEnd[i]))]
+            outdf <- data.frame(
+                x = seq(junc_df_PSI$juncStart[i], junc_df_PSI$juncEnd[i],
+                    length.out = 90),
+                y = seq(leftY, rightY, length.out = 90)
+            )
+            outdf$yarc <- outdf$y + sinpi(seq(0,1,length.out = 90)) * arcHeight
+            outdf$value <- paste0(round(100 * junc_df_PSI$PSImean[i], 1), "+/-", 
+                round(100 * junc_df_PSI$PSIsd[i], 1), " %")
+            outdf$junction <- paste0(rownames(junc_df_PSI)[i], ": ", 
+                outdf$value)
             final <- rbind(final, outdf)
         }
     }

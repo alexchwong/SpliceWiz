@@ -274,7 +274,8 @@ differential analysis:
 * DoubleExpSeq: models included and excluded counts using beta binomial
 distributions
 * satuRn: models included and excluded counts using quasi-binomial 
-distributions.
+distributions. NB: satuRn requires the edgeR:filterByExpr() function for count
+filtering.
 
 To install all of these packages:
 
@@ -285,7 +286,7 @@ install.packages("DoubleExpSeq")
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-BiocManager::install(c("DESeq2", "limma", "satuRn"))
+BiocManager::install(c("DESeq2", "limma", "satuRn", "edgeR"))
 ```
 </details> 
 \

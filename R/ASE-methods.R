@@ -106,6 +106,8 @@
 #'   protocols are used.
 #' @param n_threads (DESeq2 only) How many threads to use for DESeq2
 #'   based analysis.
+#' @param ... In `ASE_satuRn()`, further parameters to pass on to edgeR's
+#'   filterByExpr function to filter the count table.
 #' @return For all methods, a data.table containing the following:
 #'   * EventName: The name of the ASE event. This identifies each ASE
 #'     in downstream functions including [makeMeanPSI], [makeMatrix],
@@ -170,6 +172,7 @@
 #' res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 #'
 #' require("satuRn")
+#' require("edgeR")
 #' res_sat <- ASE_satuRn(se, "treatment", "A", "B")
 #' 
 #' require("DESeq2")
@@ -218,6 +221,9 @@ ASE_limma <- function(se, test_factor, test_nom, test_denom,
     IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear, IRmode)
+
+    if(nrow(se_use) == 0)
+        .log("No events for ASE analysis after filtering")
 
     .log("Performing limma contrast for included / excluded counts separately",
         "message")
@@ -272,6 +278,8 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
     IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear, IRmode)
+    if(nrow(se_use) == 0)
+        .log("No events for ASE analysis after filtering")
 
     .log("Performing DESeq2 contrast for included / excluded counts separately",
         "message")
@@ -332,6 +340,8 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     IRmode <- match.arg(IRmode)
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear, IRmode)
+    if(nrow(se_use) == 0)
+        .log("No events for ASE analysis after filtering")
 
     .log("Running DoubleExpSeq::DBGLM1() on given data", "message")
     res.ASE <- .ASE_DoubleExpSeq_contrast_ASE(se_use,
@@ -368,9 +378,13 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
         n_threads = 1,
         IRmode = c("all", "annotated", "annotated_binary"),
-        filter_antiover = TRUE, filter_antinear = FALSE) {
+        filter_antiover = TRUE, filter_antinear = FALSE,
+        ...
+) {
 
     .check_package_installed("satuRn", "1.4.2")
+    .check_package_installed("edgeR", "3.28.1")
+    
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, batch1, batch2)
     BPPARAM_mod <- .validate_threads(n_threads)
@@ -379,6 +393,16 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     se_use <- .ASE_filter(
         se, filter_antiover, filter_antinear, IRmode)
 
+    # Further filtering step using filterByExpr
+    countData <- as.matrix(cbind(assay(se_use, "Included"),
+        assay(se_use, "Excluded")))
+    se_use <- se_use[
+        edgeR::filterByExpr(countData, ...),
+    ]
+    
+    if(nrow(se_use) == 0)
+        .log("No events for ASE analysis after filtering")
+    
     .log("Performing satuRn contrast for included / excluded counts",
         "message")
     rowData <- as.data.frame(rowData(se_use))

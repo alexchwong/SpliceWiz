@@ -395,9 +395,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         assay(se_use, "Excluded")))
     if(any(rowSums(countData) == 0)) {
         .log(paste(
-            "Events (rows) with all zero counts are removed from analysis.",
-            "In the future, apply the depth filter on the NxtSE object",
-            "prior to ASE_satuRn analysis"
+            "Events (rows) with all zero counts are removed from analysis."
         ), "warning")
         se_use <- se_use[rowSums(countData) > 0,]
         countData <- as.matrix(cbind(assay(se_use, "Included"),
@@ -815,7 +813,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
             object = sumExp,
             formula = formula1,
             verbose = FALSE,
-            parallel = FALSE,
+            parallel = TRUE,
             BPPARAM = BPPARAM
         )    
     } else {

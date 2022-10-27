@@ -106,8 +106,6 @@
 #'   protocols are used.
 #' @param n_threads (DESeq2 only) How many threads to use for DESeq2
 #'   based analysis.
-#' @param ... In `ASE_satuRn()`, further parameters to pass on to edgeR's
-#'   filterByExpr function to filter the count table.
 #' @return For all methods, a data.table containing the following:
 #'   * EventName: The name of the ASE event. This identifies each ASE
 #'     in downstream functions including [makeMeanPSI], [makeMatrix],
@@ -172,7 +170,6 @@
 #' res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 #'
 #' require("satuRn")
-#' require("edgeR")
 #' res_sat <- ASE_satuRn(se, "treatment", "A", "B")
 #' 
 #' require("DESeq2")
@@ -378,12 +375,12 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
         n_threads = 1,
         IRmode = c("all", "annotated", "annotated_binary"),
-        filter_antiover = TRUE, filter_antinear = FALSE,
-        ...
+        filter_antiover = TRUE, filter_antinear = FALSE#,
+        # ...
 ) {
 
     .check_package_installed("satuRn", "1.4.2")
-    .check_package_installed("edgeR", "3.28.1")
+    # .check_package_installed("edgeR", "3.28.1")
     
     .ASE_check_args(colData(se), test_factor,
         test_nom, test_denom, batch1, batch2)
@@ -396,9 +393,20 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     # Further filtering step using filterByExpr
     countData <- as.matrix(cbind(assay(se_use, "Included"),
         assay(se_use, "Excluded")))
-    se_use <- se_use[
-        edgeR::filterByExpr(countData, ...),
-    ]
+    if(any(rowSums(countData) == 0)) {
+        .log(paste(
+            "Events (rows) with all zero counts are removed from analysis.",
+            "In the future, apply the depth filter on the NxtSE object",
+            "prior to ASE_satuRn analysis"
+        ), "warning")
+        se_use <- se_use[rowSums(countData) > 0,]
+        countData <- as.matrix(cbind(assay(se_use, "Included"),
+            assay(se_use, "Excluded")))
+    }
+    
+    # se_use <- se_use[
+        # edgeR::filterByExpr(countData, ...),
+    # ]
     
     if(nrow(se_use) == 0)
         .log("No events for ASE analysis after filtering")

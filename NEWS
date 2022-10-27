@@ -1,4 +1,10 @@
-Changes in version 0.99.4 (2022-10-26)
+Changes in version 0.99.6 (2022-10-27)
++ Ribbons in group-normalized coverage plots can now be customized to show
+standard deviation (default), 95% confidence interval, 
+standard error of the mean, or none.
++ ASE_satuRn analysis now shoots warning if rows with zero counts are detected
+
+Changes in version 0.99.5 (2022-10-26)
 + Major feature: Junctions (split read counts and PSIs) are now visualized in
 coverage plots! Individual tracks are now marked by sashimi-plot style arcs 
 labeled with their corresponding split-read counts.

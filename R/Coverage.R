@@ -75,10 +75,10 @@
 #'   `condition` to the specified condition category.
 #' @param track_names The names of the tracks to be displayed. If omitted, the
 #'   track_names will default to the input in `tracks`
-#' @param ribbon_mode (default `"ci"`) Whether coverage ribbons signify 95%
-#'   confidence interval `"ci"`,
-#'   standard deviation `"sd"`, standard error of the mean `"sem"`, or none 
-#'   `"none"`. Only applicable when `condition` is set.
+#' @param ribbon_mode (default `"sd"`) Whether coverage ribbons signify 
+#'   standard deviation `"sd"`, 95% confidence interval `"ci"`,
+#'   standard error of the mean `"sem"`,
+#'   or none `"none"`. Only applicable when `condition` is set.
 #' @param condition To display normalised coverage per condition, set this to
 #'   the condition category. If omitted, `tracks` are assumed to refer to the
 #'   names of individual samples.
@@ -187,7 +187,7 @@ plotCoverage <- function(
         tracks,
         track_names = tracks,
         condition,
-        ribbon_mode = c("ci", "sd", "sem", "none"),
+        ribbon_mode = c("sd", "ci", "sem", "none"),
         selected_transcripts,
         plotJunctions = FALSE,
         plot_key_isoforms = FALSE,

@@ -274,8 +274,7 @@ differential analysis:
 * DoubleExpSeq: models included and excluded counts using beta binomial
 distributions
 * satuRn: models included and excluded counts using quasi-binomial 
-distributions. NB: satuRn requires the edgeR:filterByExpr() function for count
-filtering.
+distributions. 
 
 To install all of these packages:
 
@@ -286,7 +285,7 @@ install.packages("DoubleExpSeq")
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
-BiocManager::install(c("DESeq2", "limma", "satuRn", "edgeR"))
+BiocManager::install(c("DESeq2", "limma", "satuRn"))
 ```
 </details> 
 \
@@ -1668,14 +1667,20 @@ if(interactive()) {
 <details>
 <summary>What are the shaded ribbons in this plot?</summary>
 \
-The shaded ribbons represent the 95% confidence intervals of the mean coverages.
+
+The shaded ribbons represent the uncertainty of the coverage. This is denoted
+by the `ribbon_mode` parameter of the plotCoverage() command. The default is
+standard deviation `sd`. Alternatively, users can choose the 95% confidence
+interval `ci`, or the standard error of the mean `sem`.
+
 This feature is important for two reasons:
 
-* The confidences around the regions expected to be invariable 
-(e.g. constitutively expressed flanking exons) gives a sense of how well
-SpliceWiz's normalization algorithm has worked,
-* The confidences of the putative alternatively-spliced exons (or retained
-introns) gives a sense of how differentially expressed these regions are.
+* The uncertainties around the regions expected to be invariable 
+(e.g. constitutively expressed flanking exons) are expected to be low if
+SpliceWiz's estimate of exonic abundance is accurate,
+* The confidences of the differentially expressed alternatively-spliced exons 
+(or retained introns) represents the certainty of the differential expression
+of these regions.
 \
 </details>
 \

@@ -53,8 +53,7 @@ ASE_satuRn(
   n_threads = 1,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
-  filter_antinear = FALSE,
-  ...
+  filter_antinear = FALSE
 )
 }
 \arguments{
@@ -93,9 +92,6 @@ protocols are used.}
 
 \item{n_threads}{(DESeq2 only) How many threads to use for DESeq2
 based analysis.}
-
-\item{...}{In \code{ASE_satuRn()}, further parameters to pass on to edgeR's
-filterByExpr function to filter the count table.}
 }
 \value{
 For all methods, a data.table containing the following:
@@ -269,7 +265,6 @@ require("DoubleExpSeq")
 res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 
 require("satuRn")
-require("edgeR")
 res_sat <- ASE_satuRn(se, "treatment", "A", "B")
 
 require("DESeq2")

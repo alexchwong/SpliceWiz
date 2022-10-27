@@ -269,6 +269,7 @@ require("DoubleExpSeq")
 res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 
 require("satuRn")
+require("edgeR")
 res_sat <- ASE_satuRn(se, "treatment", "A", "B")
 
 require("DESeq2")

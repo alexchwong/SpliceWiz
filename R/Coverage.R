@@ -75,6 +75,10 @@
 #'   `condition` to the specified condition category.
 #' @param track_names The names of the tracks to be displayed. If omitted, the
 #'   track_names will default to the input in `tracks`
+#' @param ribbon_mode (default `"ci"`) Whether coverage ribbons signify 95%
+#'   confidence interval `"ci"`,
+#'   standard deviation `"sd"`, standard error of the mean `"sem"`, or none 
+#'   `"none"`. Only applicable when `condition` is set.
 #' @param condition To display normalised coverage per condition, set this to
 #'   the condition category. If omitted, `tracks` are assumed to refer to the
 #'   names of individual samples.
@@ -183,6 +187,7 @@ plotCoverage <- function(
         tracks,
         track_names = tracks,
         condition,
+        ribbon_mode = c("ci", "sd", "sem", "none"),
         selected_transcripts,
         plotJunctions = FALSE,
         plot_key_isoforms = FALSE,
@@ -205,6 +210,7 @@ plotCoverage <- function(
     cov_data <- ref(se)
     strand <- match.arg(strand)
     if (strand == "") strand <- "*"
+    ribbon_mode <- match.arg(ribbon_mode)
     # Work out viewing coordinates based on given request
     coords <- .plotCoverage_determine_params(
         se, Event, Gene,
@@ -230,6 +236,7 @@ plotCoverage <- function(
         view_end = coords$view_end, view_strand = strand,
         norm_event = norm_event, condition = condition,
         tracks = as.list(tracks), track_names = track_names,
+        ribbon_mode = ribbon_mode, 
         se = se, avail_files = covfile(se),
         transcripts = cov_data$transcripts.DT, elems = cov_data$elem.DT,
         stack_tracks = stack_tracks,
@@ -953,7 +960,9 @@ getCoverageBins <- function(file, region, bins = 2000,
 # Internal function used to plot everything
 .plot_cov_fn <- function(
     view_chr, view_start, view_end, view_strand,
-    norm_event, condition, tracks = list(), track_names = NULL, se, avail_files,
+    norm_event, condition, tracks = list(), track_names = NULL, 
+    ribbon_mode = "ci",
+    se, avail_files,
     transcripts, elems, highlight_events = "", selected_transcripts = "",
     plot_key_isoforms = FALSE,
     stack_tracks, graph_mode, conf.int = 0.95,
@@ -1388,6 +1397,7 @@ determine_compatible_events <- function(
                 df$mean <- rowMeans(as.matrix(df[, samples]))
                 df$sd <- rowSds(as.matrix(df[, samples]))
                 n <- length(samples)
+                df$sem <- df$sd / sqrt(n)
                 df$ci <- qt((1 + conf.int) / 2, df = n - 1) * df$sd / sqrt(n)
 
                 if (length(track_names) == length(tracks)) {
@@ -1396,7 +1406,7 @@ determine_compatible_events <- function(
                     df$track <- as.character(i)
                 }
                 DT <- as.data.table(df)
-                DT <- DT[, c("x", "mean", "ci", "track")]
+                DT <- DT[, c("x", "mean", "sd", "sem", "ci", "track")]
                 data.list[[i]] <- DT
                 junc.list[[i]] <- junc_PSI_track
                 max_tracks <- max_tracks + 1
@@ -1421,12 +1431,31 @@ determine_compatible_events <- function(
             df$track <- factor(df$track, args$track_names)
 
         gp_track[[1]] <- ggplot() +
-            geom_hline(yintercept = 0) +
+            geom_hline(yintercept = 0)
+        if(args$ribbon_mode == "ci") {
+            gp_track[[1]] <- gp_track[[1]] +
             geom_ribbon(data = df, alpha = 0.2,
                 aes(x = get("x"), y = get("mean"),
                 ymin = get("mean") - get("ci"),
                 ymax = get("mean") + get("ci"),
-                fill = get("track"))) +
+                fill = get("track")))
+        } else if(args$ribbon_mode == "sd") {
+            gp_track[[1]] <- gp_track[[1]] +
+            geom_ribbon(data = df, alpha = 0.2,
+                aes(x = get("x"), y = get("mean"),
+                ymin = get("mean") - get("sd"),
+                ymax = get("mean") + get("sd"),
+                fill = get("track")))
+        } else if(args$ribbon_mode == "sem") {
+            gp_track[[1]] <- gp_track[[1]] +
+            geom_ribbon(data = df, alpha = 0.2,
+                aes(x = get("x"), y = get("mean"),
+                ymin = get("mean") - get("sem"),
+                ymax = get("mean") + get("sem"),
+                fill = get("track")))
+        }
+
+        gp_track[[1]] <- gp_track[[1]] +
             geom_line(data = df, aes(x = get("x"),
                 y = get("mean"), colour = get("track"))) +
             labs(y = "Normalized Coverage") +
@@ -1484,11 +1513,31 @@ determine_compatible_events <- function(
                 dfJnSum <- NA
             }
             gp_track[[i]] <- ggplot() +
-                geom_hline(yintercept = 0) +
-                geom_ribbon(data = df, alpha = 0.2, colour = NA,
+                geom_hline(yintercept = 0)
+                
+            if(args$ribbon_mode == "ci") {
+                gp_track[[i]] <- gp_track[[i]] +
+                geom_ribbon(data = df, alpha = 0.2,
                     aes(x = get("x"), y = get("mean"),
-                        ymin = get("mean") - get("ci"),
-                        ymax = get("mean") + get("ci"))) +
+                    ymin = get("mean") - get("ci"),
+                    ymax = get("mean") + get("ci"),
+                    fill = get("track")))
+            } else if(args$ribbon_mode == "sd") {
+                gp_track[[i]] <- gp_track[[i]] +
+                geom_ribbon(data = df, alpha = 0.2,
+                    aes(x = get("x"), y = get("mean"),
+                    ymin = get("mean") - get("sd"),
+                    ymax = get("mean") + get("sd"),
+                    fill = get("track")))
+            } else if(args$ribbon_mode == "sem") {
+                gp_track[[i]] <- gp_track[[i]] +
+                geom_ribbon(data = df, alpha = 0.2,
+                    aes(x = get("x"), y = get("mean"),
+                    ymin = get("mean") - get("sem"),
+                    ymax = get("mean") + get("sem"),
+                    fill = get("track")))
+            }
+            gp_track[[i]] <- gp_track[[i]] +
                 geom_line(data = df,
                     aes(x = get("x"), y = get("mean"))) +
                 labs(y = paste(args$condition, args$tracks[[i]])) +

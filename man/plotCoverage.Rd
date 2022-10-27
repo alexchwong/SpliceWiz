@@ -20,6 +20,7 @@ plotCoverage(
   tracks,
   track_names = tracks,
   condition,
+  ribbon_mode = c("ci", "sd", "sem", "none"),
   selected_transcripts,
   plotJunctions = FALSE,
   plot_key_isoforms = FALSE,
@@ -91,6 +92,11 @@ track_names will default to the input in \code{tracks}}
 \item{condition}{To display normalised coverage per condition, set this to
 the condition category. If omitted, \code{tracks} are assumed to refer to the
 names of individual samples.}
+
+\item{ribbon_mode}{(default \code{"ci"}) Whether coverage ribbons signify 95\%
+confidence interval \code{"ci"},
+standard deviation \code{"sd"}, standard error of the mean \code{"sem"}, or none
+\code{"none"}. Only applicable when \code{condition} is set.}
 
 \item{selected_transcripts}{(Optional) A vector containing transcript ID
 or transcript names of transcripts

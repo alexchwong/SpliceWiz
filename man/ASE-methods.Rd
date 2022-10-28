@@ -3,6 +3,7 @@
 \name{ASE-methods}
 \alias{ASE-methods}
 \alias{ASE_limma}
+\alias{ASE_limma_timeseries}
 \alias{ASE_DESeq}
 \alias{ASE_DoubleExpSeq}
 \alias{ASE_satuRn}
@@ -15,6 +16,17 @@ ASE_limma(
   test_denom,
   batch1 = "",
   batch2 = "",
+  IRmode = c("all", "annotated", "annotated_binary"),
+  filter_antiover = TRUE,
+  filter_antinear = FALSE
+)
+
+ASE_limma_timeseries(
+  se,
+  test_factor,
+  batch1 = "",
+  batch2 = "",
+  degrees_of_freedom = 1,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE
@@ -53,7 +65,8 @@ ASE_satuRn(
   n_threads = 1,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
-  filter_antinear = FALSE
+  filter_antinear = FALSE,
+  filterByMinCPM = 0
 )
 }
 \arguments{
@@ -61,8 +74,11 @@ ASE_satuRn(
 runtime and avoid excessive multiple testing, consider filtering
 the object using \link{applyFilters}}
 
-\item{test_factor}{The condition type which contains the
-contrasting variable}
+\item{test_factor}{The column name in the sample annotation \code{colData(se)}
+that contains the desired variables to be contrasted. For
+\code{ASE_limma_timeseries()} and \code{ASE_DESeq()} (when \code{test_nom} and
+\code{test_denom} parameters are left blank), \code{test_factor} must contain
+numerical values representing the time variable.}
 
 \item{test_nom}{The nominator condition to test for differential ASE. Usually
 the "treatment" condition}
@@ -90,8 +106,18 @@ overlap over or near anti-sense genes. Default will exclude antiover but
 not antinear introns. These are ignored if strand-specific RNA-seq
 protocols are used.}
 
+\item{degrees_of_freedom}{(default \code{1}) The complexity of time series trends
+modeled by \code{ASE_limma_timeseries}. E.g., \code{1} will only model linear trends,
+whereas \code{2} extends the capacity for quadratic trends, \code{3} for cubic
+trends, etc.}
+
 \item{n_threads}{(DESeq2 only) How many threads to use for DESeq2
 based analysis.}
+
+\item{filterByMinCPM}{(default \code{0}) In \code{ASE_satuRn()}, Included/Excluded
+counts will be filtered using this value as the threshold prior to satuRn
+analysis. Filtering is performed using \code{edgeR::filterByExpr()} parsing
+this parameter into its \code{min.count} parameter.}
 }
 \value{
 For all methods, a data.table containing the following:
@@ -173,11 +199,14 @@ an average cpm values of either Included or Excluded counts are less than 1.
 \strong{DESeq2} has its own method for handling outliers, which seems to work well
 for handling situations where PSI ~= 0 or PSI ~= 1.
 
-Time series are supported by SpliceWiz to a limited extent. Time series
-analysis is only performed via DESeq2 (using its "LRT" mode). To activate
-time series differential analysis, run \code{ASE_DESeq()} specifying \code{test_factor}
-as the column of numeric values containing time series data. The \code{test_nom}
-and \code{test_denom} parameters must be left blank. See example below.
+Time series are supported by SpliceWiz to a limited extent.
+Time series analysis can be performed via limma or DESeq2.
+For limma time-series analysis, use \code{ASE_limma_timeseries()}, specifying
+the \code{test_factor} as the column of numeric values containing
+time series data. For DESeq, time series differential analysis can be
+activated using the \code{ASE_DESeq()} function, again specifying \code{test_factor}
+as the column containing time series data (and leaving \code{test_nom}
+and \code{test_denom} parameters blank). See examples below.
 
 Using \strong{DoubleExpSeq}, included and excluded counts are modeled using
 the generalized beta prime distribution, using empirical Bayes shrinkage
@@ -239,6 +268,9 @@ Specifically, this means the included / excluded isoforms are as follows:\tabula
 \item \code{ASE_limma}: Use limma to perform differential ASE analysis of
 a filtered NxtSE object
 
+\item \code{ASE_limma_timeseries}: Use limma to perform differential ASE analysis of
+a filtered NxtSE object (time series)
+
 \item \code{ASE_DESeq}: Use DESeq2 to perform differential ASE analysis of
 a filtered NxtSE object
 
@@ -258,22 +290,35 @@ se <- SpliceWiz_example_NxtSE()
 colData(se)$treatment <- rep(c("A", "B"), each = 3)
 colData(se)$replicate <- rep(c("P","Q","R"), 2)
 
+# Limma analysis (counts modeled using log-normal distribution)
+
 require("limma")
 res_limma <- ASE_limma(se, "treatment", "A", "B")
+
+# DoubleExpSeq analysis (counts modeled using beta binomial distribution)
 
 require("DoubleExpSeq")
 res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 
+# satuRn analysis (quasi binomial), 
+#   Filtering counts using 1 count per million as threshold prior to analysis
+
 require("satuRn")
-res_sat <- ASE_satuRn(se, "treatment", "A", "B")
+require("edgeR")
+
+res_sat <- ASE_satuRn(se, "treatment", "A", "B", filterByMinCPM = 1)
+
+# DESeq2 analysis (counts modeled using negative binomial distribution)
 
 require("DESeq2")
 res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")
 
-# Time series example
+# Time series examples
 
 colData(se)$timepoint <- rep(c(1,2,3), each = 2)
 colData(se)$batch <- rep(c("1", "2"), 3)
+
+res_limma_timeseries <- ASE_limma_timeseries(se, "timepoint")
 res_DESeq_timeseries <- ASE_DESeq(se, "timepoint")
 
 }

@@ -110,7 +110,14 @@ server_DE <- function(
                 session = session, inputId = "de_IRmode", 
                 selected = settings_DE$IRmode_DE)
         })
-        
+
+        observeEvent(settings_DE$dof, {
+            req(settings_DE$dof)
+            updateNumericInput(
+                session = session, inputId = "degrees_DE", 
+                value = as.numeric(settings_DE$dof))
+        })
+
         observe({
             output$warning_DE <- renderText({
                 validate(need(get_se(), 
@@ -122,8 +129,9 @@ server_DE <- function(
                 validate(need(is_valid(input$denom_DE), 
                     "Denominator for DE Variable needs to be defined"))
                 validate(need(input$nom_DE != "(time series)" ||
-                        input$method_DE == "DESeq2", 
-                    "Time series analysis can only be performed using DESeq2"))
+                        input$method_DE %in% c("limma", "DESeq2"), 
+                    paste("Time series analysis can only be performed",
+                    "using limma or DESeq2")))
                 validate(need(input$denom_DE != input$nom_DE, 
                     "Denominator and Nominator must be different"))
                 "Ready to run differential analysis"
@@ -140,8 +148,9 @@ server_DE <- function(
                 validate(need(is_valid(input$denom_DE), 
                     "Denominator for DE Variable needs to be defined"))
                 validate(need(input$nom_DE != "(time series)" ||
-                        input$method_DE == "DESeq2", 
-                    "Time series analysis can only be performed using DESeq2"))
+                        input$method_DE %in% c("limma", "DESeq2"), 
+                    paste("Time series analysis can only be performed",
+                    "using limma or DESeq2")))
                 validate(need(input$denom_DE != input$nom_DE, 
                     "Denominator and Nominator must be different"))
                 "Running differential analysis"
@@ -151,7 +160,7 @@ server_DE <- function(
             req(is_valid(input$denom_DE))
             req(input$denom_DE != input$nom_DE)
             req(input$nom_DE != "(time series)" ||
-                input$method_DE == "DESeq2")
+                input$method_DE %in% c("limma", "DESeq2"))
 
             rowData <- as.data.frame(rowData(get_se()))
             colData <- as.data.frame(colData(get_se()))
@@ -182,6 +191,7 @@ server_DE <- function(
                     selected = "(none)")
             }
             settings_DE$IRmode_DE <- input$de_IRmode
+            settings_DE$dof <- input$degrees_DE
             
             req(input$method_DE)
             settings_DE$method <- input$method_DE
@@ -219,15 +229,26 @@ server_DE <- function(
                 })
             } else if(settings_DE$method == "limma") {
                 withProgress(message = 'Running limma...', value = 0, {
-                    res.ASE <- ASE_limma(
-                        se = get_se(), 
-                        test_factor = settings_DE$DE_Var, 
-                        test_nom = settings_DE$nom_DE, 
-                        test_denom = settings_DE$denom_DE,
-                        batch1 = settings_DE$batchVar1, 
-                        batch2 = settings_DE$batchVar2,
-                        IRmode = settings_DE$IRmode_DE
-                    )
+                    if(settings_DE$nom_DE != "(time series)") {
+                        res.ASE <- ASE_limma(
+                            se = get_se(), 
+                            test_factor = settings_DE$DE_Var, 
+                            test_nom = settings_DE$nom_DE, 
+                            test_denom = settings_DE$denom_DE,
+                            batch1 = settings_DE$batchVar1, 
+                            batch2 = settings_DE$batchVar2,
+                            IRmode = settings_DE$IRmode_DE
+                        )                
+                    } else {
+                        res.ASE <- ASE_limma_timeseries(
+                            se = get_se(), 
+                            test_factor = settings_DE$DE_Var, 
+                            batch1 = settings_DE$batchVar1, 
+                            batch2 = settings_DE$batchVar2,
+                            IRmode = settings_DE$IRmode_DE,
+                            degrees_of_freedom = settings_DE$dof
+                        )    
+                    }
                     if(!input$adjP_DE) {
                         setorderv(res.ASE, "P.Value")
                     } else {
@@ -289,6 +310,7 @@ server_DE <- function(
             settings_DE$res_settings$batchVar1 <- settings_DE$batchVar1
             settings_DE$res_settings$batchVar2 <- settings_DE$batchVar2
             settings_DE$res_settings$IRmode_DE <- settings_DE$IRmode_DE
+            settings_DE$res_settings$dof <- settings_DE$dof
             settings_DE$res_settings$BuildVersion <- ASE_version
         })
 
@@ -390,7 +412,8 @@ server_DE <- function(
                 c("DESeq2", "limma", "DoubleExpSeq", "satuRn"))
             req(load_DE$settings$IRmode_DE %in% 
                 c("all", "annotated", "annotated_binary"))
-
+            req("dof" %in% names(load_DE$settings))
+                
             settings_DE$res <- load_DE$res
             settings_DE$res_settings$method <- load_DE$settings$method
             settings_DE$res_settings$DE_Var <- load_DE$settings$DE_Var
@@ -402,6 +425,9 @@ server_DE <- function(
             settings_DE$res_settings$BuildVersion <- 
                 load_DE$settings$BuildVersion
 
+            settings_DE$res_settings$dof <- 
+                load_DE$settings$dof
+
             settings_DE$method <- settings_DE$res_settings$method
             settings_DE$DE_Var <- settings_DE$res_settings$DE_Var
             settings_DE$nom_DE <- settings_DE$res_settings$nom_DE
@@ -409,6 +435,7 @@ server_DE <- function(
             settings_DE$batchVar1 <- settings_DE$res_settings$batchVar1
             settings_DE$batchVar2 <- settings_DE$res_settings$batchVar2
             settings_DE$IRmode_DE <- settings_DE$res_settings$IRmode_DE
+            settings_DE$dof <- settings_DE$res_settings$dof
 
             if("filters" %in% names(load_DE)) {
                 settings_DE$filters <- load_DE$filters

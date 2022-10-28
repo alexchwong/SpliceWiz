@@ -32,6 +32,12 @@ ui_DE <- function(id) {
                 c("(none)")),
             selectInput(ns('batch2_DE'), 'Batch Factor 2', 
                 c("(none)")),
+            conditionalPanel(ns = ns,
+                condition = "['(time series)'].indexOf(input.nom_DE) >= 0",
+                numericInput(ns("degrees_DE"), 
+                    label = "Splines degrees of freedom (limma only)", 
+                    value = 1, min = 1, max = 5)
+            ),
             shinyWidgets::radioGroupButtons(ns("de_IRmode"), 
                 label = "Intron Retention analysis (mode)",
                     justified = FALSE,

@@ -85,10 +85,10 @@ dash_server <- function(input, output, session) {
     settings_Diag <- server_vis_diag("diag", refresh_diag, volumes, 
         get_filtered_se_reactive, get_de_reactive,
         get_rows_all, get_rows_selected)
-    settings_Volc <- server_vis_volcano("volcano", refresh_diag, volumes, 
+    settings_Volc <- server_vis_volcano("volcano", refresh_volc, volumes, 
         get_filtered_se_reactive, get_de_reactive,
         get_rows_all, get_rows_selected)
-    settings_Heat <- server_vis_heatmap("heatmap", refresh_diag, volumes, 
+    settings_Heat <- server_vis_heatmap("heatmap", refresh_heat, volumes, 
         get_filtered_se_reactive, get_de_reactive,
         get_rows_all, get_rows_selected)
     settings_Cov <- server_cov("cov", refresh_cov, volumes, 

@@ -2547,11 +2547,11 @@ collateData <- function(Experiment, reference_path, output_path,
         assays[[exc]] <- HDF5Array(h5filename, exc)
     }
     
-    if(length(rowname_lists$junc_rownames) > 1000000)
-        .log(paste(
-            "Please ignore any messages below about compression and chunking;",
-            "The H5 file chunk size is already optimized."
-        ), "message")
+    # if(length(rowname_lists$junc_rownames) > 1000000)
+        # .log(paste(
+            # "Please ignore any messages below about compression and chunking;",
+            # "The H5 file chunk size is already optimized."
+        # ), "message")
     for (junc in junc.todo) {
         # h5writeDimnames(list(rowname_lists$junc_rownames, df.internal$sample),
             # h5filename, junc)
@@ -2587,6 +2587,8 @@ collateData <- function(Experiment, reference_path, output_path,
     h5createFile(h5filename)
     for (assay in assay.todo) {
         chunk_row <- nrow(rowData)
+        # 100 kb 1-column chunks
+        if(chunk_row > 1024 * 100 / 8) chunk_row <- 1024 * 100 / 8
         h5createDataset(file = h5filename,
             dataset = assay,
             dims = c(nrow(rowData), num_samples),
@@ -2596,6 +2598,8 @@ collateData <- function(Experiment, reference_path, output_path,
     }
     for (inc in inc.todo) {
         chunk_row <- length(Inc_Events)
+        # 100 kb 1-column chunks
+        if(chunk_row > 1024 * 100 / 8) chunk_row <- 1024 * 100 / 8
         h5createDataset(file = h5filename,
             dataset = inc,
             dims = c(length(Inc_Events), num_samples),
@@ -2604,6 +2608,8 @@ collateData <- function(Experiment, reference_path, output_path,
         )
     }
     for (exc in exc.todo) {
+        # 100 kb 1-column chunks
+        if(chunk_row > 1024 * 100 / 8) chunk_row <- 1024 * 100 / 8
         chunk_row <- length(Exc_Events)
         h5createDataset(file = h5filename, dataset = exc,
             dims = c(length(Exc_Events), num_samples),
@@ -2612,6 +2618,8 @@ collateData <- function(Experiment, reference_path, output_path,
         )
     }
     for (junc in junc.todo) {
+        # 100 kb 1-column chunks
+        if(chunk_row > 1024 * 100 / 8) chunk_row <- 1024 * 100 / 8
         chunk_row <- length(junc_rownames)
         h5createDataset(file = h5filename, dataset = junc,
             dims = c(length(junc_rownames), num_samples),

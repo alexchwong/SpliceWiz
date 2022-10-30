@@ -1,3 +1,8 @@
+Changes since version 0.99.6
++ Implemented time series analysis in limma
++ Reduced loading time of makeSE's overlapping intron removal
++ Optimised H5 database chunking to speed up loading times
+
 Changes in version 0.99.6 (2022-10-27)
 + Ribbons in group-normalized coverage plots can now be customized to show
 standard deviation (default), 95% confidence interval, 

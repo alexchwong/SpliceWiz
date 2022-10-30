@@ -248,6 +248,68 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 
 BiocManager::install("SpliceWiz")
 ```
+<details>
+<summary>Setting up a Conda environment to use SpliceWiz</summary>
+\
+For those wishing to set up a self-contained environment with SpliceWiz 
+installed (e.g. on a high performance cluster), we recommend using
+miniconda. For installation instructions, see the 
+[documentation on how to install miniconda](https://docs.conda.io/en/latest/miniconda.html)
+
+After installing miniconda, create a conda environment as follows:
+
+```{bash eval=FALSE}
+conda create -n envSpliceWiz python=3.9
+```
+
+After following the prompts, activate the environment:
+
+```{bash eval=FALSE}
+conda activate envSpliceWiz
+```
+
+Next, install R 4.2.1 as follows:
+
+```{bash eval=FALSE}
+conda install -c conda-forge r-base=4.2.1
+```
+
+Many of SpliceWiz's dependencies are up-to-date from the conda-forge channel,
+so they are best installed via conda:
+
+```{bash eval=FALSE}
+conda install -c conda-forge r-devtools r-essentials r-xml r-biocmanager \
+  r-fst r-plotly r-rsqlite r-rcurl
+```
+
+After this is done, the remainder of the packages need to be installed from the
+R terminal. This is because most Bioconductor packages are from the bioconda 
+channel and depend on Bioc 3.14 (which is not the latest version). So, lets
+enter the R terminal from the command line:
+
+```{bash eval=FALSE}
+R
+```
+
+Set up Bioconductor devel (soon to be Bioc 3.16):
+
+```{r eval = FALSE}
+BiocManager::install(version = "devel")
+```
+
+Again, follow the prompts to update any necessary packages.
+
+Once this is done, install SpliceWiz as per usual.
+
+```{r eval = FALSE}
+BiocManager::install("SpliceWiz")
+```
+
+The last step will install any remaining dependencies, taking approximately
+20-30 minutes depending on your system.
+
+</details> 
+\
 
 <details>
 <summary>Enabling OpenMP (multi-threading) for MacOS users (Optional)</summary>
@@ -279,22 +341,12 @@ distributions.
 To install all of these packages:
 
 ```{r eval=FALSE}
-
 install.packages("DoubleExpSeq")
-
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
 
 BiocManager::install(c("DESeq2", "limma", "satuRn"))
 ```
 
-Limma's time series functionality requires the "splines" package:
-
-```{r eval=FALSE}
-install.packages("splines")
-```
-
-Finally, SpliceWiz's satuRn wrapper implements counts filtering using edgeR's
+SpliceWiz's satuRn wrapper implements counts filtering using edgeR's
 `filterByExpr` method, which requires edgeR:
 
 ```{r eval=FALSE}

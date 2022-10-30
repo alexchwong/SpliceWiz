@@ -519,6 +519,171 @@ List c_gunzip_DF(std::string s_in, StringVector s_header_begin) {
   return(Final_final_list);
 }
 
+// [[Rcpp::export]]
+int c_segmentCOV(
+  std::string s_in, std::string s_out,
+  StringVector s_seqname,
+  NumericVector i_start,
+  NumericVector i_end
+) {
+  // Open input COV file
+  
+  if(!see_if_file_exists(s_in)) {
+    cout << "File " << s_in << " does not exist!\n";
+    return(-1);
+  }
+
+  std::ifstream inCov_stream;
+  inCov_stream.open(s_in, std::ifstream::binary);
+
+  covReader inCov;
+  inCov.SetInputHandle(&inCov_stream);
+  
+  if(inCov.fail()){
+		inCov_stream.close();
+    return(-1);
+  }
+  
+  int ret = inCov.ReadHeader();
+  if(ret < 0){
+		cout << s_in << " appears to not be valid COV file... exiting\n";
+		inCov_stream.close();	
+    return(-1);
+  }
+  
+  // Get input seqnames
+  unsigned int ref_index = 0;
+  std::vector<chr_entry> chrs;
+  inCov.GetChrs(chrs);
+
+  std::string seqN = "";
+  std::string seqNold = "";
+  
+  uint32_t start = 0;
+  uint32_t end = 0;
+  uint32_t old_end = 0;
+  // strand: 0 = -, 1 = +, 2 = *
+  
+// Initialize storage vector 
+  // Loci, Depth
+  std::vector< std::vector< std::pair<unsigned int, int> > > chrName_vec_final[3];
+  
+  std::vector< std::pair<unsigned int, int> > empty_vector;
+  empty_vector.push_back(std::make_pair (0,0));
+  for(unsigned int j = 0; j < 3; j++) {   
+    chrName_vec_final[j].resize(0);
+    for (unsigned int i = 0; i < chrs.size(); i++) {
+      chrName_vec_final[j].push_back(empty_vector);
+    }
+  }
+
+  std::vector<int> values;
+  std::vector<unsigned int> lengths;
+
+  for(unsigned int strand = 0; strand < 3; strand++) {
+    seqNold = "";
+    for(unsigned int z = 0; z < s_seqname.size(); z++) {
+      seqN = string(s_seqname(z));
+      start = i_start(z);
+      end = i_end(z);
+      // cout << seqN << ":" << start << "-" << end << '\n';
+      
+      // Is the seqname same as the last one?
+      if(0 != seqN.compare(0, seqN.size(), seqNold)) {
+        if(!seqNold.empty()) {
+          // Finalize previous chrom
+          if((uint32_t)old_end < (uint32_t)chrs.at(ref_index).chr_len) {
+            values.push_back(0);
+            lengths.push_back((uint32_t)chrs.at(ref_index).chr_len - old_end);
+          }
+          
+          // Convert RLE to loci/depth
+          int cursor = 0;
+          for(unsigned int i = 0; i < values.size(); i++) {
+            if(cursor > 0) {
+              chrName_vec_final[strand].at(ref_index).push_back(
+                std::make_pair(cursor, values.at(i))
+              );
+            }
+            cursor += lengths.at(i);
+          }
+          // *****
+        }
+        // Find seqid of new chrom
+        ref_index = 0;
+        while(
+            0 != seqN.compare(0, seqN.size(), chrs.at(ref_index).chr_name)
+        ) {
+          if(ref_index == chrs.size()) break;
+          ref_index++;
+        }
+        if(ref_index == chrs.size()) {
+          inCov_stream.close();	
+          cout << "Error! seqname" << seqN << "not found!";
+          return(-1);
+        }
+
+        // Initialize new chrom
+        values.clear();
+        values.push_back(0);
+        lengths.clear();
+        lengths.push_back((unsigned int)start);
+        
+        seqNold = seqN;
+      } else {
+        // Space in between regions of interest are set to zero
+        values.push_back(0);
+        lengths.push_back((unsigned int)start - old_end);
+      }
+      
+      inCov.FetchRLE(seqN, (uint32_t)start, (uint32_t)end, strand, 
+        &values, &lengths);
+      
+      old_end = end;
+    }
+
+    // Finalize last chrom of this strand
+    if((uint32_t)old_end < (uint32_t)chrs.at(ref_index).chr_len) {
+      values.push_back(0);
+      lengths.push_back((uint32_t)chrs.at(ref_index).chr_len - old_end);
+    }
+    
+    // Convert RLE to loci/depth
+    int cursor = 0;
+    for(unsigned int i = 0; i < values.size(); i++) {
+      if(cursor > 0) {
+        chrName_vec_final[strand].at(ref_index).push_back(
+          std::make_pair(cursor, values.at(i))
+        );
+        // cout << cursor << ", " << values.at(i) << '\n';
+      }
+      cursor += lengths.at(i);
+    }
+  }
+  // Close input file
+  inCov_stream.close();
+  
+  // Output COV file
+  std::ofstream ofCOV;
+  ofCOV.open(s_out, std::ofstream::binary);
+  covWriter outCOV;
+  outCOV.SetOutputHandle(&ofCOV);
+  
+  outCOV.InitializeCOV(chrs);
+  
+  for(unsigned int j = 0; j < 3; j++) {
+    for(unsigned int i = 0; i < chrs.size(); i++) {
+      std::vector< std::pair<unsigned int, int> > * itDest;
+      itDest = &chrName_vec_final[j].at(i);
+      
+      outCOV.WriteFragmentsMap(itDest, i, j, 1);
+    }
+  }
+  outCOV.WriteToFile();
+  ofCOV.close();
+  return(0);
+}
+
 #endif
 // End Rcpp-only functions
 

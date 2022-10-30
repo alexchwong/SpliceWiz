@@ -522,6 +522,36 @@ getCoverage <- function(file, seqname = "", start = 0, end = 0,
     }
 }
 
+segmentCoverage <- function(file, regions, output_file) {
+    # file: input COV file
+    # regions: GRanges to retain in output COV file
+    # output_file: output COV file
+    
+    if (!is(regions, "GRanges")) .log("regions must be a GRanges object")
+    if (!isCOV(file)) .log("Given file is not of COV format")
+    seqlevels <- c_Cov_Seqnames(normalizePath(file))
+    
+    # trim regions by available seqlevels
+    if (!any(seqlevels %in% seqlevels(regions)))
+        .log("COV file and given regions have incompatible seqnames")
+    
+    regions_use <- regions
+    seqlevels(regions, pruning.mode = "coarse") <- seqlevels
+    if (length(regions) == 0) 
+        .log(paste(
+            output_file, "not produced as no common seqnames between",
+            "regions and that in", file
+        ))
+    
+    # Create non-overlapping regions, sorted in same order as source COV
+    strand(regions) <- "*"
+    gr <- sort(reduce(regions))
+    
+    c_segmentCOV(normalizePath(file), output_file,
+        as.character(seqnames(gr)), start(gr), end(gr)
+    )
+}
+
 .cov_process_regions <- function(file, gr, seq, strand_gr, strand_cov) {
     # adds cov_mean from cov file to gr, only for given seqname seq
     # strand_gr and strand_cov are matching strand info for gr and cov
@@ -561,6 +591,9 @@ getCoverage_DF <- function(file, seqname = "", start = 0, end = 0,
 ) {
     if (seqname == "") .log("seqname must not be omitted in getCoverage_DF")
     cov <- getCoverage(file, seqname, start, end, strand)
+    if(start == 0 & end == 0) {
+        end <- length(cov)
+    }
     view <- IRanges::Views(cov, start + 1, end)
     view.df <- as.data.frame(view[[1]])
     return(data.frame(

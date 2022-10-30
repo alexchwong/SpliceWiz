@@ -46,6 +46,13 @@ bool checkDNA(char * input_read, unsigned int read_len);
 
   List c_gunzip_DF(std::string s_in, StringVector s_header_begin);
   
+  int c_segmentCOV(
+    std::string s_in, std::string s_out,
+    StringVector s_seqname,
+    NumericVector i_start,
+    NumericVector i_end
+  );
+  
 #endif
 
 int c_gunzip(std::string s_in, std::string s_out);

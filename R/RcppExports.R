@@ -29,6 +29,10 @@ c_gunzip_DF <- function(s_in, s_header_begin) {
     .Call(`_SpliceWiz_c_gunzip_DF`, s_in, s_header_begin)
 }
 
+c_segmentCOV <- function(s_in, s_out, s_seqname, i_start, i_end) {
+    .Call(`_SpliceWiz_c_segmentCOV`, s_in, s_out, s_seqname, i_start, i_end)
+}
+
 c_gunzip <- function(s_in, s_out) {
     .Call(`_SpliceWiz_c_gunzip`, s_in, s_out)
 }

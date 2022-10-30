@@ -91,6 +91,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// c_segmentCOV
+int c_segmentCOV(std::string s_in, std::string s_out, StringVector s_seqname, NumericVector i_start, NumericVector i_end);
+RcppExport SEXP _SpliceWiz_c_segmentCOV(SEXP s_inSEXP, SEXP s_outSEXP, SEXP s_seqnameSEXP, SEXP i_startSEXP, SEXP i_endSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type s_in(s_inSEXP);
+    Rcpp::traits::input_parameter< std::string >::type s_out(s_outSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type s_seqname(s_seqnameSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type i_start(i_startSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type i_end(i_endSEXP);
+    rcpp_result_gen = Rcpp::wrap(c_segmentCOV(s_in, s_out, s_seqname, i_start, i_end));
+    return rcpp_result_gen;
+END_RCPP
+}
 // c_gunzip
 int c_gunzip(std::string s_in, std::string s_out);
 RcppExport SEXP _SpliceWiz_c_gunzip(SEXP s_inSEXP, SEXP s_outSEXP) {
@@ -202,6 +217,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SpliceWiz_c_Cov_Seqnames", (DL_FUNC) &_SpliceWiz_c_Cov_Seqnames, 1},
     {"_SpliceWiz_c_RLEList_From_Cov", (DL_FUNC) &_SpliceWiz_c_RLEList_From_Cov, 2},
     {"_SpliceWiz_c_gunzip_DF", (DL_FUNC) &_SpliceWiz_c_gunzip_DF, 2},
+    {"_SpliceWiz_c_segmentCOV", (DL_FUNC) &_SpliceWiz_c_segmentCOV, 5},
     {"_SpliceWiz_c_gunzip", (DL_FUNC) &_SpliceWiz_c_gunzip, 2},
     {"_SpliceWiz_SpliceWizMain", (DL_FUNC) &_SpliceWiz_SpliceWizMain, 6},
     {"_SpliceWiz_SpliceWizMain_multi", (DL_FUNC) &_SpliceWiz_SpliceWizMain_multi, 6},

@@ -1027,7 +1027,11 @@ getCoverageBins <- function(file, region, bins = 2000,
     final_plot <- .plot_cov_fn_finalize(
         plot_tracks, view_start, view_end, graph_mode)
 
-    return(list(ggplot = plot_objs$gp_track, final_plot = final_plot))
+    return(list(
+        ggplot = plot_objs$gp_track, 
+        final_plot = final_plot
+        data = calcs
+    ))
 }
 
 ############################### PLOT GENOME TRACK ##############################

@@ -1,4 +1,6 @@
 dash_server <- function(input, output, session) {
+    addResourcePath('localImages', system.file('extdata', package='SpliceWiz'))
+    
     # Volumes / storage drives
     default_volumes <- c("Working Directory" = getwd(), 
         "Home" = "~", "Temporary Directory" = tempdir(),

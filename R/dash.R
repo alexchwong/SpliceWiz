@@ -48,6 +48,7 @@ spliceWiz <- function(
     }
     mode <- match.arg(mode)
     res <- match.arg(res)
+    addResourcePath('localImages', system.file('extdata', package='SpliceWiz'))
     
     ui_dash <- dashboardPage(
         dashboardHeader(title = "SpliceWiz"),

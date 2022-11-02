@@ -1,7 +1,8 @@
-Changes since version 0.99.6
-+ Implemented time series analysis in limma
+Changes in version 0.99.7 (2022-11-01)
++ Implemented time series analysis in limma using splines
 + Reduced loading time of makeSE's overlapping intron removal
-+ Optimised H5 database chunking to speed up loading times
++ Optimised H5 database chunking to speed up data loading times
++ Added installation instructions for SpliceWiz using conda environment
 
 Changes in version 0.99.6 (2022-10-27)
 + Ribbons in group-normalized coverage plots can now be customized to show

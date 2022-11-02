@@ -1029,7 +1029,7 @@ getCoverageBins <- function(file, region, bins = 2000,
 
     return(list(
         ggplot = plot_objs$gp_track, 
-        final_plot = final_plot
+        final_plot = final_plot,
         data = calcs
     ))
 }

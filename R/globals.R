@@ -142,7 +142,7 @@ is_valid <- function(x) {
 .findOverlaps_merge_DT <- function(DT1, DT2, ...) {
     gr1 <- .grDT(DT1)
     gr2 <- .grDT(DT2)
-    return(findOverlaps_merge(gr1, gr2,  ...))
+    return(.findOverlaps_merge(gr1, gr2,  ...))
 }
 
 .findOverlaps_merge <- function(gr1, gr2, ...) {

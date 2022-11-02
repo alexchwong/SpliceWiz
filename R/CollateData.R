@@ -1326,10 +1326,14 @@ collateData <- function(Experiment, reference_path, output_path,
         setnames(tj.novel, c("start", "end"), c("start2", "end2"))
 
         # Remove events in junc.novel that are also featured in tj.novel
+        tmp_gr <- GRanges(tj.novel$seqnames, 
+            IRanges(tj.novel$start1, tj.novel$end1), tj.novel$strand)
         OL <- .findOverlaps_merge(.grDT(junc.novel), tmp_gr, type = "equal")
         if(length(OL@from) > 0) junc.novel <- junc.novel[-unique(OL@from)]
 
-        OL <- .grDT(junc.novel)(.grDT(junc.novel), tmp_gr, type = "equal")
+        tmp_gr <- GRanges(tj.novel$seqnames, 
+            IRanges(tj.novel$start2, tj.novel$end2), tj.novel$strand)
+        OL <- .findOverlaps_merge(.grDT(junc.novel), tmp_gr, type = "equal")
         if(length(OL@from) > 0) junc.novel <- junc.novel[-unique(OL@from)]
     }
     

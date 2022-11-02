@@ -971,6 +971,9 @@ collateData <- function(Experiment, reference_path, output_path,
         
         # sanity check: remove unannotated junctions that lie outside genome
         junc.common.unanno.gr <- .grDT(junc.common.unanno)
+        seqlevels(junc.common.unanno.gr, pruning.mode = "coarse") <-
+            seqlevels(genome)
+        
         seqinfo.gr <- as(seqinfo(genome), "GenomicRanges")
 
         OL <- findOverlaps(junc.common.unanno.gr, seqinfo.gr, type = "within")
@@ -1196,6 +1199,11 @@ collateData <- function(Experiment, reference_path, output_path,
         minSamplesWithJunc, minSamplesAboveJuncThreshold,
         novelSplicing_requireOneAnnotatedSJ)
     # Finish inserting novel gtf
+    unique_seqlevels <- unique(c(
+        seqlevels(reference_data$gtf_gr), seqlevels(novel_gtf)
+    ))
+    seqlevels(reference_data$gtf_gr) <- unique_seqlevels
+    seqlevels(novel_gtf) <- unique_seqlevels
     
     if(verbose) message("...processing GTF")
     .process_gtf(c(reference_data$gtf_gr, novel_gtf), 
@@ -1281,8 +1289,16 @@ collateData <- function(Experiment, reference_path, output_path,
             ranges = IRanges(end, end), strand = strand))
         nj.right <- with(junc.novel, GRanges(seqnames = seqnames,
             ranges = IRanges(end, end), strand = strand))
+        
+        unique_seqlevels <- unique(c(seqlevels(kj.left), seqlevels(nj.left)))
+        seqlevels(kj.left) <- unique_seqlevels
+        seqlevels(nj.left) <- unique_seqlevels
         OL_left <- findOverlaps(nj.left, kj.left)
-        OL_right <- findOverlaps(nj.left, kj.left)
+        
+        unique_seqlevels <- unique(c(seqlevels(kj.right), seqlevels(nj.right)))
+        seqlevels(kj.right) <- unique_seqlevels
+        seqlevels(nj.right) <- unique_seqlevels
+        OL_right <- findOverlaps(nj.right, kj.right)
         
         at_least_one_end <- unique(c(from(OL_left), from(OL_right)))
         junc.novel <- junc.novel[at_least_one_end]    
@@ -1317,14 +1333,24 @@ collateData <- function(Experiment, reference_path, output_path,
         setnames(tj.novel, c("start", "end"), c("start2", "end2"))
 
         # Remove events in junc.novel that are also featured in tj.novel
+        gr_a <- .grDT(junc.novel)
+        
         tmp_gr <- GRanges(tj.novel$seqnames, 
             IRanges(tj.novel$start1, tj.novel$end1), tj.novel$strand)
-        OL <- findOverlaps(.grDT(junc.novel), tmp_gr, type = "equal")
+        unique_seqlevels <- unique(c(seqlevels(gr_a), seqlevels(tmp_gr)))
+        seqlevels(gr_a) <- unique_seqlevels
+        seqlevels(tmp_gr) <- unique_seqlevels
+        
+        OL <- findOverlaps(gr_a, tmp_gr, type = "equal")
         if(length(OL@from) > 0) junc.novel <- junc.novel[-unique(OL@from)]
 
+        gr_a <- .grDT(junc.novel)
         tmp_gr <- GRanges(tj.novel$seqnames, 
             IRanges(tj.novel$start2, tj.novel$end2), tj.novel$strand)
-        OL <- findOverlaps(.grDT(junc.novel), tmp_gr, type = "equal")
+        unique_seqlevels <- unique(c(seqlevels(gr_a), seqlevels(tmp_gr)))
+        seqlevels(gr_a) <- unique_seqlevels
+        seqlevels(tmp_gr) <- unique_seqlevels
+        OL <- findOverlaps(gr_a, tmp_gr, type = "equal")
         if(length(OL@from) > 0) junc.novel <- junc.novel[-unique(OL@from)]
     }
     
@@ -1349,7 +1375,13 @@ collateData <- function(Experiment, reference_path, output_path,
         )
     })
     Genes <- read.fst(file.path(reference_path, "fst/Genes.fst"))
-    OL <- findOverlaps(gr_transcript, .grDT(Genes))
+    Genes.gr <- .grDT(Genes)
+    unique_seqlevels <- unique(
+        c(seqlevels(gr_transcript), seqlevels(Genes.gr)))
+    seqlevels(gr_transcript) <- unique_seqlevels
+    seqlevels(Genes.gr) <- unique_seqlevels
+    
+    OL <- findOverlaps(gr_transcript, Genes.gr)
     OL.DT <- data.table(from = OL@from, to = OL@to)
     OL.DT <- unique(OL.DT, by = "from")
     junc_genes <- data.table(juncID = seq_len(length(gr_transcript)))

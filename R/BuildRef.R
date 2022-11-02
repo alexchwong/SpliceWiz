@@ -1887,11 +1887,13 @@ Get_GTF_file <- function(reference_path) {
         int.DT[get("strand") == "+", c("start") := get("intron_end")]
         int.DT[get("strand") == "+", c("end") := get("intron_end") + 1]
     }
-    OL <- findOverlaps(
-        .grDT(int.DT),
-        .grDT(groups.DT)
-    )
-    return(OL)
+    gr_a <- .grDT(int.DT)
+    gr_b <- .grDT(groups.DT)
+    unique_seqlevels <- unique(c(seqlevels(gr_a), seqlevels(gr_b)))
+    seqlevels(gr_a) <- unique_seqlevels
+    seqlevels(gr_b) <- unique_seqlevels
+
+    return(findOverlaps(gr_a, gr_b))
 }
 
 ################################################################################

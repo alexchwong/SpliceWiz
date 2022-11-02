@@ -995,6 +995,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     data.t_test <- list()
     cur_zoom <- floor(log((view_end - view_start) / 50) / log(3))
 
+    calcs <- NULL
     if (is_valid(condition) & is_valid(norm_event)) {
         # Calculate normalized values given `condition` and `norm_event`
         calcs <- do.call(.plot_cov_fn_normalize_condition, args)

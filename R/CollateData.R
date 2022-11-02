@@ -526,6 +526,7 @@ collateData <- function(Experiment, reference_path, output_path,
                 junc <- data.list[["JC_seqname"]]
 
                 setnames(junc, "JC_seqname", "seqnames")
+                junc[, c("seqnames") := as.character(get("seqnames"))]
                 if (is.null(junc.segment)) {
                     junc.segment <- junc[, seq_len(4), with = FALSE]
                 } else {
@@ -586,7 +587,7 @@ collateData <- function(Experiment, reference_path, output_path,
             block <- df.internal[work]
             junc.common <- as.data.table(read.fst(file.path(output_path, 
                 "annotation", "junc.common.fst")))
-            
+            junc.common[, c("seqnames") := as.character(get("seqnames"))]
             final.df <- data.frame(
                 countJuncInSamples = rep(0, nrow(junc.common)),
                 countJuncThresholdSamples = rep(0, nrow(junc.common))
@@ -633,6 +634,7 @@ collateData <- function(Experiment, reference_path, output_path,
         read.fst(file.path(temp_output_path,
             paste(sample, "junc.fst.tmp", sep = ".")))
     )
+    junc[, c("seqnames") := as.character(get("seqnames"))]
     junc[, c("start") := get("start") + 1]
     junc$strand <- NULL # Use strand from junc.common
 
@@ -674,6 +676,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
                 setnames(sw, c(phrase, "Start", "End", "Strand"),
                     c("seqnames", "start", "end", "strand"))
+                sw[, c("seqnames") := as.character(get("seqnames"))]
                 if (is.null(sw.names)) {
                     sw.names <- sw$Name
                 } else {
@@ -738,7 +741,8 @@ collateData <- function(Experiment, reference_path, output_path,
                 setnames(tj, "TJ_seqname", "seqnames")
                 # Filter for novel tandem junctions only
                 tj <- tj[get("strand") == "."]
-
+                tj[, c("seqnames") := as.character(get("seqnames"))]
+                
                 # 0-base to 1-base conversion
                 tj[, c("start1") := get("start1") + 1]
                 tj[, c("start2") := get("start2") + 1]
@@ -928,11 +932,14 @@ collateData <- function(Experiment, reference_path, output_path,
         as.data.table = TRUE
     )
     junc.strand <- unique(junc.strand)
+    junc.strand[, c("seqnames") := as.character(get("seqnames"))]
 
     junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "junc.common.fst")))
     junc.stats <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "junc.common.counts.fst")))
+
+    junc.common[, c("seqnames") := as.character(get("seqnames"))]
 
     junc.common <- cbind(junc.common, junc.stats)
     
@@ -1044,6 +1051,9 @@ collateData <- function(Experiment, reference_path, output_path,
     tj.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "tj.common.fst")))
     
+    candidate.introns[, c("seqnames") := as.character(get("seqnames"))]
+    junc.common[, c("seqnames") := as.character(get("seqnames"))]
+    tj.common[, c("seqnames") := as.character(get("seqnames"))]
     # Strand assignment based on annotated junctions
     
     # First remove any tandem junctions not in junc.common
@@ -1111,6 +1121,7 @@ collateData <- function(Experiment, reference_path, output_path,
         as.data.table = TRUE
     )
     exons_brief <- unique(exons_brief)
+    exons_brief[, c("seqnames") := as.character(get("seqnames"))]
     exons_left <- paste0(exons_brief$seqnames, ":", exons_brief$start)
     tj_exon_left <- paste0(tj.common$seqnames, ":", tj.common$end1 + 1)
     exons_right <- paste0(exons_brief$seqnames, ":", exons_brief$end)
@@ -1238,7 +1249,10 @@ collateData <- function(Experiment, reference_path, output_path,
     known.junctions <- unique(as.data.table(read.fst(
         file.path(reference_path, "fst", "junctions.fst"), 
         columns = c("seqnames", "start", "end", "strand", "Event"))))
-        
+    
+    junc.common[, c("seqnames") := as.character(get("seqnames"))]
+    known.junctions[, c("seqnames") := as.character(get("seqnames"))]
+    
     junc.novel <- junc.common[!(get("Event") %in% known.junctions$Event)]
     if(nrow(junc.novel) == 0) {
         rm(junc.common, known.junctions)
@@ -1288,6 +1302,7 @@ collateData <- function(Experiment, reference_path, output_path,
     tj.novel <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "tj.common.annotated.fst")))
     if(nrow(tj.novel) > 0) {
+        tj.novel[, c("seqnames") := as.character(get("seqnames"))]
         # Filter tj.novel by junc.novel
         setnames(tj.novel, c("start1", "end1"), c("start", "end"))
         tmp <- tj.novel[!junc.novel, 
@@ -1478,6 +1493,9 @@ collateData <- function(Experiment, reference_path, output_path,
     junc.novel <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "junc.novel.filtered.fst")))
     
+    tj.novel[, c("seqnames") := as.character(get("seqnames"))]
+    junc.novel[, c("seqnames") := as.character(get("seqnames"))]
+    
     # Filter tj.novel by junc.novel
     setnames(tj.novel, c("start1", "end1"), c("start", "end"))
     tmp <- tj.novel[!junc.novel, on = c("seqnames", "start", "end", "strand")]
@@ -1578,6 +1596,8 @@ collateData <- function(Experiment, reference_path, output_path,
     Exon.Groups <- as.data.table(
         read.fst(file.path(reference_path, "fst", "Exons.Group.fst"))
     )
+    junc.common[, c("seqnames") := as.character(get("seqnames"))]
+    Exon.Groups[, c("seqnames") := as.character(get("seqnames"))]
     # Always calculate stranded for junctions
     Exon.Groups.S <- Exon.Groups[get("strand") != "*"]
 
@@ -1630,6 +1650,9 @@ collateData <- function(Experiment, reference_path, output_path,
     Exon.Groups <- as.data.table(
         read.fst(file.path(reference_path, "fst", "Exons.Group.fst")))
 
+    sw.common[, c("seqnames") := as.character(get("seqnames"))]
+    Exon.Groups[, c("seqnames") := as.character(get("seqnames"))]
+    
     # Always calculate stranded for junctions
     Exon.Groups.S <- Exon.Groups[get("strand") != "*"]
 
@@ -1704,6 +1727,9 @@ collateData <- function(Experiment, reference_path, output_path,
     sw.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "IR.fst")))
 
+    candidate.introns[, c("seqnames") := as.character(get("seqnames"))]
+    sw.common[, c("seqnames") := as.character(get("seqnames"))]
+    
     # Order introns by importance (WHY?)
     candidate.introns[, c("transcript_biotype_2") := get("transcript_biotype")]
     candidate.introns[
@@ -1779,7 +1805,8 @@ collateData <- function(Experiment, reference_path, output_path,
         file.path(norm_output_path, "annotation", "IR.fst")))
     Splice.Anno <- as.data.table(read.fst(
         file.path(norm_output_path, "annotation", "Splice.fst")))
-
+    sw.common[, c("seqnames") := as.character(get("seqnames"))]
+    
     sw.anno.brief <- sw.common[, c("Name", "EventRegion")]
     setnames(sw.anno.brief, "Name", "EventName")
     sw.anno.brief[, c("EventType") := "IR"]
@@ -1969,6 +1996,9 @@ collateData <- function(Experiment, reference_path, output_path,
         file.path(norm_output_path, "annotation", "Splice.fst")))
     junc_PSI <- as.data.table(read.fst(
         file.path(norm_output_path, "junc_PSI_index.fst")))
+    
+    junc.common[, c("seqnames") := as.character(get("seqnames"))]
+    sw.common[, c("seqnames") := as.character(get("seqnames"))]
 
     work <- jobs[[x]]
     block <- df.internal[work]
@@ -2064,6 +2094,7 @@ collateData <- function(Experiment, reference_path, output_path,
         read.fst(file.path(norm_output_path, "temp",
             paste(sample, "junc.fst.tmp", sep = ".")))
     )
+    junc[, c("seqnames") := as.character(get("seqnames"))]
     junc[, c("start") := get("start") + 1]
     junc$strand <- NULL # Use strand from junc.common
 
@@ -2155,7 +2186,7 @@ collateData <- function(Experiment, reference_path, output_path,
         read.fst(file.path(norm_output_path, "temp",
             paste(sample, "sw.fst.tmp", sep = ".")))
     )
-
+    sw[, c("seqnames") := as.character(get("seqnames"))]
     sw[, c("start") := get("start") + 1]
     sw <- sw[sw.common, on = colnames(sw.common)[seq_len(6)],
         c("EventRegion") := get("i.EventRegion")]

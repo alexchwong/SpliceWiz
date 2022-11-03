@@ -2050,20 +2050,26 @@ Get_GTF_file <- function(reference_path) {
     # Non-directional exclusion - Low mappability regions, blacklist regions
     exclude.omnidirectional <- GRanges(NULL)
     if (extra_files$MappabilityFile != "") {
-        exclude.omnidirectional <- c(exclude.omnidirectional,
-            .gen_irf_convert_seqnames(
-                .convert_BED_or_RDS_to_GRanges(extra_files$MappabilityFile),
-                extra_files$genome_style
-            )
+        mappa.gr <- .gen_irf_convert_seqnames(
+            .convert_BED_or_RDS_to_GRanges(extra_files$MappabilityFile),
+            extra_files$genome_style
         )
+        if(length(mappa.gr) > 0) {
+            seqlevels(mappa.gr, pruning.mode = "coarse") <- 
+                seqlevels(introns.unique)
+            exclude.omnidirectional <- c(exclude.omnidirectional, mappa.gr)        
+        }
     }
     if (extra_files$BlacklistFile != "") {
-        exclude.omnidirectional <- c(exclude.omnidirectional,
-            .gen_irf_convert_seqnames(
-                .convert_BED_or_RDS_to_GRanges(extra_files$BlacklistFile),
-                extra_files$genome_style
-            )
+        bl.gr <- .gen_irf_convert_seqnames(
+            .convert_BED_or_RDS_to_GRanges(extra_files$BlacklistFile),
+            extra_files$genome_style
         )
+        if(length(bl.gr) > 0) {
+            seqlevels(bl.gr, pruning.mode = "coarse") <- 
+                seqlevels(introns.unique)        
+            exclude.omnidirectional <- c(exclude.omnidirectional, bl.gr)        
+        }
     }
 
     # merge with any gaps <= 9
@@ -2341,10 +2347,13 @@ Get_GTF_file <- function(reference_path) {
             .convert_BED_or_RDS_to_GRanges(extra_files$nonPolyAFile),
             extra_files$genome_style
         )
-
-        nonPolyA <- as.data.table(nonPolyA)
-        nonPolyA <- nonPolyA[, c("seqnames", "start", "end"), with = FALSE]
-        nonPolyA[, c("name") := "NonPolyA"]
+        if(length(nonPolyA) > 0) {
+            seqlevels(nonPolyA, pruning.mode = "coarse") <- 
+                seqlevels(Transcripts)        
+            nonPolyA <- as.data.table(nonPolyA)
+            nonPolyA <- nonPolyA[, c("seqnames", "start", "end"), with = FALSE]
+            nonPolyA[, c("name") := "NonPolyA"]
+        }
     } else {
         nonPolyA <- c()
     }

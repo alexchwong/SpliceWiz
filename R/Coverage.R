@@ -200,9 +200,12 @@ plotCoverage <- function(
     if ((missing(seqname) | missing(start) | missing(end)) &
         !missing(coordinates)) {
         gr <- coord2GR(coordinates)
-        seqname <- as.character(seqnames(gr))
-        start <- start(gr)
-        end <- end(gr)
+        seqname <- tstrsplit(coordinates, split = ":", fixed=TRUE)[[1]]
+        rangetxt <- tstrsplit(coordinates, split = ":", fixed=TRUE)[[2]]
+        start <- as.numeric(tstrsplit(
+            rangetxt, split = "-", fixed=TRUE)[[1]])
+        end <- as.numeric(tstrsplit(
+            rangetxt, split = "-", fixed=TRUE)[[2]])
     }
     # Validate given arguments
     .plot_cov_validate_args(se, tracks, condition, Event, Gene,
@@ -289,9 +292,12 @@ plotGenome <- function(se, reference_path,
     if ((missing(seqname) | missing(start) | missing(end)) &
         !missing(coordinates)) {
         gr <- coord2GR(coordinates)
-        seqname <- as.character(seqnames(gr))
-        start <- BiocGenerics::start(gr)
-        end <- BiocGenerics::end(gr)
+        seqname <- tstrsplit(coordinates, split = ":", fixed=TRUE)[[1]]
+        rangetxt <- tstrsplit(coordinates, split = ":", fixed=TRUE)[[2]]
+        start <- as.numeric(tstrsplit(
+            rangetxt, split = "-", fixed=TRUE)[[1]])
+        end <- as.numeric(tstrsplit(
+            rangetxt, split = "-", fixed=TRUE)[[2]])
     }
     .plot_cov_validate_args_loci(cov_data,
         Gene = Gene, seqname = seqname, start = start, end = end)

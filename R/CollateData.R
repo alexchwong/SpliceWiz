@@ -1270,7 +1270,7 @@ collateData <- function(Experiment, reference_path, output_path,
     
     # filter novel junctions
     junc.novel <- junc.novel[
-            countJuncInSamples >= minSamplesWithJunc &
+            countJuncInSamples >= minSamplesWithJunc |
             countJuncThresholdSamples >= minSamplesAboveJuncThreshold
     ]
     if(nrow(junc.novel) == 0) {

@@ -963,11 +963,11 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         c("flags") := paste0(get("flags"), ";Exc-NMD")]
     res[
         get("EventType") != "IR" & 
-        grepl("novel", tstrsplit(EventName, split = ";", fixed = TRUE)[[1]]), 
+        grepl("novel", tstrsplit(get("EventType"), split = ";", fixed = TRUE)[[1]]), 
         c("flags") := paste0(get("flags"), ";Inc-novel")]
     res[
         get("EventType") != "IR" & 
-        grepl("novel", tstrsplit(EventName, split = ";", fixed = TRUE)[[2]]), 
+        grepl("novel", tstrsplit(get("EventType"), split = ";", fixed = TRUE)[[2]]), 
         c("flags") := paste0(get("flags"), ";Exc-novel")]
     res[get("flags") != "", c("flags") := 
         substr(get("flags"), 2, nchar(get("flags")))]

@@ -2421,6 +2421,8 @@ collateData <- function(Experiment, reference_path, output_path,
     splice.no_region[get("Depth1a") <= get("Depth1b"),
         c("DepthUp") := get("Depth1b")]
     # DepthDown only matters where EventType %in% c("MXE", "SE")
+    splice.no_region[!(get("EventType") %in% c("MXE", "SE")),
+         c("DepthDown") := get("DepthUp")]
     splice.no_region[get("EventType") %in% c("SE") & 
             get("Depth1b") > get("Depth2a"),
         c("DepthDown") := get("Depth1b")]
@@ -2434,19 +2436,11 @@ collateData <- function(Experiment, reference_path, output_path,
             get("Depth2b") <= get("Depth2a"),
         c("DepthDown") := get("Depth2a")]
 
-    # If not match, then use JG_up and JG_down
-    splice.no_region[get("DepthUp") == 0 & 
-            get("EventType") %in% c("AFE", "ALE", "A3SS", "A5SS"), 
-        c("DepthUp", "DepthDown") := 
-        list(get("count_JG_up"), get("count_JG_down"))]
-    splice.no_region[get("DepthUp") == 0 & 
-            get("EventType") %in% c("MXE", "SE"), 
-        c("DepthUp") := get("count_JG_up")]
-    splice.no_region[get("DepthDown") == 0 & 
-            get("EventType") %in% c("MXE", "SE"), 
-        c("DepthDown") := get("count_JG_down")]
-
     splice.no_region[, c("Depth") := 0]
+    splice.no_region[get("DepthUp") < get("count_JG_up"),
+        c("DepthUp") := get("count_JG_up")]
+    splice.no_region[get("DepthDown") < get("count_JG_down"),
+        c("DepthDown") := get("count_JG_down")]
     splice.no_region[get("DepthUp") > get("DepthDown"),
         c("Depth") := get("DepthUp")]
     splice.no_region[get("DepthUp") <= get("DepthDown"),

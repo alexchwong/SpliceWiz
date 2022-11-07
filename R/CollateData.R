@@ -2414,27 +2414,43 @@ collateData <- function(Experiment, reference_path, output_path,
 
     # First guess depth based on depths of any junction that is assessed
     #   by processBAM
-    splice.no_region[, c("Depth") := 0]
-    splice.no_region[get("Depth1a") > get("Depth2a"),
-        c("DepthA") := get("Depth1a")]
-    splice.no_region[get("Depth1b") > get("Depth2b"),
-        c("DepthB") := get("Depth1b")]
-    splice.no_region[get("Depth1a") <= get("Depth2a"),
-        c("DepthA") := get("Depth2a")]
-    splice.no_region[get("Depth1b") <= get("Depth2b"),
-        c("DepthB") := get("Depth2b")]
-    splice.no_region[get("DepthA") > get("DepthB"),
-        c("Depth") := get("DepthA")]
-    splice.no_region[get("DepthA") <= get("DepthB"),
-        c("Depth") := get("DepthB")]
+    # - DepthA, DepthB: upstream and downstream IR+Splice depths
+    splice.no_region[, c("DepthUp", "DepthDown") := list(0,0)]
+    splice.no_region[get("Depth1a") > get("Depth1b"),
+        c("DepthUp") := get("Depth1a")]
+    splice.no_region[get("Depth1a") <= get("Depth1b"),
+        c("DepthUp") := get("Depth1b")]
+    # DepthDown only matters where EventType %in% c("MXE", "SE")
+    splice.no_region[get("EventType") %in% c("SE") & 
+            get("Depth1b") > get("Depth2a"),
+        c("DepthDown") := get("Depth1b")]
+    splice.no_region[get("EventType") %in% c("SE") & 
+            get("Depth1b") <= get("Depth2a"),
+        c("DepthDown") := get("Depth2a")]
+    splice.no_region[get("EventType") %in% c("MXE") & 
+            get("Depth2b") > get("Depth2a"),
+        c("DepthDown") := get("Depth2b")]
+    splice.no_region[get("EventType") %in% c("MXE") & 
+            get("Depth2b") <= get("Depth2a"),
+        c("DepthDown") := get("Depth2a")]
 
-    # If this fails, guess depth based on JG_up / JG_down
-    splice.no_region[get("Depth") == 0 &
-        get("count_JG_up") > get("count_JG_down"),
-        c("Depth") := get("count_JG_up")]
-    splice.no_region[get("Depth") == 0 &
-        get("count_JG_up") <= get("count_JG_down"),
-        c("Depth") := get("count_JG_down")]
+    # If not match, then use JG_up and JG_down
+    splice.no_region[get("DepthUp") == 0 & 
+            get("EventType") %in% c("AFE", "ALE", "A3SS", "A5SS"), 
+        c("DepthUp", "DepthDown") := 
+        list(get("count_JG_up"), get("count_JG_down"))]
+    splice.no_region[get("DepthUp") == 0 & 
+            get("EventType") %in% c("MXE", "SE"), 
+        c("DepthUp") := get("count_JG_up")]
+    splice.no_region[get("DepthDown") == 0 & 
+            get("EventType") %in% c("MXE", "SE"), 
+        c("DepthDown") := get("count_JG_down")]
+
+    splice.no_region[, c("Depth") := 0]
+    splice.no_region[get("DepthUp") > get("DepthDown"),
+        c("Depth") := get("DepthUp")]
+    splice.no_region[get("DepthUp") <= get("DepthDown"),
+        c("Depth") := get("DepthDown")]
 
     splice[, c("TotalDepth") := 0]
     splice[sw, on = "EventRegion",

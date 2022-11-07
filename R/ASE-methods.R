@@ -956,21 +956,35 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 
 # Adds human-readable labels
 .ASE_add_flags <- function(res) {
-    res[, c("flags") := ""]
-    res[get("NMD_direction") == 1, 
-        c("flags") := paste0(get("flags"), ";Inc-NMD")]
-    res[get("NMD_direction") == -1, 
-        c("flags") := paste0(get("flags"), ";Exc-NMD")]
-    res[
-        get("EventType") != "IR" & 
-        grepl("novel", tstrsplit(get("EventType"), split = ";", fixed = TRUE)[[1]]), 
-        c("flags") := paste0(get("flags"), ";Inc-novel")]
-    res[
-        get("EventType") != "IR" & 
-        grepl("novel", tstrsplit(get("EventType"), split = ";", fixed = TRUE)[[2]]), 
-        c("flags") := paste0(get("flags"), ";Exc-novel")]
-    res[get("flags") != "", c("flags") := 
-        substr(get("flags"), 2, nchar(get("flags")))]
+    res_IR <- res[EventType == "IR"]
+    res_nonIR <- res[EventType != "IR"]
+
+    flags_IR <- rep("", nrow(res_IR))
+    flags_nonIR <- rep("", nrow(res_nonIR))
+    
+    if(length(flags_IR) > 0) {
+        flags_IR[res_IR$NMD_direction == 1] <- paste0(
+            flags_IR[res_IR$NMD_direction == 1], ";Inc-NMD")
+        flags_IR[res_IR$NMD_direction == -1] <- paste0(
+            flags_IR[res_IR$NMD_direction == -1], ";Exc-NMD")
+    }    
+    if(length(flags_nonIR) > 0) {
+        flags_nonIR[res_nonIR$NMD_direction == 1] <- paste0(
+            flags_nonIR[res_nonIR$NMD_direction == 1], ";Inc-NMD")
+        flags_nonIR[res_nonIR$NMD_direction == -1] <- paste0(
+            flags_nonIR[res_nonIR$NMD_direction == -1], ";Exc-NMD")
+            
+        isIncNovel <- grepl("novel", tstrsplit(res_nonIR$EventName, 
+            split = ";", fixed = TRUE)[[1]])
+        isExcNovel <- grepl("novel", tstrsplit(res_nonIR$EventName, 
+            split = ";", fixed = TRUE)[[2]])
+        flags_nonIR[isIncNovel] <- paste0(
+            flags_nonIR[isIncNovel], ";Inc-novel")
+        flags_nonIR[isExcNovel] <- paste0(
+            flags_nonIR[isExcNovel], ";Exc-novel")
+    }
+    flagsStr <- c(flags_IR, flags_nonIR)
+    res[, c("flags") := substr(flagsStr, 2, nchar(flagsStr))]
     return(res[, c("EventName","EventType","EventRegion", "flags")])
 }
 

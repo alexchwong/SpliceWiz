@@ -1,8 +1,13 @@
-Changes in version 0.99.7 (2022-11-01)
+Changes in version 1.1.1 (2022-11-08)
 + Implemented time series analysis in limma using splines
 + Reduced loading time of makeSE's overlapping intron removal
 + Optimised H5 database chunking to speed up data loading times
 + Added installation instructions for SpliceWiz using conda environment
++ Bugfix: resolved mismatched chromosome issues in collateData
++ Bugfix: fixed novel splice counts filtering
++ Bugfix: Depth calculation in collateData fixed to properly reflect maximum
+splicing across junction
++ Bugfix: Fixed plotCoverage / plotGenome by coordinates
 
 Changes in version 0.99.6 (2022-10-27)
 + Ribbons in group-normalized coverage plots can now be customized to show

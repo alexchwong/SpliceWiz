@@ -956,8 +956,8 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 
 # Adds human-readable labels
 .ASE_add_flags <- function(res) {
-    res_IR <- res[EventType == "IR"]
-    res_nonIR <- res[EventType != "IR"]
+    res_IR <- res[get("EventType") == "IR"]
+    res_nonIR <- res[get("EventType") != "IR"]
 
     flags_IR <- rep("", nrow(res_IR))
     flags_nonIR <- rep("", nrow(res_nonIR))

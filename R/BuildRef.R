@@ -1334,7 +1334,7 @@ Get_GTF_file <- function(reference_path) {
     setorder(Genes_group.stranded, seqnames, start, strand)
 
     Genes_group.stranded[, c("gene_group") := .I]
-    OL <- findOverlaps(
+    OL <- .findOverlaps_merge(
         Genes, .grDT(Genes_group.stranded)
     )
     Genes$gene_group_stranded[from(OL)] <-
@@ -1344,7 +1344,7 @@ Get_GTF_file <- function(reference_path) {
     Genes_group.unstranded <- as.data.table(reduce(Genes, ignore.strand = TRUE))
     setorder(Genes_group.unstranded, seqnames, start)
     Genes_group.unstranded[, c("gene_group") := .I]
-    OL <- findOverlaps(
+    OL <- .findOverlaps_merge(
         Genes,
         .grDT(Genes_group.unstranded, ignore.strand = TRUE)
     )
@@ -1431,13 +1431,13 @@ Get_GTF_file <- function(reference_path) {
         Exons, Genes_group, stranded = FALSE)
 
     # Now annotate all exons in Exons with the gene and exon groups
-    OL <- findOverlaps(Exons, .grDT(tmp.Exons_group.stranded))
+    OL <- .findOverlaps_merge(Exons, .grDT(tmp.Exons_group.stranded))
     Exons$gene_group_stranded[from(OL)] <-
         tmp.Exons_group.stranded$gene_group[to(OL)]
     Exons$exon_group_stranded[from(OL)] <-
         tmp.Exons_group.stranded$exon_group[to(OL)]
 
-    OL <- findOverlaps(Exons, .grDT(tmp.Exons_group.unstranded,
+    OL <- .findOverlaps_merge(Exons, .grDT(tmp.Exons_group.unstranded,
             ignore.strand = TRUE
         )
     )
@@ -1463,7 +1463,7 @@ Get_GTF_file <- function(reference_path) {
     ))
     GG <- Genes_group[[ifelse(stranded, "stranded", "unstranded")]]
 
-    OL <- findOverlaps(
+    OL <- .findOverlaps_merge(
         .grDT(tmp.Exons_group),
         .grDT(GG, ignore.strand = !stranded)
     )
@@ -1479,7 +1479,7 @@ Get_GTF_file <- function(reference_path) {
         unlist(range(tmp.exons.exclude.span), use.names = TRUE)
     tmp.exons.RI <- Exons[grepl("intron", Exons$transcript_biotype)]
     if (length(tmp.exons.RI) > 0) {
-        OL <- findOverlaps(
+        OL <- .findOverlaps_merge(
             tmp.exons.RI,
             tmp.exons.exclude.span,
             ignore.strand = !stranded
@@ -1490,7 +1490,7 @@ Get_GTF_file <- function(reference_path) {
         tmp.Exons_group <- as.data.table(reduce(tmp.exons.exclude,
             ignore.strand = !stranded
         ))
-        OL <- findOverlaps(
+        OL <- .findOverlaps_merge(
             .grDT(tmp.Exons_group),
             .grDT(GG, ignore.strand = !stranded)
         )
@@ -1887,13 +1887,7 @@ Get_GTF_file <- function(reference_path) {
         int.DT[get("strand") == "+", c("start") := get("intron_end")]
         int.DT[get("strand") == "+", c("end") := get("intron_end") + 1]
     }
-    gr_a <- .grDT(int.DT)
-    gr_b <- .grDT(groups.DT)
-    unique_seqlevels <- unique(c(seqlevels(gr_a), seqlevels(gr_b)))
-    seqlevels(gr_a) <- unique_seqlevels
-    seqlevels(gr_b) <- unique_seqlevels
-
-    return(findOverlaps(gr_a, gr_b))
+    return(.findOverlaps_merge_DT(int.DT, groups.DT))
 }
 
 ################################################################################
@@ -2056,20 +2050,26 @@ Get_GTF_file <- function(reference_path) {
     # Non-directional exclusion - Low mappability regions, blacklist regions
     exclude.omnidirectional <- GRanges(NULL)
     if (extra_files$MappabilityFile != "") {
-        exclude.omnidirectional <- c(exclude.omnidirectional,
-            .gen_irf_convert_seqnames(
-                .convert_BED_or_RDS_to_GRanges(extra_files$MappabilityFile),
-                extra_files$genome_style
-            )
+        mappa.gr <- .gen_irf_convert_seqnames(
+            .convert_BED_or_RDS_to_GRanges(extra_files$MappabilityFile),
+            extra_files$genome_style
         )
+        if(length(mappa.gr) > 0) {
+            seqlevels(mappa.gr, pruning.mode = "coarse") <- 
+                seqlevels(introns.unique)
+            exclude.omnidirectional <- c(exclude.omnidirectional, mappa.gr)        
+        }
     }
     if (extra_files$BlacklistFile != "") {
-        exclude.omnidirectional <- c(exclude.omnidirectional,
-            .gen_irf_convert_seqnames(
-                .convert_BED_or_RDS_to_GRanges(extra_files$BlacklistFile),
-                extra_files$genome_style
-            )
+        bl.gr <- .gen_irf_convert_seqnames(
+            .convert_BED_or_RDS_to_GRanges(extra_files$BlacklistFile),
+            extra_files$genome_style
         )
+        if(length(bl.gr) > 0) {
+            seqlevels(bl.gr, pruning.mode = "coarse") <- 
+                seqlevels(introns.unique)        
+            exclude.omnidirectional <- c(exclude.omnidirectional, bl.gr)        
+        }
     }
 
     # merge with any gaps <= 9
@@ -2078,7 +2078,7 @@ Get_GTF_file <- function(reference_path) {
 
     # Filter out introns are lie completely within low mappability or blacklists
     if (length(exclude.omnidirectional) > 0) {
-        introns.unique.blacklisted <- findOverlaps(introns.unique,
+        introns.unique.blacklisted <- .findOverlaps_merge(introns.unique,
             exclude.omnidirectional, type = "within"
         )
         if(length(introns.unique.blacklisted@from) > 0) {
@@ -2100,8 +2100,8 @@ Get_GTF_file <- function(reference_path) {
 
     # Antiover: overlaps within anti-sense genes
     # Antinear: overlaps within 1000 / 5000 nt up/downstream of antisense gene
-    introns.unique.antiover <- findOverlaps(introns.unique, Genes.rev)
-    introns.unique.antinear <- findOverlaps(introns.unique, Genes.Extended)
+    introns.unique.antiover <- .findOverlaps_merge(introns.unique, Genes.rev)
+    introns.unique.antinear <- .findOverlaps_merge(introns.unique, Genes.Extended)
 
     introns.unique$antiover <-
         (seq_len(length(introns.unique)) %in% introns.unique.antiover@from)
@@ -2147,7 +2147,7 @@ Get_GTF_file <- function(reference_path) {
     # introns.intersect is the list of intron regions that
     #   should be excluded from analysis
 
-    OL <- findOverlaps(introns.unique, introns.intersect)
+    OL <- .findOverlaps_merge(introns.unique, introns.intersect)
     # make a GRanges same size as the number of intersections
     introns.intersect.final <- introns.intersect[to(OL)]
     introns.intersect.final$intron_id <- introns.unique$intron_id[from(OL)]
@@ -2347,10 +2347,13 @@ Get_GTF_file <- function(reference_path) {
             .convert_BED_or_RDS_to_GRanges(extra_files$nonPolyAFile),
             extra_files$genome_style
         )
-
-        nonPolyA <- as.data.table(nonPolyA)
-        nonPolyA <- nonPolyA[, c("seqnames", "start", "end"), with = FALSE]
-        nonPolyA[, c("name") := "NonPolyA"]
+        if(length(nonPolyA) > 0) {
+            seqlevels(nonPolyA, pruning.mode = "coarse") <- 
+                seqlevels(Transcripts)        
+            nonPolyA <- as.data.table(nonPolyA)
+            nonPolyA <- nonPolyA[, c("seqnames", "start", "end"), with = FALSE]
+            nonPolyA[, c("name") := "NonPolyA"]
+        }
     } else {
         nonPolyA <- c()
     }
@@ -3559,7 +3562,7 @@ Get_GTF_file <- function(reference_path) {
         read.fst(file.path(reference_path, "fst", "Introns.Dir.fst")))
     candidate.RI[, c("start", "end") :=
         list(get("intron_start"), get("intron_end"))]
-    OL <- findOverlaps(
+    OL <- .findOverlaps_merge(
         .grDT(candidate.RI), Exons, type = "within"
     )
     candidate.RI <- candidate.RI[unique(from(OL))]
@@ -3618,7 +3621,7 @@ Get_GTF_file <- function(reference_path) {
         split = " ", fixed = TRUE)[[1]]
     RI.ranges <- AS_Table[get("EventType") == "RI"]
     RI.gr <- coord2GR(RI.ranges$Event1b)
-    OL <- findOverlaps(RI.gr, Exons, type = "within")
+    OL <- .findOverlaps_merge(RI.gr, Exons, type = "within")
     RI.DT <- data.table(
         EventType = "RI",
         EventID = RI.ranges$EventID[from(OL)],

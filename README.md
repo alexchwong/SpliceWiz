@@ -9,7 +9,7 @@ Check out our pre-print publication for SpliceWiz:
 
 ## Documentation
 
-[Bioconductor Landing Page](https://bioconductor.org/packages/devel/bioc/html/SpliceWiz.html)
+[Bioconductor Landing Page](https://bioconductor.org/packages/release/bioc/html/SpliceWiz.html)
 
 [QuickStart Vignette - html](https://bioconductor.org/packages/devel/bioc/vignettes/SpliceWiz/inst/doc/SW_QuickStart.html)
 

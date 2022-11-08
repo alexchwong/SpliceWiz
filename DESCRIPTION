@@ -1,6 +1,6 @@
 Package: SpliceWiz
 Title: Easy, optimized, and accurate alternative splicing analysis in R
-Version: 1.1.1
+Version: 1.1.2
 Date: 2022-11-08
 Authors@R: c(person("Alex Chit Hei", "Wong", email="a.wong@centenary.org.au", 
 		role=c("aut", "cre", "cph")),

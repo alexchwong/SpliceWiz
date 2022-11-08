@@ -1,4 +1,4 @@
-Changes in version 1.1.1 (2022-11-08)
+Changes in version 1.1.2 (2022-11-08)
 + Implemented time series analysis in limma using splines
 + Reduced loading time of makeSE's overlapping intron removal
 + Optimised H5 database chunking to speed up data loading times

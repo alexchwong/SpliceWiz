@@ -67,12 +67,13 @@ ui_tab_title <- function() {
                 textOutput("txt_mem_collateData"), br()
             )),
             column(8,
-                img(src=paste0(
-                    "https://pbs.twimg.com/",
-                    "profile_images/",
-                    "1310789966293655553/",
-                    "7HawCItY_400x400.jpg"
-                ))
+                # img(src=paste0(
+                    # "https://pbs.twimg.com/",
+                    # "profile_images/",
+                    # "1310789966293655553/",
+                    # "7HawCItY_400x400.jpg"
+                # ))
+                img(src="localImages/labLogo.jpg")
             )
         )
     )

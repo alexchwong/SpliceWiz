@@ -1121,11 +1121,11 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
         ) {
             output$se_expr_infobox <- renderUI(
                 ui_infobox_expr(2, "NxtSE ready to load",
-                    "Click `Build SummarizedExperiment`"))
+                    "Click `Load NxtSE object`"))
         } else if(ncol(settings_expr$df.anno) > 1) {
             output$se_expr_infobox <- renderUI(
                 ui_infobox_expr(1, "NxtSE ready to load",
-                    # "Click `Build SummarizedExperiment`",
+                    # "Click `Load NxtSE object`",
                     "Don't forget to save your experiment"))
         } else {
             output$se_expr_infobox <- renderUI(

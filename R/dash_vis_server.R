@@ -414,10 +414,73 @@ server_vis_heatmap <- function(
         observeEvent(refresh_tab(), {
             req(refresh_tab())
             req(get_se())
-            updateSelectInput(session = session, inputId = "anno_col_heat", 
-                choices = colnames(colData(get_se())), selected = NULL)
+            colData <- colData(get_se())
+            if(
+                    is_valid(input$anno_col_heat) && 
+                    all(input$anno_col_heat %in% colnames(colData))
+            ) {
+                selected <- isolate(input$anno_col_heat)
+                updateSelectInput(session = session, 
+                    inputId = "anno_col_heat", 
+                    choices = colnames(colData(get_se())), 
+                    selected = selected)
+                if(
+                    is_valid(input$anno_col_heat_sort) && 
+                    input$anno_col_heat_sort %in% colnames(colData)
+                ) {
+                    selected2 <- isolate(input$anno_col_heat_sort)
+                    updateSelectInput(session = session, 
+                        inputId = "anno_col_heat_sort", 
+                        choices = c("(none)", selected), 
+                        selected = selected2)
+                } else {
+                    updateSelectInput(session = session, 
+                        inputId = "anno_col_heat_sort", 
+                        choices = c("(none)", selected), 
+                        selected = "(none)")
+                }
+            } else {
+                updateSelectInput(session = session, 
+                    inputId = "anno_col_heat", 
+                    choices = colnames(colData(get_se())), 
+                    selected = NULL)
+                updateSelectInput(session = session, 
+                    inputId = "anno_col_heat_sort", 
+                    choices = c("(none)"), 
+                    selected = "(none)")
+            }
         })
-
+        observeEvent(input$anno_col_heat, {
+            req(get_se())
+            colData <- colData(get_se())
+            if(
+                    is_valid(input$anno_col_heat) && 
+                    all(input$anno_col_heat %in% colnames(colData))
+            ) {
+                selected <- isolate(input$anno_col_heat)
+                if(
+                    is_valid(input$anno_col_heat_sort) && 
+                    input$anno_col_heat_sort %in% colnames(colData)
+                ) {
+                    selected2 <- isolate(input$anno_col_heat_sort)
+                    updateSelectInput(session = session, 
+                        inputId = "anno_col_heat_sort", 
+                        choices = c("(none)", selected), 
+                        selected = selected2)
+                } else {
+                    updateSelectInput(session = session, 
+                        inputId = "anno_col_heat_sort", 
+                        choices = c("(none)", selected), 
+                        selected = "(none)")
+                }
+            } else {
+                updateSelectInput(session = session, 
+                    inputId = "anno_col_heat_sort", 
+                    choices = c("(none)"), 
+                    selected = "(none)")
+            }
+        })
+        
         output$plot_heat <- renderPlotly({
             
             validate(need(get_se(), "Load Experiment first"))
@@ -477,14 +540,41 @@ server_vis_heatmap <- function(
                     is_valid(input$anno_col_heat) && 
                     all(input$anno_col_heat %in% colnames(colData))
             ) {
-                settings_Heat$ggplot <- pheatmap(
-                    mat, color = color_vec, 
-                    annotation_col = colData[, input$anno_col_heat, drop=FALSE]
-                )
-                settings_Heat$final_plot <- heatmaply::heatmaply(
-                    mat, color = color, 
-                    col_side_colors = colData[, input$anno_col_heat, drop=FALSE]
-                )
+                if(
+                    is_valid(input$anno_col_heat_sort) &&
+                    input$anno_col_heat_sort %in% colnames(colData)
+                ) {
+                    new_order <- order(
+                        colData[, input$anno_col_heat_sort],
+                        decreasing = input$anno_col_heat_sort_order
+                    )
+                    mat <- mat[, new_order]
+                    colData_sorted <- colData[new_order, ]
+                    settings_Heat$ggplot <- pheatmap(
+                        mat, color = color_vec, 
+                        annotation_col = colData_sorted[, 
+                            input$anno_col_heat, drop=FALSE],
+                        cluster_cols = FALSE
+                    )
+                    settings_Heat$final_plot <- heatmaply::heatmaply(
+                        mat, color = color, 
+                        col_side_colors = colData_sorted[, 
+                            input$anno_col_heat, drop=FALSE],
+                        dendrogram = "row"
+                    )
+                } else {
+                    settings_Heat$ggplot <- pheatmap(
+                        mat, color = color_vec, 
+                        annotation_col = colData[, 
+                            input$anno_col_heat, drop=FALSE]
+                    )
+                    settings_Heat$final_plot <- heatmaply::heatmaply(
+                        mat, color = color, 
+                        col_side_colors = colData[, 
+                            input$anno_col_heat, drop=FALSE]
+                    )
+                }
+
             } else {
                 settings_Heat$ggplot <- pheatmap(
                     mat, color = color_vec

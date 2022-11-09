@@ -1,3 +1,12 @@
+Changes in version 1.0.1 (2022-11-09)
++ Fixed merge seqnames issue
++ Fixed Depth calculation (SpliceOver+IR) which should be higher than minDepth 
+(SpliceOver only)
++ NxtSE - more efficient chunking and removal of overlapping introns
++ Coverage plots: fixed plotting by coordinates
++ Feature: ASE_saturn now filters ASEs with zero counts in all samples; or by
+junction cpm (counts per million) using filterByExpr (edgeR)
+
 Changes in version 0.99.6 (2022-10-27)
 + Ribbons in group-normalized coverage plots can now be customized to show
 standard deviation (default), 95% confidence interval, 

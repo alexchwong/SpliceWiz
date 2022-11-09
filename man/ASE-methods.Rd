@@ -53,7 +53,8 @@ ASE_satuRn(
   n_threads = 1,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
-  filter_antinear = FALSE
+  filter_antinear = FALSE,
+  filterByMinCPM = 0
 )
 }
 \arguments{
@@ -92,6 +93,11 @@ protocols are used.}
 
 \item{n_threads}{(DESeq2 only) How many threads to use for DESeq2
 based analysis.}
+
+\item{filterByMinCPM}{(default \code{0}) In \code{ASE_satuRn()}, Included/Excluded
+counts will be filtered using this value as the threshold prior to satuRn
+analysis. Filtering is performed using \code{edgeR::filterByExpr()} parsing
+this parameter into its \code{min.count} parameter.}
 }
 \value{
 For all methods, a data.table containing the following:
@@ -266,6 +272,9 @@ res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 
 require("satuRn")
 res_sat <- ASE_satuRn(se, "treatment", "A", "B")
+
+require("edgeR") # - for filterByMinCPM feature
+res_sat <- ASE_satuRn(se, "treatment", "A", "B", filterByMinCPM = 1)
 
 require("DESeq2")
 res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")

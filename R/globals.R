@@ -2,11 +2,11 @@
 
 globalVariables(c(":=", "."))
 
-ASE_version <- "0.99.4"
+ASE_version <- "1.0.1"
 
-collateData_version <- "0.99.4"
+collateData_version <- "1.0.1"
 
-buildRef_version <- "0.99.4"
+buildRef_version <- "1.0.1"
 
 is.nan.data.frame <- function(x) do.call(cbind, lapply(x, is.nan))
 
@@ -137,6 +137,19 @@ is_valid <- function(x) {
 
 .grlGaps <- function(grl) {
     psetdiff(unlist(range(grl), use.names = TRUE), grl)
+}
+
+.findOverlaps_merge_DT <- function(DT1, DT2, ...) {
+    gr1 <- .grDT(DT1)
+    gr2 <- .grDT(DT2)
+    return(.findOverlaps_merge(gr1, gr2,  ...))
+}
+
+.findOverlaps_merge <- function(gr1, gr2, ...) {
+    unified_seqlevels <- sort(unique(c(seqlevels(gr1), seqlevels(gr2))))
+    seqlevels(gr1) <- unified_seqlevels
+    seqlevels(gr2) <- unified_seqlevels
+    return(findOverlaps(gr1, gr2, ...))
 }
 
 .make_path_relative <- function(files, relative_to) {

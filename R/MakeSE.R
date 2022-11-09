@@ -263,7 +263,7 @@ makeSE <- function(
             ifelse(
                 "BuildVersion" %in% names(se@metadata),
                 metadata(se)$BuildVersion,
-                "< 0.99.4"
+                paste("<", collateData_version)
             ), ")"
         ), "warning")
     }
@@ -285,10 +285,15 @@ makeSE <- function(
     se.coords.gr <- junc_gr(se)[row_to_junc]
     names(se.coords.gr) <- names(row_to_junc)
     
+    mcols(se.coords.gr) <- data.frame(
+        means = .makeSE_progress_rowMeans(
+            junc_PSI[names(se.coords.gr),,drop = FALSE])
+    )
+    
     if (length(se.coords.gr) > 0) {
         .log(paste("Iterating through IR events to determine introns",
             "of main isoforms"), type = "message")
-        include <- .makeSE_iterate_IR_select_events(se.coords.gr, junc_PSI)
+        include <- .makeSE_iterate_IR_select_events_fast(se.coords.gr)
         se.coords.final <- se.coords.gr[include]
         se.coords.excluded <- se.coords.gr[!include]
 
@@ -302,8 +307,7 @@ makeSE <- function(
             dash_progress(paste("Iteration", iteration), 8)
             se.coords.excluded <- se.coords.excluded[include]
 
-            include <- .makeSE_iterate_IR_select_events(
-                se.coords.excluded, junc_PSI)
+            include <- .makeSE_iterate_IR_select_events_fast(se.coords.excluded)
 
             if (length(include) > 0 && !all(include)) {
                 se.coords.final <- c(se.coords.final,
@@ -333,6 +337,19 @@ makeSE <- function(
     return(se)
 }
 
+.makeSE_progress_rowMeans <- function(junc_PSI) {
+    pb <- progress::progress_bar$new(
+        format = " calculating junction means [:bar] :percent eta: :eta",
+        total = ncol(junc_PSI), clear = FALSE, width= 100)
+    junc_means <- rep(0, nrow(junc_PSI))
+    for(i in seq_len(ncol(junc_PSI))) {
+        junc_means <- junc_means + junc_PSI[,i]
+        pb$tick()
+    }
+    junc_means <- junc_means / ncol(junc_PSI)
+    junc_means
+}
+
 # Selects introns of major isoforms
 .makeSE_iterate_IR_select_events <- function(se.coords.gr, junc_PSI) {
     if(length(se.coords.gr) == 0) return(logical(0))
@@ -348,6 +365,26 @@ makeSE <- function(
     junc_PSI.group$group <- to(OL)
     junc_PSI.group[, c("max_means") := max(get("means")),
         by = "group"]
+        
+    res <- junc_PSI.group$means == junc_PSI.group$max_means
+    
+    rm(junc_PSI.group)
+    gc()
+    return(res)
+}
+
+# Selects introns of major isoforms
+.makeSE_iterate_IR_select_events_fast <- function(gr) {
+    if(length(gr) == 0) return(logical(0))
+    if(length(gr) == 1) return(TRUE)
+
+    OL <- findOverlaps(gr, reduce(gr))
+    
+    junc_PSI.group <- data.table(
+        means = mcols(gr)$means,
+        group = to(OL)
+    )
+    junc_PSI.group[, c("max_means") := max(get("means")), by = "group"]
         
     res <- junc_PSI.group$means == junc_PSI.group$max_means
     

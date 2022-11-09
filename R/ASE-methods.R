@@ -104,6 +104,10 @@
 #'   overlap over or near anti-sense genes. Default will exclude antiover but
 #'   not antinear introns. These are ignored if strand-specific RNA-seq 
 #'   protocols are used.
+#' @param filterByMinCPM (default `0`) In `ASE_satuRn()`, Included/Excluded
+#'   counts will be filtered using this value as the threshold prior to satuRn
+#'   analysis. Filtering is performed using `edgeR::filterByExpr()` parsing
+#'   this parameter into its `min.count` parameter.
 #' @param n_threads (DESeq2 only) How many threads to use for DESeq2
 #'   based analysis.
 #' @return For all methods, a data.table containing the following:
@@ -171,7 +175,10 @@
 #'
 #' require("satuRn")
 #' res_sat <- ASE_satuRn(se, "treatment", "A", "B")
-#' 
+#'
+#' require("edgeR") # - for filterByMinCPM feature
+#' res_sat <- ASE_satuRn(se, "treatment", "A", "B", filterByMinCPM = 1)
+#'
 #' require("DESeq2")
 #' res_DESeq <- ASE_DESeq(se, "treatment", "A", "B")
 #' 
@@ -375,7 +382,8 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
         n_threads = 1,
         IRmode = c("all", "annotated", "annotated_binary"),
-        filter_antiover = TRUE, filter_antinear = FALSE#,
+        filter_antiover = TRUE, filter_antinear = FALSE,
+        filterByMinCPM = 0
         # ...
 ) {
 
@@ -391,20 +399,25 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         se, filter_antiover, filter_antinear, IRmode)
 
     # Further filtering step using filterByExpr
-    countData <- as.matrix(cbind(assay(se_use, "Included"),
-        assay(se_use, "Excluded")))
-    if(any(rowSums(countData) == 0)) {
-        .log(paste(
-            "Events (rows) with all zero counts are removed from analysis."
-        ), "warning")
-        se_use <- se_use[rowSums(countData) > 0,]
+    if(filterByMinCPM > 0) {
+        .check_package_installed("edgeR", "3.28.1")
         countData <- as.matrix(cbind(assay(se_use, "Included"),
             assay(se_use, "Excluded")))
+        se_use <- se_use[edgeR::filterByExpr(
+            countData, min.count = filterByMinCPM
+        ),]
+    } else {
+        countData <- as.matrix(cbind(assay(se_use, "Included"),
+            assay(se_use, "Excluded")))
+        if(any(rowSums(countData) == 0)) {
+            .log(paste(
+                "Events (rows) with all zero counts are removed from analysis."
+            ), "warning")
+            se_use <- se_use[rowSums(countData) > 0,]
+            countData <- as.matrix(cbind(assay(se_use, "Included"),
+                assay(se_use, "Excluded")))
+        }
     }
-    
-    # se_use <- se_use[
-        # edgeR::filterByExpr(countData, ...),
-    # ]
     
     if(nrow(se_use) == 0)
         .log("No events for ASE analysis after filtering")
@@ -501,38 +514,13 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 
 .ASE_limma_contrast <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2) {
-    countData <- as.matrix(rbind(assay(se, "Included"),
-        assay(se, "Excluded")))
-    rowData <- as.data.frame(rowData(se))
-    colData <- colData(se)
-    rownames(colData) <- colnames(se)
-    colnames(countData) <- rownames(colData)
-    rownames(countData) <- c(
-        paste(rowData$EventName, "Included", sep="."),
-        paste(rowData$EventName, "Excluded", sep=".")
-    )
+    in_data <- .ASE_contrast_expr(se, test_factor, 
+        test_nom, test_denom,
+        batch1, batch2)
 
-    condition_factor <- factor(colData[, test_factor])
-    if(batch2 != "") {
-        batch2_factor <- colData[, batch2]
-        batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + batch2_factor +
-            condition_factor)
-    } else if(batch1 != "") {
-        batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + condition_factor)
-    } else {
-        design1 <- model.matrix(~0 + condition_factor)
-    }
-    contrast <- rep(0, ncol(design1))
-    contrast_a <- paste0("condition_factor", test_nom)
-    contrast_b <- paste0("condition_factor", test_denom)
-    contrast[which(colnames(design1) == contrast_b)] <- -1
-    contrast[which(colnames(design1) == contrast_a)] <- 1
-
-    countData_use <- limma::voom(countData, design1)
-    fit <- limma::lmFit(countData_use$E, design = design1)
-    fit <- limma::contrasts.fit(fit, contrast)
+    countData_use <- limma::voom(in_data$countData, in_data$design1)
+    fit <- limma::lmFit(countData_use$E, design = in_data$design1)
+    fit <- limma::contrasts.fit(fit, in_data$contrast)
     fit <- limma::eBayes(fit)
 
     res <- limma::topTable(fit, number = nrow(countData_use$E))
@@ -541,53 +529,23 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     res$AveExpr <- res$AveExpr - min(res$AveExpr)
     res <- as.data.table(res)
     
-    rm(fit, countData, countData_use)
+    rm(fit, in_data, countData_use)
     gc()
     return(res)
 }
 
 .ASE_limma_contrast_ASE <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2) {
-    countData <- as.matrix(cbind(assay(se, "Included"),
-        assay(se, "Excluded")))
+    in_data <- .ASE_contrast_ASE(se, test_factor, 
+        test_nom, test_denom,
+        batch1, batch2)
 
-    rowData <- as.data.frame(rowData(se))
-    colData <- as.data.frame(colData(se))
-    colData <- rbind(colData, colData)
-    rownames(colData) <- c(
-        paste(colnames(se), "Included", sep="."),
-        paste(colnames(se), "Excluded", sep=".")
-    )
-    colData$ASE <- rep(c("Included", "Excluded"), each = ncol(se))
-    colnames(countData) <- rownames(colData)
-    rownames(countData) <- rowData$EventName
+    countData_use <- limma::voom(in_data$countData, in_data$design1, 
+        lib.size = 1)
 
-    condition_factor <- factor(colData[, test_factor])
-    ASE <- colData[, "ASE"]
-    if(batch2 != "") {
-        batch2_factor <- colData[, batch2]
-        batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + batch2_factor +
-            condition_factor + condition_factor:ASE)
-    } else if(batch1 != "") {
-        batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + condition_factor +
-            condition_factor:ASE)
-    } else {
-        design1 <- model.matrix(~0 + condition_factor + condition_factor:ASE)
-    }
-    colnames(design1) <- sub(":",".",colnames(design1))
-    contrast <- rep(0, ncol(design1))
-    contrast_a <- paste0("condition_factor", test_nom, ".ASEIncluded")
-    contrast_b <- paste0("condition_factor", test_denom, ".ASEIncluded")
-    contrast[which(colnames(design1) == contrast_b)] <- -1
-    contrast[which(colnames(design1) == contrast_a)] <- 1
+    fit <- limma::lmFit(countData_use$E, design = in_data$design1)
 
-    countData_use <- limma::voom(countData, design1, lib.size = 1)
-
-    fit <- limma::lmFit(countData_use$E, design = design1)
-
-    fit <- limma::contrasts.fit(fit, contrast)
+    fit <- limma::contrasts.fit(fit, in_data$contrast)
     fit <- limma::eBayes(fit)
 
     res <- limma::topTable(fit, number = nrow(countData_use$E))
@@ -595,7 +553,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     res$AveExpr <- res$AveExpr - min(res$AveExpr)
     res <- as.data.table(res)
     
-    rm(fit, countData, countData_use)
+    rm(fit, in_data, countData_use)
     gc()
     return(res)
 }
@@ -850,21 +808,35 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 
 # Adds human-readable labels
 .ASE_add_flags <- function(res) {
-    res[, c("flags") := ""]
-    res[get("NMD_direction") == 1, 
-        c("flags") := paste0(get("flags"), ";Inc-NMD")]
-    res[get("NMD_direction") == -1, 
-        c("flags") := paste0(get("flags"), ";Exc-NMD")]
-    res[
-        get("EventType") != "IR" & 
-        grepl("novel", tstrsplit(EventName, split = ";", fixed = TRUE)[[1]]), 
-        c("flags") := paste0(get("flags"), ";Inc-novel")]
-    res[
-        get("EventType") != "IR" & 
-        grepl("novel", tstrsplit(EventName, split = ";", fixed = TRUE)[[2]]), 
-        c("flags") := paste0(get("flags"), ";Exc-novel")]
-    res[get("flags") != "", c("flags") := 
-        substr(get("flags"), 2, nchar(get("flags")))]
+    res_IR <- res[get("EventType") == "IR"]
+    res_nonIR <- res[get("EventType") != "IR"]
+
+    flags_IR <- rep("", nrow(res_IR))
+    flags_nonIR <- rep("", nrow(res_nonIR))
+    
+    if(length(flags_IR) > 0) {
+        flags_IR[res_IR$NMD_direction == 1] <- paste0(
+            flags_IR[res_IR$NMD_direction == 1], ";Inc-NMD")
+        flags_IR[res_IR$NMD_direction == -1] <- paste0(
+            flags_IR[res_IR$NMD_direction == -1], ";Exc-NMD")
+    }    
+    if(length(flags_nonIR) > 0) {
+        flags_nonIR[res_nonIR$NMD_direction == 1] <- paste0(
+            flags_nonIR[res_nonIR$NMD_direction == 1], ";Inc-NMD")
+        flags_nonIR[res_nonIR$NMD_direction == -1] <- paste0(
+            flags_nonIR[res_nonIR$NMD_direction == -1], ";Exc-NMD")
+            
+        isIncNovel <- grepl("novel", tstrsplit(res_nonIR$EventName, 
+            split = ";", fixed = TRUE)[[1]])
+        isExcNovel <- grepl("novel", tstrsplit(res_nonIR$EventName, 
+            split = ";", fixed = TRUE)[[2]])
+        flags_nonIR[isIncNovel] <- paste0(
+            flags_nonIR[isIncNovel], ";Inc-novel")
+        flags_nonIR[isExcNovel] <- paste0(
+            flags_nonIR[isExcNovel], ";Exc-novel")
+    }
+    flagsStr <- c(flags_IR, flags_nonIR)
+    res[, c("flags") := substr(flagsStr, 2, nchar(flagsStr))]
     return(res[, c("EventName","EventType","EventRegion", "flags")])
 }
 
@@ -915,4 +887,94 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         }
     }
     colData
+}
+
+################################################################################
+
+.ASE_contrast_expr <- function(
+        se, test_factor, 
+        test_nom, test_denom,
+        batch1, batch2
+) {
+    countData <- as.matrix(rbind(assay(se, "Included"),
+        assay(se, "Excluded")))
+    rowData <- as.data.frame(rowData(se))
+    colData <- colData(se)
+    rownames(colData) <- colnames(se)
+    colnames(countData) <- rownames(colData)
+    rownames(countData) <- c(
+        paste(rowData$EventName, "Included", sep="."),
+        paste(rowData$EventName, "Excluded", sep=".")
+    )
+
+    condition_factor <- factor(colData[, test_factor])
+    if(batch2 != "") {
+        batch2_factor <- colData[, batch2]
+        batch1_factor <- colData[, batch1]
+        design1 <- model.matrix(~0 + batch1_factor + batch2_factor +
+            condition_factor)
+    } else if(batch1 != "") {
+        batch1_factor <- colData[, batch1]
+        design1 <- model.matrix(~0 + batch1_factor + condition_factor)
+    } else {
+        design1 <- model.matrix(~0 + condition_factor)
+    }
+    contrast <- rep(0, ncol(design1))
+    contrast_a <- paste0("condition_factor", test_nom)
+    contrast_b <- paste0("condition_factor", test_denom)
+    contrast[which(colnames(design1) == contrast_b)] <- -1
+    contrast[which(colnames(design1) == contrast_a)] <- 1
+    
+    return(list(
+        design1 = design1,
+        countData = countData,
+        contrast = contrast
+    ))
+}
+
+.ASE_contrast_ASE <- function(
+        se, test_factor, 
+        test_nom, test_denom,
+        batch1, batch2
+) {
+    countData <- as.matrix(cbind(assay(se, "Included"),
+        assay(se, "Excluded")))
+
+    rowData <- as.data.frame(rowData(se))
+    colData <- as.data.frame(colData(se))
+    colData <- rbind(colData, colData)
+    rownames(colData) <- c(
+        paste(colnames(se), "Included", sep="."),
+        paste(colnames(se), "Excluded", sep=".")
+    )
+    colData$ASE <- rep(c("Included", "Excluded"), each = ncol(se))
+    colnames(countData) <- rownames(colData)
+    rownames(countData) <- rowData$EventName
+
+    condition_factor <- factor(colData[, test_factor])
+    ASE <- colData[, "ASE"]
+    if(batch2 != "") {
+        batch2_factor <- colData[, batch2]
+        batch1_factor <- colData[, batch1]
+        design1 <- model.matrix(~0 + batch1_factor + batch2_factor +
+            condition_factor + condition_factor:ASE)
+    } else if(batch1 != "") {
+        batch1_factor <- colData[, batch1]
+        design1 <- model.matrix(~0 + batch1_factor + condition_factor +
+            condition_factor:ASE)
+    } else {
+        design1 <- model.matrix(~0 + condition_factor + condition_factor:ASE)
+    }
+    colnames(design1) <- sub(":",".",colnames(design1))
+    contrast <- rep(0, ncol(design1))
+    contrast_a <- paste0("condition_factor", test_nom, ".ASEIncluded")
+    contrast_b <- paste0("condition_factor", test_denom, ".ASEIncluded")
+    contrast[which(colnames(design1) == contrast_b)] <- -1
+    contrast[which(colnames(design1) == contrast_a)] <- 1
+    
+    return(list(
+        design1 = design1,
+        countData = countData,
+        contrast = contrast
+    ))
 }

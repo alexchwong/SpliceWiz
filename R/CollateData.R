@@ -526,6 +526,7 @@ collateData <- function(Experiment, reference_path, output_path,
                 junc <- data.list[["JC_seqname"]]
 
                 setnames(junc, "JC_seqname", "seqnames")
+                junc[, c("seqnames") := as.character(get("seqnames"))]
                 if (is.null(junc.segment)) {
                     junc.segment <- junc[, seq_len(4), with = FALSE]
                 } else {
@@ -586,7 +587,7 @@ collateData <- function(Experiment, reference_path, output_path,
             block <- df.internal[work]
             junc.common <- as.data.table(read.fst(file.path(output_path, 
                 "annotation", "junc.common.fst")))
-            
+            junc.common[, c("seqnames") := as.character(get("seqnames"))]
             final.df <- data.frame(
                 countJuncInSamples = rep(0, nrow(junc.common)),
                 countJuncThresholdSamples = rep(0, nrow(junc.common))
@@ -633,6 +634,7 @@ collateData <- function(Experiment, reference_path, output_path,
         read.fst(file.path(temp_output_path,
             paste(sample, "junc.fst.tmp", sep = ".")))
     )
+    junc[, c("seqnames") := as.character(get("seqnames"))]
     junc[, c("start") := get("start") + 1]
     junc$strand <- NULL # Use strand from junc.common
 
@@ -674,6 +676,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
                 setnames(sw, c(phrase, "Start", "End", "Strand"),
                     c("seqnames", "start", "end", "strand"))
+                sw[, c("seqnames") := as.character(get("seqnames"))]
                 if (is.null(sw.names)) {
                     sw.names <- sw$Name
                 } else {
@@ -738,7 +741,8 @@ collateData <- function(Experiment, reference_path, output_path,
                 setnames(tj, "TJ_seqname", "seqnames")
                 # Filter for novel tandem junctions only
                 tj <- tj[get("strand") == "."]
-
+                tj[, c("seqnames") := as.character(get("seqnames"))]
+                
                 # 0-base to 1-base conversion
                 tj[, c("start1") := get("start1") + 1]
                 tj[, c("start2") := get("start2") + 1]
@@ -928,11 +932,14 @@ collateData <- function(Experiment, reference_path, output_path,
         as.data.table = TRUE
     )
     junc.strand <- unique(junc.strand)
+    junc.strand[, c("seqnames") := as.character(get("seqnames"))]
 
     junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "junc.common.fst")))
     junc.stats <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "junc.common.counts.fst")))
+
+    junc.common[, c("seqnames") := as.character(get("seqnames"))]
 
     junc.common <- cbind(junc.common, junc.stats)
     
@@ -964,6 +971,9 @@ collateData <- function(Experiment, reference_path, output_path,
         
         # sanity check: remove unannotated junctions that lie outside genome
         junc.common.unanno.gr <- .grDT(junc.common.unanno)
+        seqlevels(junc.common.unanno.gr, pruning.mode = "coarse") <-
+            seqlevels(genome)
+        
         seqinfo.gr <- as(seqinfo(genome), "GenomicRanges")
 
         OL <- findOverlaps(junc.common.unanno.gr, seqinfo.gr, type = "within")
@@ -1044,6 +1054,9 @@ collateData <- function(Experiment, reference_path, output_path,
     tj.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "tj.common.fst")))
     
+    candidate.introns[, c("seqnames") := as.character(get("seqnames"))]
+    junc.common[, c("seqnames") := as.character(get("seqnames"))]
+    tj.common[, c("seqnames") := as.character(get("seqnames"))]
     # Strand assignment based on annotated junctions
     
     # First remove any tandem junctions not in junc.common
@@ -1111,6 +1124,7 @@ collateData <- function(Experiment, reference_path, output_path,
         as.data.table = TRUE
     )
     exons_brief <- unique(exons_brief)
+    exons_brief[, c("seqnames") := as.character(get("seqnames"))]
     exons_left <- paste0(exons_brief$seqnames, ":", exons_brief$start)
     tj_exon_left <- paste0(tj.common$seqnames, ":", tj.common$end1 + 1)
     exons_right <- paste0(exons_brief$seqnames, ":", exons_brief$end)
@@ -1185,6 +1199,11 @@ collateData <- function(Experiment, reference_path, output_path,
         minSamplesWithJunc, minSamplesAboveJuncThreshold,
         novelSplicing_requireOneAnnotatedSJ)
     # Finish inserting novel gtf
+    unique_seqlevels <- unique(c(
+        seqlevels(reference_data$gtf_gr), seqlevels(novel_gtf)
+    ))
+    seqlevels(reference_data$gtf_gr) <- unique_seqlevels
+    seqlevels(novel_gtf) <- unique_seqlevels
     
     if(verbose) message("...processing GTF")
     .process_gtf(c(reference_data$gtf_gr, novel_gtf), 
@@ -1238,7 +1257,10 @@ collateData <- function(Experiment, reference_path, output_path,
     known.junctions <- unique(as.data.table(read.fst(
         file.path(reference_path, "fst", "junctions.fst"), 
         columns = c("seqnames", "start", "end", "strand", "Event"))))
-        
+    
+    junc.common[, c("seqnames") := as.character(get("seqnames"))]
+    known.junctions[, c("seqnames") := as.character(get("seqnames"))]
+    
     junc.novel <- junc.common[!(get("Event") %in% known.junctions$Event)]
     if(nrow(junc.novel) == 0) {
         rm(junc.common, known.junctions)
@@ -1248,8 +1270,8 @@ collateData <- function(Experiment, reference_path, output_path,
     
     # filter novel junctions
     junc.novel <- junc.novel[
-            countJuncInSamples >= minSamplesWithJunc &
-            countJuncThresholdSamples >= minSamplesAboveJuncThreshold
+            get("countJuncInSamples") >= minSamplesWithJunc |
+            get("countJuncThresholdSamples") >= minSamplesAboveJuncThreshold
     ]
     if(nrow(junc.novel) == 0) {
         rm(junc.common, known.junctions)
@@ -1267,8 +1289,9 @@ collateData <- function(Experiment, reference_path, output_path,
             ranges = IRanges(end, end), strand = strand))
         nj.right <- with(junc.novel, GRanges(seqnames = seqnames,
             ranges = IRanges(end, end), strand = strand))
-        OL_left <- findOverlaps(nj.left, kj.left)
-        OL_right <- findOverlaps(nj.left, kj.left)
+
+        OL_left <- .findOverlaps_merge(nj.left, kj.left)
+        OL_right <- .findOverlaps_merge(nj.right, kj.right)
         
         at_least_one_end <- unique(c(from(OL_left), from(OL_right)))
         junc.novel <- junc.novel[at_least_one_end]    
@@ -1288,6 +1311,7 @@ collateData <- function(Experiment, reference_path, output_path,
     tj.novel <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "tj.common.annotated.fst")))
     if(nrow(tj.novel) > 0) {
+        tj.novel[, c("seqnames") := as.character(get("seqnames"))]
         # Filter tj.novel by junc.novel
         setnames(tj.novel, c("start1", "end1"), c("start", "end"))
         tmp <- tj.novel[!junc.novel, 
@@ -1304,12 +1328,12 @@ collateData <- function(Experiment, reference_path, output_path,
         # Remove events in junc.novel that are also featured in tj.novel
         tmp_gr <- GRanges(tj.novel$seqnames, 
             IRanges(tj.novel$start1, tj.novel$end1), tj.novel$strand)
-        OL <- findOverlaps(.grDT(junc.novel), tmp_gr, type = "equal")
+        OL <- .findOverlaps_merge(.grDT(junc.novel), tmp_gr, type = "equal")
         if(length(OL@from) > 0) junc.novel <- junc.novel[-unique(OL@from)]
 
         tmp_gr <- GRanges(tj.novel$seqnames, 
             IRanges(tj.novel$start2, tj.novel$end2), tj.novel$strand)
-        OL <- findOverlaps(.grDT(junc.novel), tmp_gr, type = "equal")
+        OL <- .findOverlaps_merge(.grDT(junc.novel), tmp_gr, type = "equal")
         if(length(OL@from) > 0) junc.novel <- junc.novel[-unique(OL@from)]
     }
     
@@ -1334,7 +1358,8 @@ collateData <- function(Experiment, reference_path, output_path,
         )
     })
     Genes <- read.fst(file.path(reference_path, "fst/Genes.fst"))
-    OL <- findOverlaps(gr_transcript, .grDT(Genes))
+
+    OL <- .findOverlaps_merge(gr_transcript, .grDT(Genes))
     OL.DT <- data.table(from = OL@from, to = OL@to)
     OL.DT <- unique(OL.DT, by = "from")
     junc_genes <- data.table(juncID = seq_len(length(gr_transcript)))
@@ -1478,6 +1503,9 @@ collateData <- function(Experiment, reference_path, output_path,
     junc.novel <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "junc.novel.filtered.fst")))
     
+    tj.novel[, c("seqnames") := as.character(get("seqnames"))]
+    junc.novel[, c("seqnames") := as.character(get("seqnames"))]
+    
     # Filter tj.novel by junc.novel
     setnames(tj.novel, c("start1", "end1"), c("start", "end"))
     tmp <- tj.novel[!junc.novel, on = c("seqnames", "start", "end", "strand")]
@@ -1578,6 +1606,8 @@ collateData <- function(Experiment, reference_path, output_path,
     Exon.Groups <- as.data.table(
         read.fst(file.path(reference_path, "fst", "Exons.Group.fst"))
     )
+    junc.common[, c("seqnames") := as.character(get("seqnames"))]
+    Exon.Groups[, c("seqnames") := as.character(get("seqnames"))]
     # Always calculate stranded for junctions
     Exon.Groups.S <- Exon.Groups[get("strand") != "*"]
 
@@ -1630,6 +1660,9 @@ collateData <- function(Experiment, reference_path, output_path,
     Exon.Groups <- as.data.table(
         read.fst(file.path(reference_path, "fst", "Exons.Group.fst")))
 
+    sw.common[, c("seqnames") := as.character(get("seqnames"))]
+    Exon.Groups[, c("seqnames") := as.character(get("seqnames"))]
+    
     # Always calculate stranded for junctions
     Exon.Groups.S <- Exon.Groups[get("strand") != "*"]
 
@@ -1704,6 +1737,9 @@ collateData <- function(Experiment, reference_path, output_path,
     sw.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "IR.fst")))
 
+    candidate.introns[, c("seqnames") := as.character(get("seqnames"))]
+    sw.common[, c("seqnames") := as.character(get("seqnames"))]
+    
     # Order introns by importance (WHY?)
     candidate.introns[, c("transcript_biotype_2") := get("transcript_biotype")]
     candidate.introns[
@@ -1779,7 +1815,8 @@ collateData <- function(Experiment, reference_path, output_path,
         file.path(norm_output_path, "annotation", "IR.fst")))
     Splice.Anno <- as.data.table(read.fst(
         file.path(norm_output_path, "annotation", "Splice.fst")))
-
+    sw.common[, c("seqnames") := as.character(get("seqnames"))]
+    
     sw.anno.brief <- sw.common[, c("Name", "EventRegion")]
     setnames(sw.anno.brief, "Name", "EventName")
     sw.anno.brief[, c("EventType") := "IR"]
@@ -1969,6 +2006,9 @@ collateData <- function(Experiment, reference_path, output_path,
         file.path(norm_output_path, "annotation", "Splice.fst")))
     junc_PSI <- as.data.table(read.fst(
         file.path(norm_output_path, "junc_PSI_index.fst")))
+    
+    junc.common[, c("seqnames") := as.character(get("seqnames"))]
+    sw.common[, c("seqnames") := as.character(get("seqnames"))]
 
     work <- jobs[[x]]
     block <- df.internal[work]
@@ -2046,16 +2086,6 @@ collateData <- function(Experiment, reference_path, output_path,
     return(templates)
 }
 
-.fo_process_junc <- function(DT1, DT2) {
-    gr1 <- .grDT(DT1)
-    gr2 <- .grDT(DT2)
-    unified_seqlevels <- sort(unique(c(seqlevels(gr1), seqlevels(gr2))))
-    seqlevels(gr1) <- unified_seqlevels
-    seqlevels(gr2) <- unified_seqlevels
-    OL <- findOverlaps(gr1, gr2)
-    return(OL)
-}
-
 # Collates junction counts, given sample strandedness and junction strand anno
 # - calculates SpliceLeft, SpliceRight, SpliceOver sums
 .collateData_process_junc <- function(sample, strand,
@@ -2064,6 +2094,7 @@ collateData <- function(Experiment, reference_path, output_path,
         read.fst(file.path(norm_output_path, "temp",
             paste(sample, "junc.fst.tmp", sep = ".")))
     )
+    junc[, c("seqnames") := as.character(get("seqnames"))]
     junc[, c("start") := get("start") + 1]
     junc$strand <- NULL # Use strand from junc.common
 
@@ -2118,7 +2149,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
     if (nrow(junc.subset) > 0) {
         subject <- junc[get("count") > 0]
-        OL <- .fo_process_junc(junc.subset, subject)
+        OL <- .findOverlaps_merge_DT(junc.subset, subject)
 
         splice.overlaps.DT <- data.table(from = from(OL), to = to(OL))
         splice.overlaps.DT[,
@@ -2155,7 +2186,7 @@ collateData <- function(Experiment, reference_path, output_path,
         read.fst(file.path(norm_output_path, "temp",
             paste(sample, "sw.fst.tmp", sep = ".")))
     )
-
+    sw[, c("seqnames") := as.character(get("seqnames"))]
     sw[, c("start") := get("start") + 1]
     sw <- sw[sw.common, on = colnames(sw.common)[seq_len(6)],
         c("EventRegion") := get("i.EventRegion")]
@@ -2383,27 +2414,37 @@ collateData <- function(Experiment, reference_path, output_path,
 
     # First guess depth based on depths of any junction that is assessed
     #   by processBAM
-    splice.no_region[, c("Depth") := 0]
-    splice.no_region[get("Depth1a") > get("Depth2a"),
-        c("DepthA") := get("Depth1a")]
-    splice.no_region[get("Depth1b") > get("Depth2b"),
-        c("DepthB") := get("Depth1b")]
-    splice.no_region[get("Depth1a") <= get("Depth2a"),
-        c("DepthA") := get("Depth2a")]
-    splice.no_region[get("Depth1b") <= get("Depth2b"),
-        c("DepthB") := get("Depth2b")]
-    splice.no_region[get("DepthA") > get("DepthB"),
-        c("Depth") := get("DepthA")]
-    splice.no_region[get("DepthA") <= get("DepthB"),
-        c("Depth") := get("DepthB")]
+    # - DepthA, DepthB: upstream and downstream IR+Splice depths
+    splice.no_region[, c("DepthUp", "DepthDown") := list(0,0)]
+    splice.no_region[get("Depth1a") > get("Depth1b"),
+        c("DepthUp") := get("Depth1a")]
+    splice.no_region[get("Depth1a") <= get("Depth1b"),
+        c("DepthUp") := get("Depth1b")]
+    # DepthDown only matters where EventType %in% c("MXE", "SE")
+    splice.no_region[!(get("EventType") %in% c("MXE", "SE")),
+         c("DepthDown") := get("DepthUp")]
+    splice.no_region[get("EventType") %in% c("SE") & 
+            get("Depth1b") > get("Depth2a"),
+        c("DepthDown") := get("Depth1b")]
+    splice.no_region[get("EventType") %in% c("SE") & 
+            get("Depth1b") <= get("Depth2a"),
+        c("DepthDown") := get("Depth2a")]
+    splice.no_region[get("EventType") %in% c("MXE") & 
+            get("Depth2b") > get("Depth2a"),
+        c("DepthDown") := get("Depth2b")]
+    splice.no_region[get("EventType") %in% c("MXE") & 
+            get("Depth2b") <= get("Depth2a"),
+        c("DepthDown") := get("Depth2a")]
 
-    # If this fails, guess depth based on JG_up / JG_down
-    splice.no_region[get("Depth") == 0 &
-        get("count_JG_up") > get("count_JG_down"),
-        c("Depth") := get("count_JG_up")]
-    splice.no_region[get("Depth") == 0 &
-        get("count_JG_up") <= get("count_JG_down"),
-        c("Depth") := get("count_JG_down")]
+    splice.no_region[, c("Depth") := 0]
+    splice.no_region[get("DepthUp") < get("count_JG_up"),
+        c("DepthUp") := get("count_JG_up")]
+    splice.no_region[get("DepthDown") < get("count_JG_down"),
+        c("DepthDown") := get("count_JG_down")]
+    splice.no_region[get("DepthUp") > get("DepthDown"),
+        c("Depth") := get("DepthUp")]
+    splice.no_region[get("DepthUp") <= get("DepthDown"),
+        c("Depth") := get("DepthDown")]
 
     splice[, c("TotalDepth") := 0]
     splice[sw, on = "EventRegion",
@@ -2547,11 +2588,11 @@ collateData <- function(Experiment, reference_path, output_path,
         assays[[exc]] <- HDF5Array(h5filename, exc)
     }
     
-    if(length(rowname_lists$junc_rownames) > 1000000)
-        .log(paste(
-            "Please ignore any messages below about compression and chunking;",
-            "The H5 file chunk size is already optimized."
-        ), "message")
+    # if(length(rowname_lists$junc_rownames) > 1000000)
+        # .log(paste(
+            # "Please ignore any messages below about compression and chunking;",
+            # "The H5 file chunk size is already optimized."
+        # ), "message")
     for (junc in junc.todo) {
         # h5writeDimnames(list(rowname_lists$junc_rownames, df.internal$sample),
             # h5filename, junc)
@@ -2587,6 +2628,8 @@ collateData <- function(Experiment, reference_path, output_path,
     h5createFile(h5filename)
     for (assay in assay.todo) {
         chunk_row <- nrow(rowData)
+        # 100 kb 1-column chunks
+        if(chunk_row > 1024 * 100 / 8) chunk_row <- 1024 * 100 / 8
         h5createDataset(file = h5filename,
             dataset = assay,
             dims = c(nrow(rowData), num_samples),
@@ -2596,6 +2639,8 @@ collateData <- function(Experiment, reference_path, output_path,
     }
     for (inc in inc.todo) {
         chunk_row <- length(Inc_Events)
+        # 100 kb 1-column chunks
+        if(chunk_row > 1024 * 100 / 8) chunk_row <- 1024 * 100 / 8
         h5createDataset(file = h5filename,
             dataset = inc,
             dims = c(length(Inc_Events), num_samples),
@@ -2604,6 +2649,8 @@ collateData <- function(Experiment, reference_path, output_path,
         )
     }
     for (exc in exc.todo) {
+        # 100 kb 1-column chunks
+        if(chunk_row > 1024 * 100 / 8) chunk_row <- 1024 * 100 / 8
         chunk_row <- length(Exc_Events)
         h5createDataset(file = h5filename, dataset = exc,
             dims = c(length(Exc_Events), num_samples),
@@ -2612,6 +2659,8 @@ collateData <- function(Experiment, reference_path, output_path,
         )
     }
     for (junc in junc.todo) {
+        # 100 kb 1-column chunks
+        if(chunk_row > 1024 * 100 / 8) chunk_row <- 1024 * 100 / 8
         chunk_row <- length(junc_rownames)
         h5createDataset(file = h5filename, dataset = junc,
             dims = c(length(junc_rownames), num_samples),

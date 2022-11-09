@@ -544,19 +544,21 @@ server_vis_heatmap <- function(
                     is_valid(input$anno_col_heat_sort) &&
                     input$anno_col_heat_sort %in% colnames(colData)
                 ) {
-                    mat <- mat[, order(
+                    new_order <- order(
                         colData[, input$anno_col_heat_sort],
                         decreasing = input$anno_col_heat_sort_order
-                    )]
+                    )
+                    mat <- mat[, new_order]
+                    colData_sorted <- colData[new_order, ]
                     settings_Heat$ggplot <- pheatmap(
                         mat, color = color_vec, 
-                        annotation_col = colData[, 
+                        annotation_col = colData_sorted[, 
                             input$anno_col_heat, drop=FALSE],
                         cluster_cols = FALSE
                     )
                     settings_Heat$final_plot <- heatmaply::heatmaply(
                         mat, color = color, 
-                        col_side_colors = colData[, 
+                        col_side_colors = colData_sorted[, 
                             input$anno_col_heat, drop=FALSE],
                         dendrogram = "row"
                     )

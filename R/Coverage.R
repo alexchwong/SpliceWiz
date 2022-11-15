@@ -1526,22 +1526,28 @@ determine_compatible_events <- function(
                 geom_ribbon(data = df, alpha = 0.2,
                     aes(x = get("x"), y = get("mean"),
                     ymin = get("mean") - get("ci"),
-                    ymax = get("mean") + get("ci"),
-                    fill = get("track")))
+                    ymax = get("mean") + get("ci")# ,
+                    # fill = get("track")
+                    )
+                )
             } else if(args$ribbon_mode == "sd") {
                 gp_track[[i]] <- gp_track[[i]] +
                 geom_ribbon(data = df, alpha = 0.2,
                     aes(x = get("x"), y = get("mean"),
                     ymin = get("mean") - get("sd"),
-                    ymax = get("mean") + get("sd"),
-                    fill = get("track")))
+                    ymax = get("mean") + get("sd")# ,
+                    # fill = get("track")
+                    )
+                )
             } else if(args$ribbon_mode == "sem") {
                 gp_track[[i]] <- gp_track[[i]] +
                 geom_ribbon(data = df, alpha = 0.2,
                     aes(x = get("x"), y = get("mean"),
                     ymin = get("mean") - get("sem"),
-                    ymax = get("mean") + get("sem"),
-                    fill = get("track")))
+                    ymax = get("mean") + get("sem")# ,
+                    # fill = get("track")
+                    )
+                )
             }
             gp_track[[i]] <- gp_track[[i]] +
                 geom_line(data = df,

@@ -1,0 +1,8 @@
+pandoc: '2.18'
+pkgdown: 2.0.6
+pkgdown_sha: ~
+articles:
+  SW_Cookbook: SW_Cookbook.html
+  SW_QuickStart: SW_QuickStart.html
+last_built: 2022-11-15T05:15Z
+

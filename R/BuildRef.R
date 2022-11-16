@@ -335,6 +335,7 @@ buildRef <- function(
         reference_data$genome, reference_data$gtf_gr)
     reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
     
+    .process_ontology(reference_path, genome_type, verbose)
     .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
     extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
     reference_data$gtf_gr <- NULL # To save memory, remove original gtf
@@ -1278,6 +1279,32 @@ Get_GTF_file <- function(reference_path) {
 
 ################################################################################
 # Sub
+
+.process_ontology <- function(
+        reference_path, genome_type, verbose = TRUE
+) {
+    hasPackage <- .check_package_installed("DBI", "1.0.0", "silent")
+    hasPackage <- hasPackage & 
+        .check_package_installed("GO.db", "3.12.0", "silent")
+    
+    if(!hasPackage & genome_type %in% c("hg38", "hg19", "mm10", "mm9")) {
+        .log(paste("Packages DBI and GO.db are required",
+            "for gene ontology annotations, skipping..."
+        ), "message")
+        return()
+    }
+    if(genome_type %in% c("hg38", "hg19")) {
+        species <- "Homo sapiens"
+    } else if(genome_type %in% c("mm10", "mm9")) {
+        species <- "Mus musculus"
+    } else {
+        if(verbose) 
+            .log("Gene ontology not prepared for this reference", "message")
+        return()
+    }
+    ontDT <- .get_geneGO(species, verbose)
+    fst::write.fst(ontDT, file.path(reference_path, "fst", "Ontology.fst"))
+}
 
 .process_gtf <- function(gtf_gr, reference_path, verbose = TRUE) {
     # Create "fst" subdirectory if not exists

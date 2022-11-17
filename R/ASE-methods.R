@@ -693,7 +693,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2)
 
     # countData_use <- limma::voom(in_data$countData, in_data$design1)
-    y <- edgeR::DGEList(counts=in_data$countData)
+    y <- edgeR::DGEList(counts=in_data$countData, remove.zeros = FALSE)
     y <- edgeR::calcNormFactors(y)
     y <- edgeR::estimateDisp(y,in_data$design1)
     

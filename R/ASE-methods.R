@@ -286,6 +286,60 @@ ASE_limma <- function(se, test_factor, test_nom, test_denom,
 }
 
 #' @describeIn ASE-methods Use limma to perform differential ASE analysis of
+#'   a filtered NxtSE object
+#' @export
+ASE_edgeR <- function(se, test_factor, test_nom, test_denom,
+        batch1 = "", batch2 = "",
+        IRmode = c("all", "annotated", "annotated_binary"),
+        filter_antiover = TRUE, filter_antinear = FALSE) {
+
+    .check_package_installed("edgeR", "3.32.0")
+    .ASE_check_args(colData(se), test_factor,
+        test_nom, test_denom, batch1, batch2)
+    IRmode <- match.arg(IRmode)
+    se_use <- .ASE_filter(
+        se, filter_antiover, filter_antinear, IRmode)
+
+    if(nrow(se_use) == 0)
+        .log("No events for ASE analysis after filtering")
+
+    .log("Performing edgeR contrast for included / excluded counts separately",
+        "message")
+    res.edgeR <- .ASE_edgeR_contrast(se_use,
+        test_factor, test_nom, test_denom,
+        batch1, batch2)
+    res.inc <- res.edgeR[grepl(".Included", get("EventName"))]
+    res.inc[, c("EventName") :=
+        sub(".Included","",get("EventName"), fixed=TRUE)]
+    # res.inc <- res.inc[get("AveExpr") > 1]   # Filter as 0/5 is not diff to 0/10
+    res.exc <- res.edgeR[grepl(".Excluded", get("EventName"))]
+    res.exc[, c("EventName") :=
+        sub(".Excluded","",get("EventName"), fixed=TRUE)]
+    # res.exc <- res.exc[get("AveExpr") > 1]
+
+    .log("Performing edgeR contrast for included / excluded counts together",
+        "message")
+    rowData <- as.data.frame(rowData(se_use))
+    se_use <- se_use[rowData$EventName %in% res.inc$EventName &
+        rowData$EventName %in% res.exc$EventName,]
+    res.ASE <- .ASE_edgeR_contrast_ASE(se_use,
+        test_factor, test_nom, test_denom,
+        batch1, batch2)
+    res.ASE[res.inc, on = "EventName",
+        paste("Inc", colnames(res.inc)[seq_len(5)], sep=".") :=
+        list(get("i.logFC"), get("i.logCPM"), get("i.F"),
+            get("i.PValue"), get("i.FDR"))]
+    res.ASE[res.exc, on = "EventName",
+        paste("Exc", colnames(res.inc)[seq_len(5)], sep=".") :=
+        list(get("i.logFC"), get("i.logCPM"), get("i.F"),
+            get("i.PValue"), get("i.FDR"))]
+    setorderv(res.ASE, "F", order = -1)
+    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
+        test_nom, test_denom)
+    return(res.ASE)
+}
+
+#' @describeIn ASE-methods Use limma to perform differential ASE analysis of
 #'   a filtered NxtSE object (time series)
 #' @export
 ASE_limma_timeseries <- function(se, test_factor,
@@ -632,6 +686,28 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     return(res)
 }
 
+.ASE_edgeR_contrast <- function(se, test_factor, test_nom, test_denom,
+        batch1, batch2) {
+    in_data <- .ASE_contrast_expr(se, test_factor, 
+        test_nom, test_denom,
+        batch1, batch2)
+
+    # countData_use <- limma::voom(in_data$countData, in_data$design1)
+    y <- edgeR::DGEList(counts=in_data$countData)
+    y <- edgeR::calcNormFactors(y)
+    y <- edgeR::estimateDisp(y,in_data$design1)
+    
+    fit <- edgeR::glmQLFit(y, in_data$design1)
+    qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)
+
+    res <- edgeR::topTags(qlf, n = nrow(y))
+    res$table$EventName <- rownames(res)
+    
+    rm(fit, qlf, in_data, y)
+    gc()
+    return(as.data.table(res$table))
+}
+
 .ASE_limma_contrast_ts <- function(se, test_factor, # test_nom, test_denom,
         batch1, batch2, degrees) {
     in_data <- .ASE_contrast_expr_ts(
@@ -680,6 +756,26 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     rm(fit, in_data, countData_use)
     gc()
     return(res)
+}
+
+.ASE_edgeR_contrast_ASE <- function(se, test_factor, test_nom, test_denom,
+        batch1, batch2) {
+    in_data <- .ASE_contrast_ASE(se, test_factor, 
+        test_nom, test_denom,
+        batch1, batch2)
+
+    y <- edgeR::DGEList(counts=in_data$countData)
+    y <- edgeR::estimateDisp(y,in_data$design1)
+    
+    fit <- edgeR::glmQLFit(y, in_data$design1)
+    qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)
+
+    res <- edgeR::topTags(qlf, n = nrow(y))
+    res$table$EventName <- rownames(res)
+    
+    rm(fit, qlf, in_data, y)
+    gc()
+    return(as.data.table(res$table))
 }
 
 .ASE_limma_contrast_ASE_ts <- function(se, test_factor, # test_nom, test_denom,

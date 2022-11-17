@@ -3,6 +3,7 @@
 \name{ASE-methods}
 \alias{ASE-methods}
 \alias{ASE_limma}
+\alias{ASE_edgeR}
 \alias{ASE_limma_timeseries}
 \alias{ASE_DESeq}
 \alias{ASE_DoubleExpSeq}
@@ -10,6 +11,18 @@
 \title{Differential Alternative Splicing Event analysis}
 \usage{
 ASE_limma(
+  se,
+  test_factor,
+  test_nom,
+  test_denom,
+  batch1 = "",
+  batch2 = "",
+  IRmode = c("all", "annotated", "annotated_binary"),
+  filter_antiover = TRUE,
+  filter_antinear = FALSE
+)
+
+ASE_edgeR(
   se,
   test_factor,
   test_nom,
@@ -266,6 +279,9 @@ Specifically, this means the included / excluded isoforms are as follows:\tabula
 \section{Functions}{
 \itemize{
 \item \code{ASE_limma}: Use limma to perform differential ASE analysis of
+a filtered NxtSE object
+
+\item \code{ASE_edgeR}: Use limma to perform differential ASE analysis of
 a filtered NxtSE object
 
 \item \code{ASE_limma_timeseries}: Use limma to perform differential ASE analysis of

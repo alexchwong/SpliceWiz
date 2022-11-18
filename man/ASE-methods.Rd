@@ -281,7 +281,7 @@ Specifically, this means the included / excluded isoforms are as follows:\tabula
 \item \code{ASE_limma}: Use limma to perform differential ASE analysis of
 a filtered NxtSE object
 
-\item \code{ASE_edgeR}: Use limma to perform differential ASE analysis of
+\item \code{ASE_edgeR}: Use edgeR to perform differential ASE analysis of
 a filtered NxtSE object
 
 \item \code{ASE_limma_timeseries}: Use limma to perform differential ASE analysis of

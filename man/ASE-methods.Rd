@@ -5,6 +5,7 @@
 \alias{ASE_limma}
 \alias{ASE_edgeR}
 \alias{ASE_limma_timeseries}
+\alias{ASE_edgeR_timeseries}
 \alias{ASE_DESeq}
 \alias{ASE_DoubleExpSeq}
 \alias{ASE_satuRn}
@@ -35,6 +36,17 @@ ASE_edgeR(
 )
 
 ASE_limma_timeseries(
+  se,
+  test_factor,
+  batch1 = "",
+  batch2 = "",
+  degrees_of_freedom = 1,
+  IRmode = c("all", "annotated", "annotated_binary"),
+  filter_antiover = TRUE,
+  filter_antinear = FALSE
+)
+
+ASE_edgeR_timeseries(
   se,
   test_factor,
   batch1 = "",
@@ -203,7 +215,7 @@ full models. See \link[DoubleExpSeq:DBGLM1]{DoubleExpSeq::DBGLM1} for details.
 }
 }
 \description{
-Use Limma, DESeq2, DoubleExpSeq edgeR and satuRn wrapper functions
+Use Limma, DESeq2, DoubleExpSeq, edgeR, and satuRn wrapper functions
 to test for differential Alternative Splice Events (ASEs)
 }
 \details{
@@ -238,8 +250,9 @@ edgeR-based option produces differential ASEs that are less biased towards
 low counts. Our preliminary analysis shows it to be more accurate than limma
 or DoubleExpSeq based methods.
 
-(NEW) For time series or other complex analysis using edgeR, please see
-\link{ASE-GLM-edgeR} to build your own GLM models.
+(NEW) For time series analysis using edgeR, \code{ASE_edgeR_timeseries()} can be
+used interchangeably with its counterpart limma-based function. For
+complex models, please see \link{ASE-GLM-edgeR} to build your own GLM models.
 
 Using \strong{DoubleExpSeq}, included and excluded counts are modeled using
 the generalized beta prime distribution, using empirical Bayes shrinkage
@@ -310,6 +323,9 @@ a filtered NxtSE object
 \item \code{ASE_limma_timeseries}: Use limma to perform differential ASE analysis of
 a filtered NxtSE object (time series)
 
+\item \code{ASE_edgeR_timeseries}: Use edgeR to perform differential time series
+of a filtered NxtSE object
+
 \item \code{ASE_DESeq}: Use DESeq2 to perform differential ASE analysis of
 a filtered NxtSE object
 
@@ -358,6 +374,7 @@ colData(se)$timepoint <- rep(c(1,2,3), each = 2)
 colData(se)$batch <- rep(c("1", "2"), 3)
 
 res_limma_timeseries <- ASE_limma_timeseries(se, "timepoint")
+res_edgeR_timeseries <- ASE_edgeR_timeseries(se, "timepoint")
 res_DESeq_timeseries <- ASE_DESeq(se, "timepoint")
 
 }

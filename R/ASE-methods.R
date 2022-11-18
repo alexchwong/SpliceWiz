@@ -1,6 +1,6 @@
 #' Differential Alternative Splicing Event analysis
 #'
-#' Use Limma, DESeq2, DoubleExpSeq edgeR and satuRn wrapper functions 
+#' Use Limma, DESeq2, DoubleExpSeq, edgeR, and satuRn wrapper functions 
 #' to test for differential Alternative Splice Events (ASEs)
 #'
 #' @details
@@ -36,8 +36,9 @@
 #' low counts. Our preliminary analysis shows it to be more accurate than limma
 #' or DoubleExpSeq based methods.
 #'
-#' (NEW) For time series or other complex analysis using edgeR, please see
-#' [ASE-GLM-edgeR] to build your own GLM models.
+#' (NEW) For time series analysis using edgeR, `ASE_edgeR_timeseries()` can be
+#' used interchangeably with its counterpart limma-based function. For
+#' complex models, please see [ASE-GLM-edgeR] to build your own GLM models.
 #'
 #' Using **DoubleExpSeq**, included and excluded counts are modeled using
 #' the generalized beta prime distribution, using empirical Bayes shrinkage
@@ -227,6 +228,7 @@
 #' colData(se)$batch <- rep(c("1", "2"), 3)
 #'
 #' res_limma_timeseries <- ASE_limma_timeseries(se, "timepoint")
+#' res_edgeR_timeseries <- ASE_edgeR_timeseries(se, "timepoint")
 #' res_DESeq_timeseries <- ASE_DESeq(se, "timepoint")
 #' 
 #' @name ASE-methods
@@ -352,15 +354,16 @@ ASE_edgeR <- function(se, test_factor, test_nom, test_denom,
     res.ASE <- .ASE_edgeR_contrast_ASE(se_use,
         test_factor, test_nom, test_denom,
         batch1, batch2)
-    res.ASE[res.inc, on = "EventName",
-        paste("Inc", colnames(res.inc)[seq_len(5)], sep=".") :=
-        list(get("i.logFC"), get("i.logCPM"), get("i.F"),
-            get("i.PValue"), get("i.FDR"))]
-    res.ASE[res.exc, on = "EventName",
-        paste("Exc", colnames(res.inc)[seq_len(5)], sep=".") :=
-        list(get("i.logFC"), get("i.logCPM"), get("i.F"),
-            get("i.PValue"), get("i.FDR"))]
+    
+    colnames(res.inc)[-ncol(res.inc)] <- paste(
+        "Inc", colnames(res.inc)[-ncol(res.inc)], sep = ".")
+    colnames(res.exc)[-ncol(res.exc)] <- paste(
+        "Exc", colnames(res.exc)[-ncol(res.exc)], sep = ".")
+
+    res.ASE <- res.ASE[res.inc, on = "EventName"]
+    res.ASE <- res.ASE[res.exc, on = "EventName"]
     setorderv(res.ASE, "F", order = -1)
+    
     res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
         test_nom, test_denom)
     return(res.ASE)
@@ -435,6 +438,65 @@ ASE_limma_timeseries <- function(se, test_factor,
     }
     setorderv(res.ASE, "B", order = -1)
 
+    condlist <- as.list(sort(unique(
+        unlist(colData(se)[, test_factor]
+    ))))
+    if(length(condlist) > 6) condlist <- condlist[seq_len(6)]
+    res.ASE <- .ASE_add_diag_multi(res.ASE, se_use, test_factor, condlist)
+
+    return(res.ASE)
+}
+
+#' @describeIn ASE-methods Use edgeR to perform differential time series
+#'   of a filtered NxtSE object
+#' @export
+ASE_edgeR_timeseries <- function(se, test_factor,
+        batch1 = "", batch2 = "",
+        degrees_of_freedom = 1,
+        IRmode = c("all", "annotated", "annotated_binary"),
+        filter_antiover = TRUE, filter_antinear = FALSE
+) {
+
+    .check_package_installed("edgeR", "3.32.0")
+    .ASE_check_args(colData(se), test_factor, "", "",
+        batch1, batch2, allowTimeSeries = TRUE)
+    IRmode <- match.arg(IRmode)
+    se_use <- .ASE_filter(
+        se, filter_antiover, filter_antinear, IRmode)
+
+    if(nrow(se_use) == 0)
+        .log("No events for ASE analysis after filtering")
+
+    .log("Performing edgeR contrast for included / excluded counts separately",
+        "message")
+    res.edgeR <- .ASE_edgeR_contrast_ts(se_use,
+        test_factor,
+        batch1, batch2, degrees_of_freedom)
+    res.inc <- res.edgeR[grepl(".Included", get("EventName"))]
+    res.inc[, c("EventName") :=
+        sub(".Included","",get("EventName"), fixed=TRUE)]
+    res.exc <- res.edgeR[grepl(".Excluded", get("EventName"))]
+    res.exc[, c("EventName") :=
+        sub(".Excluded","",get("EventName"), fixed=TRUE)]
+
+    .log("Performing edgeR contrast for included / excluded counts together",
+        "message")
+    rowData <- as.data.frame(rowData(se_use))
+    se_use <- se_use[rowData$EventName %in% res.inc$EventName &
+        rowData$EventName %in% res.exc$EventName,]
+    res.ASE <- .ASE_edgeR_contrast_ASE_ts(se_use,
+        test_factor, # test_nom, test_denom,
+        batch1, batch2, degrees_of_freedom)
+
+    colnames(res.inc)[-ncol(res.inc)] <- paste(
+        "Inc", colnames(res.inc)[-ncol(res.inc)], sep = ".")
+    colnames(res.exc)[-ncol(res.exc)] <- paste(
+        "Exc", colnames(res.exc)[-ncol(res.exc)], sep = ".")
+
+    res.ASE <- res.ASE[res.inc, on = "EventName"]
+    res.ASE <- res.ASE[res.exc, on = "EventName"]
+    setorderv(res.ASE, "F", order = -1)
+    
     condlist <- as.list(sort(unique(
         unlist(colData(se)[, test_factor]
     ))))
@@ -666,33 +728,6 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     return(TRUE)
 }
 
-# Check arguments are valid
-.ASE_get_models <- function(se, 
-        strModelFormula, strASEFormula
-) {
-    colData <- as.data.frame(colData(se))
-    design <- model.matrix(
-        as.formula(strModelFormula),
-        data = colData
-    )
-    colData_ASE <- rbind(colData, colData)
-    colData_ASE$ASE <- rep(c("Included", "Excluded"), each = nrow(colData))
-    rownames(colData_ASE) <- c(
-        paste0(rownames(colData), ".Included"),
-        paste0(rownames(colData), ".Excluded")
-    )
-    design_ASE <- model.matrix(
-        as.formula(strASEFormula),
-        data = colData_ASE
-    )
-    return(list(
-        design = design,
-        design_ASE = design_ASE,
-        colData = colData,
-        colData_ASE = colData_ASE
-    ))
-}
-
 # Filter antiover and antinear
 .ASE_filter <- function(se, filter_antiover, filter_antinear, IRmode) {
     se_use <- se
@@ -763,53 +798,6 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     return(as.data.table(res$table))
 }
 
-.ASE_edgeR_fitIncExc <- function(se, model) {
-    countData <- as.matrix(rbind(assay(se, "Included"),
-        assay(se, "Excluded")))
-    rowData <- as.data.frame(rowData(se))
-    colData <- colData(se)
-    rownames(colData) <- colnames(se)
-    colnames(countData) <- rownames(colData)
-    rownames(countData) <- c(
-        paste(rowData$EventName, "Included", sep="."),
-        paste(rowData$EventName, "Excluded", sep=".")
-    )
-
-    y <- edgeR::DGEList(counts=countData, remove.zeros = FALSE)
-    y <- edgeR::calcNormFactors(y)
-    y <- edgeR::estimateDisp(y, model)
-    
-    fit <- edgeR::glmQLFit(y, model)
-    return(list(
-        fit = fit,
-        model = model
-    ))
-}
-
-.ASE_edgeR_fitASE <- function(se, model) {
-    countData <- as.matrix(cbind(assay(se, "Included"),
-        assay(se, "Excluded")))
-
-    rowData <- as.data.frame(rowData(se))
-    colData <- as.data.frame(colData(se))
-    colData <- rbind(colData, colData)
-    rownames(colData) <- c(
-        paste(colnames(se), "Included", sep="."),
-        paste(colnames(se), "Excluded", sep=".")
-    )
-    colData$ASE <- rep(c("Included", "Excluded"), each = ncol(se))
-    colnames(countData) <- rownames(colData)
-    rownames(countData) <- rowData$EventName
-
-    y <- edgeR::DGEList(counts=countData, remove.zeros = FALSE)
-    y <- edgeR::estimateDisp(y, model)
-    
-    fit <- edgeR::glmQLFit(y, model)
-    return(list(
-        fit = fit,
-        model = model
-    ))
-}
 
 .ASE_limma_contrast_ts <- function(se, test_factor, # test_nom, test_denom,
         batch1, batch2, degrees) {
@@ -836,6 +824,28 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     return(res)
 }
 
+.ASE_edgeR_contrast_ts <- function(se, test_factor, # test_nom, test_denom,
+        batch1, batch2, degrees) {
+    in_data <- .ASE_contrast_expr_ts(
+        se, test_factor, 
+        # test_nom, test_denom,
+        batch1, batch2, degrees
+    )
+
+    y <- edgeR::DGEList(counts=in_data$countData, remove.zeros = FALSE)
+    y <- edgeR::calcNormFactors(y)
+    y <- edgeR::estimateDisp(y,in_data$design1)
+    
+    fit <- edgeR::glmQLFit(y, in_data$design1)
+    qlf <- edgeR::glmQLFTest(fit, coef = in_data$coef)
+
+    res <- edgeR::topTags(qlf, n = nrow(y))
+    res$table$EventName <- rownames(res)
+    
+    rm(fit, qlf, in_data, y)
+    gc()
+    return(as.data.table(res$table))
+}
 
 .ASE_limma_contrast_ASE <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2) {
@@ -904,6 +914,27 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     gc()
     return(res)
 }
+
+.ASE_edgeR_contrast_ASE_ts <- function(se, test_factor, # test_nom, test_denom,
+        batch1, batch2, degrees) {
+    in_data <- .ASE_contrast_ASE_ts(se, test_factor, 
+        # test_nom, test_denom,
+        batch1, batch2, degrees)
+
+    y <- edgeR::DGEList(counts=in_data$countData)
+    y <- edgeR::estimateDisp(y,in_data$design1)
+    
+    fit <- edgeR::glmQLFit(y, in_data$design1)
+    qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)
+
+    res <- edgeR::topTags(qlf, n = nrow(y))
+    res$table$EventName <- rownames(res)
+    
+    rm(fit, qlf, in_data, y)
+    gc()
+    return(as.data.table(res$table))
+}
+
 
 .ASE_DESeq2_contrast <- function(se, test_factor, test_nom, test_denom,
         batch1, batch2, BPPARAM) {
@@ -1279,13 +1310,13 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     if(batch2 != "") {
         batch2_factor <- colData[, batch2]
         batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + batch2_factor +
+        design1 <- model.matrix(~1 + batch1_factor + batch2_factor +
             condition_factor)
     } else if(batch1 != "") {
         batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + condition_factor)
+        design1 <- model.matrix(~1 + batch1_factor + condition_factor)
     } else {
-        design1 <- model.matrix(~0 + condition_factor)
+        design1 <- model.matrix(~1 + condition_factor)
     }
     contrast <- rep(0, ncol(design1))
     contrast_a <- paste0("condition_factor", test_nom)
@@ -1330,13 +1361,13 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     if(batch2 != "") {
         batch2_factor <- colData[, batch2]
         batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + batch2_factor +
+        design1 <- model.matrix(~1 + batch1_factor + batch2_factor +
             condition_factor)
     } else if(batch1 != "") {
         batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + condition_factor)
+        design1 <- model.matrix(~1 + batch1_factor + condition_factor)
     } else {
-        design1 <- model.matrix(~0 + condition_factor)
+        design1 <- model.matrix(~1 + condition_factor)
     }
     coef <- seq(ncol(design1) - degrees + 1, ncol(design1))
 
@@ -1371,14 +1402,14 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     if(batch2 != "") {
         batch2_factor <- colData[, batch2]
         batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + batch2_factor +
+        design1 <- model.matrix(~1 + batch1_factor + batch2_factor +
             condition_factor + condition_factor:ASE)
     } else if(batch1 != "") {
         batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + condition_factor +
+        design1 <- model.matrix(~1 + batch1_factor + condition_factor +
             condition_factor:ASE)
     } else {
-        design1 <- model.matrix(~0 + condition_factor + condition_factor:ASE)
+        design1 <- model.matrix(~1 + condition_factor + condition_factor:ASE)
     }
     colnames(design1) <- sub(":",".",colnames(design1))
     contrast <- rep(0, ncol(design1))
@@ -1427,14 +1458,14 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     if(batch2 != "") {
         batch2_factor <- colData[, batch2]
         batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + batch2_factor + 
+        design1 <- model.matrix(~1 + batch1_factor + batch2_factor + 
             ASE + ASE:condition_factor)
     } else if(batch1 != "") {
         batch1_factor <- colData[, batch1]
-        design1 <- model.matrix(~0 + batch1_factor + 
+        design1 <- model.matrix(~1 + batch1_factor + 
             ASE + ASE:condition_factor)
     } else {
-        design1 <- model.matrix(~0 + ASE + ASE:condition_factor)
+        design1 <- model.matrix(~1 + ASE + ASE:condition_factor)
     }
     colnames(design1) <- sub(":",".",colnames(design1))
     contrast <- rep(0, ncol(design1))

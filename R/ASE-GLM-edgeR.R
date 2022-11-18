@@ -388,3 +388,77 @@ addPSI_edgeR <- function(
     results <- .ASE_add_diag_multi(results, se, condition, conditionList)
     return(results)
 }
+
+.ASE_get_models <- function(se, 
+        strModelFormula, strASEFormula
+) {
+    colData <- as.data.frame(colData(se))
+    design <- model.matrix(
+        as.formula(strModelFormula),
+        data = colData
+    )
+    colData_ASE <- rbind(colData, colData)
+    colData_ASE$ASE <- rep(c("Included", "Excluded"), each = nrow(colData))
+    rownames(colData_ASE) <- c(
+        paste0(rownames(colData), ".Included"),
+        paste0(rownames(colData), ".Excluded")
+    )
+    design_ASE <- model.matrix(
+        as.formula(strASEFormula),
+        data = colData_ASE
+    )
+    return(list(
+        design = design,
+        design_ASE = design_ASE,
+        colData = colData,
+        colData_ASE = colData_ASE
+    ))
+}
+
+.ASE_edgeR_fitIncExc <- function(se, model) {
+    countData <- as.matrix(rbind(assay(se, "Included"),
+        assay(se, "Excluded")))
+    rowData <- as.data.frame(rowData(se))
+    colData <- colData(se)
+    rownames(colData) <- colnames(se)
+    colnames(countData) <- rownames(colData)
+    rownames(countData) <- c(
+        paste(rowData$EventName, "Included", sep="."),
+        paste(rowData$EventName, "Excluded", sep=".")
+    )
+
+    y <- edgeR::DGEList(counts=countData, remove.zeros = FALSE)
+    y <- edgeR::calcNormFactors(y)
+    y <- edgeR::estimateDisp(y, model)
+    
+    fit <- edgeR::glmQLFit(y, model)
+    return(list(
+        fit = fit,
+        model = model
+    ))
+}
+
+.ASE_edgeR_fitASE <- function(se, model) {
+    countData <- as.matrix(cbind(assay(se, "Included"),
+        assay(se, "Excluded")))
+
+    rowData <- as.data.frame(rowData(se))
+    colData <- as.data.frame(colData(se))
+    colData <- rbind(colData, colData)
+    rownames(colData) <- c(
+        paste(colnames(se), "Included", sep="."),
+        paste(colnames(se), "Excluded", sep=".")
+    )
+    colData$ASE <- rep(c("Included", "Excluded"), each = ncol(se))
+    colnames(countData) <- rownames(colData)
+    rownames(countData) <- rowData$EventName
+
+    y <- edgeR::DGEList(counts=countData, remove.zeros = FALSE)
+    y <- edgeR::estimateDisp(y, model)
+    
+    fit <- edgeR::glmQLFit(y, model)
+    return(list(
+        fit = fit,
+        model = model
+    ))
+}

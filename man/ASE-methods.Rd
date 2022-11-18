@@ -160,6 +160,16 @@ differential ASE. See \link[limma:toptable]{limma::topTable} for details.
 for differential testing for raw included / excluded counts only
 }
 
+\strong{edgeR specific output} equivalent to statistics returned by
+\link[edgeR:topTags]{edgeR::topTags}:
+\itemize{
+\item logFC, logCPM, F, PValue, FDR: log fold change, log counts per million,
+F statistic, p value and (Benjamini Hochberg) adjusted p values.
+\item inc/exc_(...): edgeR statistics corresponding to
+differential expression testing for raw included / excluded counts
+in isolation
+}
+
 \strong{DESeq2 specific output}
 \itemize{
 \item baseMean, log2FoldChange, lfcSE, stat, pvalue, padj:
@@ -193,8 +203,8 @@ full models. See \link[DoubleExpSeq:DBGLM1]{DoubleExpSeq::DBGLM1} for details.
 }
 }
 \description{
-Use Limma, DESeq2, DoubleExpSeq and satuRn wrapper functions to test for
-differential Alternative Splice Events (ASEs)
+Use Limma, DESeq2, DoubleExpSeq edgeR and satuRn wrapper functions
+to test for differential Alternative Splice Events (ASEs)
 }
 \details{
 Using \strong{limma}, SpliceWiz models included and excluded counts as log-normal
@@ -221,12 +231,25 @@ activated using the \code{ASE_DESeq()} function, again specifying \code{test_fac
 as the column containing time series data (and leaving \code{test_nom}
 and \code{test_denom} parameters blank). See examples below.
 
+(NEW) \strong{edgeR} models counts using a negative binomial model. It accounts
+appropriately for zero-counts which are often
+problematic as PSI approaches zero or one, leading to false positives. The
+edgeR-based option produces differential ASEs that are less biased towards
+low counts. Our preliminary analysis shows it to be more accurate than limma
+or DoubleExpSeq based methods.
+
+(NEW) For time series or other complex analysis using edgeR, please see
+\link{ASE-GLM-edgeR} to build your own GLM models.
+
 Using \strong{DoubleExpSeq}, included and excluded counts are modeled using
 the generalized beta prime distribution, using empirical Bayes shrinkage
 to estimate dispersion.
 
 Using \strong{satuRn}, included and excluded counts are modeled using
-the quasi-binomial distribution in a generalised linear model.
+the quasi-binomial distribution in a generalised linear model. Rows with
+all-zero included / excluded counts are automatically filtered. To reduce
+computation time, users can also use the \code{filterByMinCPM} parameter to
+perform further filtering (performed internally via \code{edgeR::filterByExpr}).
 
 \strong{EventType} are as follow:
 \itemize{
@@ -357,4 +380,10 @@ Gilis J, Vitting-Seerup K, Van den Berge K, Clement L (2021). 'Scalable
 analysis of differential transcript usage for bulk and single-cell
 RNA-sequencing applications.' F1000Research 2021, 10:374.
 \url{https://doi.org/10.12688/f1000research.51749.1}
+
+Lun A, Smyth G (2017).
+'No counts, no variance: allowing for loss of degrees of freedom when
+assessing biological variability from RNA-seq data'
+Stat Appl Genet Mol Biol, 017 Apr 25;16(2):83-93.
+\url{https://doi.org/10.1515/sagmb-2017-0010}
 }

@@ -92,6 +92,7 @@ Collate: AllImports.R
 	MakeSE.R
 	Filters.R
 	ASE-methods.R
+    ASE-GLM-edgeR.R
 	dash_filterModules.R
 	dash_globals.R
 	dash_settings.R

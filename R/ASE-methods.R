@@ -665,7 +665,7 @@ testASE_edgeR <- function(
     colnames(res.inc)[-ncol(res.inc)] <- paste(
         "Inc", colnames(res.inc)[-ncol(res.inc)], sep = ".")
     colnames(res.exc)[-ncol(res.exc)] <- paste(
-        "Inc", colnames(res.exc)[-ncol(res.exc)], sep = ".")
+        "Exc", colnames(res.exc)[-ncol(res.exc)], sep = ".")
     
     res_ASE <- res_ASE[res.inc, on = "EventName"]
     res_ASE <- res_ASE[res.exc, on = "EventName"]

@@ -704,7 +704,7 @@ addPSI_edgeR <- function(
             "colData(se)[, condition]"
         ))
     }
-    results <- .ASE_add_diag_multi(res, se, condition, conditionList)
+    results <- .ASE_add_diag_multi(results, se, condition, conditionList)
     return(results)
 }
 

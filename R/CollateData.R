@@ -1363,6 +1363,7 @@ collateData <- function(Experiment, reference_path, output_path,
     OL.DT <- data.table(from = OL@from, to = OL@to)
     OL.DT <- unique(OL.DT, by = "from")
     junc_genes <- data.table(juncID = seq_len(length(gr_transcript)))
+    junc_genes[, c("gene_id", "gene_name", "gene_biotype") := list(NA, NA, NA)]
     junc_genes$gene_id <- junc_genes$gene_name <- NA
     junc_genes$gene_id[OL.DT$from] <- Genes$gene_id[OL.DT$to]
     junc_genes$gene_name[OL.DT$from] <- Genes$gene_name[OL.DT$to]

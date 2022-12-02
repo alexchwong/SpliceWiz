@@ -65,6 +65,96 @@ like these, where available.
 # What's New?
 
 <details>
+<summary>What's New: edgeR-based differential alternative splicing event
+analysis (version 1.1.3+)</summary>
+\
+edgeR-based differential alternative splicing event analysis is now available!
+We find that edgeR deals better with events zero or near-zero junction counts,
+whereas other methods under-estimate variance at low counts. This leads to lower
+false positives with low-expressing events or with PSI close to 0 or 1.
+
+edgeR-based wrappers `ASE_edgeR()` and `ASE_edgeR_timeseries()` work identically
+to limma (syntax-wise)
+</details>
+\
+
+<details>
+<summary>What's New: Visualising junction reads in coverage plots (version 0.99.5+)</summary>
+\
+In version 0.99.5, SpliceWiz visualises split/junction reads in individual
+samples and in sample groups
+
+For individual sample coverage plots (i.e. when `condition` is not set), 
+junction counts for each sample are plotted. Samples with low junction counts
+(less than 0.01x of the track height) are omitted to reduce clutter.
+
+For group-normalized coverage plots (where coverage of multiple samples in a
+condition group are combined), junctions are instead labeled by their
+"provisional PSIs". These PSIs are calculated per junction (instead of per ASE).
+This is done by determining the ratio of junction counts as a proportion of
+all junction reads that share a common exon cluster as the junction being
+assessed.
+
+**TL/DR - how to enable junction plotting**
+
+* To enable plotting of junctions, set `plotJunctions = TRUE` from within
+`plotCoverage()`
+
+```{r}
+# Retrieve example NxtSE object
+se <- SpliceWiz_example_NxtSE()
+
+# Assign annotation of the experimental conditions
+colData(se)$treatment <- rep(c("A", "B"), each = 3)
+
+# Return a list of ggplot and plotly objects, also plotting junction counts
+p <- plotCoverage(
+    se = se,
+    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+    tracks = colnames(se)[1:4], 
+    
+        ## NEW ##
+    plotJunctions = TRUE
+)
+```
+
+```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
+if(interactive()) {
+    # Display as plotly object
+    p$final_plot
+} else {
+    # Display as ggplot
+    as_ggplot_cov(p)
+}
+```
+
+```{r}
+# Plot by condition "treatment", including provisional PSIs
+p <- plotCoverage(
+    se = se,
+    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+    tracks = c("A", "B"), condition = "treatment", 
+
+        ## NEW ##
+    plotJunctions = TRUE
+)
+
+```
+
+```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
+if(interactive()) {
+    # Display as plotly object
+    p$final_plot
+} else {
+    # Display as ggplot
+    as_ggplot_cov(p)
+}
+```
+
+</details>
+\
+
+<details>
 <summary>What's New: Novel splice detection (version 0.99.3+) </summary>
 \
 In version 0.99.3, SpliceWiz offers detection of novel events in addition to
@@ -141,82 +231,6 @@ collateData(
     novelSplicing_countThreshold = 10  
         # threshold for previous parameter
 )
-```
-
-</details>
-\
-
-<details>
-<summary>What's New: Visualising junction reads in coverage plots (version 0.99.5+)</summary>
-\
-In version 0.99.5, SpliceWiz visualises split/junction reads in individual
-samples and in sample groups
-
-For individual sample coverage plots (i.e. when `condition` is not set), 
-junction counts for each sample are plotted. Samples with low junction counts
-(less than 0.01x of the track height) are omitted to reduce clutter.
-
-For group-normalized coverage plots (where coverage of multiple samples in a
-condition group are combined), junctions are instead labeled by their
-"provisional PSIs". These PSIs are calculated per junction (instead of per ASE).
-This is done by determining the ratio of junction counts as a proportion of
-all junction reads that share a common exon cluster as the junction being
-assessed.
-
-**TL/DR - how to enable junction plotting**
-
-* To enable plotting of junctions, set `plotJunctions = TRUE` from within
-`plotCoverage()`
-
-```{r}
-# Retrieve example NxtSE object
-se <- SpliceWiz_example_NxtSE()
-
-# Assign annotation of the experimental conditions
-colData(se)$treatment <- rep(c("A", "B"), each = 3)
-
-# Return a list of ggplot and plotly objects, also plotting junction counts
-p <- plotCoverage(
-    se = se,
-    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
-    tracks = colnames(se)[1:4], 
-    
-        ## NEW ##
-    plotJunctions = TRUE
-)
-```
-
-```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
-if(interactive()) {
-    # Display as plotly object
-    p$final_plot
-} else {
-    # Display as ggplot
-    as_ggplot_cov(p)
-}
-```
-
-```{r}
-# Plot by condition "treatment", including provisional PSIs
-p <- plotCoverage(
-    se = se,
-    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
-    tracks = c("A", "B"), condition = "treatment", 
-
-        ## NEW ##
-    plotJunctions = TRUE
-)
-
-```
-
-```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
-if(interactive()) {
-    # Display as plotly object
-    p$final_plot
-} else {
-    # Display as ggplot
-    as_ggplot_cov(p)
-}
 ```
 
 </details>
@@ -333,6 +347,8 @@ differential analysis:
 
 * limma: models included and excluded counts as log-normal distributions
 * DESeq2: models included and excluded counts as negative binomial distributions
+* edgeR: models included and excluded counts as negative binomial distributions.
+SpliceWiz uses the quasi-likelihood method which deals better with zero-counts.
 * DoubleExpSeq: models included and excluded counts using beta binomial
 distributions
 * satuRn: models included and excluded counts using quasi-binomial 
@@ -343,14 +359,7 @@ To install all of these packages:
 ```{r eval=FALSE}
 install.packages("DoubleExpSeq")
 
-BiocManager::install(c("DESeq2", "limma", "satuRn"))
-```
-
-SpliceWiz's satuRn wrapper implements counts filtering using edgeR's
-`filterByExpr` method, which requires edgeR:
-
-```{r eval=FALSE}
-BiocManager::install("edgeR")
+BiocManager::install(c("DESeq2", "limma", "edgeR", "satuRn"))
 ```
 
 </details> 
@@ -1177,6 +1186,10 @@ Time series analysis is available for this mode.
 * `ASE_DESeq` uses `DESeq2` to model isoform counts as negative binomial
 distribution. This method is the most computationally expensive, but gives
 robust results. Time series analysis is also available for this mode
+* `ASE_edgeR` uses `edgeR` to model isoform counts as negative binomial
+distributions. SpliceWiz uses the quasi-likelihood method that deals better
+with variance at near-zero junction counts, resulting in reduced false 
+positives.
 * `ASE_DoubleExpSeq` uses the lesser-known CRAN package `DoubleExpSeq`. This
 package uses the beta-binomial distribution to model isoform counts. The method
 is at least as fast as `limma`, but for now it is restricted to analysis
@@ -1202,6 +1215,15 @@ res_deseq <- ASE_DESeq(
     test_nom = "B",
     test_denom = "A",
     n_threads = 1
+)
+
+# Requires edgeR to be installed:
+require("edgeR")
+res_edgeR <- ASE_edgeR(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A"
 )
 
 # Requires DoubleExpSeq to be installed:
@@ -1312,23 +1334,32 @@ res_limma_batchnorm <- ASE_limma(
 <details>
 <summary>Can I do time series analysis?</summary>
 \
-Time series analysis can be performed using limma and DESeq2. 
+Time series analysis can be performed using limma, edgeR, and DESeq2. 
 
-For limma, time series analysis is done using the `ASE_limma_timeseries()`
+For limma and edgeR, time series analysis is done using the 
+`ASE_limma_timeseries()` and `ASE_edgeR_timeseries()`
 function. `test_factor`, despite its name, should be a column in `colData(se)`
 containing numerical values that represent time series data.
 
-Note that limma's time series wrapper function requires the `splines` package.
+Note that these time series wrappers function requires the `splines` package.
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 colData(se.filtered)$timevar <- rep(c(0,1,2), 2)
 
-require("limma")
 require("splines")
+require("limma")
 res_limma_cont <- ASE_limma_timeseries(
     se = se.filtered,
     test_factor = "timevar"
 )
+
+require("splines")
+require("edgeR")
+res_edgeR_cont <- ASE_edgeR_timeseries(
+    se = se.filtered,
+    test_factor = "timevar"
+)
+
 ```
 
 For DESeq2, time series analysis is performed using the `ASE_DESeq()` funcction.

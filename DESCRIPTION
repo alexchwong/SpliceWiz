@@ -66,8 +66,9 @@ LinkingTo:
     ompBAM,
     Rcpp,
     zlibbioc, 
-	RcppProgress
-SystemRequirements: C++11
+	RcppProgress,
+    Rhtslib (>= 1.13.1)    
+SystemRequirements: C++11, GNU make
 Collate: AllImports.R
 	RcppExports.R
 	zzz.R
@@ -88,6 +89,7 @@ Collate: AllImports.R
 	STAR_utils.R
 	Mappability.R
 	ProcessBAM.R
+    ProcessBAM_hts.R
 	CollateData.R
 	MakeSE.R
 	Filters.R

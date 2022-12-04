@@ -137,9 +137,9 @@ using \link{getDefaultFilters}
 }
 \section{Functions}{
 \itemize{
-\item \code{ASEFilter}: Constructs a ASEFilter object
-}}
+\item \code{ASEFilter()}: Constructs a ASEFilter object
 
+}}
 \examples{
 # Create a ASEFilter that filters for protein-coding ASE
 f1 <- ASEFilter(filterClass = "Annotation", filterType = "Protein_Coding")

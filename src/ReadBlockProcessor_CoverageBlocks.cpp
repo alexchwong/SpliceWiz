@@ -302,7 +302,7 @@ int CoverageBlocksIRFinder::WriteOutput(std::string& output, std::string& QC,
   unsigned int n_jobs = 1 + (BEDrecords.size() / n_threads);
 
 #ifdef _OPENMP
-  #pragma omp parallel for
+  #pragma omp parallel for num_threads(n_threads) schedule(static,1)
 #endif  
   for(unsigned int i = 0; i < (unsigned int)n_threads; i++) {
     unsigned int refID = 0;

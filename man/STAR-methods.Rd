@@ -152,19 +152,19 @@ required
 }
 \section{Functions}{
 \itemize{
-\item \code{STAR_version}: Checks whether STAR is installed, and its version
+\item \code{STAR_version()}: Checks whether STAR is installed, and its version
 
-\item \code{STAR_buildRef}: Creates a STAR genome reference.
+\item \code{STAR_buildRef()}: Creates a STAR genome reference.
 
-\item \code{STAR_mappability}: Calculates lowly-mappable genomic regions using STAR
+\item \code{STAR_mappability()}: Calculates lowly-mappable genomic regions using STAR
 
-\item \code{STAR_alignExperiment}: Aligns multiple sets of FASTQ files, belonging to
+\item \code{STAR_alignExperiment()}: Aligns multiple sets of FASTQ files, belonging to
 multiple samples
 
-\item \code{STAR_alignReads}: Aligns a single sample (with single or paired FASTQ
+\item \code{STAR_alignReads()}: Aligns a single sample (with single or paired FASTQ
 or FASTA files)
-}}
 
+}}
 \examples{
 # 0) Check that STAR is installed and compatible with SpliceWiz
 

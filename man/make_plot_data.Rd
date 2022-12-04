@@ -102,12 +102,12 @@ Users wishing to calculate arithmetic means of PSI are advised to use
 }
 \section{Functions}{
 \itemize{
-\item \code{makeMatrix}: constructs a matrix of PSI values of the given
+\item \code{makeMatrix()}: constructs a matrix of PSI values of the given
 alternative splicing events (ASEs)
 
-\item \code{makeMeanPSI}: constructs a table of "average" PSI values
-}}
+\item \code{makeMeanPSI()}: constructs a table of "average" PSI values
 
+}}
 \examples{
 se <- SpliceWiz_example_NxtSE()
 

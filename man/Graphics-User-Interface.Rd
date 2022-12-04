@@ -39,9 +39,9 @@ to using the SpliceWiz GUI.
 }
 \section{Functions}{
 \itemize{
-\item \code{spliceWiz}: Launches the SpliceWiz GUI
-}}
+\item \code{spliceWiz()}: Launches the SpliceWiz GUI
 
+}}
 \examples{
 if(interactive()) {
 

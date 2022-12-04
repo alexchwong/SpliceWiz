@@ -44,32 +44,32 @@ other relevant data
 }
 \section{Functions}{
 \itemize{
-\item \code{viewASE}: Outputs summary of alternative splicing
+\item \code{viewASE()}: Outputs summary of alternative splicing
 events constructed by SpliceWiz
 
-\item \code{viewIR}: Outputs summary of assessed IRFinde-like
+\item \code{viewIR()}: Outputs summary of assessed IRFinde-like
 IR events, constructed by SpliceWiz
 
-\item \code{viewIntrons}: Outputs summary of all introns from
+\item \code{viewIntrons()}: Outputs summary of all introns from
 the annotation, constructed by SpliceWiz
 
-\item \code{viewIR_NMD}: Outputs information for every intron -
+\item \code{viewIR_NMD()}: Outputs information for every intron -
 whether retention of the intron will convert the transcript to an NMD
 substrate
 
-\item \code{viewExons}: Outputs information for every exon
+\item \code{viewExons()}: Outputs information for every exon
 from the annotation.
 
-\item \code{viewGenes}: Outputs information for every gene
+\item \code{viewGenes()}: Outputs information for every gene
 from the annotation.
 
-\item \code{viewProteins}: Outputs information for every
+\item \code{viewProteins()}: Outputs information for every
 protein-coding exon from the annotation.
 
-\item \code{viewTranscripts}: Outputs information for every
+\item \code{viewTranscripts()}: Outputs information for every
 transcript from the annotation.
-}}
 
+}}
 \examples{
 ref_path <- file.path(tempdir(), "Reference")
 

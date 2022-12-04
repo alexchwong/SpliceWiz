@@ -64,15 +64,15 @@ For an explanation of the various parameters mentioned here, see \link{ASEFilter
 }
 \section{Functions}{
 \itemize{
-\item \code{getDefaultFilters}: Returns a vector of recommended default
+\item \code{getDefaultFilters()}: Returns a vector of recommended default
 SpliceWiz filters
 
-\item \code{applyFilters}: Run a vector or list of ASEFilter objects
+\item \code{applyFilters()}: Run a vector or list of ASEFilter objects
 on a NxtSE object
 
-\item \code{runFilter}: Run a single filter on a NxtSE object
-}}
+\item \code{runFilter()}: Run a single filter on a NxtSE object
 
+}}
 \examples{
 # see ?makeSE on example code of how this object was generated
 

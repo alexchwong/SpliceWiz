@@ -843,7 +843,7 @@ int swEngine_hts::doNothing(
   }
   
   // BAM processing loop
-  bool error_detected = false;
+  // bool error_detected = false;
   off_t prevPos = 0; 
   off_t curPos = 0;
 #ifdef SPLICEWIZ

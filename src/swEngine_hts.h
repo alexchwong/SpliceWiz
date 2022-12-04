@@ -81,6 +81,13 @@ class swEngine_hts {
       bool const verbose,
       bool const read_pool = 1000000
     );
+
+    int pairReads(
+      std::string const &bam_file,
+      std::string const &s_output_txt, 
+      bool const verbose,
+      bool const read_pool
+    );
 };
 
 #endif

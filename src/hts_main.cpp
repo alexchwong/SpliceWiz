@@ -118,3 +118,21 @@ int c_doNothing_hts(
   int ret = Engine.doNothing(bam_file, verbose, read_pool);
   return(ret);
 }
+
+// [[Rcpp::export]]
+int c_doStats_hts(
+    std::string bam_file, std::string output_file, 
+    bool verbose, 
+    int n_threads, int read_pool
+){
+  
+  swEngine_hts Engine;
+  int nthr = Engine.Set_Threads(n_threads);
+  if(verbose) {
+    cout << "Running doStats (htslib) " << bam_file;
+    cout << " using " << nthr << " threads\n";
+  }
+  
+  int ret = Engine.pairReads(bam_file, output_file, verbose, read_pool);
+  return(ret);
+}

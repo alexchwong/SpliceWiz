@@ -8,15 +8,9 @@
 #include <omp.h>
 #endif
 
-#include "BAM2blocks.h"       // For BB
 #include "covTools.h"         // For COV I/O
 #include "FastaReader.h"
 #include "GZTools.h"          // For gzip I/O
-
-// includes FragmentsMap and others
-#include "ReadBlockProcessor_CoverageBlocks.h"  
-#include "ReadBlockProcessor_TandemJunctions.h"
-
 #include "synthReadGenerator.h"
 
 #include "swEngine.h"

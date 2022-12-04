@@ -45,15 +45,15 @@ bool swEngine::checkFileExists(const std::string& name) {
 int swEngine::Set_Threads(int n_threads) {
 #ifdef _OPENMP
   int use_threads = 1;
-	if(n_threads > 0 && n_threads <= omp_get_thread_limit()) {
+  if(n_threads > 1 && n_threads < omp_get_thread_limit()) {
     use_threads = n_threads;
-	} else {
+	} else if(n_threads >= omp_get_thread_limit()) {
 		use_threads = omp_get_thread_limit();
 		if(use_threads < 1) {
 			use_threads = 1;
 		}
 	}
-	omp_set_num_threads(use_threads);
+	// omp_set_num_threads(use_threads);
   n_threads_to_use = use_threads;
   return(use_threads);
 #else
@@ -246,24 +246,28 @@ int swEngine::SpliceWizCore(
     }
   }
   
-  std::vector<CoverageBlocksIRFinder*> oCB;
-  std::vector<SpansPoint*> oSP;
-  std::vector<FragmentsInROI*> oROI;
-  std::vector<FragmentsInChr*> oChr;
-  std::vector<JunctionCount*> oJC;
-  std::vector<TandemJunctions*> oTJ;
-  std::vector<FragmentsMap*> oFM;
-  std::vector<BAM2blocks*> BBchild;
+  std::vector<CoverageBlocksIRFinder*> oCB(n_threads_to_use);
+  std::vector<SpansPoint*> oSP(n_threads_to_use);
+  std::vector<FragmentsInROI*> oROI(n_threads_to_use);
+  std::vector<FragmentsInChr*> oChr(n_threads_to_use);
+  std::vector<JunctionCount*> oJC(n_threads_to_use);
+  std::vector<TandemJunctions*> oTJ(n_threads_to_use);
+  std::vector<FragmentsMap*> oFM(n_threads_to_use);
+  std::vector<BAM2blocks*> BBchild(n_threads_to_use);
 
+  // Multi-threaded results container initialization
+  #ifdef _OPENMP
+  #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+  #endif
   for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    oCB.push_back(new CoverageBlocksIRFinder(CB_string));
-    oSP.push_back(new SpansPoint(SP_string));
-    oROI.push_back(new FragmentsInROI(ROI_string));
-    oChr.push_back(new FragmentsInChr);
-    oJC.push_back(new JunctionCount(JC_string));
-    oTJ.push_back(new TandemJunctions(TJ_string));
-    oFM.push_back(new FragmentsMap);
-    BBchild.push_back(new BAM2blocks(bam_chr_name, bam_chr_len));
+    oCB.at(i) = new CoverageBlocksIRFinder(CB_string);
+    oSP.at(i) = new SpansPoint(SP_string);
+    oROI.at(i) = new FragmentsInROI(ROI_string);
+    oChr.at(i) = new FragmentsInChr;
+    oJC.at(i) = new JunctionCount(JC_string);
+    oTJ.at(i) = new TandemJunctions(TJ_string);
+    oFM.at(i) = new FragmentsMap;
+    BBchild.at(i) = new BAM2blocks(bam_chr_name, bam_chr_len);
 
     BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&JunctionCount::ChrMapUpdate, &(*oJC.at(i)), std::placeholders::_1) );
     BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&JunctionCount::ProcessBlocks, &(*oJC.at(i)), std::placeholders::_1) );
@@ -286,6 +290,11 @@ int swEngine::SpliceWizCore(
     BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
     BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
 
+    // BBchild.at(i)->openFile(&inbam);
+  }
+
+  // don't parallellise this, for safety reasons
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
     BBchild.at(i)->openFile(&inbam);
   }
   
@@ -349,29 +358,38 @@ int swEngine::SpliceWizCore(
 
   if(n_threads_to_use > 1) {
     if(verbose) cout << "Compiling data from threads\n";
-  // Combine BB's and process spares
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-      BBchild.at(0)->processStats(*BBchild.at(i));
-      delete BBchild.at(i);
-    }
-  // Combine objects:
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      oJC.at(0)->Combine(*oJC.at(i));
-      oTJ.at(0)->Combine(*oTJ.at(i));
-      oChr.at(0)->Combine(*oChr.at(i));
-      oSP.at(0)->Combine(*oSP.at(i));
-      oROI.at(0)->Combine(*oROI.at(i));
-      oCB.at(0)->Combine(*oCB.at(i));
-      oFM.at(0)->Combine(*oFM.at(i));
+  // Combine objects (multi-threaded):
+    int n_rounds = ceil(log(n_threads_to_use) / log(2));
+    for(int j = n_rounds; j > 0; j--) {
+      int n_bases = (int)pow(2, j-1);
       
-      delete oJC.at(i);
-      delete oTJ.at(i);
-      delete oChr.at(i);
-      delete oSP.at(i);
-      delete oROI.at(i);
-      delete oCB.at(i);
-      delete oFM.at(i);
+      #ifdef _OPENMP
+      #pragma omp parallel for num_threads(n_bases) schedule(static,1)
+      #endif
+      for(int i = 0; i < n_bases; i++) {
+        int i_new = i + n_bases;
+        if((unsigned int)i_new < n_threads_to_use) {
+          BBchild.at(i)->processSpares(*BBchild.at(i_new));
+          BBchild.at(i)->processStats(*BBchild.at(i_new));
+          delete BBchild.at(i_new);
+
+          oJC.at(i)->Combine(*oJC.at(i_new));
+          oTJ.at(i)->Combine(*oTJ.at(i_new));
+          oChr.at(i)->Combine(*oChr.at(i_new));
+          oSP.at(i)->Combine(*oSP.at(i_new));
+          oROI.at(i)->Combine(*oROI.at(i_new));
+          oCB.at(i)->Combine(*oCB.at(i_new));
+          oFM.at(i)->Combine(*oFM.at(i_new));
+          
+          delete oJC.at(i_new);
+          delete oTJ.at(i_new);
+          delete oChr.at(i_new);
+          delete oSP.at(i_new);
+          delete oROI.at(i_new);
+          delete oCB.at(i_new);
+          delete oFM.at(i_new);          
+        }
+      }
     }
   }
 
@@ -384,7 +402,7 @@ int swEngine::SpliceWizCore(
   ofCOV.close();
 
 // Write output to file:  
-	if(verbose) cout << "Writing output file\n";
+  if(verbose) cout << "Writing output file\n";
 
   std::ofstream out;                            
   out.open(s_output_txt, std::ios::binary);  // Open binary file
@@ -428,11 +446,11 @@ int swEngine::SpliceWizCore(
   std::string myLine_QC;
   
   oROI.at(0)->WriteOutput(myLine_ROI, myLine_QC);
-	oJC.at(0)->WriteOutput(myLine_JC, myLine_QC);
-	oTJ.at(0)->WriteOutput(myLine_TJ, myLine_QC);
-	oSP.at(0)->WriteOutput(myLine_SP, myLine_QC);
-	oChr.at(0)->WriteOutput(myLine_Chr, myLine_QC);
-	oCB.at(0)->WriteOutput(myLine_ND, myLine_QC, *oJC.at(0), *oSP.at(0), *oFM.at(0), n_threads_to_use);
+  oJC.at(0)->WriteOutput(myLine_JC, myLine_QC);
+  oTJ.at(0)->WriteOutput(myLine_TJ, myLine_QC);
+  oSP.at(0)->WriteOutput(myLine_SP, myLine_QC);
+  oChr.at(0)->WriteOutput(myLine_Chr, myLine_QC);
+  oCB.at(0)->WriteOutput(myLine_ND, myLine_QC, *oJC.at(0), *oSP.at(0), *oFM.at(0), n_threads_to_use);
   if (directionality != 0) {
     oCB.at(0)->WriteOutput(myLine_Dir, myLine_QC, *oJC.at(0), *oSP.at(0), *oFM.at(0), n_threads_to_use, directionality); // Directional.
 	}
@@ -690,16 +708,25 @@ int swEngine::MappabilityRegionsCore(
 
   if(n_threads_to_use > 1) {
     if(verbose) cout << "Compiling data from threads\n";
-  // Combine BB's and process spares
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-      BBchild.at(0)->processStats(*BBchild.at(i));
-      delete BBchild.at(i);
-    }
-  // Combine objects:
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      oFM.at(0)->Combine(*oFM.at(i));
-      delete oFM.at(i);
+  // Combine objects (multi-threaded):
+    int n_rounds = ceil(log(n_threads_to_use) / log(2));
+    for(int j = n_rounds; j > 0; j--) {
+      int n_bases = (int)pow(2, j-1);
+      
+      #ifdef _OPENMP
+      #pragma omp parallel for num_threads(n_bases) schedule(static,1)
+      #endif
+      for(int i = 0; i < n_bases; i++) {
+        int i_new = i + n_bases;
+        if((unsigned int)i_new < n_threads_to_use) {
+          BBchild.at(i)->processSpares(*BBchild.at(i_new));
+          BBchild.at(i)->processStats(*BBchild.at(i_new));
+          delete BBchild.at(i_new);
+
+          oFM.at(i)->Combine(*oFM.at(i_new));
+          delete oFM.at(i_new);          
+        }
+      }
     }
   }
 
@@ -716,7 +743,7 @@ int swEngine::MappabilityRegionsCore(
   std::ofstream outFragsMap;
   outFragsMap.open(s_output_txt, std::ifstream::out);
 	
-  oFM.at(0)->WriteOutput(&outFragsMap, threshold, verbose);
+  oFM.at(0)->WriteOutput(&outFragsMap, threshold, verbose, n_threads_to_use);
   outFragsMap.flush(); outFragsMap.close();
 
   delete oFM.at(0);

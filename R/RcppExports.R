@@ -9,6 +9,10 @@ c_BAM2COV_hts <- function(bam_file, output_file, verbose, n_threads, read_pool) 
     .Call(`_SpliceWiz_c_BAM2COV_hts`, bam_file, output_file, verbose, n_threads, read_pool)
 }
 
+c_doNothing_hts <- function(bam_file, verbose, n_threads, read_pool) {
+    .Call(`_SpliceWiz_c_doNothing_hts`, bam_file, verbose, n_threads, read_pool)
+}
+
 Has_OpenMP <- function() {
     .Call(`_SpliceWiz_Has_OpenMP`)
 }

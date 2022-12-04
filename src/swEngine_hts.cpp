@@ -210,7 +210,14 @@ int swEngine_hts::SpliceWizCore(
   
   BGZF *fp = bgzf_open(bam_file.c_str(), "r");
   bam_hdr_t *header = bam_hdr_read(fp);
-  
+
+  hts_tpool *pool;
+  const int queue_size = 64;
+  if (n_threads_to_use > 1) {
+      pool = hts_tpool_init(n_threads_to_use);
+      bgzf_thread_pool(fp, pool, queue_size);
+  }
+
   // Abort here if BAM corrupt
   if(header->n_targets <= 0){
     cout << bam_file << " - contains no chromosomes mapped\n";
@@ -578,6 +585,13 @@ int swEngine_hts::BAM2COVcore(
   
   BGZF *fp = bgzf_open(bam_file.c_str(), "r");
   bam_hdr_t *header = bam_hdr_read(fp);
+  
+  hts_tpool *pool;
+  const int queue_size = 64;
+  if (n_threads_to_use > 1) {
+      pool = hts_tpool_init(n_threads_to_use);
+      bgzf_thread_pool(fp, pool, queue_size);
+  }
   
   // Abort here if BAM corrupt
   if(header->n_targets <= 0){

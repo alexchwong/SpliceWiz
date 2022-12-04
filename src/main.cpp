@@ -700,7 +700,7 @@ int c_BAM2COV(
   int nthr = Engine.Set_Threads(n_threads);
   if(verbose) {
     cout << "Running BAM2COV (ompBAM) " << bam_file;
-    cout << " using " << nthr << " threads";
+    cout << " using " << nthr << " threads\n";
   }
 
   int ret = Engine.BAM2COVcore(bam_file, output_file, verbose, multiRead);

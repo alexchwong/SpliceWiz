@@ -1,0 +1,726 @@
+/* swEngine.cpp SpliceWiz processBAM engine
+
+Copyright (C) 2021 Alex Chit Hei Wong
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.  */
+
+#include "swEngine.h"
+
+swEngine::swEngine() {
+  CB_string = "";
+  SP_string = "";
+  ROI_string = "";
+  JC_string = "";
+  TJ_string = "";
+  n_threads_to_use = 1;
+}
+
+bool swEngine::checkFileExists(const std::string& name) {
+    std::ifstream f;
+    f.open(name);
+    if(f){
+      // cout << "File " << name << " exists\n";
+      return(true);
+    }
+    // cout << "File " << name << " doesn't exist\n";
+    return(false);
+}
+
+int swEngine::Set_Threads(int n_threads) {
+#ifdef _OPENMP
+  int use_threads = 1;
+	if(n_threads > 0 && n_threads <= omp_get_thread_limit()) {
+    use_threads = n_threads;
+	} else {
+		use_threads = omp_get_thread_limit();
+		if(use_threads < 1) {
+			use_threads = 1;
+		}
+	}
+	omp_set_num_threads(use_threads);
+  n_threads_to_use = use_threads;
+  return(use_threads);
+#else
+  n_threads_to_use = 1;
+	return(1);
+#endif
+}
+
+int swEngine::ReadChrAlias(std::istringstream &IN) {
+  ref_names.clear();
+  ref_alias.clear();
+  ref_lengths.clear();
+  
+  std::string myLine;
+  myLine.reserve(1000);
+  std::string myChr;
+  myChr.reserve(100);
+  std::string myAlias;
+  myAlias.reserve(100);
+  std::string myLength;
+  myLength.reserve(100);
+  
+  while(!IN.eof() && !IN.fail()) {
+    getline(IN, myLine, '\n');
+    if (IN.eof() || IN.fail()) {
+      if (myLine.length() == 0) {
+        // This line is empty - just a blank line at the end of the file.
+        // Checking at this stage allows correct handling of files both with and without a trailing \n after the last record.
+        break;
+      }else{
+        // Error line in input, ignore.
+        break;
+      }
+    }
+    std::istringstream lineStream;
+    lineStream.str(myLine);
+    getline(lineStream, myChr, '\t');
+    getline(lineStream, myLength, '\t');
+    getline(lineStream, myAlias, '\t');
+    if(myChr.size() > 0) {
+      ref_names.push_back(myChr);
+      ref_lengths.push_back((uint32_t)stoul(myLength));
+      ref_alias.push_back(myAlias);      
+    }
+  }
+  // cout << "Debug:" << ref_names.size() << " chromosome aliases loaded\n";
+  return(0);
+}
+
+// SpliceWiz reference reader
+int swEngine::readReference(std::string &reference_file, bool verbose) { 
+  if(!checkFileExists(reference_file)) {
+    cout << "File " << reference_file << " does not exist!\n";
+    return(-1);
+  }
+
+  GZReader * gz_in = new GZReader;
+  int ret = gz_in->LoadGZ(reference_file, true);   // streamed mode
+  if(ret != 0) return(-1);
+  
+  // Allows reference blocks to be read in any order
+  std::string headerCover ("ref-cover.bed");
+  std::string headerSpans ("ref-read-continues.ref");
+  std::string headerROI ("ref-ROI.bed");
+  std::string headerSJ ("ref-sj.ref");
+  std::string headerTJ ("ref-tj.ref");
+  std::string headerChr ("ref-chrs.ref");
+  std::string headerEOF ("EOF");
+  
+  bool doneCover = false;
+  bool doneSpans = false;
+  bool doneROI = false;
+  bool doneSJ = false;
+  bool doneTJ = false;
+  bool doneChrs = false;
+  
+  std::string myLine;
+  std::string myBuffer;
+  
+  getline(gz_in->iss, myLine, '#');    // discard anything before the first hash
+  getline(gz_in->iss, myLine, '\n');   // Get block name
+  
+  // Check non-empty ref block name
+  if(myLine.size() == 0) {
+    cout << "Invalid SpliceWiz reference detected\n";
+    return(-1);
+  }
+
+  while(myLine.find(headerEOF)==std::string::npos) {
+    // getline(gz_in->iss, myBuffer, '#');  // this is the data block
+
+    if(myLine.find(headerCover)!=std::string::npos && !doneCover) {
+      getline(gz_in->iss, CB_string, '#');
+      doneCover = true;
+    } else if(myLine.find(headerSpans)!=std::string::npos && !doneSpans) {
+      getline(gz_in->iss, SP_string, '#');
+      doneSpans = true;
+    } else if(myLine.find(headerROI)!=std::string::npos && !doneROI) {
+      getline(gz_in->iss, ROI_string, '#');
+      doneROI = true;
+    } else if(myLine.find(headerSJ)!=std::string::npos && !doneSJ) {
+      getline(gz_in->iss, JC_string, '#');
+      doneSJ = true;
+    } else if(myLine.find(headerTJ)!=std::string::npos && !doneTJ) {
+      getline(gz_in->iss, TJ_string, '#');
+      doneTJ = true;
+    } else if(myLine.find(headerChr)!=std::string::npos && !doneChrs) {
+      getline(gz_in->iss, myBuffer, '#');
+      std::istringstream inChrAlias;
+      inChrAlias.str(myBuffer);
+      ReadChrAlias(inChrAlias);
+      doneChrs = true;
+    } else {
+      cout << "Error: Invalid SpliceWiz reference block detected\n";
+      return(-1);
+    }
+    // Get next data block name
+    getline(gz_in->iss, myLine, '\n');
+  }
+
+  delete gz_in;
+  
+  if(!doneCover || !doneSpans || !doneROI || !doneSJ) {
+    cout << "Error: Incomplete SpliceWiz reference detected\n";
+    return(-1);
+  } else if(!doneTJ) {
+    cout << "Note: Tandem junction reference not detected. " <<
+      "Rebuild reference using SpliceWiz v0.99.3 or above.\n";
+  }
+  return(0);
+}
+
+// SpliceWiz core:
+int swEngine::SpliceWizCore(
+    std::string const &bam_file, 
+    std::string const &s_output_txt, 
+    std::string const &s_output_cov,
+    bool const verbose,
+    bool const multithreadedRead
+) {
+
+  if(!checkFileExists(bam_file)) {
+    cout << "File " << bam_file << " does not exist!\n";
+    return(-1);
+  } 
+ 
+	if(verbose) cout << "Processing BAM file " << bam_file << "\n";
+  
+  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multithreadedRead);
+
+  inbam.openFile(bam_file, n_threads_to_use);
+  
+  // Abort here if BAM corrupt
+  std::vector<std::string> s_chr_names;
+  std::vector<uint32_t> u32_chr_lens;
+  int chrcount = inbam.obtainChrs(s_chr_names, u32_chr_lens);
+  if(chrcount < 1) {
+    cout << bam_file << " - contains no chromosomes mapped\n";
+    return(-1);
+  }
+  
+  // Compile here a list of chromosomes; use BAM chromosomes for order
+  // Add reference-only chromosomes at the end
+  std::vector<std::string> bam_chr_name;
+  std::vector<uint32_t> bam_chr_len;
+  for(unsigned int i = 0; i < s_chr_names.size(); i++) {
+    for(unsigned int j = 0; j < ref_alias.size(); j++) {
+      if( 0==strncmp(
+            ref_alias.at(j).c_str(), 
+            s_chr_names.at(i).c_str(), 
+            s_chr_names.at(i).size()
+          ) && s_chr_names.at(i).size() == ref_alias.at(j).size()
+      ) {
+        bam_chr_name.push_back(ref_names.at(j));
+        bam_chr_len.push_back(u32_chr_lens.at(i));
+        break;
+      }
+    }
+    if(i == bam_chr_name.size()) {
+      bam_chr_name.push_back(s_chr_names.at(i));
+      bam_chr_len.push_back(u32_chr_lens.at(i));
+    }
+  }
+  // Now fill in reference chromosomes not in BAM:
+  for(unsigned int i = 0; i < ref_names.size(); i++) {
+    auto it = std::find(bam_chr_name.begin(), bam_chr_name.end(), ref_names.at(i));
+    if(it == bam_chr_name.end()) {
+      bam_chr_name.push_back(ref_names.at(i));
+      bam_chr_len.push_back(ref_lengths.at(i));      
+    }
+  }
+  
+  std::vector<CoverageBlocksIRFinder*> oCB;
+  std::vector<SpansPoint*> oSP;
+  std::vector<FragmentsInROI*> oROI;
+  std::vector<FragmentsInChr*> oChr;
+  std::vector<JunctionCount*> oJC;
+  std::vector<TandemJunctions*> oTJ;
+  std::vector<FragmentsMap*> oFM;
+  std::vector<BAM2blocks*> BBchild;
+
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    oCB.push_back(new CoverageBlocksIRFinder(CB_string));
+    oSP.push_back(new SpansPoint(SP_string));
+    oROI.push_back(new FragmentsInROI(ROI_string));
+    oChr.push_back(new FragmentsInChr);
+    oJC.push_back(new JunctionCount(JC_string));
+    oTJ.push_back(new TandemJunctions(TJ_string));
+    oFM.push_back(new FragmentsMap);
+    BBchild.push_back(new BAM2blocks(bam_chr_name, bam_chr_len));
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&JunctionCount::ChrMapUpdate, &(*oJC.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&JunctionCount::ProcessBlocks, &(*oJC.at(i)), std::placeholders::_1) );
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&TandemJunctions::ChrMapUpdate, &(*oTJ.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&TandemJunctions::ProcessBlocks, &(*oTJ.at(i)), std::placeholders::_1) );
+    
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInChr::ChrMapUpdate, &(*oChr.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInChr::ProcessBlocks, &(*oChr.at(i)), std::placeholders::_1) );
+    
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&SpansPoint::ChrMapUpdate, &(*oSP.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&SpansPoint::ProcessBlocks, &(*oSP.at(i)), std::placeholders::_1) );
+        
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInROI::ChrMapUpdate, &(*oROI.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInROI::ProcessBlocks, &(*oROI.at(i)), std::placeholders::_1) );
+    
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&CoverageBlocks::ChrMapUpdate, &(*oCB.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&CoverageBlocks::ProcessBlocks, &(*oCB.at(i)), std::placeholders::_1) );
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
+
+    BBchild.at(i)->openFile(&inbam);
+  }
+  
+  // BAM processing loop
+  bool error_detected = false;
+#ifdef SPLICEWIZ
+  Progress p(inbam.GetFileSize(), verbose);
+  while(0 == inbam.fillReads() && !p.check_abort()) {
+    p.increment(inbam.IncProgress());
+    
+#else
+  while(0 == inbam.fillReads()) {
+#endif
+    
+    #ifdef _OPENMP
+    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+    #endif
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      int pa_ret = BBchild.at(i)->processAll(i);
+      if(pa_ret == -1) {
+        
+        #ifdef _OPENMP
+        #pragma omp critical
+        #endif
+        error_detected = true;
+      }
+    }
+    
+    if(error_detected) break;
+
+    // combine unpaired reads after each fillReads / processAlls
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+    }
+  }
+
+#ifdef SPLICEWIZ
+  if(p.check_abort() || error_detected) {
+    // interrupted:
+#else
+  if(error_detected) {
+#endif
+    
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      delete oJC.at(i);
+      delete oTJ.at(i);
+      delete oChr.at(i);
+      delete oSP.at(i);
+      delete oROI.at(i);
+      delete oCB.at(i);
+      delete oFM.at(i);
+      delete BBchild.at(i);
+    }
+    if(error_detected) {
+      return(-1);
+    }
+	// Process aborted; stop processBAM for all requests
+    return(-2);
+  }
+
+
+  if(n_threads_to_use > 1) {
+    if(verbose) cout << "Compiling data from threads\n";
+  // Combine BB's and process spares
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0)->processStats(*BBchild.at(i));
+      delete BBchild.at(i);
+    }
+  // Combine objects:
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      oJC.at(0)->Combine(*oJC.at(i));
+      oTJ.at(0)->Combine(*oTJ.at(i));
+      oChr.at(0)->Combine(*oChr.at(i));
+      oSP.at(0)->Combine(*oSP.at(i));
+      oROI.at(0)->Combine(*oROI.at(i));
+      oCB.at(0)->Combine(*oCB.at(i));
+      oFM.at(0)->Combine(*oFM.at(i));
+      
+      delete oJC.at(i);
+      delete oTJ.at(i);
+      delete oChr.at(i);
+      delete oSP.at(i);
+      delete oROI.at(i);
+      delete oCB.at(i);
+      delete oFM.at(i);
+    }
+  }
+
+  // Write Coverage Binary file:
+  std::ofstream ofCOV;
+  ofCOV.open(s_output_cov, std::ofstream::binary);
+  covWriter outCOV;
+  outCOV.SetOutputHandle(&ofCOV);
+  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
+  ofCOV.close();
+
+// Write output to file:  
+	if(verbose) cout << "Writing output file\n";
+
+  std::ofstream out;                            
+  out.open(s_output_txt, std::ios::binary);  // Open binary file
+  GZWriter outGZ;                               
+  outGZ.SetOutputHandle(&out); // GZ compression
+
+  int outret = outGZ.writeline("BAM_report\tValue"); 
+  if(outret != Z_OK) {
+    cout << "Error writing gzip-compressed output file\n";
+    out.close();
+    delete oJC.at(0);
+    delete oTJ.at(0);
+    delete oChr.at(0);
+    delete oSP.at(0);
+    delete oROI.at(0);
+    delete oCB.at(0);
+    delete oFM.at(0);
+    delete BBchild.at(0);
+    return(-1);
+  }
+
+  // Output stuff here
+
+// Write stats here:
+  std::string myLine;
+  BBchild.at(0)->WriteOutput(myLine);
+  outGZ.writestring(myLine); outGZ.writeline("");
+
+  int directionality = oJC.at(0)->Directional(myLine);
+  outGZ.writeline("Directionality\tValue"); 
+  outGZ.writestring(myLine); outGZ.writeline("");
+
+  // Generate output but save this to strings:
+  std::string myLine_ROI;
+  std::string myLine_JC;
+  std::string myLine_TJ;
+  std::string myLine_SP;
+  std::string myLine_Chr;
+  std::string myLine_ND;
+  std::string myLine_Dir;
+  std::string myLine_QC;
+  
+  oROI.at(0)->WriteOutput(myLine_ROI, myLine_QC);
+	oJC.at(0)->WriteOutput(myLine_JC, myLine_QC);
+	oTJ.at(0)->WriteOutput(myLine_TJ, myLine_QC);
+	oSP.at(0)->WriteOutput(myLine_SP, myLine_QC);
+	oChr.at(0)->WriteOutput(myLine_Chr, myLine_QC);
+	oCB.at(0)->WriteOutput(myLine_ND, myLine_QC, *oJC.at(0), *oSP.at(0), *oFM.at(0), n_threads_to_use);
+  if (directionality != 0) {
+    oCB.at(0)->WriteOutput(myLine_Dir, myLine_QC, *oJC.at(0), *oSP.at(0), *oFM.at(0), n_threads_to_use, directionality); // Directional.
+	}
+
+  outGZ.writeline("QC\tValue"); outGZ.writestring(myLine_QC); outGZ.writeline("");
+	
+  outGZ.writeline("ROIname\ttotal_hits\tpositive_strand_hits\tnegative_strand_hits");
+  outGZ.writestring(myLine_ROI); outGZ.writeline("");
+  
+  outGZ.writeline("JC_seqname\tstart\tend\tstrand\ttotal\tpos\tneg");
+  outGZ.writestring(myLine_JC); outGZ.writeline("");
+
+  outGZ.writeline("TJ_seqname\tstart1\tend1\tstart2\tend2\tstrand\ttotal\tpos\tneg");
+  outGZ.writestring(myLine_TJ); outGZ.writeline("");
+  
+  outGZ.writeline("SP_seqname\tcoord\ttotal\tpos\tneg");
+  outGZ.writestring(myLine_SP); outGZ.writeline("");
+  
+  outGZ.writeline("ChrCoverage_seqname\ttotal\tpos\tneg");
+  outGZ.writestring(myLine_Chr); outGZ.writeline("");
+  
+  outGZ.writestring(myLine_ND); outGZ.writeline("");
+  
+  if (directionality != 0) {
+    outGZ.writestring(myLine_Dir); outGZ.writeline("");
+  }
+  outGZ.flush(true);
+  out.flush(); out.close();
+  
+  // destroy objects:
+
+  delete oJC.at(0);
+  delete oTJ.at(0);
+  delete oChr.at(0);
+  delete oSP.at(0);
+  delete oROI.at(0);
+  delete oCB.at(0);
+  delete oFM.at(0);
+  delete BBchild.at(0);
+
+  return(0);
+}
+
+// SpliceWiz core:
+int swEngine::BAM2COVcore(
+    std::string const &bam_file,
+    std::string const &s_output_cov,
+    bool const verbose,
+    bool const multithreadedRead
+) {
+  if(!checkFileExists(bam_file)) {
+    cout << "File " << bam_file << " does not exist!\n";
+    return(-1);
+  } 
+	if(verbose) cout << "BAM2COV: " << bam_file << "\n";
+  
+  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multithreadedRead);
+  inbam.openFile(bam_file, n_threads_to_use);
+  
+  // Abort here if BAM corrupt
+  std::vector<std::string> s_chr_names;
+  std::vector<uint32_t> u32_chr_lens;
+  int chrcount = inbam.obtainChrs(s_chr_names, u32_chr_lens);
+  if(chrcount < 1) {
+    cout << bam_file << " - contains no mapped chromosomes\n";
+    return(-1);
+  }
+
+  std::vector<FragmentsMap*> oFM;
+  std::vector<BAM2blocks*> BBchild;
+
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    oFM.push_back(new FragmentsMap);
+    BBchild.push_back(new BAM2blocks(s_chr_names, u32_chr_lens));
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
+
+    BBchild.at(i)->openFile(&inbam);
+  }
+  
+  // BAM processing loop
+  bool error_detected = false;
+#ifdef SPLICEWIZ
+  Progress p(inbam.GetFileSize(), verbose);
+  while(0 == inbam.fillReads() && !p.check_abort()) {
+    p.increment(inbam.IncProgress());
+    
+#else
+  while(0 == inbam.fillReads()) {
+#endif
+    
+    #ifdef _OPENMP
+    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+    #endif
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      int pa_ret = BBchild.at(i)->processAll(i);
+      if(pa_ret == -1) {
+        
+        #ifdef _OPENMP
+        #pragma omp critical
+        #endif
+        error_detected = true;
+      }
+    }
+    
+    if(error_detected) break;
+
+    // combine unpaired reads after each fillReads / processAlls
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+    }
+  }
+
+#ifdef SPLICEWIZ
+  if(p.check_abort() || error_detected) {
+    // interrupted:
+#else
+  if(error_detected) {
+#endif
+    
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      delete oFM.at(i);
+      delete BBchild.at(i);
+    }
+    if(error_detected) {
+      return(-1);
+    }
+	// Process aborted; stop processBAM for all requests
+    return(-2);
+  }
+
+  if(n_threads_to_use > 1) {
+    if(verbose) cout << "Compiling data from threads\n";
+  // Combine BB's and process spares
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0)->processStats(*BBchild.at(i));
+      delete BBchild.at(i);
+    }
+  // Combine objects:
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      oFM.at(0)->Combine(*oFM.at(i));
+      delete oFM.at(i);
+    }
+  }
+
+  // Write Coverage Binary file:
+  std::ofstream ofCOV;
+  ofCOV.open(s_output_cov, std::ofstream::binary);
+  covWriter outCOV;
+  outCOV.SetOutputHandle(&ofCOV);
+  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
+  ofCOV.close();
+
+  delete oFM.at(0);
+  delete BBchild.at(0);
+
+  return(0);
+}
+
+// SpliceWiz core:
+int swEngine::MappabilityRegionsCore(
+    std::string const &bam_file,
+    std::string const &s_output_txt,
+    std::string const &s_output_cov,
+    int threshold,
+    bool const includeCov,
+    bool const verbose,
+    bool const multithreadedRead
+) {
+  if(!checkFileExists(bam_file)) {
+    cout << "File " << bam_file << " does not exist!\n";
+    return(-1);
+  } 
+	if(verbose) cout 
+    << "Calculating Mappability Exclusions: " 
+    << bam_file << "\n";
+  
+  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multithreadedRead);
+  inbam.openFile(bam_file, n_threads_to_use);
+  
+  // Abort here if BAM corrupt
+  std::vector<std::string> s_chr_names;
+  std::vector<uint32_t> u32_chr_lens;
+  int chrcount = inbam.obtainChrs(s_chr_names, u32_chr_lens);
+  if(chrcount < 1) {
+    cout << bam_file << " - contains no mapped chromosomes\n";
+    return(-1);
+  }
+
+  std::vector<FragmentsMap*> oFM;
+  std::vector<BAM2blocks*> BBchild;
+
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    oFM.push_back(new FragmentsMap);
+    BBchild.push_back(new BAM2blocks(s_chr_names, u32_chr_lens));
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
+
+    BBchild.at(i)->openFile(&inbam);
+  }
+  
+  // BAM processing loop
+  bool error_detected = false;
+#ifdef SPLICEWIZ
+  Progress p(inbam.GetFileSize(), verbose);
+  while(0 == inbam.fillReads() && !p.check_abort()) {
+    p.increment(inbam.IncProgress());
+    
+#else
+  while(0 == inbam.fillReads()) {
+#endif
+    
+    #ifdef _OPENMP
+    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+    #endif
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      int pa_ret = BBchild.at(i)->processAll(i);
+      if(pa_ret == -1) {
+        
+        #ifdef _OPENMP
+        #pragma omp critical
+        #endif
+        error_detected = true;
+      }
+    }
+    
+    if(error_detected) break;
+
+    // combine unpaired reads after each fillReads / processAlls
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+    }
+  }
+
+#ifdef SPLICEWIZ
+  if(p.check_abort() || error_detected) {
+    // interrupted:
+#else
+  if(error_detected) {
+#endif
+    
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      delete oFM.at(i);
+      delete BBchild.at(i);
+    }
+    if(error_detected) {
+      return(-1);
+    }
+	// Process aborted; stop processBAM for all requests
+    return(-2);
+  }
+
+  if(n_threads_to_use > 1) {
+    if(verbose) cout << "Compiling data from threads\n";
+  // Combine BB's and process spares
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0)->processStats(*BBchild.at(i));
+      delete BBchild.at(i);
+    }
+  // Combine objects:
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      oFM.at(0)->Combine(*oFM.at(i));
+      delete oFM.at(i);
+    }
+  }
+
+  if(includeCov) {
+    // Write Coverage Binary file:
+    std::ofstream ofCOV;
+    ofCOV.open(s_output_cov, std::ofstream::binary);
+    covWriter outCOV;
+    outCOV.SetOutputHandle(&ofCOV);
+    oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
+    ofCOV.close();    
+  }
+
+  std::ofstream outFragsMap;
+  outFragsMap.open(s_output_txt, std::ifstream::out);
+	
+  oFM.at(0)->WriteOutput(&outFragsMap, threshold, verbose);
+  outFragsMap.flush(); outFragsMap.close();
+
+  delete oFM.at(0);
+  delete BBchild.at(0);
+
+  return(0);
+}

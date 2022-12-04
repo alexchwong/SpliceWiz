@@ -314,29 +314,29 @@ Specifically, this means the included / excluded isoforms are as follows:\tabula
 }
 \section{Functions}{
 \itemize{
-\item \code{ASE_limma}: Use limma to perform differential ASE analysis of
+\item \code{ASE_limma()}: Use limma to perform differential ASE analysis of
 a filtered NxtSE object
 
-\item \code{ASE_edgeR}: Use edgeR to perform differential ASE analysis of
+\item \code{ASE_edgeR()}: Use edgeR to perform differential ASE analysis of
 a filtered NxtSE object
 
-\item \code{ASE_limma_timeseries}: Use limma to perform differential ASE analysis of
+\item \code{ASE_limma_timeseries()}: Use limma to perform differential ASE analysis of
 a filtered NxtSE object (time series)
 
-\item \code{ASE_edgeR_timeseries}: Use edgeR to perform differential time series
+\item \code{ASE_edgeR_timeseries()}: Use edgeR to perform differential time series
 of a filtered NxtSE object
 
-\item \code{ASE_DESeq}: Use DESeq2 to perform differential ASE analysis of
+\item \code{ASE_DESeq()}: Use DESeq2 to perform differential ASE analysis of
 a filtered NxtSE object
 
-\item \code{ASE_DoubleExpSeq}: Use DoubleExpSeq to perform differential ASE analysis
+\item \code{ASE_DoubleExpSeq()}: Use DoubleExpSeq to perform differential ASE analysis
 of a filtered NxtSE object (uses double exponential beta-binomial model)
 to estimate group dispersions, followed by LRT
 
-\item \code{ASE_satuRn}: Use satuRn to perform differential ASE analysis of
+\item \code{ASE_satuRn()}: Use satuRn to perform differential ASE analysis of
 a filtered NxtSE object
-}}
 
+}}
 \examples{
 # Load the NxtSE object and set up the annotations
 # - see ?makeSE on example code of generating this NxtSE object

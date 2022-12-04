@@ -160,20 +160,20 @@ See also \link{ASE-methods} for further explanations of results output.
 }
 \section{Functions}{
 \itemize{
-\item \code{fitASE_edgeR}: Use edgeR to fit counts and ASE models with a
+\item \code{fitASE_edgeR()}: Use edgeR to fit counts and ASE models with a
 given design formula
 
-\item \code{fitASE_edgeR_custom}: Use edgeR to fit counts and ASE models with a
+\item \code{fitASE_edgeR_custom()}: Use edgeR to fit counts and ASE models with a
 given design formula
 
-\item \code{testASE_edgeR}: Use edgeR to return differential ASE results. coef
+\item \code{testASE_edgeR()}: Use edgeR to return differential ASE results. coef
 and contrast are parsed onto edgeR's glmQLFTest function
 
-\item \code{addPSI_edgeR}: Adds average and delta PSIs of conditions of
+\item \code{addPSI_edgeR()}: Adds average and delta PSIs of conditions of
 interest onto results produced by testASE_edgeR(). Note this is done
 automatically for other methods described in \code{ASE-methods}.
-}}
 
+}}
 \examples{
 # Load the NxtSE object and set up the annotations
 # - see ?makeSE on example code of generating this NxtSE object

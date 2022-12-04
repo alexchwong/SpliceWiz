@@ -25,30 +25,23 @@ SOFTWARE.  */
 #include <chrono>
 #include "main.h"
 
+bool checkFileExists(const std::string& name) {
+    std::ifstream f;
+    f.open(name);
+    if(f){
+      // cout << "File " << name << " exists\n";
+      return(true);
+    }
+    // cout << "File " << name << " doesn't exist\n";
+    return(false);
+}
+
 // [[Rcpp::export]]
 int Has_OpenMP() {
 #ifdef _OPENMP
   return omp_get_max_threads();
 #else
   return 0;
-#endif
-}
-
-int Set_Threads(int n_threads) {
-#ifdef _OPENMP
-  int use_threads = 1;
-	if(n_threads > 0 && n_threads <= omp_get_thread_limit()) {
-    use_threads = n_threads;
-	} else {
-		use_threads = omp_get_thread_limit();
-		if(use_threads < 1) {
-			use_threads = 1;
-		}
-	}
-	omp_set_num_threads(use_threads);
-  return(use_threads);
-#else
-	return(1);
 #endif
 }
 
@@ -76,17 +69,6 @@ int Test_OpenMP_For() {
 #endif
 }
 
-inline bool see_if_file_exists(const std::string& name) {
-    std::ifstream f;
-    f.open(name);
-    if(f){
-      // cout << "File " << name << " exists\n";
-      return(true);
-    }
-    // cout << "File " << name << " doesn't exist\n";
-    return(false);
-}
-
 // [[Rcpp::export]]
 bool c_Check_Cov(std::string s_in) {
 	// Checks if given file is a valid COV file
@@ -112,136 +94,6 @@ bool c_Check_Cov(std::string s_in) {
 	return(true);
 }
 
-// ########################### MAPPABILITY INTERNAL FN #########################
-
-std::string GenerateReadError(
-    char * input_read, 
-    const unsigned int read_len, 
-    const unsigned int error_pos,
-    const unsigned int direction, 
-    const size_t error_seed
-) {
-  
-  // Copy https://github.com/williamritchie/IRFinder/blob/master/bin/util/generateReadsError.pl
-
-  char * new_read_inter = new char[read_len + 1];
-  new_read_inter[read_len] = '\0';
-  memcpy(&new_read_inter[0], input_read, read_len);  
-
-  char error_nuc = '\0';  // set this as something to avoid warning at compile
-  if(error_seed % 3 == 0) {
-    switch(new_read_inter[error_pos - 1]) {
-      case 'A':
-        error_nuc = 'G'; break;
-      case 'C':
-        error_nuc = 'A'; break;
-      case 'G':
-        error_nuc = 'T'; break;
-      case 'T':
-        error_nuc = 'C'; break;
-      case 'a':
-        error_nuc = 'g'; break;
-      case 'c':
-        error_nuc = 'a'; break;
-      case 'g':
-        error_nuc = 't'; break;
-      case 't':
-        error_nuc = 'c'; break;
-      default:
-        error_nuc = 'N';
-    }
-  } else if(error_seed % 3 == 1) {
-    switch(new_read_inter[error_pos - 1]) {
-      case 'A':
-        error_nuc = 'T'; break;
-      case 'C':
-        error_nuc = 'G'; break;
-      case 'G':
-        error_nuc = 'C'; break;
-      case 'T':
-        error_nuc = 'A'; break;
-      case 'a':
-        error_nuc = 't'; break;
-      case 'c':
-        error_nuc = 'g'; break;
-      case 'g':
-        error_nuc = 'c'; break;
-      case 't':
-        error_nuc = 'a'; break;
-      default:
-        error_nuc = 'N';
-    }
-  } else {
-    switch(new_read_inter[error_pos - 1]) {
-      case 'A':
-        error_nuc = 'C'; break;
-      case 'C':
-        error_nuc = 'T'; break;
-      case 'G':
-        error_nuc = 'A'; break;
-      case 'T':
-        error_nuc = 'G'; break;
-      case 'a':
-        error_nuc = 'c'; break;
-      case 'c':
-        error_nuc = 't'; break;
-      case 'g':
-        error_nuc = 'a'; break;
-      case 't':
-        error_nuc = 'g'; break;
-      default:
-        error_nuc = 'N';
-    }
-  }
-  
-  memcpy(&new_read_inter[error_pos - 1], &error_nuc, 1);
-  
-  char * new_read = new char[read_len + 1];
-  new_read[read_len] = '\0';
-  if(direction == 0) {
-    memcpy(&new_read[0], new_read_inter, read_len);  
-  } else {
-    for(unsigned int i = 0; i < read_len; i++) {
-      switch(new_read_inter[i]) {   
-        case 'A':
-          new_read[read_len - i - 1] = 'T'; break;
-        case 'T':
-          new_read[read_len - i - 1] = 'A'; break;
-        case 'G':
-          new_read[read_len - i - 1] = 'C'; break;
-        case 'C':
-          new_read[read_len - i - 1] = 'G'; break;
-        case 'a':
-          new_read[read_len - i - 1] = 't'; break;
-        case 't':
-          new_read[read_len - i - 1] = 'a'; break;
-        case 'g':
-          new_read[read_len - i - 1] = 'c'; break;
-        case 'c':
-          new_read[read_len - i - 1] = 'g'; break;
-        default :
-          new_read[read_len - i - 1] = 'N';
-      }         
-    }
-  }
-
-  string return_str = string(new_read);
-  delete[] new_read;
-  return(return_str);
-}
-
-// Replicate old PERL script; return true if N's constitute less than half of length
-bool checkDNA(char * input_read, unsigned int read_len) {
-  unsigned int numN = 0;
-  for(unsigned int i = 0; i < read_len; i++) {
-    if(input_read[i]!='A' && input_read[i]!='T' && input_read[i]!='G' && input_read[i]!='C' &&
-      input_read[i]!='a' && input_read[i]!='t' && input_read[i]!='g' && input_read[i]!='c') {
-      numN++;
-    }
-  }
-  return(numN < read_len / 2);
-}
-
 // #############################################################################
 
 #ifdef SPLICEWIZ
@@ -258,7 +110,7 @@ List c_RLE_From_Cov(std::string s_in, std::string seqname, int start, int end, i
     _["lengths"] = 0 
   );
   
-  if(!see_if_file_exists(s_in)) {
+  if(!checkFileExists(s_in)) {
     cout << "File " << s_in << " does not exist!\n";
     return(NULL_RLE);
   }
@@ -335,7 +187,7 @@ StringVector c_Cov_Seqnames(
   
   StringVector s_out;
   
-  if(!see_if_file_exists(s_in)) {
+  if(!checkFileExists(s_in)) {
     cout << "File " << s_in << " does not exist!\n";
     return(s_out);
   }
@@ -381,7 +233,7 @@ List c_RLEList_From_Cov(std::string s_in, int strand) {
     _["lengths"] = 0 
   );
   
-  if(!see_if_file_exists(s_in)) {
+  if(!checkFileExists(s_in)) {
     cout << "File " << s_in << " does not exist!\n";
     return(NULL_RLE);
   }
@@ -434,7 +286,7 @@ List c_RLEList_From_Cov(std::string s_in, int strand) {
 List c_gunzip_DF(std::string s_in, StringVector s_header_begin) {
   List Final_final_list;
 
-  if(!see_if_file_exists(s_in)) {
+  if(!checkFileExists(s_in)) {
     cout << "File " << s_in << " does not exist!\n";
     return(Final_final_list);
   }
@@ -525,7 +377,7 @@ List c_gunzip_DF(std::string s_in, StringVector s_header_begin) {
 // [[Rcpp::export]]
 int c_gunzip(std::string s_in, std::string s_out) {
   
-  if(!see_if_file_exists(s_in)) {
+  if(!checkFileExists(s_in)) {
     cout << "File " << s_in << " does not exist!\n";
     return(-1);
   }
@@ -543,443 +395,6 @@ int c_gunzip(std::string s_in, std::string s_out) {
     out << myLine << "\n";
   }
   out.flush(); out.close();
-  return(0);
-}
-
-int ReadChrAlias(std::istringstream &IN,
-    std::vector<std::string> &ref_names, 
-    std::vector<std::string> &ref_alias,
-    std::vector<uint32_t> &ref_lengths
-) {
-  ref_names.clear();
-  ref_alias.clear();
-  
-  std::string myLine;
-  myLine.reserve(1000);
-  std::string myChr;
-  myChr.reserve(100);
-  std::string myAlias;
-  myAlias.reserve(100);
-  std::string myLength;
-  myLength.reserve(100);
-  
-  while(!IN.eof() && !IN.fail()) {
-    getline(IN, myLine, '\n');
-    if (IN.eof() || IN.fail()) {
-      if (myLine.length() == 0) {
-        // This line is empty - just a blank line at the end of the file.
-        // Checking at this stage allows correct handling of files both with and without a trailing \n after the last record.
-        break;
-      }else{
-        // Error line in input, ignore.
-        break;
-      }
-    }
-    std::istringstream lineStream;
-    lineStream.str(myLine);
-    getline(lineStream, myChr, '\t');
-    getline(lineStream, myLength, '\t');
-    getline(lineStream, myAlias, '\t');
-    if(myChr.size() > 0) {
-      ref_names.push_back(myChr);
-      ref_lengths.push_back((uint32_t)stoul(myLength));
-      ref_alias.push_back(myAlias);      
-    }
-  }
-  // cout << "Debug:" << ref_names.size() << " chromosome aliases loaded\n";
-  return(0);
-}
-
-// SpliceWiz reference reader:
-int readReferenceToStrings(std::string &reference_file, 
-    std::vector<std::string> &ref_names, 
-    std::vector<std::string> &ref_alias,
-    std::vector<uint32_t> &ref_lengths,
-    std::string &CB_string,
-    std::string &SP_string,
-    std::string &ROI_string,
-    std::string &JC_string,
-    std::string &TJ_string,
-    bool verbose
-) { 
-  (void)(verbose);
-
-  if(!see_if_file_exists(reference_file)) {
-    cout << "File " << reference_file << " does not exist!\n";
-    return(-1);
-  }
-
-  GZReader * gz_in = new GZReader;
-  int ret = gz_in->LoadGZ(reference_file, true);   // streamed mode
-  if(ret != 0) return(-1);
-  
-  // Allows reference blocks to be read in any order
-  std::string headerCover ("ref-cover.bed");
-  std::string headerSpans ("ref-read-continues.ref");
-  std::string headerROI ("ref-ROI.bed");
-  std::string headerSJ ("ref-sj.ref");
-  std::string headerTJ ("ref-tj.ref");
-  std::string headerChr ("ref-chrs.ref");
-  std::string headerEOF ("EOF");
-  
-  bool doneCover = false;
-  bool doneSpans = false;
-  bool doneROI = false;
-  bool doneSJ = false;
-  bool doneTJ = false;
-  bool doneChrs = false;
-  
-  std::string myLine;
-  std::string myBuffer;
-  
-  getline(gz_in->iss, myLine, '#');    // discard anything before the first hash
-  getline(gz_in->iss, myLine, '\n');   // Get block name
-  
-  // Check non-empty ref block name
-  if(myLine.size() == 0) {
-    cout << "Invalid SpliceWiz reference detected\n";
-    return(-1);
-  }
-
-  while(myLine.find(headerEOF)==std::string::npos) {
-    // getline(gz_in->iss, myBuffer, '#');  // this is the data block
-
-    if(myLine.find(headerCover)!=std::string::npos && !doneCover) {
-      getline(gz_in->iss, CB_string, '#');
-      doneCover = true;
-    } else if(myLine.find(headerSpans)!=std::string::npos && !doneSpans) {
-      getline(gz_in->iss, SP_string, '#');
-      doneSpans = true;
-    } else if(myLine.find(headerROI)!=std::string::npos && !doneROI) {
-      getline(gz_in->iss, ROI_string, '#');
-      doneROI = true;
-    } else if(myLine.find(headerSJ)!=std::string::npos && !doneSJ) {
-      getline(gz_in->iss, JC_string, '#');
-      doneSJ = true;
-    } else if(myLine.find(headerTJ)!=std::string::npos && !doneTJ) {
-      getline(gz_in->iss, TJ_string, '#');
-      doneTJ = true;
-    } else if(myLine.find(headerChr)!=std::string::npos && !doneChrs) {
-      getline(gz_in->iss, myBuffer, '#');
-      std::istringstream inChrAlias;
-      inChrAlias.str(myBuffer);
-      ReadChrAlias(inChrAlias, ref_names, ref_alias, ref_lengths);
-      doneChrs = true;
-    } else {
-      cout << "Error: Invalid SpliceWiz reference block detected\n";
-      return(-1);
-    }
-    // Get next data block name
-    getline(gz_in->iss, myLine, '\n');
-  }
-
-  delete gz_in;
-  
-  if(!doneCover || !doneSpans || !doneROI || !doneSJ) {
-    cout << "Error: Incomplete SpliceWiz reference detected\n";
-    return(-1);
-  } else if(!doneTJ) {
-    cout << "Note: Tandem junction reference not detected. " <<
-      "Rebuild reference using SpliceWiz v0.99.3 or above.\n";
-  }
-  return(0);
-}
-
-// SpliceWiz core:
-int SpliceWizCore(std::string const &bam_file, 
-    std::string const &s_output_txt, std::string const &s_output_cov,
-    std::vector<std::string> &ref_names, 
-    std::vector<std::string> &ref_alias,
-    std::vector<uint32_t> &ref_lengths,
-    std::string &CB_string,
-    std::string &SP_string,
-    std::string &ROI_string,
-    std::string &JC_string,
-    std::string &TJ_string,
-    bool const verbose,
-    int n_threads,
-    bool const multithreadedRead
-) {
-  unsigned int n_threads_to_use = (unsigned int)n_threads;   // Should be sorted out in calling function
- 
-  if(!see_if_file_exists(bam_file)) {
-    cout << "File " << bam_file << " does not exist!\n";
-    return(-1);
-  } 
- 
-	if(verbose) cout << "Processing BAM file " << bam_file << "\n";
-  
-  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multithreadedRead);
-
-  inbam.openFile(bam_file, n_threads_to_use);
-  
-  // Abort here if BAM corrupt
-  std::vector<std::string> s_chr_names;
-  std::vector<uint32_t> u32_chr_lens;
-  int chrcount = inbam.obtainChrs(s_chr_names, u32_chr_lens);
-  if(chrcount < 1) {
-    cout << bam_file << " - contains no chromosomes mapped\n";
-    return(-1);
-  }
-  
-  // Compile here a list of chromosomes; use BAM chromosomes for order
-  // Add reference-only chromosomes at the end
-  std::vector<std::string> bam_chr_name;
-  std::vector<uint32_t> bam_chr_len;
-  for(unsigned int i = 0; i < s_chr_names.size(); i++) {
-    for(unsigned int j = 0; j < ref_alias.size(); j++) {
-      if( 0==strncmp(
-            ref_alias.at(j).c_str(), 
-            s_chr_names.at(i).c_str(), 
-            s_chr_names.at(i).size()
-          ) && s_chr_names.at(i).size() == ref_alias.at(j).size()
-      ) {
-        bam_chr_name.push_back(ref_names.at(j));
-        bam_chr_len.push_back(u32_chr_lens.at(i));
-        break;
-      }
-    }
-    if(i == bam_chr_name.size()) {
-      bam_chr_name.push_back(s_chr_names.at(i));
-      bam_chr_len.push_back(u32_chr_lens.at(i));
-    }
-  }
-  // Now fill in reference chromosomes not in BAM:
-  for(unsigned int i = 0; i < ref_names.size(); i++) {
-    auto it = std::find(bam_chr_name.begin(), bam_chr_name.end(), ref_names.at(i));
-    if(it == bam_chr_name.end()) {
-      bam_chr_name.push_back(ref_names.at(i));
-      bam_chr_len.push_back(ref_lengths.at(i));      
-    }
-  }
-  
-  std::vector<CoverageBlocksIRFinder*> oCB;
-  std::vector<SpansPoint*> oSP;
-  std::vector<FragmentsInROI*> oROI;
-  std::vector<FragmentsInChr*> oChr;
-  std::vector<JunctionCount*> oJC;
-  std::vector<TandemJunctions*> oTJ;
-  std::vector<FragmentsMap*> oFM;
-  std::vector<BAM2blocks*> BBchild;
-
-  for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    oCB.push_back(new CoverageBlocksIRFinder(CB_string));
-    oSP.push_back(new SpansPoint(SP_string));
-    oROI.push_back(new FragmentsInROI(ROI_string));
-    oChr.push_back(new FragmentsInChr);
-    oJC.push_back(new JunctionCount(JC_string));
-    oTJ.push_back(new TandemJunctions(TJ_string));
-    oFM.push_back(new FragmentsMap);
-    BBchild.push_back(new BAM2blocks(bam_chr_name, bam_chr_len));
-
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&JunctionCount::ChrMapUpdate, &(*oJC.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&JunctionCount::ProcessBlocks, &(*oJC.at(i)), std::placeholders::_1) );
-
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&TandemJunctions::ChrMapUpdate, &(*oTJ.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&TandemJunctions::ProcessBlocks, &(*oTJ.at(i)), std::placeholders::_1) );
-    
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInChr::ChrMapUpdate, &(*oChr.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInChr::ProcessBlocks, &(*oChr.at(i)), std::placeholders::_1) );
-    
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&SpansPoint::ChrMapUpdate, &(*oSP.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&SpansPoint::ProcessBlocks, &(*oSP.at(i)), std::placeholders::_1) );
-        
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInROI::ChrMapUpdate, &(*oROI.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInROI::ProcessBlocks, &(*oROI.at(i)), std::placeholders::_1) );
-    
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&CoverageBlocks::ChrMapUpdate, &(*oCB.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&CoverageBlocks::ProcessBlocks, &(*oCB.at(i)), std::placeholders::_1) );
-
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
-
-    BBchild.at(i)->openFile(&inbam);
-  }
-  
-  // BAM processing loop
-  bool error_detected = false;
-#ifdef SPLICEWIZ
-  Progress p(inbam.GetFileSize(), verbose);
-  while(0 == inbam.fillReads() && !p.check_abort()) {
-    p.increment(inbam.IncProgress());
-    
-#else
-  while(0 == inbam.fillReads()) {
-#endif
-    
-    #ifdef _OPENMP
-    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-    #endif
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      int pa_ret = BBchild.at(i)->processAll(i);
-      if(pa_ret == -1) {
-        
-        #ifdef _OPENMP
-        #pragma omp critical
-        #endif
-        error_detected = true;
-      }
-    }
-    
-    if(error_detected) break;
-
-    // combine unpaired reads after each fillReads / processAlls
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-    }
-  }
-
-#ifdef SPLICEWIZ
-  if(p.check_abort() || error_detected) {
-    // interrupted:
-#else
-  if(error_detected) {
-#endif
-    
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete oJC.at(i);
-      delete oTJ.at(i);
-      delete oChr.at(i);
-      delete oSP.at(i);
-      delete oROI.at(i);
-      delete oCB.at(i);
-      delete oFM.at(i);
-      delete BBchild.at(i);
-    }
-    if(error_detected) {
-      return(-1);
-    }
-	// Process aborted; stop processBAM for all requests
-    return(-2);
-  }
-
-
-  if(n_threads_to_use > 1) {
-    if(verbose) cout << "Compiling data from threads\n";
-  // Combine BB's and process spares
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-      BBchild.at(0)->processStats(*BBchild.at(i));
-      delete BBchild.at(i);
-    }
-  // Combine objects:
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      oJC.at(0)->Combine(*oJC.at(i));
-      oTJ.at(0)->Combine(*oTJ.at(i));
-      oChr.at(0)->Combine(*oChr.at(i));
-      oSP.at(0)->Combine(*oSP.at(i));
-      oROI.at(0)->Combine(*oROI.at(i));
-      oCB.at(0)->Combine(*oCB.at(i));
-      oFM.at(0)->Combine(*oFM.at(i));
-      
-      delete oJC.at(i);
-      delete oTJ.at(i);
-      delete oChr.at(i);
-      delete oSP.at(i);
-      delete oROI.at(i);
-      delete oCB.at(i);
-      delete oFM.at(i);
-    }
-  }
-
-  // Write Coverage Binary file:
-  std::ofstream ofCOV;
-  ofCOV.open(s_output_cov, std::ofstream::binary);
-  covWriter outCOV;
-  outCOV.SetOutputHandle(&ofCOV);
-  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
-  ofCOV.close();
-
-// Write output to file:  
-	if(verbose) cout << "Writing output file\n";
-
-  std::ofstream out;                            
-  out.open(s_output_txt, std::ios::binary);  // Open binary file
-  GZWriter outGZ;                               
-  outGZ.SetOutputHandle(&out); // GZ compression
-
-  int outret = outGZ.writeline("BAM_report\tValue"); 
-  if(outret != Z_OK) {
-    cout << "Error writing gzip-compressed output file\n";
-    out.close();
-    delete oJC.at(0);
-    delete oTJ.at(0);
-    delete oChr.at(0);
-    delete oSP.at(0);
-    delete oROI.at(0);
-    delete oCB.at(0);
-    delete oFM.at(0);
-    delete BBchild.at(0);
-    return(-1);
-  }
-
-  // Output stuff here
-
-// Write stats here:
-  std::string myLine;
-  BBchild.at(0)->WriteOutput(myLine);
-  outGZ.writestring(myLine); outGZ.writeline("");
-
-  int directionality = oJC.at(0)->Directional(myLine);
-  outGZ.writeline("Directionality\tValue"); 
-  outGZ.writestring(myLine); outGZ.writeline("");
-
-  // Generate output but save this to strings:
-  std::string myLine_ROI;
-  std::string myLine_JC;
-  std::string myLine_TJ;
-  std::string myLine_SP;
-  std::string myLine_Chr;
-  std::string myLine_ND;
-  std::string myLine_Dir;
-  std::string myLine_QC;
-  
-  oROI.at(0)->WriteOutput(myLine_ROI, myLine_QC);
-	oJC.at(0)->WriteOutput(myLine_JC, myLine_QC);
-	oTJ.at(0)->WriteOutput(myLine_TJ, myLine_QC);
-	oSP.at(0)->WriteOutput(myLine_SP, myLine_QC);
-	oChr.at(0)->WriteOutput(myLine_Chr, myLine_QC);
-	oCB.at(0)->WriteOutput(myLine_ND, myLine_QC, *oJC.at(0), *oSP.at(0), *oFM.at(0), n_threads_to_use);
-  if (directionality != 0) {
-    oCB.at(0)->WriteOutput(myLine_Dir, myLine_QC, *oJC.at(0), *oSP.at(0), *oFM.at(0), n_threads_to_use, directionality); // Directional.
-	}
-
-  outGZ.writeline("QC\tValue"); outGZ.writestring(myLine_QC); outGZ.writeline("");
-	
-  outGZ.writeline("ROIname\ttotal_hits\tpositive_strand_hits\tnegative_strand_hits");
-  outGZ.writestring(myLine_ROI); outGZ.writeline("");
-  
-  outGZ.writeline("JC_seqname\tstart\tend\tstrand\ttotal\tpos\tneg");
-  outGZ.writestring(myLine_JC); outGZ.writeline("");
-
-  outGZ.writeline("TJ_seqname\tstart1\tend1\tstart2\tend2\tstrand\ttotal\tpos\tneg");
-  outGZ.writestring(myLine_TJ); outGZ.writeline("");
-  
-  outGZ.writeline("SP_seqname\tcoord\ttotal\tpos\tneg");
-  outGZ.writestring(myLine_SP); outGZ.writeline("");
-  
-  outGZ.writeline("ChrCoverage_seqname\ttotal\tpos\tneg");
-  outGZ.writestring(myLine_Chr); outGZ.writeline("");
-  
-  outGZ.writestring(myLine_ND); outGZ.writeline("");
-  
-  if (directionality != 0) {
-    outGZ.writestring(myLine_Dir); outGZ.writeline("");
-  }
-  outGZ.flush(true);
-  out.flush(); out.close();
-  
-  // destroy objects:
-
-  delete oJC.at(0);
-  delete oTJ.at(0);
-  delete oChr.at(0);
-  delete oSP.at(0);
-  delete oROI.at(0);
-  delete oCB.at(0);
-  delete oFM.at(0);
-  delete BBchild.at(0);
-
   return(0);
 }
 
@@ -1001,20 +416,25 @@ int SpliceWizMain(
   bool verbose = true;
   bool multiRead = false;
 #endif
-  
-  int use_threads = Set_Threads(n_threads);
-  
+   
   std::string s_bam = bam_file;
-  std::string s_ref = reference_file;
-  
-  if(!see_if_file_exists(s_bam)) {
+  std::string s_ref = reference_file;  
+  if(!checkFileExists(s_bam)) {
     cout << "File " << s_bam << " does not exist!\n";
     return(-1);
   } 
-  if(!see_if_file_exists(s_ref)) {
+  if(!checkFileExists(s_ref)) {
     cout << "File " << s_ref << " does not exist!\n";
     return(-1);
   } 
+
+  swEngine Engine;
+  int use_threads = Engine.Set_Threads(n_threads);
+  int ret = Engine.readReference(s_ref, verbose);
+  if(ret != 0) {
+    cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
+    return(ret);
+  }
   
   if(verbose) {
     cout << "Running SpliceWiz on " << s_bam;
@@ -1025,39 +445,26 @@ int SpliceWizMain(
       << "Reading reference file\n";
   }
 
-  // CoverageBlocksIRFinder * CB_template = new CoverageBlocksIRFinder;
-  // SpansPoint * SP_template = new SpansPoint;
-  // FragmentsInROI * ROI_template = new FragmentsInROI;
-  // JunctionCount * JC_template = new JunctionCount;
-  std::string CB_string;
-  std::string SP_string;
-  std::string ROI_string;
-  std::string JC_string;
-  std::string TJ_string;
-  
-  std::vector<std::string> ref_names;
-  std::vector<std::string> ref_alias;
-  std::vector<uint32_t> ref_lengths;
-  
-  int ret = 0;
-  
-  ret = readReferenceToStrings(s_ref, ref_names, ref_alias, ref_lengths,
-    CB_string, SP_string, ROI_string, JC_string, TJ_string, verbose
-  );
-  if(ret != 0) {
-    cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid NxtIRF-generated SpliceWiz reference\n";
-    return(ret);
-  }
   // main:
-  ret = SpliceWizCore(s_bam, s_output_txt, s_output_cov,
-    ref_names, ref_alias, ref_lengths,
-    CB_string, SP_string, ROI_string, JC_string, TJ_string,
-    verbose, use_threads, multiRead);
+  auto start = chrono::steady_clock::now();
+  auto check = start;
+  int ret2 = Engine.SpliceWizCore(
+      s_bam, s_output_txt, s_output_cov,
+      verbose, multiRead
+  );
     
-  if(ret == -2) cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
-  if(ret == -1) cout << "Error encountered processing " << s_bam << '\n';
+  if(ret2 == -2) {
+    cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
+    return(ret2);
+  } else if(ret2 == -1) {
+    cout << "Error encountered processing " << s_bam << "\n";
+  } else {
+    check = chrono::steady_clock::now();
+    auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
+    cout << s_bam << " processed (" << time_sec << " seconds)\n";
+  }
   
-  return(ret);
+  return(ret2);
 }
 
 #ifdef SPLICEWIZ
@@ -1066,14 +473,10 @@ int SpliceWizMain_multi(
     std::string reference_file, StringVector bam_files, StringVector output_files,
     int max_threads, bool verbose, bool multiRead
 ){
-	
-	int use_threads = Set_Threads(max_threads);
-
 	if(bam_files.size() != output_files.size() || bam_files.size() < 1) {
 		cout << "bam_files and output_files are of different sizes\n";
 		return(1);	
 	}
-	
 	std::vector< std::string > v_bam;
 	std::vector< std::string > v_out;
   for(int z = 0; z < bam_files.size(); z++) {
@@ -1082,29 +485,20 @@ int SpliceWizMain_multi(
 	}
 
   std::string s_ref = reference_file;
+  if(!checkFileExists(s_ref)) {
+    cout << "File " << s_ref << " does not exist!\n";
+    return(-1);
+  } 
+
+  swEngine Engine;
+  Engine.Set_Threads(max_threads);
+
   cout << "Reading reference file\n";
-  
-  std::string CB_string;
-  std::string SP_string;
-  std::string ROI_string;
-  std::string JC_string;
-  std::string TJ_string;
-  
-  std::vector<std::string> ref_names;
-  std::vector<std::string> ref_alias;
-  std::vector<uint32_t> ref_lengths;
-  
-  int ret = 0;
-  
-  ret = readReferenceToStrings(s_ref, ref_names, ref_alias, ref_lengths,
-    CB_string, SP_string, ROI_string, JC_string, TJ_string, verbose
-  );
+  int ret = Engine.readReference(s_ref, verbose);
   if(ret != 0) {
-    cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid NxtIRF-generated SpliceWiz reference\n";
+    cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
     return(ret);
   }
-
-	cout << "Running SpliceWiz with OpenMP using " << use_threads << " threads\n";
 
   for(unsigned int z = 0; z < v_bam.size(); z++) {
     std::string s_bam = v_bam.at(z);
@@ -1113,16 +507,12 @@ int SpliceWizMain_multi(
 
     auto start = chrono::steady_clock::now();
     auto check = start;
-    int ret2 = SpliceWizCore(s_bam, s_output_txt, s_output_cov,
-      ref_names, ref_alias, ref_lengths,
-      CB_string, SP_string, ROI_string, JC_string, TJ_string,
-      verbose, use_threads, multiRead);
+    int ret2 = Engine.SpliceWizCore(
+      s_bam, s_output_txt, s_output_cov,
+      verbose, multiRead
+    );
     if(ret2 == -2) {
       cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
-      // delete CB_template;
-      // delete SP_template;
-      // delete ROI_template;
-      // delete JC_template;
       return(ret2);
     } else if(ret2 == -1) {
       cout << "Error encountered processing " << s_bam << "\n";
@@ -1146,7 +536,7 @@ int c_GenerateMappabilityReads(
 	int read_len, int read_stride, int error_pos
 ) {
 
-  if(!see_if_file_exists(genome_file)) {
+  if(!checkFileExists(genome_file)) {
     cout << "File " << genome_file << " does not exist!\n";
     return(-1);
   } 
@@ -1155,6 +545,7 @@ int c_GenerateMappabilityReads(
   inGenome.open(genome_file, std::ifstream::in);
   
   std::ofstream outFA;
+  synthReadGenerator synth((unsigned int)read_len, error_pos);
   
   // STDOUT output is only allowed in GALAXY MODE
   // Allows writing to standard output if filename is '-'
@@ -1201,9 +592,9 @@ int c_GenerateMappabilityReads(
     ) {
       memcpy(read, &buffer[bufferPos - 1], read_len);
       num_reads += 1;
-      if(checkDNA(read, read_len)) {       
-        std::string write_seq = GenerateReadError(
-          read, read_len, error_pos, direction, num_reads
+      if(synth.checkDNA(read)) {       
+        std::string write_seq = synth.GenerateReadError(
+          read, direction, num_reads
         ) ;
 
 #ifndef SPLICEWIZ
@@ -1263,121 +654,31 @@ int c_GenerateMappabilityRegions(
     std::string bam_file, std::string output_file, 
     int threshold, int includeCov, bool verbose,
     int n_threads
-){
-  
+){  
   std::string s_output_txt = output_file + ".txt";
   std::string s_output_cov = output_file + ".cov";
+  bool doCov = (includeCov == 1);
+
 #else
 int c_GenerateMappabilityRegions(
     std::string bam_file, std::string s_output_txt, 
     int threshold, int n_threads, std::string s_output_cov
 ){	
 	bool verbose = true;
+  bool doCov = !s_output_cov.empty();
+
 #endif
 
-  if(!see_if_file_exists(bam_file)) {
-    cout << "File " << bam_file << " does not exist!\n";
-    return(-1);
-  } 
-
-  int use_threads = Set_Threads(n_threads);
-  unsigned int n_threads_to_use = (unsigned int)use_threads;
- 
-  std::string myLine;
-	if(verbose) cout << "Calculating Mappability Exclusions from aligned synthetic reads in BAM file " << bam_file << "\n";
-
-  pbam_in inbam((size_t)5e8, (size_t)1e9, 5);
-  inbam.openFile(bam_file, n_threads_to_use);
-
-  // Assign children:
-  std::vector<FragmentsMap*> oFM;
-  std::vector<BAM2blocks*> BBchild;
-
-  for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    oFM.push_back(new FragmentsMap);
-    BBchild.push_back(new BAM2blocks);
-
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
-
-    BBchild.at(i)->openFile(&inbam);
-  }
+  swEngine Engine;
+  Engine.Set_Threads(n_threads);
   
-  // BAM processing loop
-#ifdef SPLICEWIZ
-  Progress p(inbam.GetFileSize(), verbose);
-  while(0 == inbam.fillReads() && !p.check_abort()) {
-    p.increment(inbam.IncProgress());
-  
-#else
-  while(0 == inbam.fillReads()) {
-#endif
-  
-    #ifdef _OPENMP
-    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-    #endif
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      BBchild.at(i)->processAll(i, true);
-    }
+  int ret = Engine.MappabilityRegionsCore(
+    bam_file, s_output_txt, s_output_cov,
+    threshold, doCov,
+    verbose, false
+  );
 
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-    }
-  }
-
-#ifdef SPLICEWIZ
-  if(p.check_abort()) {
-    // interrupted:
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete oFM.at(i);
-      delete BBchild.at(i);
-    }
-    return(-1);
-  }
-#endif
-  
-  inbam.closeFile();
-
-  if(n_threads_to_use > 1) {
-    if(verbose) cout << "Compiling data from threads\n";
-  // Combine BB's and process spares
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-      BBchild.at(0)->processStats(*BBchild.at(i));
-      delete BBchild.at(i);
-    }
-  // Combine objects:
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      oFM.at(0)->Combine(*oFM.at(i));
-
-      delete oFM.at(i);
-    }
-  }
-
-#ifdef SPLICEWIZ
-  if(includeCov == 1) {
-#else
-  if(!s_output_cov.empty()) {
-#endif
-   // Write Coverage Binary file:
-    std::ofstream ofCOV;
-    ofCOV.open(s_output_cov, std::ofstream::binary);  
-    covWriter outCOV;
-    outCOV.SetOutputHandle(&ofCOV);
-    oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
-    ofCOV.close();
-  }
-  
-  std::ofstream outFragsMap;
-  outFragsMap.open(s_output_txt, std::ifstream::out);
-	
-  oFM.at(0)->WriteOutput(&outFragsMap, threshold, verbose);
-  outFragsMap.flush(); outFragsMap.close();
-
-  delete oFM.at(0);
-  delete BBchild.at(0);
-
-  return(0);
+  return(ret);
 }
 
 
@@ -1395,101 +696,12 @@ int c_BAM2COV(
 	bool verbose = true;
 #endif
 
-  std::string s_output_cov = output_file;
+  swEngine Engine;
+  Engine.Set_Threads(n_threads);
 
-  if(!see_if_file_exists(bam_file)) {
-    cout << "File " << bam_file << " does not exist!\n";
-    return(-1);
-  } 
-
-  int use_threads = Set_Threads(n_threads);
-  unsigned int n_threads_to_use = (unsigned int)use_threads;
- 
-  std::string myLine;
-	if(verbose) cout << "Creating COV file from " << bam_file << "\n";
-
-  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multiRead);
-  inbam.openFile(bam_file, n_threads_to_use);
-
-  // Assign children:
-  std::vector<FragmentsMap*> oFM;
-  std::vector<BAM2blocks*> BBchild;
-
-  for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    oFM.push_back(new FragmentsMap);
-    BBchild.push_back(new BAM2blocks);
-
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
-
-    BBchild.at(i)->openFile(&inbam);
-  }
-  
-  // BAM processing loop
-#ifdef SPLICEWIZ
-  Progress p(inbam.GetFileSize(), verbose);
-  while(0 == inbam.fillReads() && !p.check_abort()) {
-    p.increment(inbam.IncProgress());
-  
-#else
-  while(0 == inbam.fillReads()) {
-#endif
-  
-    #ifdef _OPENMP
-    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-    #endif
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      BBchild.at(i)->processAll(i);
-    }
-
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-    }
-  }
-
-#ifdef SPLICEWIZ
-  if(p.check_abort()) {
-    // interrupted:
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete oFM.at(i);
-      delete BBchild.at(i);
-    }
-    return(-1);
-  }
-#endif
-  
-  inbam.closeFile();
-
-  if(n_threads_to_use > 1) {
-    if(verbose) cout << "Compiling data from threads\n";
-  // Combine BB's and process spares
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-      BBchild.at(0)->processStats(*BBchild.at(i));
-      delete BBchild.at(i);
-    }
-  // Combine objects:
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      oFM.at(0)->Combine(*oFM.at(i));
-
-      delete oFM.at(i);
-    }
-  }
-
-  // Write Coverage Binary file:
-  std::ofstream ofCOV;
-  ofCOV.open(s_output_cov, std::ofstream::binary);  
-  covWriter outCOV;
-  outCOV.SetOutputHandle(&ofCOV);
-  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
-  ofCOV.close();
-
-  delete oFM.at(0);
-  delete BBchild.at(0);
-
-  return(0);
+  int ret = Engine.BAM2COVcore(bam_file, output_file, verbose, multiRead);
+  return(ret);
 }
-
 
 // ################################## MAIN #####################################
 

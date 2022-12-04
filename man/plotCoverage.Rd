@@ -193,18 +193,18 @@ Introns are denoted as lines.
 }
 \section{Functions}{
 \itemize{
-\item \code{plotCoverage}: generates plots showing depth of alignments to
+\item \code{plotCoverage()}: generates plots showing depth of alignments to
 the genomic axis. Plots can be generated for individual samples or samples
 grouped by experimental conditions. In the latter, mean and 95\% confidence
 intervals are shown.
 
-\item \code{plotGenome}: Generates a plot of transcripts within a given
+\item \code{plotGenome()}: Generates a plot of transcripts within a given
 genomic region, or belonging to a specified gene
 
-\item \code{as_ggplot_cov}: Coerce the \code{plotCoverage()} output as a vertically
+\item \code{as_ggplot_cov()}: Coerce the \code{plotCoverage()} output as a vertically
 stacked ggplot, using egg::ggarrange
-}}
 
+}}
 \examples{
 se <- SpliceWiz_example_NxtSE()
 

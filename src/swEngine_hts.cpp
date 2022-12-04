@@ -778,3 +778,107 @@ int swEngine_hts::BAM2COVcore(
   return(0);
 }
 
+// do nothing except decompress BAM reads:
+int swEngine_hts::doNothing(
+    std::string const &bam_file,
+    bool const verbose,
+    bool const read_pool
+) {
+  if(!checkFileExists(bam_file)) {
+    cout << "File " << bam_file << " does not exist!\n";
+    return(-1);
+  } 
+	if(verbose) cout << "doNothing: " << bam_file << "\n";
+  
+  BGZF *fp = bgzf_open(bam_file.c_str(), "r");
+  bam_hdr_t *header = bam_hdr_read(fp);
+  
+  hts_tpool *pool;
+  const int queue_size = 64;
+  if (n_threads_to_use > 1) {
+      pool = hts_tpool_init(n_threads_to_use);
+      bgzf_thread_pool(fp, pool, queue_size);
+  }
+  
+  // Abort here if BAM corrupt
+  if(header->n_targets <= 0){
+    cout << bam_file << " - contains no chromosomes mapped\n";
+    return(-1);
+  }
+  std::vector<std::string> s_chr_names;
+  std::vector<uint32_t> u32_chr_lens;
+  for (int i = 0; i < header->n_targets; ++i) {
+    s_chr_names.push_back(header->target_name[i]);
+    u32_chr_lens.push_back(header->target_len[i]);
+  }
+
+  // Read pool size
+  unsigned int pool_cap = (unsigned int)read_pool;
+  
+  // Initialize bam1_t vector
+  std::vector<bam1_t *> bpool;
+  for(unsigned int i = 0; i < pool_cap; i++) {
+    bpool.push_back(bam_init1());
+  }
+  
+  // Pre-partition for n threads
+  std::vector<int> pool_starts;
+  std::vector<int> pool_ends;
+  int est_tp_size = 1 + (pool_cap / n_threads_to_use);
+  int poolPos = 0;
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    if(poolPos + est_tp_size > (int)pool_cap) {
+      pool_starts.push_back(poolPos);
+      pool_ends.push_back(pool_cap - 1);
+      poolPos = pool_cap;
+    } else {
+      pool_starts.push_back(poolPos);
+      pool_ends.push_back(poolPos + est_tp_size - 1);
+      poolPos += est_tp_size;
+    }
+  }
+  for(unsigned int i = pool_starts.size(); i < n_threads_to_use; i++) {
+    pool_starts.push_back(-1);
+    pool_ends.push_back(-1);
+  }
+  
+  // BAM processing loop
+  bool error_detected = false;
+  off_t prevPos = 0; 
+  off_t curPos = 0;
+#ifdef SPLICEWIZ
+  Progress p(GetFileSize(bam_file), verbose);
+  while(!p.check_abort()) {
+    curPos = htell(fp->fp);
+    p.increment(curPos - prevPos);
+    prevPos = curPos;
+    
+#else
+  while(!p.check_abort()) {
+#endif
+    
+    // Load n reads here and partition by thread
+    unsigned int pool_size = 0;
+    for(unsigned int i = 0; i < bpool.size(); i++) {
+      int ret = bam_read1(fp, bpool.at(i));
+      if(ret < 0) {
+        break;
+      } else {
+        pool_size++;
+      }
+    }
+
+    // End of file
+    if(pool_size == 0) {
+      break;
+    }
+  }
+
+  for(unsigned int i = 0; i < bpool.size(); i++) {
+    bam_destroy1(bpool.at(i));
+  }
+  bam_hdr_destroy(header);
+  bgzf_close(fp);
+
+  return(0);
+}

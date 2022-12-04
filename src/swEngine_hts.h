@@ -75,7 +75,12 @@ class swEngine_hts {
       bool const verbose,
       bool const read_pool = 1000000
     );
-
+    
+    int doNothing(
+      std::string const &bam_file, 
+      bool const verbose,
+      bool const read_pool = 1000000
+    );
 };
 
 #endif

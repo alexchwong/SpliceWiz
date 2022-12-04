@@ -92,8 +92,12 @@ int c_BAM2COV_hts(
 ){
   
   swEngine_hts Engine;
-  Engine.Set_Threads(n_threads);
-
+  int nthr = Engine.Set_Threads(n_threads);
+  if(verbose) {
+    cout << "Running BAM2COV (htslib) " << bam_file;
+    cout << " using " << nthr << " threads"
+  }
+  
   int ret = Engine.BAM2COVcore(bam_file, output_file, verbose, read_pool);
   return(ret);
 }

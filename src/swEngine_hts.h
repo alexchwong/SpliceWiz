@@ -76,17 +76,11 @@ class swEngine_hts {
       bool const read_pool = 1000000
     );
     
-    int doNothing(
+    int BAM2COVcore_serial(
       std::string const &bam_file, 
+      std::string const &s_output_cov,
       bool const verbose,
       bool const read_pool = 1000000
-    );
-
-    int pairReads(
-      std::string const &bam_file,
-      std::string const &s_output_txt, 
-      bool const verbose,
-      bool const read_pool
     );
 };
 

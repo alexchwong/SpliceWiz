@@ -9,12 +9,8 @@ c_BAM2COV_hts <- function(bam_file, output_file, verbose, n_threads, read_pool) 
     .Call(`_SpliceWiz_c_BAM2COV_hts`, bam_file, output_file, verbose, n_threads, read_pool)
 }
 
-c_doNothing_hts <- function(bam_file, verbose, n_threads, read_pool) {
-    .Call(`_SpliceWiz_c_doNothing_hts`, bam_file, verbose, n_threads, read_pool)
-}
-
-c_doStats_hts <- function(bam_file, output_file, verbose, n_threads, read_pool) {
-    .Call(`_SpliceWiz_c_doStats_hts`, bam_file, output_file, verbose, n_threads, read_pool)
+c_BAM2COV_hts_serial <- function(bam_file, output_file, verbose, n_threads, read_pool) {
+    .Call(`_SpliceWiz_c_BAM2COV_hts_serial`, bam_file, output_file, verbose, n_threads, read_pool)
 }
 
 Has_OpenMP <- function() {

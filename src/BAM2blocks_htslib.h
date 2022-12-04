@@ -92,6 +92,14 @@ class htsBAM2blocks {
       std::vector<bam1_t*> & bpool, int starts, int ends,
       bool mappability_mode = false
     );
+  	int processNothing(
+      std::vector<bam1_t*> & bpool, int starts, int ends,
+      bool mappability_mode = false
+    );
+  	int processTask1(
+      std::vector<bam1_t*> & bpool, int starts, int ends,
+      bool mappability_mode = false
+    );
   	int processSpares(htsBAM2blocks& other);
   	int processStats(htsBAM2blocks& other);
 

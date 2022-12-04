@@ -778,9 +778,10 @@ int swEngine_hts::BAM2COVcore(
   return(0);
 }
 
-// do nothing except decompress BAM reads:
-int swEngine_hts::doNothing(
+// SpliceWiz core:
+int swEngine_hts::BAM2COVcore_serial(
     std::string const &bam_file,
+    std::string const &s_output_cov,
     bool const verbose,
     bool const read_pool
 ) {
@@ -788,7 +789,7 @@ int swEngine_hts::doNothing(
     cout << "File " << bam_file << " does not exist!\n";
     return(-1);
   } 
-	if(verbose) cout << "doNothing: " << bam_file << "\n";
+	if(verbose) cout << "BAM2COV: " << bam_file << "\n";
   
   BGZF *fp = bgzf_open(bam_file.c_str(), "r");
   bam_hdr_t *header = bam_hdr_read(fp);
@@ -812,112 +813,7 @@ int swEngine_hts::doNothing(
     u32_chr_lens.push_back(header->target_len[i]);
   }
 
-  // Read pool size
-  unsigned int pool_cap = (unsigned int)read_pool;
-  
-  // Initialize bam1_t vector
-  std::vector<bam1_t *> bpool;
-  for(unsigned int i = 0; i < pool_cap; i++) {
-    bpool.push_back(bam_init1());
-  }
-  
-  // Pre-partition for n threads
-  std::vector<int> pool_starts;
-  std::vector<int> pool_ends;
-  int est_tp_size = 1 + (pool_cap / n_threads_to_use);
-  int poolPos = 0;
-  for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    if(poolPos + est_tp_size > (int)pool_cap) {
-      pool_starts.push_back(poolPos);
-      pool_ends.push_back(pool_cap - 1);
-      poolPos = pool_cap;
-    } else {
-      pool_starts.push_back(poolPos);
-      pool_ends.push_back(poolPos + est_tp_size - 1);
-      poolPos += est_tp_size;
-    }
-  }
-  for(unsigned int i = pool_starts.size(); i < n_threads_to_use; i++) {
-    pool_starts.push_back(-1);
-    pool_ends.push_back(-1);
-  }
-  
-  // BAM processing loop
-  // bool error_detected = false;
-  off_t prevPos = 0; 
-  off_t curPos = 0;
-#ifdef SPLICEWIZ
-  Progress p(GetFileSize(bam_file), verbose);
-  while(!p.check_abort()) {
-    curPos = htell(fp->fp);
-    p.increment(curPos - prevPos);
-    prevPos = curPos;
-    
-#else
-  while(!p.check_abort()) {
-#endif
-    
-    // Load n reads here and partition by thread
-    unsigned int pool_size = 0;
-    for(unsigned int i = 0; i < bpool.size(); i++) {
-      int ret = bam_read1(fp, bpool.at(i));
-      if(ret < 0) {
-        break;
-      } else {
-        pool_size++;
-      }
-    }
-
-    // End of file
-    if(pool_size == 0) {
-      break;
-    }
-  }
-
-  for(unsigned int i = 0; i < bpool.size(); i++) {
-    bam_destroy1(bpool.at(i));
-  }
-  bam_hdr_destroy(header);
-  bgzf_close(fp);
-
-  return(0);
-}
-
-// do nothing except decompress BAM reads:
-int swEngine_hts::pairReads(
-    std::string const &bam_file,
-    std::string const &s_output_txt, 
-    bool const verbose,
-    bool const read_pool
-) {
-  if(!checkFileExists(bam_file)) {
-    cout << "File " << bam_file << " does not exist!\n";
-    return(-1);
-  } 
-	if(verbose) cout << "doStats: " << bam_file << "\n";
-  
-  BGZF *fp = bgzf_open(bam_file.c_str(), "r");
-  bam_hdr_t *header = bam_hdr_read(fp);
-  
-  hts_tpool *pool;
-  const int queue_size = 0;
-  if (n_threads_to_use > 1) {
-      pool = hts_tpool_init(n_threads_to_use);
-      bgzf_thread_pool(fp, pool, queue_size);
-  }
-  
-  // Abort here if BAM corrupt
-  if(header->n_targets <= 0){
-    cout << bam_file << " - contains no chromosomes mapped\n";
-    return(-1);
-  }
-  std::vector<std::string> s_chr_names;
-  std::vector<uint32_t> u32_chr_lens;
-  for (int i = 0; i < header->n_targets; ++i) {
-    s_chr_names.push_back(header->target_name[i]);
-    u32_chr_lens.push_back(header->target_len[i]);
-  }
-
+  std::vector<FragmentsMap*> oFM(n_threads_to_use);
   std::vector<htsBAM2blocks*> BBchild(n_threads_to_use);
 
   // Multi-threaded results container initialization
@@ -925,11 +821,15 @@ int swEngine_hts::pairReads(
   #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
   #endif
   for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    oFM.at(i) = new FragmentsMap;
     BBchild.at(i) = new htsBAM2blocks(s_chr_names, u32_chr_lens);
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
 
     BBchild.at(i)->initializeChrs();
   }
-
+  
   // Read pool size
   unsigned int pool_cap = (unsigned int)read_pool;
   
@@ -992,9 +892,9 @@ int swEngine_hts::pairReads(
     }
 
     // Multi-threaded process reads
-    #ifdef _OPENMP
-    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-    #endif
+    // #ifdef _OPENMP
+    // #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+    // #endif
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
       if(pool_starts.at(i) >= 0 && pool_starts.at(i) < (int)pool_size) {
         int true_end = pool_size;
@@ -1007,9 +907,9 @@ int swEngine_hts::pairReads(
         );
         if(pa_ret == -1) {
           
-          #ifdef _OPENMP
-          #pragma omp critical
-          #endif
+          // #ifdef _OPENMP
+          // #pragma omp critical
+          // #endif
           error_detected = true;
         }
       }
@@ -1037,6 +937,7 @@ int swEngine_hts::pairReads(
 #endif
     
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      delete oFM.at(i);
       delete BBchild.at(i);
     }
     if(error_detected) {
@@ -1045,6 +946,7 @@ int swEngine_hts::pairReads(
 	// Process aborted; stop processBAM for all requests
     return(-2);
   }
+
 
   if(n_threads_to_use > 1) {
     if(verbose) cout << "Compiling data from threads\n";
@@ -1062,39 +964,24 @@ int swEngine_hts::pairReads(
           BBchild.at(i)->processSpares(*BBchild.at(i_new));
           BBchild.at(i)->processStats(*BBchild.at(i_new));
           delete BBchild.at(i_new);
+
+          oFM.at(i)->Combine(*oFM.at(i_new));
+          delete oFM.at(i_new);          
         }
       }
     }
   }
 
-  // Write some token stats
-  if(verbose) cout << "Writing output file\n";
+  // Write Coverage Binary file:
+  std::ofstream ofCOV;
+  ofCOV.open(s_output_cov, std::ofstream::binary);
+  covWriter outCOV;
+  outCOV.SetOutputHandle(&ofCOV);
+  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
+  ofCOV.close();
 
-  std::ofstream out;                            
-  out.open(s_output_txt, std::ios::binary);  // Open binary file
-  GZWriter outGZ;                               
-  outGZ.SetOutputHandle(&out); // GZ compression
-
-  int outret = outGZ.writeline("BAM_report\tValue"); 
-  if(outret != Z_OK) {
-    cout << "Error writing gzip-compressed output file\n";
-    out.close();
-
-    delete BBchild.at(0);
-    return(-1);
-  }
-
-  // Output stuff here
-
-// Write stats here:
-  std::string myLine;
-  BBchild.at(0)->WriteOutput(myLine);
-  outGZ.writestring(myLine); outGZ.writeline("");
-  
-  outGZ.flush(true);
-  out.flush(); out.close();
-  
+  delete oFM.at(0);
   delete BBchild.at(0);
-  
+
   return(0);
 }

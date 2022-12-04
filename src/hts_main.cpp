@@ -103,36 +103,18 @@ int c_BAM2COV_hts(
 }
 
 // [[Rcpp::export]]
-int c_doNothing_hts(
-    std::string bam_file, bool verbose, 
-    int n_threads, int read_pool
-){
-  
-  swEngine_hts Engine;
-  int nthr = Engine.Set_Threads(n_threads);
-  if(verbose) {
-    cout << "Running doNothing (htslib) " << bam_file;
-    cout << " using " << nthr << " threads\n";
-  }
-  
-  int ret = Engine.doNothing(bam_file, verbose, read_pool);
-  return(ret);
-}
-
-// [[Rcpp::export]]
-int c_doStats_hts(
+int c_BAM2COV_hts_serial(
     std::string bam_file, std::string output_file, 
-    bool verbose, 
-    int n_threads, int read_pool
+    bool verbose, int n_threads, int read_pool
 ){
   
   swEngine_hts Engine;
   int nthr = Engine.Set_Threads(n_threads);
   if(verbose) {
-    cout << "Running doStats (htslib) " << bam_file;
+    cout << "Running BAM2COV (htslib) " << bam_file;
     cout << " using " << nthr << " threads\n";
   }
   
-  int ret = Engine.pairReads(bam_file, output_file, verbose, read_pool);
+  int ret = Engine.BAM2COVcore_serial(bam_file, output_file, verbose, read_pool);
   return(ret);
 }

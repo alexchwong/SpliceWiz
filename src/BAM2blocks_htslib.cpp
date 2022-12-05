@@ -608,14 +608,14 @@ int htsBAM2blocks::processNothing(
   bool mappability_mode
 ) {
   // Reads from pbam_in until finished; do not create output
-  unsigned int idx = 0;
-  unsigned int nucs_proc = 0;
+  // unsigned int idx = 0;
+  // unsigned int nucs_proc = 0;
   
   // Use map pointer spare_reads:
-  std::map< std::string, bam1_t* > * new_spare_reads;  
+  // std::map< std::string, bam1_t* > * new_spare_reads;  
 
-  bam1_t * b = NULL;
-  std::string read_name_s;
+  // bam1_t * b = NULL;
+  // std::string read_name_s;
   
   auto start = chrono::steady_clock::now();
   auto check = start;
@@ -634,116 +634,6 @@ int htsBAM2blocks::processNothing(
       }
 
       // reads[idx] = bpool.at(i);
-    }
-  }
-
-  return(0);
-}
-
-// Main function
-int htsBAM2blocks::processTask1(
-  std::vector<bam1_t*> & bpool, 
-  int starts, int ends,
-  bool mappability_mode
-) {
-  // Reads from pbam_in until finished; do not create output
-  unsigned int idx = 0;
-  unsigned int nucs_proc = 0;
-  
-  // Use map pointer spare_reads:
-  std::map< std::string, bam1_t* > * new_spare_reads;  
-
-  bam1_t * b = NULL;
-  std::string read_name_s;
-  
-  auto start = chrono::steady_clock::now();
-  auto check = start;
-
-  if(starts > -1) {
-    for(int i = starts; i < ends; i++) {
-      check = chrono::steady_clock::now();
-      if(chrono::duration_cast<chrono::seconds>(check - start).count() > 60) {
-        cout << "Error: read processing appears very sluggish in " 
-          << "one or more threads"
-          << ". Suggest sort the BAM file by read name and try again\n"
-          << "  e.g. use `samtools collate` or `sambamba sort -n`.\n"
-          << "Alternatively, try to run NxtIRF/IRFinder using `n_threads = 1`\n";
-        // realizeSpareReads();
-        return(-1);
-      }
-
-      reads[idx] = bpool.at(i);
-
-      if (reads[idx]->core.flag & 0x904) {
-        // If is an unmapped / secondary / supplementary alignment -- discard/overwrite
-        cSkippedReads ++;
-      }else if (! (reads[idx]->core.flag & 0x1)) {
-        // If is a single read -- process it as a single -- then discard/overwrite
-        cSingleReads ++;
-        // nucs_proc = processSingle(reads[idx], mappability_mode);
-        totalNucleotides += nucs_proc;
-        if(nucs_proc > 0) cReadsProcessed++;
-      }else{
-        if(idx == 0 && spare_reads->size() == 0) {
-          // If BAM is sorted by read name, then we don't need read size, simply use old system
-          idx++;
-        } else if(
-            idx == 1 && spare_reads->size() == 0 && 
-            reads[0]->core.l_qname == reads[1]->core.l_qname &&
-            (0 == strncmp(
-              bam_get_qname(reads[0]), 
-              bam_get_qname(reads[1]), 
-              reads[1]->core.l_qname)
-            )) 
-        {
-          cPairedReads ++;
-          if (reads[0]->core.pos <= reads[1]->core.pos) {
-            // totalNucleotides += processPair(reads[0], reads[1]);
-          } else {
-            // totalNucleotides += processPair(reads[1], reads[0]);
-          }
-          cReadsProcessed+=2;
-          idx = 0;
-        } else { /*
-          // Likely a coordinate sorted BAM file:
-          for(unsigned int k = 0; k <= idx; k++) {
-            read_name_s = bam_get_qname(reads[k]);
-            auto it_read = spare_reads->find(read_name_s);
-            
-            if(it_read != spare_reads->end()){
-              // Process matched read
-              cPairedReads ++;
-              if (reads[k]->core.tid != it_read->second->core.tid) {
-                cChimericReads += 1;
-              } else {
-                if (reads[k]->core.pos <= it_read->second->core.pos) {    
-                  // totalNucleotides += processPair(reads[k], it_read->second);
-                }else{           
-                  totalNucleotides += processPair(it_read->second, reads[k]);
-                }
-                cReadsProcessed+=2;
-                
-                bam_destroy1(it_read->second);
-                spare_reads->erase(read_name_s);
-              }
-            } else {
-              // Bank unmatched read
-              b = bam_init1();
-              spare_reads->insert({read_name_s, bam_copy1(b, reads[k])});
-            }
-          }
-          idx = 0;
-        */}
-      }
-/*
-      if ( (cPairedReads + cSingleReads) % 1000000 == 0 ) {
-        // Clean map by swapping for a new one
-        new_spare_reads = new std::map< std::string, bam1_t* >;
-        new_spare_reads->insert(spare_reads->begin(), spare_reads->end());
-        spare_reads->swap(*new_spare_reads);
-        delete new_spare_reads;
-      }
-*/
     }
   }
 

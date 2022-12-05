@@ -20,11 +20,28 @@
       std::string bam_file, std::string reference_file, std::string output_file, 
       bool verbose = true, int n_threads = 1, int read_pool = 1000000
   );
-  
+
   int c_BAM2COV_hts(
-    std::string bam_file, std::string output_file, 
-    bool verbose = true, int n_threads = 1, int read_pool = 1000000
+    std::string bam_file, 
+    std::string output_file, 
+    int n_threads = 1, 
+    int read_pool = 100000, 
+    bool phts = true,
+    bool psetup = true,
+    bool pread = true,
+    bool verbose = true
   );
+  
+  int c_doNothing_hts(
+    std::string bam_file, 
+    std::string output_file, 
+    int n_threads = 1, 
+    int read_pool = 100000, 
+    bool phts = true,
+    bool psetup = true,
+    bool pread = true,
+    bool verbose = true
+  );  
 #endif
 
 #endif

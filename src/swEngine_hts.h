@@ -32,6 +32,7 @@ SOFTWARE.  */
 
 #include <chrono>
 
+#include "BAM2blocks.h"       // For BB
 #include "BAM2blocks_htslib.h"       // For BB
 #include "covTools.h"         // For COV I/O
 #include "FastaReader.h"
@@ -59,7 +60,7 @@ class swEngine_hts {
     int Set_Threads(int n_threads);
     bool checkFileExists(const std::string& name);
     int ReadChrAlias(std::istringstream &IN);
-    int readReference(std::string &reference_file, bool const verbose = FALSE);
+    int readReference(std::string &reference_file, bool const verbose = false);
     
     int SpliceWizCore(
       std::string const &bam_file, 
@@ -73,14 +74,30 @@ class swEngine_hts {
       std::string const &bam_file, 
       std::string const &s_output_cov,
       bool const verbose,
-      bool const read_pool = 1000000
+      bool const read_pool = 1000000,
+      bool phts = true,
+      bool psetup = true,
+      bool pread = true
     );
-    
-    int BAM2COVcore_serial(
+
+    int doNothing(
       std::string const &bam_file, 
       std::string const &s_output_cov,
       bool const verbose,
-      bool const read_pool = 1000000
+      bool const read_pool = 1000000,
+      bool phts = true,
+      bool psetup = true,
+      bool pread = true
+    );
+
+    int BAM2COVcore_ompBAM(
+      std::string const &bam_file,
+      std::string const &s_output_cov,
+      bool const verbose,
+      bool const read_pool,
+      bool phts,
+      bool psetup,
+      bool pread
     );
 };
 

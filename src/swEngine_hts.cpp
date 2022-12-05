@@ -575,10 +575,7 @@ int swEngine_hts::BAM2COVcore(
     std::string const &bam_file,
     std::string const &s_output_cov,
     bool const verbose,
-    bool const read_pool,
-    bool phts,
-    bool psetup,
-    bool pread
+    bool const read_pool
 ) {
   if(!checkFileExists(bam_file)) {
     cout << "File " << bam_file << " does not exist!\n";
@@ -591,11 +588,9 @@ int swEngine_hts::BAM2COVcore(
   
   hts_tpool *pool;
   const int queue_size = 0;
-  if(phts) {
-    if (n_threads_to_use > 1) {
-        pool = hts_tpool_init(n_threads_to_use);
-        bgzf_thread_pool(fp, pool, queue_size);
-    }    
+  if (n_threads_to_use > 1) {
+      pool = hts_tpool_init(n_threads_to_use);
+      bgzf_thread_pool(fp, pool, queue_size);
   }
   
   // Abort here if BAM corrupt
@@ -613,31 +608,18 @@ int swEngine_hts::BAM2COVcore(
   std::vector<FragmentsMap*> oFM(n_threads_to_use);
   std::vector<htsBAM2blocks*> BBchild(n_threads_to_use);
 
-  if(psetup) {
-    // Multi-threaded results container initialization
-    #ifdef _OPENMP
-    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-    #endif
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      oFM.at(i) = new FragmentsMap;
-      BBchild.at(i) = new htsBAM2blocks(s_chr_names, u32_chr_lens);
+  // Multi-threaded results container initialization
+  #ifdef _OPENMP
+  #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+  #endif
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    oFM.at(i) = new FragmentsMap;
+    BBchild.at(i) = new htsBAM2blocks(s_chr_names, u32_chr_lens);
 
-      BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-      BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
 
-      BBchild.at(i)->initializeChrs();
-    }
-  } else {
-    // Single-threaded results container initialization
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      oFM.at(i) = new FragmentsMap;
-      BBchild.at(i) = new htsBAM2blocks(s_chr_names, u32_chr_lens);
-
-      BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-      BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
-
-      BBchild.at(i)->initializeChrs();
-    }
+    BBchild.at(i)->initializeChrs();
   }
   
   // Read pool size
@@ -701,491 +683,20 @@ int swEngine_hts::BAM2COVcore(
       break;
     }
 
-    if(pread) {
-      // Multi-threaded process reads
-      #ifdef _OPENMP
-      #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-      #endif
-      for(unsigned int i = 0; i < n_threads_to_use; i++) {
-        if(pool_starts.at(i) >= 0 && pool_starts.at(i) < (int)pool_size) {
-          int true_end = pool_size;
-          if(true_end > pool_ends.at(i)) {
-            true_end = pool_ends.at(i) + 1; // [first, last)
-          }
-
-          int pa_ret = BBchild.at(i)->processAll(
-            bpool, pool_starts.at(i), true_end
-          );
-          if(pa_ret == -1) {
-            
-            #ifdef _OPENMP
-            #pragma omp critical
-            #endif
-            error_detected = true;
-          }
-        }
-      }
-    } else {
-      // Single-threaded process reads
-      for(unsigned int i = 0; i < n_threads_to_use; i++) {
-        if(pool_starts.at(i) >= 0 && pool_starts.at(i) < (int)pool_size) {
-          int true_end = pool_size;
-          if(true_end > pool_ends.at(i)) {
-            true_end = pool_ends.at(i) + 1; // [first, last)
-          }
-
-          int pa_ret = BBchild.at(i)->processAll(
-            bpool, pool_starts.at(i), true_end
-          );
-          if(pa_ret == -1) {
-            error_detected = true;
-          }
-        }
-      }
-    }
-
-    if(error_detected) break;
-
-    // combine unpaired reads after each fillReads / processAlls
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-    }
-  }
-
-  for(unsigned int i = 0; i < bpool.size(); i++) {
-    bam_destroy1(bpool.at(i));
-  }
-  bam_hdr_destroy(header);
-  bgzf_close(fp);
-
-#ifdef SPLICEWIZ
-  if(p.check_abort() || error_detected) {
-    // interrupted:
-#else
-  if(error_detected) {
-#endif
-    
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete oFM.at(i);
-      delete BBchild.at(i);
-    }
-    if(error_detected) {
-      return(-1);
-    }
-	// Process aborted; stop processBAM for all requests
-    return(-2);
-  }
-
-
-  if(n_threads_to_use > 1) {
-    if(verbose) cout << "Compiling data from threads\n";
-  // Combine objects (multi-threaded):
-    int n_rounds = ceil(log(n_threads_to_use) / log(2));
-    for(int j = n_rounds; j > 0; j--) {
-      int n_bases = (int)pow(2, j-1);
-      
-      // #ifdef _OPENMP
-      // #pragma omp parallel for num_threads(n_bases) schedule(static,1)
-      // #endif
-      for(int i = 0; i < n_bases; i++) {
-        int i_new = i + n_bases;
-        if((unsigned int)i_new < n_threads_to_use) {
-          BBchild.at(i)->processSpares(*BBchild.at(i_new));
-          BBchild.at(i)->processStats(*BBchild.at(i_new));
-          delete BBchild.at(i_new);
-
-          oFM.at(i)->Combine(*oFM.at(i_new));
-          delete oFM.at(i_new);          
-        }
-      }
-    }
-  }
-
-  // Write Coverage Binary file:
-  std::ofstream ofCOV;
-  ofCOV.open(s_output_cov, std::ofstream::binary);
-  covWriter outCOV;
-  outCOV.SetOutputHandle(&ofCOV);
-  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
-  ofCOV.close();
-
-  delete oFM.at(0);
-  delete BBchild.at(0);
-
-  return(0);
-}
-
-// SpliceWiz core:
-int swEngine_hts::doNothing(
-    std::string const &bam_file,
-    std::string const &s_output_cov,
-    bool const verbose,
-    bool const read_pool,
-    bool phts,
-    bool psetup,
-    bool pread
-) {
-  if(!checkFileExists(bam_file)) {
-    cout << "File " << bam_file << " does not exist!\n";
-    return(-1);
-  } 
-	if(verbose) cout << "doNothing: " << bam_file << "\n";
-  
-  BGZF *fp = bgzf_open(bam_file.c_str(), "r");
-  bam_hdr_t *header = bam_hdr_read(fp);
-  
-  hts_tpool *pool;
-  const int queue_size = 0;
-  if(phts) {
-    if (n_threads_to_use > 1) {
-        pool = hts_tpool_init(n_threads_to_use);
-        bgzf_thread_pool(fp, pool, queue_size);
-    }    
-  }
-  
-  // Abort here if BAM corrupt
-  if(header->n_targets <= 0){
-    cout << bam_file << " - contains no chromosomes mapped\n";
-    return(-1);
-  }
-  std::vector<std::string> s_chr_names;
-  std::vector<uint32_t> u32_chr_lens;
-  for (int i = 0; i < header->n_targets; ++i) {
-    s_chr_names.push_back(header->target_name[i]);
-    u32_chr_lens.push_back(header->target_len[i]);
-  }
-
-  std::vector<FragmentsMap*> oFM(n_threads_to_use);
-  std::vector<htsBAM2blocks*> BBchild(n_threads_to_use);
-
-  if(psetup) {
-    // Multi-threaded results container initialization
+    // Multi-threaded process reads
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
     #endif
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      oFM.at(i) = new FragmentsMap;
-      BBchild.at(i) = new htsBAM2blocks(s_chr_names, u32_chr_lens);
-
-      BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-      BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
-
-      BBchild.at(i)->initializeChrs();
-    }
-  } else {
-    // Single-threaded results container initialization
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      oFM.at(i) = new FragmentsMap;
-      BBchild.at(i) = new htsBAM2blocks(s_chr_names, u32_chr_lens);
-
-      BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-      BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
-
-      BBchild.at(i)->initializeChrs();
-    }
-  }
-  
-  // Read pool size
-  unsigned int pool_cap = (unsigned int)read_pool;
-  
-  // Initialize bam1_t vector
-  std::vector<bam1_t *> bpool;
-  for(unsigned int i = 0; i < pool_cap; i++) {
-    bpool.push_back(bam_init1());
-  }
-  
-  // Pre-partition for n threads
-  std::vector<int> pool_starts;
-  std::vector<int> pool_ends;
-  int est_tp_size = 1 + (pool_cap / n_threads_to_use);
-  int poolPos = 0;
-  for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    if(poolPos + est_tp_size > (int)pool_cap) {
-      pool_starts.push_back(poolPos);
-      pool_ends.push_back(pool_cap - 1);
-      poolPos = pool_cap;
-    } else {
-      pool_starts.push_back(poolPos);
-      pool_ends.push_back(poolPos + est_tp_size - 1);
-      poolPos += est_tp_size;
-    }
-  }
-  for(unsigned int i = pool_starts.size(); i < n_threads_to_use; i++) {
-    pool_starts.push_back(-1);
-    pool_ends.push_back(-1);
-  }
-  
-  // BAM processing loop
-  bool error_detected = false;
-  off_t prevPos = 0; 
-  off_t curPos = 0;
-#ifdef SPLICEWIZ
-  Progress p(GetFileSize(bam_file), verbose);
-  while(!p.check_abort()) {
-    curPos = htell(fp->fp);
-    p.increment(curPos - prevPos);
-    prevPos = curPos;
-    
-#else
-  while(!p.check_abort()) {
-#endif
-    
-    // Load n reads here and partition by thread
-    unsigned int pool_size = 0;
-    for(unsigned int i = 0; i < bpool.size(); i++) {
-      int ret = bam_read1(fp, bpool.at(i));
-      if(ret < 0) {
-        break;
-      } else {
-        pool_size++;
-      }
-    }
-
-    // End of file
-    if(pool_size == 0) {
-      break;
-    }
-
-    if(pread) {
-      // Multi-threaded process reads
-      #ifdef _OPENMP
-      #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-      #endif
-      for(unsigned int i = 0; i < n_threads_to_use; i++) {
-        
-      }
-    } else {
-      // Single-threaded process reads
-      for(unsigned int i = 0; i < n_threads_to_use; i++) {
-        
-      }
-    }
-
-    if(error_detected) break;
-
-    // combine unpaired reads after each fillReads / processAlls
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-    }
-  }
-
-  for(unsigned int i = 0; i < bpool.size(); i++) {
-    bam_destroy1(bpool.at(i));
-  }
-  bam_hdr_destroy(header);
-  bgzf_close(fp);
-
-#ifdef SPLICEWIZ
-  if(p.check_abort() || error_detected) {
-    // interrupted:
-#else
-  if(error_detected) {
-#endif
-    
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete oFM.at(i);
-      delete BBchild.at(i);
-    }
-    if(error_detected) {
-      return(-1);
-    }
-	// Process aborted; stop processBAM for all requests
-    return(-2);
-  }
-
-
-  if(n_threads_to_use > 1) {
-    if(verbose) cout << "Compiling data from threads\n";
-  // Combine objects (multi-threaded):
-    int n_rounds = ceil(log(n_threads_to_use) / log(2));
-    for(int j = n_rounds; j > 0; j--) {
-      int n_bases = (int)pow(2, j-1);
-      
-      // #ifdef _OPENMP
-      // #pragma omp parallel for num_threads(n_bases) schedule(static,1)
-      // #endif
-      for(int i = 0; i < n_bases; i++) {
-        int i_new = i + n_bases;
-        if((unsigned int)i_new < n_threads_to_use) {
-          BBchild.at(i)->processSpares(*BBchild.at(i_new));
-          BBchild.at(i)->processStats(*BBchild.at(i_new));
-          delete BBchild.at(i_new);
-
-          oFM.at(i)->Combine(*oFM.at(i_new));
-          delete oFM.at(i_new);          
+      if(pool_starts.at(i) >= 0 && pool_starts.at(i) < (int)pool_size) {
+        int true_end = pool_size;
+        if(true_end > pool_ends.at(i)) {
+          true_end = pool_ends.at(i) + 1; // [first, last)
         }
-      }
-    }
-  }
 
-  // Write Coverage Binary file:
-  std::ofstream ofCOV;
-  ofCOV.open(s_output_cov, std::ofstream::binary);
-  covWriter outCOV;
-  outCOV.SetOutputHandle(&ofCOV);
-  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
-  ofCOV.close();
-
-  delete oFM.at(0);
-  delete BBchild.at(0);
-
-  return(0);
-}
-
-// SpliceWiz core:
-int swEngine_hts::BAM2COVcore_ompBAM(
-    std::string const &bam_file,
-    std::string const &s_output_cov,
-    bool const verbose,
-    bool const read_pool,
-    bool phts,
-    bool psetup,
-    bool pread
-) {
-  if(!checkFileExists(bam_file)) {
-    cout << "File " << bam_file << " does not exist!\n";
-    return(-1);
-  } 
-	if(verbose) cout << "doNothing: " << bam_file << "\n";
-  
-  // BGZF *fp = bgzf_open(bam_file.c_str(), "r");
-  // bam_hdr_t *header = bam_hdr_read(fp);
-  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, false);
-  inbam.openFile(bam_file, n_threads_to_use);
-  
-  // hts_tpool *pool;
-  // const int queue_size = 0;
-  // if(phts) {
-    // if (n_threads_to_use > 1) {
-        // pool = hts_tpool_init(n_threads_to_use);
-        // bgzf_thread_pool(fp, pool, queue_size);
-    // }    
-  // }
-  
-  // Abort here if BAM corrupt
-  // if(header->n_targets <= 0){
-    // cout << bam_file << " - contains no chromosomes mapped\n";
-    // return(-1);
-  // }
-  // std::vector<std::string> s_chr_names;
-  // std::vector<uint32_t> u32_chr_lens;
-  // for (int i = 0; i < header->n_targets; ++i) {
-    // s_chr_names.push_back(header->target_name[i]);
-    // u32_chr_lens.push_back(header->target_len[i]);
-  // }
-  // Abort here if BAM corrupt
-  std::vector<std::string> s_chr_names;
-  std::vector<uint32_t> u32_chr_lens;
-  int chrcount = inbam.obtainChrs(s_chr_names, u32_chr_lens);
-  if(chrcount < 1) {
-    cout << bam_file << " - contains no mapped chromosomes\n";
-    return(-1);
-  }
-  
-  std::vector<FragmentsMap*> oFM(n_threads_to_use);
-  std::vector<BAM2blocks*> BBchild(n_threads_to_use);
-
-  if(psetup) {
-    // Multi-threaded results container initialization
-    #ifdef _OPENMP
-    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-    #endif
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      oFM.at(i) = new FragmentsMap;
-      BBchild.at(i) = new BAM2blocks(s_chr_names, u32_chr_lens);
-
-      BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-      BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
-
-      // BBchild.at(i)->initializeChrs();
-    }
-  } else {
-    // Single-threaded results container initialization
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      oFM.at(i) = new FragmentsMap;
-      BBchild.at(i) = new BAM2blocks(s_chr_names, u32_chr_lens);
-
-      BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-      BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
-
-      // BBchild.at(i)->initializeChrs();
-    }
-  }
-  
-  for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    BBchild.at(i)->openFile(&inbam);
-  }
-  
-  /*
-  // Read pool size
-  unsigned int pool_cap = (unsigned int)read_pool;
-  
-  // Initialize bam1_t vector
-  std::vector<bam1_t *> bpool;
-  for(unsigned int i = 0; i < pool_cap; i++) {
-    bpool.push_back(bam_init1());
-  }
-  
-  // Pre-partition for n threads
-  std::vector<int> pool_starts;
-  std::vector<int> pool_ends;
-  int est_tp_size = 1 + (pool_cap / n_threads_to_use);
-  int poolPos = 0;
-  for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    if(poolPos + est_tp_size > (int)pool_cap) {
-      pool_starts.push_back(poolPos);
-      pool_ends.push_back(pool_cap - 1);
-      poolPos = pool_cap;
-    } else {
-      pool_starts.push_back(poolPos);
-      pool_ends.push_back(poolPos + est_tp_size - 1);
-      poolPos += est_tp_size;
-    }
-  }
-  for(unsigned int i = pool_starts.size(); i < n_threads_to_use; i++) {
-    pool_starts.push_back(-1);
-    pool_ends.push_back(-1);
-  }
-  */
-  // BAM processing loop
-  bool error_detected = false;
-  off_t prevPos = 0; 
-  off_t curPos = 0;
-
-  
-#ifdef SPLICEWIZ
-  Progress p(inbam.GetFileSize(), verbose);
-  while(0 == inbam.fillReads() && !p.check_abort()) {
-    p.increment(inbam.IncProgress());
-    
-#else
-  while(0 == inbam.fillReads()) {
-#endif
-    
-/*
-    // Load n reads here and partition by thread
-    unsigned int pool_size = 0;
-    for(unsigned int i = 0; i < bpool.size(); i++) {
-      int ret = bam_read1(fp, bpool.at(i));
-      if(ret < 0) {
-        break;
-      } else {
-        pool_size++;
-      }
-    }
-
-    // End of file
-    if(pool_size == 0) {
-      break;
-    }
-*/
-    if(pread) {
-      // Multi-threaded process reads
-      #ifdef _OPENMP
-      #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-      #endif
-      for(unsigned int i = 0; i < n_threads_to_use; i++) {
-        int pa_ret = BBchild.at(i)->processAll(i);
+        int pa_ret = BBchild.at(i)->processAll(
+          bpool, pool_starts.at(i), true_end
+        );
         if(pa_ret == -1) {
           
           #ifdef _OPENMP
@@ -1194,16 +705,8 @@ int swEngine_hts::BAM2COVcore_ompBAM(
           error_detected = true;
         }
       }
-    } else {
-      // Single-threaded process reads
-      for(unsigned int i = 0; i < n_threads_to_use; i++) {
-        int pa_ret = BBchild.at(i)->processAll(i);
-        if(pa_ret == -1) {
-          error_detected = true;
-        }
-      }
     }
-
+    
     if(error_detected) break;
 
     // combine unpaired reads after each fillReads / processAlls
@@ -1212,13 +715,11 @@ int swEngine_hts::BAM2COVcore_ompBAM(
     }
   }
 
-/*
   for(unsigned int i = 0; i < bpool.size(); i++) {
     bam_destroy1(bpool.at(i));
   }
   bam_hdr_destroy(header);
   bgzf_close(fp);
-*/
 
 #ifdef SPLICEWIZ
   if(p.check_abort() || error_detected) {
@@ -1246,9 +747,217 @@ int swEngine_hts::BAM2COVcore_ompBAM(
     for(int j = n_rounds; j > 0; j--) {
       int n_bases = (int)pow(2, j-1);
       
-      // #ifdef _OPENMP
-      // #pragma omp parallel for num_threads(n_bases) schedule(static,1)
-      // #endif
+      #ifdef _OPENMP
+      #pragma omp parallel for num_threads(n_bases) schedule(static,1)
+      #endif
+      for(int i = 0; i < n_bases; i++) {
+        int i_new = i + n_bases;
+        if((unsigned int)i_new < n_threads_to_use) {
+          BBchild.at(i)->processSpares(*BBchild.at(i_new));
+          BBchild.at(i)->processStats(*BBchild.at(i_new));
+          delete BBchild.at(i_new);
+
+          oFM.at(i)->Combine(*oFM.at(i_new));
+          delete oFM.at(i_new);          
+        }
+      }
+    }
+  }
+
+  // Write Coverage Binary file:
+  std::ofstream ofCOV;
+  ofCOV.open(s_output_cov, std::ofstream::binary);
+  covWriter outCOV;
+  outCOV.SetOutputHandle(&ofCOV);
+  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
+  ofCOV.close();
+
+  delete oFM.at(0);
+  delete BBchild.at(0);
+
+  return(0);
+}
+
+// SpliceWiz core:
+int swEngine_hts::BAM2COVcore_serial(
+    std::string const &bam_file,
+    std::string const &s_output_cov,
+    bool const verbose,
+    bool const read_pool
+) {
+  if(!checkFileExists(bam_file)) {
+    cout << "File " << bam_file << " does not exist!\n";
+    return(-1);
+  } 
+	if(verbose) cout << "BAM2COV: " << bam_file << "\n";
+  
+  BGZF *fp = bgzf_open(bam_file.c_str(), "r");
+  bam_hdr_t *header = bam_hdr_read(fp);
+  
+  hts_tpool *pool;
+  const int queue_size = 0;
+  if (n_threads_to_use > 1) {
+      pool = hts_tpool_init(n_threads_to_use);
+      bgzf_thread_pool(fp, pool, queue_size);
+  }
+  
+  // Abort here if BAM corrupt
+  if(header->n_targets <= 0){
+    cout << bam_file << " - contains no chromosomes mapped\n";
+    return(-1);
+  }
+  std::vector<std::string> s_chr_names;
+  std::vector<uint32_t> u32_chr_lens;
+  for (int i = 0; i < header->n_targets; ++i) {
+    s_chr_names.push_back(header->target_name[i]);
+    u32_chr_lens.push_back(header->target_len[i]);
+  }
+
+  std::vector<FragmentsMap*> oFM(n_threads_to_use);
+  std::vector<htsBAM2blocks*> BBchild(n_threads_to_use);
+
+  // Multi-threaded results container initialization
+  #ifdef _OPENMP
+  #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+  #endif
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    oFM.at(i) = new FragmentsMap;
+    BBchild.at(i) = new htsBAM2blocks(s_chr_names, u32_chr_lens);
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
+
+    BBchild.at(i)->initializeChrs();
+  }
+  
+  // Read pool size
+  unsigned int pool_cap = (unsigned int)read_pool;
+  
+  // Initialize bam1_t vector
+  std::vector<bam1_t *> bpool;
+  for(unsigned int i = 0; i < pool_cap; i++) {
+    bpool.push_back(bam_init1());
+  }
+  
+  // Pre-partition for n threads
+  std::vector<int> pool_starts;
+  std::vector<int> pool_ends;
+  int est_tp_size = 1 + (pool_cap / n_threads_to_use);
+  int poolPos = 0;
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    if(poolPos + est_tp_size > (int)pool_cap) {
+      pool_starts.push_back(poolPos);
+      pool_ends.push_back(pool_cap - 1);
+      poolPos = pool_cap;
+    } else {
+      pool_starts.push_back(poolPos);
+      pool_ends.push_back(poolPos + est_tp_size - 1);
+      poolPos += est_tp_size;
+    }
+  }
+  for(unsigned int i = pool_starts.size(); i < n_threads_to_use; i++) {
+    pool_starts.push_back(-1);
+    pool_ends.push_back(-1);
+  }
+  
+  // BAM processing loop
+  bool error_detected = false;
+  off_t prevPos = 0; 
+  off_t curPos = 0;
+#ifdef SPLICEWIZ
+  Progress p(GetFileSize(bam_file), verbose);
+  while(!p.check_abort()) {
+    curPos = htell(fp->fp);
+    p.increment(curPos - prevPos);
+    prevPos = curPos;
+    
+#else
+  while(!p.check_abort()) {
+#endif
+    
+    // Load n reads here and partition by thread
+    unsigned int pool_size = 0;
+    for(unsigned int i = 0; i < bpool.size(); i++) {
+      int ret = bam_read1(fp, bpool.at(i));
+      if(ret < 0) {
+        break;
+      } else {
+        pool_size++;
+      }
+    }
+
+    // End of file
+    if(pool_size == 0) {
+      break;
+    }
+
+    // Multi-threaded process reads
+    // #ifdef _OPENMP
+    // #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+    // #endif
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      if(pool_starts.at(i) >= 0 && pool_starts.at(i) < (int)pool_size) {
+        int true_end = pool_size;
+        if(true_end > pool_ends.at(i)) {
+          true_end = pool_ends.at(i) + 1; // [first, last)
+        }
+
+        int pa_ret = BBchild.at(i)->processAll(
+          bpool, pool_starts.at(i), true_end
+        );
+        if(pa_ret == -1) {
+          
+          // #ifdef _OPENMP
+          // #pragma omp critical
+          // #endif
+          error_detected = true;
+        }
+      }
+    }
+    
+    if(error_detected) break;
+
+    // combine unpaired reads after each fillReads / processAlls
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+    }
+  }
+
+  for(unsigned int i = 0; i < bpool.size(); i++) {
+    bam_destroy1(bpool.at(i));
+  }
+  bam_hdr_destroy(header);
+  bgzf_close(fp);
+
+#ifdef SPLICEWIZ
+  if(p.check_abort() || error_detected) {
+    // interrupted:
+#else
+  if(error_detected) {
+#endif
+    
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      delete oFM.at(i);
+      delete BBchild.at(i);
+    }
+    if(error_detected) {
+      return(-1);
+    }
+	// Process aborted; stop processBAM for all requests
+    return(-2);
+  }
+
+
+  if(n_threads_to_use > 1) {
+    if(verbose) cout << "Compiling data from threads\n";
+  // Combine objects (multi-threaded):
+    int n_rounds = ceil(log(n_threads_to_use) / log(2));
+    for(int j = n_rounds; j > 0; j--) {
+      int n_bases = (int)pow(2, j-1);
+      
+      #ifdef _OPENMP
+      #pragma omp parallel for num_threads(n_bases) schedule(static,1)
+      #endif
       for(int i = 0; i < n_bases; i++) {
         int i_new = i + n_bases;
         if((unsigned int)i_new < n_threads_to_use) {

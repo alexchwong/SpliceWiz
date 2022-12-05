@@ -27,56 +27,32 @@ BEGIN_RCPP
 END_RCPP
 }
 // c_BAM2COV_hts
-int c_BAM2COV_hts(std::string bam_file, std::string output_file, int n_threads, int read_pool, bool phts, bool psetup, bool pread, bool verbose);
-RcppExport SEXP _SpliceWiz_c_BAM2COV_hts(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP, SEXP phtsSEXP, SEXP psetupSEXP, SEXP preadSEXP, SEXP verboseSEXP) {
+int c_BAM2COV_hts(std::string bam_file, std::string output_file, bool verbose, int n_threads, int read_pool);
+RcppExport SEXP _SpliceWiz_c_BAM2COV_hts(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type bam_file(bam_fileSEXP);
     Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
     Rcpp::traits::input_parameter< int >::type read_pool(read_poolSEXP);
-    Rcpp::traits::input_parameter< bool >::type phts(phtsSEXP);
-    Rcpp::traits::input_parameter< bool >::type psetup(psetupSEXP);
-    Rcpp::traits::input_parameter< bool >::type pread(preadSEXP);
-    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(c_BAM2COV_hts(bam_file, output_file, n_threads, read_pool, phts, psetup, pread, verbose));
+    rcpp_result_gen = Rcpp::wrap(c_BAM2COV_hts(bam_file, output_file, verbose, n_threads, read_pool));
     return rcpp_result_gen;
 END_RCPP
 }
-// c_doNothing_hts
-int c_doNothing_hts(std::string bam_file, std::string output_file, int n_threads, int read_pool, bool phts, bool psetup, bool pread, bool verbose);
-RcppExport SEXP _SpliceWiz_c_doNothing_hts(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP, SEXP phtsSEXP, SEXP psetupSEXP, SEXP preadSEXP, SEXP verboseSEXP) {
+// c_BAM2COV_hts_serial
+int c_BAM2COV_hts_serial(std::string bam_file, std::string output_file, bool verbose, int n_threads, int read_pool);
+RcppExport SEXP _SpliceWiz_c_BAM2COV_hts_serial(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type bam_file(bam_fileSEXP);
     Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
     Rcpp::traits::input_parameter< int >::type read_pool(read_poolSEXP);
-    Rcpp::traits::input_parameter< bool >::type phts(phtsSEXP);
-    Rcpp::traits::input_parameter< bool >::type psetup(psetupSEXP);
-    Rcpp::traits::input_parameter< bool >::type pread(preadSEXP);
-    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(c_doNothing_hts(bam_file, output_file, n_threads, read_pool, phts, psetup, pread, verbose));
-    return rcpp_result_gen;
-END_RCPP
-}
-// c_BAM2COV_ompBAM
-int c_BAM2COV_ompBAM(std::string bam_file, std::string output_file, int n_threads, int read_pool, bool phts, bool psetup, bool pread, bool verbose);
-RcppExport SEXP _SpliceWiz_c_BAM2COV_ompBAM(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP, SEXP phtsSEXP, SEXP psetupSEXP, SEXP preadSEXP, SEXP verboseSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::string >::type bam_file(bam_fileSEXP);
-    Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
-    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    Rcpp::traits::input_parameter< int >::type read_pool(read_poolSEXP);
-    Rcpp::traits::input_parameter< bool >::type phts(phtsSEXP);
-    Rcpp::traits::input_parameter< bool >::type psetup(psetupSEXP);
-    Rcpp::traits::input_parameter< bool >::type pread(preadSEXP);
-    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(c_BAM2COV_ompBAM(bam_file, output_file, n_threads, read_pool, phts, psetup, pread, verbose));
+    rcpp_result_gen = Rcpp::wrap(c_BAM2COV_hts_serial(bam_file, output_file, verbose, n_threads, read_pool));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -254,9 +230,8 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SpliceWiz_SpliceWizMain_hts", (DL_FUNC) &_SpliceWiz_SpliceWizMain_hts, 6},
-    {"_SpliceWiz_c_BAM2COV_hts", (DL_FUNC) &_SpliceWiz_c_BAM2COV_hts, 8},
-    {"_SpliceWiz_c_doNothing_hts", (DL_FUNC) &_SpliceWiz_c_doNothing_hts, 8},
-    {"_SpliceWiz_c_BAM2COV_ompBAM", (DL_FUNC) &_SpliceWiz_c_BAM2COV_ompBAM, 8},
+    {"_SpliceWiz_c_BAM2COV_hts", (DL_FUNC) &_SpliceWiz_c_BAM2COV_hts, 5},
+    {"_SpliceWiz_c_BAM2COV_hts_serial", (DL_FUNC) &_SpliceWiz_c_BAM2COV_hts_serial, 5},
     {"_SpliceWiz_Has_OpenMP", (DL_FUNC) &_SpliceWiz_Has_OpenMP, 0},
     {"_SpliceWiz_Test_OpenMP_For", (DL_FUNC) &_SpliceWiz_Test_OpenMP_For, 0},
     {"_SpliceWiz_c_Check_Cov", (DL_FUNC) &_SpliceWiz_c_Check_Cov, 1},

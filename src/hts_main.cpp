@@ -88,11 +88,7 @@ int SpliceWizMain_hts(
 // [[Rcpp::export]]
 int c_BAM2COV_hts(
     std::string bam_file, std::string output_file, 
-    int n_threads, int read_pool, 
-    bool phts,
-    bool psetup,
-    bool pread,
-    bool verbose
+    bool verbose, int n_threads, int read_pool
 ){
   
   swEngine_hts Engine;
@@ -102,58 +98,23 @@ int c_BAM2COV_hts(
     cout << " using " << nthr << " threads\n";
   }
   
-  int ret = Engine.BAM2COVcore(
-    bam_file, output_file, 
-    verbose, read_pool, 
-    phts, psetup, pread);
+  int ret = Engine.BAM2COVcore(bam_file, output_file, verbose, read_pool);
   return(ret);
 }
 
-
 // [[Rcpp::export]]
-int c_doNothing_hts(
+int c_BAM2COV_hts_serial(
     std::string bam_file, std::string output_file, 
-    int n_threads, int read_pool, 
-    bool phts,
-    bool psetup,
-    bool pread,
-    bool verbose
+    bool verbose, int n_threads, int read_pool
 ){
   
   swEngine_hts Engine;
   int nthr = Engine.Set_Threads(n_threads);
   if(verbose) {
-    cout << "Running doNothing (htslib) " << bam_file;
+    cout << "Running BAM2COV (htslib) " << bam_file;
     cout << " using " << nthr << " threads\n";
   }
   
-  int ret = Engine.doNothing(
-    bam_file, output_file, 
-    verbose, read_pool, 
-    phts, psetup, pread);
-  return(ret);
-}
-
-// [[Rcpp::export]]
-int c_BAM2COV_ompBAM(
-    std::string bam_file, std::string output_file, 
-    int n_threads, int read_pool, 
-    bool phts,
-    bool psetup,
-    bool pread,
-    bool verbose
-){
-  
-  swEngine_hts Engine;
-  int nthr = Engine.Set_Threads(n_threads);
-  if(verbose) {
-    cout << "Running doNothing (ompBAM) " << bam_file;
-    cout << " using " << nthr << " threads\n";
-  }
-  
-  int ret = Engine.BAM2COVcore_ompBAM(
-    bam_file, output_file, 
-    verbose, read_pool, 
-    phts, psetup, pread);
+  int ret = Engine.BAM2COVcore_serial(bam_file, output_file, verbose, read_pool);
   return(ret);
 }

@@ -159,7 +159,8 @@ processBAM_hts <- function(
         overwrite = FALSE,
         run_featureCounts = FALSE,
         verbose = FALSE,
-        read_pool_size = 1000000
+        read_pool_size = 1000000,
+        naked = FALSE
 ) {
     # Check args
     if (length(bamfiles) != length(sample_names)) .log(paste("In processBAM_hts(),",
@@ -195,7 +196,7 @@ processBAM_hts <- function(
             output_files = s_output[!already_exist],
             max_threads = n_threads, useOpenMP = useOpenMP,
             overwrite_SpliceWiz_Output = overwrite,
-            verbose = verbose, read_pool_size = read_pool_size
+            verbose = verbose, read_pool_size = read_pool_size, naked = naked
         )
     } else {
         .log("processBAM has already been run on given BAM files", "message")
@@ -223,7 +224,7 @@ processBAM_hts <- function(
         max_threads = max(parallel::detectCores(), 1),
         useOpenMP = TRUE,
         overwrite_SpliceWiz_Output = FALSE,
-        verbose = TRUE, read_pool_size = 1000000
+        verbose = TRUE, read_pool_size = 1000000, naked = FALSE
     ) {
     .validate_reference(reference_path) # Check valid SpliceWiz reference
     s_bam <- normalizePath(bamfiles) # Clean path name for C++
@@ -237,8 +238,13 @@ processBAM_hts <- function(
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & useOpenMP) {
         for (i in seq_len(length(s_bam))) {
-            ret <- SpliceWizMain_hts(s_bam[i], ref_file, 
-                output_files[i], verbose, n_threads, read_pool_size)
+            if(naked) {
+                ret <- SpliceWizMain_hts_naked(s_bam[i], ref_file, 
+                    output_files[i], verbose, n_threads, read_pool_size)
+            } else {
+                ret <- SpliceWizMain_hts(s_bam[i], ref_file, 
+                    output_files[i], verbose, n_threads, read_pool_size)
+            }
         }
 
     } else {
@@ -257,7 +263,7 @@ processBAM_hts <- function(
                 function(i, s_bam, reference_file,
                         output_files, verbose, overwrite) {
                     .processBAM_run_single_hts(s_bam[i], reference_file,
-                        output_files[i], verbose, overwrite, read_pool_size)
+                        output_files[i], verbose, overwrite, read_pool_size, naked)
                 },
                 s_bam = s_bam,
                 reference_file = ref_file,
@@ -322,7 +328,7 @@ processBAM_hts <- function(
 
 # Call C++ on a single sample. Used for BiocParallel
 .processBAM_run_single_hts <- function(
-    bam, ref, out, verbose, overwrite, read_pool_size
+    bam, ref, out, verbose, overwrite, read_pool_size, naked
 ) {
     file_gz <- paste0(out, ".txt.gz")
     file_cov <- paste0(out, ".cov")

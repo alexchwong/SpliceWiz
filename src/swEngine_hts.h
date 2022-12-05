@@ -44,6 +44,7 @@ long GetFileSize(std::string filename);
 
 class swEngine_hts {
   private:
+  public:
     std::vector<std::string> ref_names; 
     std::vector<std::string> ref_alias;
     std::vector<uint32_t> ref_lengths;
@@ -53,7 +54,7 @@ class swEngine_hts {
     std::string JC_string;
     std::string TJ_string;
     unsigned int n_threads_to_use;
-  public:
+
     swEngine_hts();
 
     int Set_Threads(int n_threads);

@@ -5,12 +5,16 @@ SpliceWizMain_hts <- function(bam_file, reference_file, output_file, verbose, n_
     .Call(`_SpliceWiz_SpliceWizMain_hts`, bam_file, reference_file, output_file, verbose, n_threads, read_pool)
 }
 
+SpliceWizMain_hts_naked <- function(bam_file, reference_file, output_file, verbose, n_threads, read_pool) {
+    .Call(`_SpliceWiz_SpliceWizMain_hts_naked`, bam_file, reference_file, output_file, verbose, n_threads, read_pool)
+}
+
 c_BAM2COV_hts <- function(bam_file, output_file, verbose, n_threads, read_pool) {
     .Call(`_SpliceWiz_c_BAM2COV_hts`, bam_file, output_file, verbose, n_threads, read_pool)
 }
 
-c_BAM2COV_hts_serial <- function(bam_file, output_file, verbose, n_threads, read_pool) {
-    .Call(`_SpliceWiz_c_BAM2COV_hts_serial`, bam_file, output_file, verbose, n_threads, read_pool)
+c_BAM2COV_hts_naked <- function(bam_file, output_file, verbose, n_threads, read_pool) {
+    .Call(`_SpliceWiz_c_BAM2COV_hts_naked`, bam_file, output_file, verbose, n_threads, read_pool)
 }
 
 Has_OpenMP <- function() {

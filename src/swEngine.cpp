@@ -494,7 +494,7 @@ int swEngine::SpliceWizCore(
   return(0);
 }
 
-// SpliceWiz core:
+// BAM2COV core:
 int swEngine::BAM2COVcore(
     std::string const &bam_file,
     std::string const &s_output_cov,
@@ -612,7 +612,128 @@ int swEngine::BAM2COVcore(
   return(0);
 }
 
-// SpliceWiz core:
+// BAM2COV core:
+int swEngine::doStatsCore(
+    std::string const &bam_file,
+    std::string const &s_output_txt,
+    bool const verbose,
+    bool const multithreadedRead
+) {
+  if(!checkFileExists(bam_file)) {
+    cout << "File " << bam_file << " does not exist!\n";
+    return(-1);
+  } 
+	if(verbose) cout << "doStats (ompBAM): " << bam_file << "\n";
+  
+  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multithreadedRead);
+  inbam.openFile(bam_file, n_threads_to_use);
+  
+  // Abort here if BAM corrupt
+  std::vector<std::string> s_chr_names;
+  std::vector<uint32_t> u32_chr_lens;
+  int chrcount = inbam.obtainChrs(s_chr_names, u32_chr_lens);
+  if(chrcount < 1) {
+    cout << bam_file << " - contains no mapped chromosomes\n";
+    return(-1);
+  }
+
+  std::vector<BAM2blocks*> BBchild;
+
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    BBchild.push_back(new BAM2blocks(s_chr_names, u32_chr_lens));
+    BBchild.at(i)->openFile(&inbam);
+  }
+  
+  // BAM processing loop
+  bool error_detected = false;
+#ifdef SPLICEWIZ
+  Progress p(inbam.GetFileSize(), verbose);
+  while(0 == inbam.fillReads() && !p.check_abort()) {
+    p.increment(inbam.IncProgress());
+    
+#else
+  while(0 == inbam.fillReads()) {
+#endif
+    
+    #ifdef _OPENMP
+    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+    #endif
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      int pa_ret = BBchild.at(i)->processAll(i);
+      if(pa_ret == -1) {
+        
+        #ifdef _OPENMP
+        #pragma omp critical
+        #endif
+        error_detected = true;
+      }
+    }
+    
+    if(error_detected) break;
+
+    // combine unpaired reads after each fillReads / processAlls
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+    }
+  }
+
+#ifdef SPLICEWIZ
+  if(p.check_abort() || error_detected) {
+    // interrupted:
+#else
+  if(error_detected) {
+#endif
+    
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      delete BBchild.at(i);
+    }
+    if(error_detected) {
+      return(-1);
+    }
+	// Process aborted; stop processBAM for all requests
+    return(-2);
+  }
+
+  if(n_threads_to_use > 1) {
+    if(verbose) cout << "Compiling data from threads\n";
+  // Combine BB's and process spares
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0)->processStats(*BBchild.at(i));
+      delete BBchild.at(i);
+    }
+  }
+
+// Write output to file:  
+  if(verbose) cout << "Writing output file\n";
+
+  std::ofstream out;                            
+  out.open(s_output_txt, std::ios::binary);  // Open binary file
+  GZWriter outGZ;                               
+  outGZ.SetOutputHandle(&out); // GZ compression
+
+  int outret = outGZ.writeline("BAM_report\tValue"); 
+  if(outret != Z_OK) {
+    cout << "Error writing gzip-compressed output file\n";
+    out.close();
+    delete BBchild.at(0);
+    return(-1);
+  }
+  
+// Write stats here:
+  std::string myLine;
+  BBchild.at(0)->WriteOutput(myLine);
+  outGZ.writestring(myLine); outGZ.writeline("");
+
+  outGZ.flush(true);
+  out.flush(); out.close();
+  
+  delete BBchild.at(0);
+
+  return(0);
+}
+
+// SpliceWiz Mappability:
 int swEngine::MappabilityRegionsCore(
     std::string const &bam_file,
     std::string const &s_output_txt,

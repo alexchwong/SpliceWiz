@@ -26,8 +26,7 @@ processBAM_hts(
   overwrite = FALSE,
   run_featureCounts = FALSE,
   verbose = FALSE,
-  read_pool_size = 1e+06,
-  naked = FALSE
+  read_pool_size = 1e+06
 )
 }
 \arguments{

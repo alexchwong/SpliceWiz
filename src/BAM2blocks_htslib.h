@@ -31,7 +31,6 @@ SOFTWARE.  */
 #include "htslib/hfile.h"
 #include "htslib/sam.h"
 #include "htslib/bgzf.h"
-#include "htslib/kseq.h"
 #include "htslib/thread_pool.h"
 
 #include "FragmentBlocks.h"
@@ -62,12 +61,8 @@ class htsBAM2blocks {
     unsigned long cSkippedReads;
     unsigned long cChimericReads;
 
-    //pbam1_t reads[2];
-    // std::vector<bam1_t *> reads;
     bam1_t * reads[2];
-    
-    // pbam_in * IN;
-    
+
     std::vector<chr_entry> chrs;
 
     std::map< std::string, bam1_t* > * spare_reads;
@@ -92,14 +87,7 @@ class htsBAM2blocks {
       std::vector<bam1_t*> & bpool, int starts, int ends,
       bool mappability_mode = false
     );
-  	int processNothing(
-      std::vector<bam1_t*> & bpool, int starts, int ends,
-      bool mappability_mode = false
-    );
-  	int processTask1(
-      std::vector<bam1_t*> & bpool, int starts, int ends,
-      bool mappability_mode = false
-    );
+
   	int processSpares(htsBAM2blocks& other);
   	int processStats(htsBAM2blocks& other);
 

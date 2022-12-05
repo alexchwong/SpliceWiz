@@ -463,7 +463,7 @@ int SpliceWizMain(
     auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
     cout << s_bam << " processed (" << time_sec << " seconds)\n";
   }
-  
+
   return(ret2);
 }
 
@@ -493,7 +493,7 @@ int SpliceWizMain_multi(
   swEngine Engine;
   Engine.Set_Threads(max_threads);
 
-  cout << "Reading reference file\n";
+  if(verbose) cout << "Reading reference file\n";
   int ret = Engine.readReference(s_ref, verbose);
   if(ret != 0) {
     cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
@@ -698,13 +698,70 @@ int c_BAM2COV(
 
   swEngine Engine;
   int nthr = Engine.Set_Threads(n_threads);
+  
+  std::string s_bam = bam_file;
+  
   if(verbose) {
-    cout << "Running BAM2COV (ompBAM) " << bam_file;
+    cout << "Running BAM2COV (ompBAM) " << s_bam;
     cout << " using " << nthr << " threads\n";
   }
 
-  int ret = Engine.BAM2COVcore(bam_file, output_file, verbose, multiRead);
-  return(ret);
+  auto start = chrono::steady_clock::now();
+  auto check = start;
+  int ret2 = Engine.BAM2COVcore(s_bam, output_file, verbose, multiRead);
+  
+  if(ret2 == -2) {
+    cout << "Process interrupted running BAM2COV on " << s_bam << '\n';
+    return(ret2);
+  } else if(ret2 == -1) {
+    cout << "Error encountered processing " << s_bam << "\n";
+  } else {
+    check = chrono::steady_clock::now();
+    auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
+    cout << s_bam << " processed (" << time_sec << " seconds)\n";
+  }
+  return(ret2);
+}
+
+#ifdef SPLICEWIZ
+// [[Rcpp::export]]
+int c_doStats(
+    std::string bam_file, std::string output_file, 
+    bool verbose, int n_threads, bool multiRead
+){
+  
+#else
+int c_doStats(
+    std::string bam_file, std::string output_file, int n_threads, bool multiRead
+){	
+	bool verbose = true;
+#endif
+
+  swEngine Engine;
+  int nthr = Engine.Set_Threads(n_threads);
+  
+  std::string s_bam = bam_file;
+  
+  if(verbose) {
+    cout << "Running doStats (ompBAM) " << s_bam;
+    cout << " using " << nthr << " threads\n";
+  }
+
+  auto start = chrono::steady_clock::now();
+  auto check = start;
+  int ret2 = Engine.doStatsCore(s_bam, output_file, verbose, multiRead);
+  
+  if(ret2 == -2) {
+    cout << "Process interrupted running doStats on " << s_bam << '\n';
+    return(ret2);
+  } else if(ret2 == -1) {
+    cout << "Error encountered processing " << s_bam << "\n";
+  } else {
+    check = chrono::steady_clock::now();
+    auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
+    cout << s_bam << " processed (" << time_sec << " seconds)\n";
+  }
+  return(ret2);
 }
 
 // ################################## MAIN #####################################

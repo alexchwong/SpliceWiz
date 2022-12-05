@@ -73,6 +73,13 @@ class swEngine {
       bool const multithreadedRead = false
     );
 
+    int doStatsCore(
+      std::string const &bam_file, 
+      std::string const &s_output_txt,
+      bool const verbose,
+      bool const multithreadedRead = false
+    );
+
     int MappabilityRegionsCore(
       std::string const &bam_file,
       std::string const &s_output_txt,

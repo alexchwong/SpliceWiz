@@ -25,25 +25,37 @@
     int const read_pool
   );
 
+  int BAM2COVCore_hts(
+    swEngine_hts Engine,
+    std::string const &bam_file, 
+    std::string const &s_output_cov,
+    bool const verbose,
+    int const read_pool
+  );
+
+  int doStatsCore_hts(
+    swEngine_hts Engine,
+    std::string const &bam_file, 
+    std::string const &s_output_txt,
+    bool const verbose,
+    int const read_pool
+  );
+
   int SpliceWizMain_hts(
       std::string bam_file, std::string reference_file, std::string output_file, 
       bool verbose = true, int n_threads = 1, int read_pool = 1000000
-  );
-
-  int SpliceWizMain_hts_naked(
-    std::string bam_file, std::string reference_file, std::string output_file,
-    bool verbose, int n_threads, int read_pool
   );
 
   int c_BAM2COV_hts(
     std::string bam_file, std::string output_file, 
     bool verbose = true, int n_threads = 1, int read_pool = 1000000
   );
-  
-  int c_BAM2COV_hts_naked(
+
+  int c_doStats_hts(
     std::string bam_file, std::string output_file, 
     bool verbose = true, int n_threads = 1, int read_pool = 1000000
-  );  
+  );
+
   
 #endif
 

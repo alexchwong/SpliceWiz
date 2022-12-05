@@ -26,22 +26,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// SpliceWizMain_hts_naked
-int SpliceWizMain_hts_naked(std::string bam_file, std::string reference_file, std::string output_file, bool verbose, int n_threads, int read_pool);
-RcppExport SEXP _SpliceWiz_SpliceWizMain_hts_naked(SEXP bam_fileSEXP, SEXP reference_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::string >::type bam_file(bam_fileSEXP);
-    Rcpp::traits::input_parameter< std::string >::type reference_file(reference_fileSEXP);
-    Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
-    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    Rcpp::traits::input_parameter< int >::type read_pool(read_poolSEXP);
-    rcpp_result_gen = Rcpp::wrap(SpliceWizMain_hts_naked(bam_file, reference_file, output_file, verbose, n_threads, read_pool));
-    return rcpp_result_gen;
-END_RCPP
-}
 // c_BAM2COV_hts
 int c_BAM2COV_hts(std::string bam_file, std::string output_file, bool verbose, int n_threads, int read_pool);
 RcppExport SEXP _SpliceWiz_c_BAM2COV_hts(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP) {
@@ -57,9 +41,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// c_BAM2COV_hts_naked
-int c_BAM2COV_hts_naked(std::string bam_file, std::string output_file, bool verbose, int n_threads, int read_pool);
-RcppExport SEXP _SpliceWiz_c_BAM2COV_hts_naked(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP) {
+// c_doStats_hts
+int c_doStats_hts(std::string bam_file, std::string output_file, bool verbose, int n_threads, int read_pool);
+RcppExport SEXP _SpliceWiz_c_doStats_hts(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -68,7 +52,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
     Rcpp::traits::input_parameter< int >::type read_pool(read_poolSEXP);
-    rcpp_result_gen = Rcpp::wrap(c_BAM2COV_hts_naked(bam_file, output_file, verbose, n_threads, read_pool));
+    rcpp_result_gen = Rcpp::wrap(c_doStats_hts(bam_file, output_file, verbose, n_threads, read_pool));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -243,12 +227,26 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// c_doStats
+int c_doStats(std::string bam_file, std::string output_file, bool verbose, int n_threads, bool multiRead);
+RcppExport SEXP _SpliceWiz_c_doStats(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP multiReadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type bam_file(bam_fileSEXP);
+    Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type multiRead(multiReadSEXP);
+    rcpp_result_gen = Rcpp::wrap(c_doStats(bam_file, output_file, verbose, n_threads, multiRead));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SpliceWiz_SpliceWizMain_hts", (DL_FUNC) &_SpliceWiz_SpliceWizMain_hts, 6},
-    {"_SpliceWiz_SpliceWizMain_hts_naked", (DL_FUNC) &_SpliceWiz_SpliceWizMain_hts_naked, 6},
     {"_SpliceWiz_c_BAM2COV_hts", (DL_FUNC) &_SpliceWiz_c_BAM2COV_hts, 5},
-    {"_SpliceWiz_c_BAM2COV_hts_naked", (DL_FUNC) &_SpliceWiz_c_BAM2COV_hts_naked, 5},
+    {"_SpliceWiz_c_doStats_hts", (DL_FUNC) &_SpliceWiz_c_doStats_hts, 5},
     {"_SpliceWiz_Has_OpenMP", (DL_FUNC) &_SpliceWiz_Has_OpenMP, 0},
     {"_SpliceWiz_Test_OpenMP_For", (DL_FUNC) &_SpliceWiz_Test_OpenMP_For, 0},
     {"_SpliceWiz_c_Check_Cov", (DL_FUNC) &_SpliceWiz_c_Check_Cov, 1},
@@ -262,6 +260,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SpliceWiz_c_GenerateMappabilityReads", (DL_FUNC) &_SpliceWiz_c_GenerateMappabilityReads, 5},
     {"_SpliceWiz_c_GenerateMappabilityRegions", (DL_FUNC) &_SpliceWiz_c_GenerateMappabilityRegions, 6},
     {"_SpliceWiz_c_BAM2COV", (DL_FUNC) &_SpliceWiz_c_BAM2COV, 5},
+    {"_SpliceWiz_c_doStats", (DL_FUNC) &_SpliceWiz_c_doStats, 5},
     {NULL, NULL, 0}
 };
 

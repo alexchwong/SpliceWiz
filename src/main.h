@@ -71,9 +71,9 @@ int c_gunzip(std::string s_in, std::string s_out);
     bool verbose = true, int n_threads = 1, bool multiRead = false
   );
 
-  int c_BAM2COV_noobj(
+  int c_doStats(
     std::string bam_file, std::string output_file, 
-    bool verbose = true, int n_threads = 1, bool multiRead = false
+    bool verbose, int n_threads, bool multiRead
   );
 
 #else
@@ -97,9 +97,8 @@ int c_gunzip(std::string s_in, std::string s_out);
     int n_threads = 1, bool multiRead = false
   );
 
-  int c_BAM2COV_noobj(
-    std::string bam_file, std::string output_file, 
-    int n_threads = 1, bool multiRead = false
+  int c_doStats(
+      std::string bam_file, std::string output_file, int n_threads, bool multiRead
   );
 
   int main(int argc, char * argv[]);

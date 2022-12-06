@@ -423,7 +423,7 @@ int SpliceWizCore_htsMulti(
   }
 
   // Initialize results container
-  cout << "Allocating thread memory to " << Engine.n_threads_to_use 
+  cout << "Allocating memory to " << Engine.n_threads_to_use 
     << " threads for SpliceWiz (htslib)...";
   auto start = chrono::steady_clock::now();
   auto check = start;

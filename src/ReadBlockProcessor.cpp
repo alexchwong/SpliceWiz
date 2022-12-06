@@ -109,6 +109,8 @@ void SpansPoint::Reset() {
     it_chr!=chrName_pos.end(); 
     it_chr++
   ) {  
+    chrName_count[0][it_chr->first].clear();
+    chrName_count[1][it_chr->first].clear();
     chrName_count[0][it_chr->first].resize(it_chr->second.size(), 0);
     chrName_count[1][it_chr->first].resize(it_chr->second.size(), 0);
   }

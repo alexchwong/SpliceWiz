@@ -304,6 +304,8 @@ int swEngine::associateBAM(
   std::vector<string> chr_name,
   std::vector<uint32_t> chr_len
 ) {
+  BBchild.resize(n_threads_to_use);
+  
   for(unsigned int i = 0; i < n_threads_to_use; i++) {
     BBchild.at(i) = new BAM2blocks(chr_name, chr_len);
 

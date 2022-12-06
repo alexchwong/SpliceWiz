@@ -130,7 +130,7 @@ void FragmentsInChr::Reset() {
 void FragmentsInROI::Reset() {
     // chrName_count[0][s_chr].push_back(&RegionID_counter[0][s_name]);
     // chrName_count[1][s_chr].push_back(&RegionID_counter[1][s_name]);
-  for(unsigned int i = 0; i < 1; i++) {
+  for(unsigned int i = 0; i < 3; i++) {
     for(
       auto itChr = RegionID_counter[i].begin(); 
       itChr != RegionID_counter[i].end(); 

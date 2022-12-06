@@ -73,6 +73,7 @@ class TandemJunctions : public ReadBlockProcessor {
 		//unsigned int[3] - 0, neg strand count; 1, pos strand count; 2 = expected direction from ref: 0=unknown, 1=neg, 2=pos.
 	public:
     TandemJunctions(std::string &refString);
+    void Reset();
 		void Combine(const TandemJunctions &child);
 		void ProcessBlocks(const FragmentBlocks &fragblock);
 		void ChrMapUpdate(const std::vector<chr_entry> &chrmap);

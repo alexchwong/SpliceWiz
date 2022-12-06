@@ -478,10 +478,12 @@ int SpliceWizMain_multi(
 		return(1);	
 	}
 	std::vector< std::string > v_bam;
-	std::vector< std::string > v_out;
+	std::vector< std::string > v_out_txt;
+	std::vector< std::string > v_out_cov;
   for(int z = 0; z < bam_files.size(); z++) {
 		v_bam.push_back(string(bam_files(z)));
-		v_out.push_back(string(output_files(z)));
+		v_out_txt.push_back(string(output_files(z)) + ".txt.gz");
+		v_out_cov.push_back(string(output_files(z)) + ".cov");
 	}
 
   std::string s_ref = reference_file;
@@ -499,31 +501,35 @@ int SpliceWizMain_multi(
     cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
     return(ret);
   }
+  int ret2 = Engine.SpliceWizMultiCore(
+    v_bam, v_out_txt, v_out_cov,
+    verbose, multiRead
+  );
+  
+  // for(unsigned int z = 0; z < v_bam.size(); z++) {
+    // std::string s_bam = v_bam.at(z);
+		// std::string s_output_txt = v_out.at(z) + ".txt.gz";
+		// std::string s_output_cov = v_out.at(z) + ".cov";
 
-  for(unsigned int z = 0; z < v_bam.size(); z++) {
-    std::string s_bam = v_bam.at(z);
-		std::string s_output_txt = v_out.at(z) + ".txt.gz";
-		std::string s_output_cov = v_out.at(z) + ".cov";
+    // auto start = chrono::steady_clock::now();
+    // auto check = start;
+    // int ret2 = Engine.SpliceWizMultiCore(
+      // s_bam, s_output_txt, s_output_cov,
+      // verbose, multiRead
+    // );
+    // if(ret2 == -2) {
+      // cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
+      // return(ret2);
+    // } else if(ret2 == -1) {
+      // cout << "Error encountered processing " << s_bam << "\n";
+    // } else {
+      // check = chrono::steady_clock::now();
+      // auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
+      // cout << s_bam << " processed (" << time_sec << " seconds)\n";
+    // }
+  // }
 
-    auto start = chrono::steady_clock::now();
-    auto check = start;
-    int ret2 = Engine.SpliceWizCore(
-      s_bam, s_output_txt, s_output_cov,
-      verbose, multiRead
-    );
-    if(ret2 == -2) {
-      cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
-      return(ret2);
-    } else if(ret2 == -1) {
-      cout << "Error encountered processing " << s_bam << "\n";
-    } else {
-      check = chrono::steady_clock::now();
-      auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
-      cout << s_bam << " processed (" << time_sec << " seconds)\n";
-    }
-  }
-
-  return(0);
+  return(ret2);
 }
 
 #endif

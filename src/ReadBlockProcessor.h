@@ -45,18 +45,44 @@ class ReadBlockProcessor {
 
 class JunctionCount : public ReadBlockProcessor {
 	private:
-		std::map<string, std::map<std::pair<unsigned int,unsigned int>,unsigned int[3]>> chrName_junc_count;
-		std::vector<std::map<std::pair<unsigned int,unsigned int>,unsigned int[3]>*> chrID_junc_count;
-		//unsigned int[3] - 0, neg strand count; 1, pos strand count; 2 = expected direction from ref: 0=unknown, 1=neg, 2=pos.
+		/* unsigned int[3] 
+      - 0, neg strand count; 
+      - 1, pos strand count; 
+      - 2 = expected direction from ref: 0=unknown, 1=neg, 2=pos.
+    */
+    
+    // Actual vector
+		std::map<string, 
+      std::map<
+        std::pair<unsigned int,unsigned int>,unsigned int[3]
+      >
+    > chrName_junc_count;
+		
+    // Vector of pointers to above
+    std::vector<
+      std::map<
+        std::pair<unsigned int,unsigned int>,unsigned int[3]
+      >*
+    > chrID_junc_count;
 
-		std::map<string, std::map<unsigned int,unsigned int[2]>> chrName_juncLeft_count;
-		std::vector<std::map<unsigned int,unsigned int[2]>*> chrID_juncLeft_count;
+    // Left and right bound junction counts
+		std::map<
+      string, std::map<unsigned int,unsigned int[2]>
+    > chrName_juncLeft_count;
+		std::vector<
+      std::map<unsigned int,unsigned int[2]>*
+    > chrID_juncLeft_count;
 
-		std::map<string, std::map<unsigned int,unsigned int[2]>> chrName_juncRight_count;
-		std::vector<std::map<unsigned int,unsigned int[2]>*> chrID_juncRight_count;
-		  //chrID_... stores a fast access pointer to the appropriate structure in chrName_... 
+		std::map<string, std::map<
+      unsigned int,unsigned int[2]>
+    > chrName_juncRight_count;
+		std::vector<std::map<
+      unsigned int,unsigned int[2]>*
+    > chrID_juncRight_count;
+
 	public:
     JunctionCount(std::string &refString);
+    void Reset();
 		void Combine(const JunctionCount &child);
 		void ProcessBlocks(const FragmentBlocks &fragblock);
 		void ChrMapUpdate(const std::vector<chr_entry> &chrmap);
@@ -90,6 +116,7 @@ class SpansPoint : public ReadBlockProcessor {
 		//chrID_... stores a fast access pointer to the appropriate structure in chrName_... 
 	public:
     SpansPoint(std::string &refString);
+    void Reset();
 		void Combine(const SpansPoint &child);
 		void setSpanLength(unsigned int overhang_left, unsigned int overhang_right);
 		void loadRef(std::istringstream &IN);
@@ -107,6 +134,7 @@ class FragmentsInChr : public ReadBlockProcessor {
 		std::map<string, std::vector<unsigned int>> chrName_count; //only expecting 2 items in our vector.
 		std::vector<std::vector<unsigned int>*> chrID_count;
 	public:
+    void Reset();
 		void Combine(const FragmentsInChr &child);
 		void ProcessBlocks(const FragmentBlocks &blocks);
 		void ChrMapUpdate(const std::vector<chr_entry> &chrmap);
@@ -131,6 +159,7 @@ class FragmentsInROI : public ReadBlockProcessor {
 		std::map<string, std::vector<string>> chrName_ROI_text;
 	public:
     FragmentsInROI(std::string &refString);
+    void Reset();
 		void Combine(const FragmentsInROI &child);
 		void ProcessBlocks(const FragmentBlocks &blocks);
 		void ChrMapUpdate(const std::vector<chr_entry> &chrmap);

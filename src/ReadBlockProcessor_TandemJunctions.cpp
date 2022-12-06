@@ -33,6 +33,41 @@ TandemJunctions::TandemJunctions(std::string &refString) {
   loadRef(inTandemJn);
 }
 
+void TandemJunctions::Reset() {
+  // std::map<string, std::map<tandemJn, unsigned int[3]>> chrName_tandemJn;
+  for(
+    auto itChr = chrName_tandemJn.begin(); 
+    itChr != chrName_tandemJn.end(); 
+    itChr++
+  ) {
+    // Iterate over elements per chrom
+    for(
+      auto itJn = itChr->second.cbegin(); 
+      itJn != itChr->second.cend();
+      /* no increment */
+    ) {
+      // Delete all novel junctions
+      if(itJn->second[2] == 0) {
+        // Remove elements with zero direction
+        // - https://stackoverflow.com/questions/8234779/how-to-remove-from-a-map-while-iterating-it
+        itChr->second.erase(itJn++);
+      } else {
+        // Otherwise Reset all counts to zero     
+        ++itJn;
+      }
+    }
+    // Iterate remaining elements and set everything to zero
+    for(
+      auto itJn = itChr->second.begin(); 
+      itJn != itChr->second.end();
+      itJn++
+    ) {
+      itJn->second[0] = 0;
+      itJn->second[1] = 0;
+    }
+  }
+}
+
 void TandemJunctions::loadRef(std::istringstream &IN) {
   // ChrName, Start1, End1, Start2, End2
   std::string myLine;

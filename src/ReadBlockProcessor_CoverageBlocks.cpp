@@ -24,6 +24,10 @@ SOFTWARE.  */
 
 #include "ReadBlockProcessor_CoverageBlocks.h"
 
+void CoverageBlocks::Reset() {
+  // Nothing needs to be done?
+}
+
 void CoverageBlocks::loadRef(std::istringstream &IN) {
 	std::string myLine;
 	std::string myField;

@@ -56,7 +56,8 @@ class CoverageBlocks : public ReadBlockProcessor {
 		std::vector<BEDrecord> BEDrecords;
 
 	public:
-		void ProcessBlocks(const FragmentBlocks &fragblock);
+		void Reset();
+    void ProcessBlocks(const FragmentBlocks &fragblock);
 		void ChrMapUpdate(const std::vector<chr_entry> &chrmap);
 		void loadRef(std::istringstream &IN);
 		int WriteOutput(std::string& output, const FragmentsMap &FM) const;

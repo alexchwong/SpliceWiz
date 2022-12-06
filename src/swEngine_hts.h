@@ -45,6 +45,13 @@ long GetFileSize(std::string filename);
 class swEngine_hts {
   private:
   public:
+    // Essentially same as swEngine except all its variables are public
+    // so the pipelines can run in main function
+    // this is because htslib in combination with OpenMP leads to slowdowns
+    // when the function is run inside a public function within this object
+    // - don't know why
+    
+    /* variables */
     std::vector<std::string> ref_names; 
     std::vector<std::string> ref_alias;
     std::vector<uint32_t> ref_lengths;
@@ -55,12 +62,34 @@ class swEngine_hts {
     std::string TJ_string;
     unsigned int n_threads_to_use;
 
+    std::vector<CoverageBlocksIRFinder*> oCB;
+    std::vector<SpansPoint*> oSP;
+    std::vector<FragmentsInROI*> oROI;
+    std::vector<FragmentsInChr*> oChr;
+    std::vector<JunctionCount*> oJC;
+    std::vector<TandemJunctions*> oTJ;
+    std::vector<FragmentsMap*> oFM;
+    std::vector<htsBAM2blocks*> BBchild;
+
+    bool refLoaded;
+    bool BAMLoaded;
+
+    /* Constructor */
     swEngine_hts();
+    ~swEngine_hts();
 
     int Set_Threads(int n_threads);
     bool checkFileExists(const std::string& name);
     int ReadChrAlias(std::istringstream &IN);
     int readReference(std::string &reference_file, bool const verbose = FALSE);
+
+    int loadReference();
+    int refreshReference();
+    int associateBAM(
+      std::vector<string> chr_name,
+      std::vector<uint32_t> chr_len
+    );
+
     
     int SpliceWizCore(
       std::string const &bam_file, 

@@ -25,6 +25,15 @@
     int const read_pool
   );
 
+  int SpliceWizCore_htsMulti(
+    swEngine_hts Engine,
+    std::vector<std::string> const &bam_file, 
+    std::vector<std::string> const &s_output_txt, 
+    std::vector<std::string> const &s_output_cov,
+    bool const verbose,
+    int const read_pool
+  );
+
   int BAM2COVCore_hts(
     swEngine_hts Engine,
     std::string const &bam_file, 
@@ -42,8 +51,18 @@
   );
 
   int SpliceWizMain_hts(
-      std::string bam_file, std::string reference_file, std::string output_file, 
-      bool verbose = true, int n_threads = 1, int read_pool = 1000000
+    std::string reference_file, 
+    StringVector bam_files, StringVector output_files,
+    int max_threads = 1, bool verbose = true, int read_pool = 1000000
+  );
+  
+  int SpliceWizMain_multi_hts(
+      std::string reference_file, 
+      StringVector bam_files, 
+      StringVector output_files,
+      int max_threads = 1, 
+      bool verbose = true, 
+      int read_pool = 1000000
   );
 
   int c_BAM2COV_hts(

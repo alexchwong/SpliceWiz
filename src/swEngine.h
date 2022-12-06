@@ -62,7 +62,6 @@ class swEngine {
 
     bool refLoaded;
     bool BAMLoaded;
-    bool needsResetting; // set to true if either reference or BAM is loaded
   public:
     swEngine();
     ~swEngine();

@@ -5,6 +5,10 @@ SpliceWizMain_hts <- function(bam_file, reference_file, output_file, verbose, n_
     .Call(`_SpliceWiz_SpliceWizMain_hts`, bam_file, reference_file, output_file, verbose, n_threads, read_pool)
 }
 
+SpliceWizMain_multi_hts <- function(reference_file, bam_files, output_files, max_threads, verbose, read_pool) {
+    .Call(`_SpliceWiz_SpliceWizMain_multi_hts`, reference_file, bam_files, output_files, max_threads, verbose, read_pool)
+}
+
 c_BAM2COV_hts <- function(bam_file, output_file, verbose, n_threads, read_pool) {
     .Call(`_SpliceWiz_c_BAM2COV_hts`, bam_file, output_file, verbose, n_threads, read_pool)
 }

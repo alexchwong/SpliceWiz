@@ -42,7 +42,6 @@ swEngine::swEngine() {
   
   refLoaded = false;
   BAMLoaded = false;
-  needsResetting = false;
 }
 
 swEngine::~swEngine() {
@@ -261,28 +260,14 @@ int swEngine::loadReference() {
 int swEngine::refreshReference() {
   if(refLoaded) {
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      // delete oCB.at(i);
-      // oCB.at(i) = new CoverageBlocksIRFinder(CB_string);
       oCB.at(i)->Reset();
-      
-      // delete oSP.at(i);
-      // oSP.at(i) = new SpansPoint(SP_string);
       oSP.at(i)->Reset();
-      
-      // delete oROI.at(i);
-      // oROI.at(i) = new FragmentsInROI(ROI_string);
       oROI.at(i)->Reset();
+      oJC.at(i)->Reset();
+      oTJ.at(i)->Reset();
       
       delete oChr.at(i);
       oChr.at(i) = new FragmentsInChr;
-      
-      // delete oJC.at(i);
-      // oJC.at(i) = new JunctionCount(JC_string);
-      oJC.at(i)->Reset();
-      
-      // delete oTJ.at(i);
-      // oTJ.at(i) = new TandemJunctions(TJ_string);
-      oTJ.at(i)->Reset();
       
       delete oFM.at(i);
       oFM.at(i) = new FragmentsMap;
@@ -353,14 +338,15 @@ int swEngine::SpliceWizMultiCore(
   }
   
   // Initialize results container
+  cout << "Allocating memory to " << n_threads_to_use
+    << " threads for SpliceWiz (ompBAM)...";
   auto start = chrono::steady_clock::now();
   auto check = start;
     loadReference();
   check = chrono::steady_clock::now();
-  auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
-  cout << "RAM initialized (" << time_sec << " seconds)\n"; 
-  
-  // swResultsContainer res(n_threads_to_use);
+  auto time_sec = chrono::duration_cast<chrono::milliseconds>(check - start).count();
+  cout << "initialized (" << time_sec << " milliseconds)\n"; 
+
   for(unsigned int z = 0; z < bam_file.size(); z++) {
     refreshReference();
     
@@ -583,8 +569,8 @@ int swEngine::SpliceWizMultiCore(
     out.flush(); out.close();
 
     check = chrono::steady_clock::now();
-    time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
-    cout << bam_file.at(z) << " processed (" << time_sec << " seconds)\n";
+    time_sec = chrono::duration_cast<chrono::milliseconds>(check - start).count();
+    cout << bam_file.at(z) << " processed (" << time_sec << " milliseconds)\n";
   }
 
   return(0);

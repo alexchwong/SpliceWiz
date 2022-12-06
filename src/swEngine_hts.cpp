@@ -35,6 +35,47 @@ swEngine_hts::swEngine_hts() {
   JC_string = "";
   TJ_string = "";
   n_threads_to_use = 1;
+
+  oCB.resize(n_threads_to_use);
+  oSP.resize(n_threads_to_use);
+  oROI.resize(n_threads_to_use);
+  oChr.resize(n_threads_to_use);
+  oJC.resize(n_threads_to_use);
+  oTJ.resize(n_threads_to_use);
+  oFM.resize(n_threads_to_use);
+  BBchild.resize(n_threads_to_use);
+  
+  refLoaded = false;
+  BAMLoaded = false;
+}
+
+swEngine_hts::~swEngine_hts() {
+  CB_string = "";
+  SP_string = "";
+  ROI_string = "";
+  JC_string = "";
+  TJ_string = "";
+  n_threads_to_use = 1;
+
+  if(refLoaded) {
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      delete oJC.at(i);
+      delete oTJ.at(i);
+      delete oChr.at(i);
+      delete oSP.at(i);
+      delete oROI.at(i);
+      delete oCB.at(i);
+      delete oFM.at(i);
+    }
+  }
+  
+  if(BAMLoaded) {
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      delete BBchild.at(i);
+    }
+    BAMLoaded = false;
+  }
+
 }
 
 bool swEngine_hts::checkFileExists(const std::string& name) {
@@ -188,6 +229,97 @@ int swEngine_hts::readReference(std::string &reference_file, bool verbose) {
   } else if(!doneTJ) {
     cout << "Note: Tandem junction reference not detected. " <<
       "Rebuild reference using SpliceWiz v0.99.3 or above.\n";
+  }
+  return(0);
+}
+
+int swEngine_hts::loadReference() {
+  if(!refLoaded) {
+    oCB.resize(n_threads_to_use);
+    oSP.resize(n_threads_to_use);
+    oROI.resize(n_threads_to_use);
+    oChr.resize(n_threads_to_use);
+    oJC.resize(n_threads_to_use);
+    oTJ.resize(n_threads_to_use);
+    oFM.resize(n_threads_to_use);
+
+        
+    #ifdef _OPENMP
+    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+    #endif
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      oCB.at(i) = new CoverageBlocksIRFinder(CB_string);
+      oSP.at(i) = new SpansPoint(SP_string);
+      oROI.at(i) = new FragmentsInROI(ROI_string);
+      oChr.at(i) = new FragmentsInChr;
+      oJC.at(i) = new JunctionCount(JC_string);
+      oTJ.at(i) = new TandemJunctions(TJ_string);
+      oFM.at(i) = new FragmentsMap;
+    }
+    
+    refLoaded = true;    
+  }
+  return(0);
+}
+
+int swEngine_hts::refreshReference() {
+  if(refLoaded) {
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      oCB.at(i)->Reset();
+      oSP.at(i)->Reset();
+      oROI.at(i)->Reset();
+      oJC.at(i)->Reset();
+      oTJ.at(i)->Reset();
+      
+      delete oChr.at(i);
+      oChr.at(i) = new FragmentsInChr;
+      
+      delete oFM.at(i);
+      oFM.at(i) = new FragmentsMap;
+    }
+  }
+
+  if(BAMLoaded) {
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      delete BBchild.at(i);
+    }
+    BAMLoaded = false;
+  }
+  
+  return(0);
+}
+
+int swEngine_hts::associateBAM(
+  std::vector<string> chr_name,
+  std::vector<uint32_t> chr_len
+) {
+  BBchild.resize(n_threads_to_use);
+  
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    BBchild.at(i) = new htsBAM2blocks(chr_name, chr_len);
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&JunctionCount::ChrMapUpdate, &(*oJC.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&JunctionCount::ProcessBlocks, &(*oJC.at(i)), std::placeholders::_1) );
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&TandemJunctions::ChrMapUpdate, &(*oTJ.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&TandemJunctions::ProcessBlocks, &(*oTJ.at(i)), std::placeholders::_1) );
+    
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInChr::ChrMapUpdate, &(*oChr.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInChr::ProcessBlocks, &(*oChr.at(i)), std::placeholders::_1) );
+    
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&SpansPoint::ChrMapUpdate, &(*oSP.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&SpansPoint::ProcessBlocks, &(*oSP.at(i)), std::placeholders::_1) );
+        
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInROI::ChrMapUpdate, &(*oROI.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInROI::ProcessBlocks, &(*oROI.at(i)), std::placeholders::_1) );
+    
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&CoverageBlocks::ChrMapUpdate, &(*oCB.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&CoverageBlocks::ProcessBlocks, &(*oCB.at(i)), std::placeholders::_1) );
+
+    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
+    
+    BBchild.at(i)->initializeChrs();
   }
   return(0);
 }

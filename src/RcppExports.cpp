@@ -26,6 +26,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// SpliceWizMain_multi_hts
+int SpliceWizMain_multi_hts(std::string reference_file, StringVector bam_files, StringVector output_files, int max_threads, bool verbose, int read_pool);
+RcppExport SEXP _SpliceWiz_SpliceWizMain_multi_hts(SEXP reference_fileSEXP, SEXP bam_filesSEXP, SEXP output_filesSEXP, SEXP max_threadsSEXP, SEXP verboseSEXP, SEXP read_poolSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type reference_file(reference_fileSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type bam_files(bam_filesSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type output_files(output_filesSEXP);
+    Rcpp::traits::input_parameter< int >::type max_threads(max_threadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< int >::type read_pool(read_poolSEXP);
+    rcpp_result_gen = Rcpp::wrap(SpliceWizMain_multi_hts(reference_file, bam_files, output_files, max_threads, verbose, read_pool));
+    return rcpp_result_gen;
+END_RCPP
+}
 // c_BAM2COV_hts
 int c_BAM2COV_hts(std::string bam_file, std::string output_file, bool verbose, int n_threads, int read_pool);
 RcppExport SEXP _SpliceWiz_c_BAM2COV_hts(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP) {
@@ -245,6 +261,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SpliceWiz_SpliceWizMain_hts", (DL_FUNC) &_SpliceWiz_SpliceWizMain_hts, 6},
+    {"_SpliceWiz_SpliceWizMain_multi_hts", (DL_FUNC) &_SpliceWiz_SpliceWizMain_multi_hts, 6},
     {"_SpliceWiz_c_BAM2COV_hts", (DL_FUNC) &_SpliceWiz_c_BAM2COV_hts, 5},
     {"_SpliceWiz_c_doStats_hts", (DL_FUNC) &_SpliceWiz_c_doStats_hts, 5},
     {"_SpliceWiz_Has_OpenMP", (DL_FUNC) &_SpliceWiz_Has_OpenMP, 0},

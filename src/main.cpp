@@ -460,8 +460,8 @@ int SpliceWizMain(
     cout << "Error encountered processing " << s_bam << "\n";
   } else {
     check = chrono::steady_clock::now();
-    auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
-    cout << s_bam << " processed (" << time_sec << " seconds)\n";
+    auto time_sec = chrono::duration_cast<chrono::milliseconds>(check - start).count();
+    cout << s_bam << " processed (" << time_sec << " milliseconds)\n";
   }
 
   return(ret2);
@@ -505,29 +505,6 @@ int SpliceWizMain_multi(
     v_bam, v_out_txt, v_out_cov,
     verbose, multiRead
   );
-  
-  // for(unsigned int z = 0; z < v_bam.size(); z++) {
-    // std::string s_bam = v_bam.at(z);
-		// std::string s_output_txt = v_out.at(z) + ".txt.gz";
-		// std::string s_output_cov = v_out.at(z) + ".cov";
-
-    // auto start = chrono::steady_clock::now();
-    // auto check = start;
-    // int ret2 = Engine.SpliceWizMultiCore(
-      // s_bam, s_output_txt, s_output_cov,
-      // verbose, multiRead
-    // );
-    // if(ret2 == -2) {
-      // cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
-      // return(ret2);
-    // } else if(ret2 == -1) {
-      // cout << "Error encountered processing " << s_bam << "\n";
-    // } else {
-      // check = chrono::steady_clock::now();
-      // auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
-      // cout << s_bam << " processed (" << time_sec << " seconds)\n";
-    // }
-  // }
 
   return(ret2);
 }
@@ -723,8 +700,8 @@ int c_BAM2COV(
     cout << "Error encountered processing " << s_bam << "\n";
   } else {
     check = chrono::steady_clock::now();
-    auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
-    cout << s_bam << " processed (" << time_sec << " seconds)\n";
+    auto time_sec = chrono::duration_cast<chrono::milliseconds>(check - start).count();
+    cout << s_bam << " processed (" << time_sec << " milliseconds)\n";
   }
   return(ret2);
 }
@@ -764,8 +741,8 @@ int c_doStats(
     cout << "Error encountered processing " << s_bam << "\n";
   } else {
     check = chrono::steady_clock::now();
-    auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
-    cout << s_bam << " processed (" << time_sec << " seconds)\n";
+    auto time_sec = chrono::duration_cast<chrono::milliseconds>(check - start).count();
+    cout << s_bam << " processed (" << time_sec << " milliseconds)\n";
   }
   return(ret2);
 }

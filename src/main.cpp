@@ -448,7 +448,7 @@ int SpliceWizMain(
   );
 
 #ifdef __linux__
-  cout << "malloc trim() = " << malloc_trim() << "\n";
+  cout << "malloc trim() = " << malloc_trim(0) << "\n";
 #endif
   return(ret2);
 }
@@ -492,7 +492,7 @@ int SpliceWizMain_multi(
     verbose, multiRead
   );
 #ifdef __linux__
-  cout << "malloc trim() = " << malloc_trim() << "\n";
+  cout << "malloc trim() = " << malloc_trim(0) << "\n";
 #endif
 
   return(ret2);

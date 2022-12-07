@@ -446,7 +446,7 @@ int SpliceWizMain(
     v_bam, v_out_txt, v_out_cov,
     verbose, multiRead
   );
-
+  Engine.clear();
 #ifdef __linux__
   cout << "malloc trim() = " << malloc_trim(0) << "\n";
 #endif
@@ -491,6 +491,7 @@ int SpliceWizMain_multi(
     v_bam, v_out_txt, v_out_cov,
     verbose, multiRead
   );
+  Engine.clear();
 #ifdef __linux__
   cout << "malloc trim() = " << malloc_trim(0) << "\n";
 #endif

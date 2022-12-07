@@ -71,6 +71,7 @@ class swEngine {
     bool BAMLoaded;
   public:
     swEngine();
+    void clear();
 
     int Set_Threads(int n_threads);
     bool checkFileExists(const std::string& name);

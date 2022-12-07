@@ -44,6 +44,17 @@ swEngine::swEngine() {
   FMloaded = false;
 }
 
+void swEngine::clear() {
+  oCB.clear();
+  oSP.clear();
+  oROI.clear();
+  oChr.clear();
+  oJC.clear();
+  oTJ.clear();
+  oFM.clear();
+  BBchild.clear();
+}
+
 bool swEngine::checkFileExists(const std::string& name) {
     std::ifstream f;
     f.open(name);

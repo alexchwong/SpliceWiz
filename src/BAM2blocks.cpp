@@ -44,7 +44,42 @@ BAM2blocks::BAM2blocks() {
   spare_reads = new std::map< std::string, pbam1_t* >;
 }
 
+BAM2blocks::BAM2blocks(BAM2blocks&& rhs) {
+  oBlocks = FragmentBlocks(); //Right syntax to call the default constructor on an object variable, declared but not initialised?
+
+  cReadsProcessed = rhs.cReadsProcessed;
+  totalNucleotides = rhs.totalNucleotides;
+  cShortPairs = rhs.cShortPairs;
+  cIntersectPairs = rhs.cIntersectPairs;
+  cLongPairs = rhs.cLongPairs;
+  cSingleReads = rhs.cSingleReads;
+  cPairedReads = rhs.cPairedReads;
+  cErrorReads = rhs.cErrorReads;
+  cSkippedReads = rhs.cSkippedReads;
+  cChimericReads = rhs.cChimericReads;
+  spare_reads = rhs.spare_reads;
+  
+  rhs.cReadsProcessed = 0;
+  rhs.totalNucleotides = 0;
+  rhs.cShortPairs = 0;
+  rhs.cIntersectPairs = 0;
+  rhs.cLongPairs = 0;
+  rhs.cSingleReads = 0;
+  rhs.cPairedReads = 0;
+  rhs.cErrorReads = 0;
+  rhs.cSkippedReads = 0;
+  rhs.cChimericReads = 0;
+  rhs.spare_reads = nullptr;
+}
+
 BAM2blocks::BAM2blocks(
+  std::vector<std::string> & ref_names, 
+  std::vector<uint32_t> & ref_lengths
+) {
+  initialize(ref_names, ref_lengths);
+}
+
+void BAM2blocks::initialize(
     std::vector<std::string> & ref_names, 
     std::vector<uint32_t> & ref_lengths
 ) {
@@ -67,7 +102,7 @@ BAM2blocks::BAM2blocks(
     }
   }
   
-  spare_reads = new std::map< std::string, pbam1_t* >;
+  // spare_reads = new std::map< std::string, pbam1_t* >;
 }
 
 BAM2blocks::~BAM2blocks() {

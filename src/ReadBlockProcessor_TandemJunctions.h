@@ -72,7 +72,10 @@ class TandemJunctions : public ReadBlockProcessor {
 		std::vector<std::map<tandemJn, unsigned int[3]>*> chrID_tandemJn;
 		//unsigned int[3] - 0, neg strand count; 1, pos strand count; 2 = expected direction from ref: 0=unknown, 1=neg, 2=pos.
 	public:
+    TandemJunctions();
     TandemJunctions(std::string &refString);
+    void initialize(std::string &refString);
+    
     void Reset();
 		void Combine(const TandemJunctions &child);
 		void ProcessBlocks(const FragmentBlocks &fragblock);

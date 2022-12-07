@@ -16,15 +16,6 @@
 #include "swEngine_hts.h"
 
 #ifdef SPLICEWIZ
-  int SpliceWizCore_hts(
-    swEngine_hts Engine,
-    std::string const &bam_file, 
-    std::string const &s_output_txt, 
-    std::string const &s_output_cov,
-    bool const verbose,
-    int const read_pool
-  );
-
   int SpliceWizCore_htsMulti(
     swEngine_hts Engine,
     std::vector<std::string> const &bam_file, 

@@ -18,6 +18,7 @@
 #include "synthReadGenerator.h"
 
 #include "swEngine.h"
+#include "swEngine_hts.h"
 
 bool checkFileExists(const std::string& name);
 

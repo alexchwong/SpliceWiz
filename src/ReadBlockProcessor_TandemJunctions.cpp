@@ -27,7 +27,15 @@ SOFTWARE.  */
 
 // Constructors from strings:
 
+TandemJunctions::TandemJunctions() {
+  //
+}
+
 TandemJunctions::TandemJunctions(std::string &refString) {
+  initialize(refString);
+}
+
+void TandemJunctions::initialize(std::string &refString) {
   std::istringstream inTandemJn;
   inTandemJn.str(refString);
   loadRef(inTandemJn);

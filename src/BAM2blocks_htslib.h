@@ -75,7 +75,12 @@ class htsBAM2blocks {
     htsBAM2blocks & operator = (const htsBAM2blocks &t);
   public:
   	htsBAM2blocks();
+    htsBAM2blocks(htsBAM2blocks&& rhs);
   	htsBAM2blocks(
+      std::vector<std::string> & ref_names, 
+      std::vector<uint32_t> & ref_lengths
+    );  // Define BB with defined references
+  	void initialize(
       std::vector<std::string> & ref_names, 
       std::vector<uint32_t> & ref_lengths
     );  // Define BB with defined references

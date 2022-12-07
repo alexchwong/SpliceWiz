@@ -270,11 +270,20 @@ int CoverageBlocks::WriteOutput(std::string& output, const FragmentsMap &FM) con
 	return 0;
 }
 
+CoverageBlocksIRFinder::CoverageBlocksIRFinder() {
+  //
+}
+
 CoverageBlocksIRFinder::CoverageBlocksIRFinder(std::string &refString) {
+  initialize(refString);
+}
+
+void CoverageBlocksIRFinder::initialize(std::string &refString) {
   std::istringstream inCoverageBlocks;
   inCoverageBlocks.str(refString);
   loadRef(inCoverageBlocks);
 }
+
 
 void CoverageBlocksIRFinder::Combine(CoverageBlocksIRFinder &child) {
   // do nothing; combining not necessary

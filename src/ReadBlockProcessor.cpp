@@ -26,20 +26,43 @@ SOFTWARE.  */
 
 // Constructors from strings:
 
-JunctionCount::JunctionCount(std::string &refString) {
+JunctionCount::JunctionCount() {
+  // do nothing
+}
+
+void JunctionCount::initialize(std::string &refString) {
   std::istringstream inJuncCount;
   inJuncCount.str(refString);
   loadRef(inJuncCount);
 }
 
-SpansPoint::SpansPoint(std::string &refString) {
+JunctionCount::JunctionCount(std::string &refString) {
+  initialize(refString);
+}
+
+SpansPoint::SpansPoint() {
   setSpanLength(5,4);
+}
+
+void SpansPoint::initialize(std::string &refString) {
   std::istringstream inSpansPoint;
   inSpansPoint.str(refString);
   loadRef(inSpansPoint);
 }
 
+SpansPoint::SpansPoint(std::string &refString) {
+  initialize(refString);
+}
+
+FragmentsInROI::FragmentsInROI() {
+  //
+}
+
 FragmentsInROI::FragmentsInROI(std::string &refString) {
+  initialize(refString);
+}
+
+void FragmentsInROI::initialize(std::string &refString) {
   std::istringstream inFragmentsInROI;
   inFragmentsInROI.str(refString);
   loadRef(inFragmentsInROI);

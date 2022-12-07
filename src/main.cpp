@@ -419,50 +419,28 @@ int SpliceWizMain(
    
   std::string s_bam = bam_file;
   std::string s_ref = reference_file;  
-  if(!checkFileExists(s_bam)) {
-    cout << "File " << s_bam << " does not exist!\n";
-    return(-1);
-  } 
-  if(!checkFileExists(s_ref)) {
-    cout << "File " << s_ref << " does not exist!\n";
-    return(-1);
-  } 
+
+	std::vector< std::string > v_bam;
+	std::vector< std::string > v_out_txt;
+	std::vector< std::string > v_out_cov;
+
+  v_bam.push_back(s_bam);
+  v_out_txt.push_back(s_output_txt);
+  v_out_cov.push_back(s_output_cov);
 
   swEngine Engine;
-  int use_threads = Engine.Set_Threads(n_threads);
+  Engine.Set_Threads(n_threads);
+
+  if(verbose) cout << "Reading reference file\n";
   int ret = Engine.readReference(s_ref, verbose);
   if(ret != 0) {
     cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
     return(ret);
   }
-  
-  if(verbose) {
-    cout << "Running SpliceWiz on " << s_bam;
-    if(Has_OpenMP() != 0) cout << " with OpenMP ";
-    cout << "using " << use_threads << " threads"
-      << "\n" << "Reference: " << s_ref << "\n"
-      << "Output file: " << s_output_txt << "\t" << s_output_cov << "\n\n"
-      << "Reading reference file\n";
-  }
-
-  // main:
-  auto start = chrono::steady_clock::now();
-  auto check = start;
-  int ret2 = Engine.SpliceWizCore(
-      s_bam, s_output_txt, s_output_cov,
-      verbose, multiRead
+  int ret2 = Engine.SpliceWizMultiCore(
+    v_bam, v_out_txt, v_out_cov,
+    verbose, multiRead
   );
-    
-  if(ret2 == -2) {
-    cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
-    return(ret2);
-  } else if(ret2 == -1) {
-    cout << "Error encountered processing " << s_bam << "\n";
-  } else {
-    check = chrono::steady_clock::now();
-    auto time_sec = chrono::duration_cast<chrono::milliseconds>(check - start).count();
-    cout << s_bam << " processed (" << time_sec << " milliseconds)\n";
-  }
 
   return(ret2);
 }
@@ -507,6 +485,75 @@ int SpliceWizMain_multi(
   );
 
   return(ret2);
+}
+
+// [[Rcpp::export]]
+int readRefOnly(
+    std::string reference_file,
+    int max_threads, bool verbose,
+    bool loadCB, bool loadSP, bool loadROI,
+    bool loadChr, bool loadJC, bool loadTJ, bool loadFM
+){
+  std::string s_ref = reference_file;
+  if(!checkFileExists(s_ref)) {
+    cout << "File " << s_ref << " does not exist!\n";
+    return(-1);
+  } 
+
+  swEngine_hts Engine;
+  Engine.Set_Threads(max_threads);
+
+  if(verbose) cout << "Reading reference file\n";
+  int ret = Engine.readReference(s_ref, verbose);
+  if(ret != 0) {
+    cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
+    return(ret);
+  }
+  std::vector<CoverageBlocksIRFinder> oCB;
+  std::vector<SpansPoint> oSP;
+  std::vector<FragmentsInROI> oROI;
+  std::vector<FragmentsInChr> oChr;
+  std::vector<JunctionCount> oJC;
+  std::vector<TandemJunctions> oTJ;
+  std::vector<FragmentsMap> oFM;
+  for(int i = 0; i < max_threads; i++) {
+    if(loadCB) oCB.push_back(CoverageBlocksIRFinder(Engine.CB_string));
+    if(loadSP) oSP.push_back(SpansPoint(Engine.SP_string));
+    if(loadROI) oROI.push_back(FragmentsInROI(Engine.ROI_string));
+    if(loadChr) oChr.push_back(FragmentsInChr());
+    if(loadJC) oJC.push_back(JunctionCount(Engine.JC_string));
+    if(loadTJ) oTJ.push_back(TandemJunctions(Engine.TJ_string));
+    if(loadFM) oFM.push_back(FragmentsMap());
+  }
+  return(ret);
+}
+
+// [[Rcpp::export]]
+int readSP(
+    std::string reference_file,
+    int max_threads, bool verbose, bool freeMem
+){
+  std::string s_ref = reference_file;
+  if(!checkFileExists(s_ref)) {
+    cout << "File " << s_ref << " does not exist!\n";
+    return(-1);
+  } 
+
+  swEngine_hts Engine;
+  Engine.Set_Threads(max_threads);
+
+  if(verbose) cout << "Reading reference file\n";
+  int ret = Engine.readReference(s_ref, verbose);
+  if(ret != 0) {
+    cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
+    return(ret);
+  }
+  
+  std::vector<SpansPoint> oSP;
+  for(int i = 0; i < max_threads; i++) {
+    oSP.push_back(SpansPoint(Engine.SP_string));
+  }
+  return(ret);
 }
 
 #endif

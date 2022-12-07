@@ -5,18 +5,6 @@ SpliceWizMain_hts <- function(bam_file, reference_file, output_file, verbose, n_
     .Call(`_SpliceWiz_SpliceWizMain_hts`, bam_file, reference_file, output_file, verbose, n_threads, read_pool)
 }
 
-SpliceWizMain_multi_hts <- function(reference_file, bam_files, output_files, max_threads, verbose, read_pool) {
-    .Call(`_SpliceWiz_SpliceWizMain_multi_hts`, reference_file, bam_files, output_files, max_threads, verbose, read_pool)
-}
-
-c_BAM2COV_hts <- function(bam_file, output_file, verbose, n_threads, read_pool) {
-    .Call(`_SpliceWiz_c_BAM2COV_hts`, bam_file, output_file, verbose, n_threads, read_pool)
-}
-
-c_doStats_hts <- function(bam_file, output_file, verbose, n_threads, read_pool) {
-    .Call(`_SpliceWiz_c_doStats_hts`, bam_file, output_file, verbose, n_threads, read_pool)
-}
-
 Has_OpenMP <- function() {
     .Call(`_SpliceWiz_Has_OpenMP`)
 }
@@ -55,6 +43,14 @@ SpliceWizMain <- function(bam_file, reference_file, output_file, verbose, n_thre
 
 SpliceWizMain_multi <- function(reference_file, bam_files, output_files, max_threads, verbose, multiRead) {
     .Call(`_SpliceWiz_SpliceWizMain_multi`, reference_file, bam_files, output_files, max_threads, verbose, multiRead)
+}
+
+readRefOnly <- function(reference_file, max_threads, verbose, loadCB, loadSP, loadROI, loadChr, loadJC, loadTJ, loadFM) {
+    .Call(`_SpliceWiz_readRefOnly`, reference_file, max_threads, verbose, loadCB, loadSP, loadROI, loadChr, loadJC, loadTJ, loadFM)
+}
+
+readSP <- function(reference_file, max_threads, verbose, freeMem) {
+    .Call(`_SpliceWiz_readSP`, reference_file, max_threads, verbose, freeMem)
 }
 
 c_GenerateMappabilityReads <- function(genome_file, out_fa, read_len, read_stride, error_pos) {

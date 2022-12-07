@@ -51,20 +51,26 @@ class swEngine {
     std::string TJ_string;
     unsigned int n_threads_to_use;
 
-    std::vector<CoverageBlocksIRFinder*> oCB;
-    std::vector<SpansPoint*> oSP;
-    std::vector<FragmentsInROI*> oROI;
-    std::vector<FragmentsInChr*> oChr;
-    std::vector<JunctionCount*> oJC;
-    std::vector<TandemJunctions*> oTJ;
-    std::vector<FragmentsMap*> oFM;
-    std::vector<BAM2blocks*> BBchild;
+    std::vector<CoverageBlocksIRFinder> oCB;
+    std::vector<SpansPoint> oSP;
+    std::vector<FragmentsInROI> oROI;
+    std::vector<FragmentsInChr> oChr;
+    std::vector<JunctionCount> oJC;
+    std::vector<TandemJunctions> oTJ;
+    std::vector<FragmentsMap> oFM;
+    std::vector<BAM2blocks> BBchild;
 
     bool refLoaded;
+    bool CBloaded;
+    bool SPloaded;
+    bool ROIloaded;
+    bool Chrloaded;
+    bool JCloaded;
+    bool TJloaded;
+    bool FMloaded;
     bool BAMLoaded;
   public:
     swEngine();
-    ~swEngine();
 
     int Set_Threads(int n_threads);
     bool checkFileExists(const std::string& name);
@@ -72,18 +78,20 @@ class swEngine {
     int readReference(std::string &reference_file, bool const verbose = FALSE);
     
     int loadReference();
+    int loadReference(
+      bool loadCB,
+      bool loadSP,
+      bool loadROI,
+      bool loadChr,
+      bool loadJC,
+      bool loadTJ,
+      bool loadFM
+    );
     int refreshReference();
     int associateBAM(
       pbam_in * _IN, 
       std::vector<string> chr_name,
       std::vector<uint32_t> chr_len
-    );
-    int SpliceWizCore(
-      std::string const &bam_file, 
-      std::string const &s_output_txt, 
-      std::string const &s_output_cov,
-      bool const verbose,
-      bool const multithreadedRead = false
     );
 
     int SpliceWizMultiCore(

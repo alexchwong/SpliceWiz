@@ -21,6 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.  */
 
 #include "swEngine.h"
+#include <sys/stat.h>
 #include <chrono>
 
 swEngine::swEngine() {
@@ -30,47 +31,17 @@ swEngine::swEngine() {
   JC_string = "";
   TJ_string = "";
   n_threads_to_use = 1;
-
-  oCB.resize(n_threads_to_use);
-  oSP.resize(n_threads_to_use);
-  oROI.resize(n_threads_to_use);
-  oChr.resize(n_threads_to_use);
-  oJC.resize(n_threads_to_use);
-  oTJ.resize(n_threads_to_use);
-  oFM.resize(n_threads_to_use);
-  BBchild.resize(n_threads_to_use);
   
   refLoaded = false;
   BAMLoaded = false;
-}
 
-swEngine::~swEngine() {
-  CB_string = "";
-  SP_string = "";
-  ROI_string = "";
-  JC_string = "";
-  TJ_string = "";
-  n_threads_to_use = 1;
-
-  if(refLoaded) {
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete oJC.at(i);
-      delete oTJ.at(i);
-      delete oChr.at(i);
-      delete oSP.at(i);
-      delete oROI.at(i);
-      delete oCB.at(i);
-      delete oFM.at(i);
-    }
-  }
-  
-  if(BAMLoaded) {
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete BBchild.at(i);
-    }
-    BAMLoaded = false;
-  }
-
+  CBloaded = false;
+  SPloaded = false;
+  ROIloaded = false;
+  Chrloaded = false;
+  JCloaded = false;
+  TJloaded = false;
+  FMloaded = false;
 }
 
 bool swEngine::checkFileExists(const std::string& name) {
@@ -237,22 +208,67 @@ int swEngine::loadReference() {
     oJC.resize(n_threads_to_use);
     oTJ.resize(n_threads_to_use);
     oFM.resize(n_threads_to_use);
-
-        
+    
     #ifdef _OPENMP
     #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
     #endif
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      oCB.at(i) = new CoverageBlocksIRFinder(CB_string);
-      oSP.at(i) = new SpansPoint(SP_string);
-      oROI.at(i) = new FragmentsInROI(ROI_string);
-      oChr.at(i) = new FragmentsInChr;
-      oJC.at(i) = new JunctionCount(JC_string);
-      oTJ.at(i) = new TandemJunctions(TJ_string);
-      oFM.at(i) = new FragmentsMap;
+      oCB.at(i).initialize(CB_string);
+      oSP.at(i).initialize(SP_string);
+      oROI.at(i).initialize(ROI_string);
+      oJC.at(i).initialize(JC_string);
+      oTJ.at(i).initialize(TJ_string);
     }
     
-    refLoaded = true;    
+    refLoaded = true;
+    CBloaded = true;
+    SPloaded = true;
+    ROIloaded = true;
+    Chrloaded = true;
+    JCloaded = true;
+    TJloaded = true;
+    FMloaded = true;
+  }
+  return(0);
+}
+
+int swEngine::loadReference(
+  bool loadCB,
+  bool loadSP,
+  bool loadROI,
+  bool loadChr,
+  bool loadJC,
+  bool loadTJ,
+  bool loadFM
+) {
+  if(!refLoaded) {
+    if(loadCB) oCB.resize(n_threads_to_use);
+    if(loadSP) oSP.resize(n_threads_to_use);
+    if(loadROI) oROI.resize(n_threads_to_use);
+    if(loadChr) oChr.resize(n_threads_to_use);
+    if(loadJC) oJC.resize(n_threads_to_use);
+    if(loadTJ) oTJ.resize(n_threads_to_use);
+    if(loadFM) oFM.resize(n_threads_to_use);
+    
+    #ifdef _OPENMP
+    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+    #endif
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      if(loadCB) oCB.at(i).initialize(CB_string);
+      if(loadSP) oSP.at(i).initialize(SP_string);
+      if(loadROI) oROI.at(i).initialize(ROI_string);
+      if(loadJC) oJC.at(i).initialize(JC_string);
+      if(loadTJ) oTJ.at(i).initialize(TJ_string);
+    }
+    
+    refLoaded = true;
+    CBloaded = true;
+    SPloaded = true;
+    ROIloaded = true;
+    Chrloaded = true;
+    JCloaded = true;
+    TJloaded = true;
+    FMloaded = true;
   }
   return(0);
 }
@@ -260,24 +276,18 @@ int swEngine::loadReference() {
 int swEngine::refreshReference() {
   if(refLoaded) {
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      oCB.at(i)->Reset();
-      oSP.at(i)->Reset();
-      oROI.at(i)->Reset();
-      oJC.at(i)->Reset();
-      oTJ.at(i)->Reset();
-      
-      delete oChr.at(i);
-      oChr.at(i) = new FragmentsInChr;
-      
-      delete oFM.at(i);
-      oFM.at(i) = new FragmentsMap;
+      oCB.at(i).Reset();
+      oSP.at(i).Reset();
+      oROI.at(i).Reset();
+      oJC.at(i).Reset();
+      oTJ.at(i).Reset();
+      oChr.at(i).Reset();
+      oFM.at(i).Reset();
     }
   }
 
   if(BAMLoaded) {
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete BBchild.at(i);
-    }
+    BBchild.clear();
     BAMLoaded = false;
   }
   
@@ -289,33 +299,33 @@ int swEngine::associateBAM(
   std::vector<string> chr_name,
   std::vector<uint32_t> chr_len
 ) {
+  BBchild.clear();
   BBchild.resize(n_threads_to_use);
-  
   for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    BBchild.at(i) = new BAM2blocks(chr_name, chr_len);
+    BBchild.at(i).initialize(chr_name, chr_len);
 
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&JunctionCount::ChrMapUpdate, &(*oJC.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&JunctionCount::ProcessBlocks, &(*oJC.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackChrMappingChange( std::bind(&JunctionCount::ChrMapUpdate, &(oJC.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackProcessBlocks( std::bind(&JunctionCount::ProcessBlocks, &(oJC.at(i)), std::placeholders::_1) );
 
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&TandemJunctions::ChrMapUpdate, &(*oTJ.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&TandemJunctions::ProcessBlocks, &(*oTJ.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackChrMappingChange( std::bind(&TandemJunctions::ChrMapUpdate, &(oTJ.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackProcessBlocks( std::bind(&TandemJunctions::ProcessBlocks, &(oTJ.at(i)), std::placeholders::_1) );
     
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInChr::ChrMapUpdate, &(*oChr.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInChr::ProcessBlocks, &(*oChr.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackChrMappingChange( std::bind(&FragmentsInChr::ChrMapUpdate, &(oChr.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackProcessBlocks( std::bind(&FragmentsInChr::ProcessBlocks, &(oChr.at(i)), std::placeholders::_1) );
     
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&SpansPoint::ChrMapUpdate, &(*oSP.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&SpansPoint::ProcessBlocks, &(*oSP.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackChrMappingChange( std::bind(&SpansPoint::ChrMapUpdate, &(oSP.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackProcessBlocks( std::bind(&SpansPoint::ProcessBlocks, &(oSP.at(i)), std::placeholders::_1) );
         
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInROI::ChrMapUpdate, &(*oROI.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInROI::ProcessBlocks, &(*oROI.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackChrMappingChange( std::bind(&FragmentsInROI::ChrMapUpdate, &(oROI.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackProcessBlocks( std::bind(&FragmentsInROI::ProcessBlocks, &(oROI.at(i)), std::placeholders::_1) );
     
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&CoverageBlocks::ChrMapUpdate, &(*oCB.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&CoverageBlocks::ProcessBlocks, &(*oCB.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackChrMappingChange( std::bind(&CoverageBlocks::ChrMapUpdate, &(oCB.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackProcessBlocks( std::bind(&CoverageBlocks::ProcessBlocks, &(oCB.at(i)), std::placeholders::_1) );
 
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(oFM.at(i)), std::placeholders::_1) );
     
-    BBchild.at(i)->openFile(_IN);
+    BBchild.at(i).openFile(_IN);
   }
   return(0);
 }
@@ -405,10 +415,16 @@ int swEngine::SpliceWizMultiCore(
     // BAM processing loop
     bool error_detected = false;
   #ifdef SPLICEWIZ
-    Progress p(inbam.GetFileSize(), verbose);
-    while(0 == inbam.fillReads() && !p.check_abort()) {
-      p.increment(inbam.IncProgress());
+    // for compatibility with 32-bit file sizes
+    uint64_t filesize = inbam.GetFileSize();
+    int divFactor = 1;
+    if(filesize > 4294967295) divFactor = 1000000;
+
+    Progress pbar(filesize/divFactor, verbose);
+    while(0 == inbam.fillReads() && !pbar.check_abort()) {
+      pbar.increment(inbam.IncProgress()/divFactor);
       
+
   #else
     while(0 == inbam.fillReads()) {
   #endif
@@ -417,7 +433,7 @@ int swEngine::SpliceWizMultiCore(
       #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
       #endif
       for(unsigned int i = 0; i < n_threads_to_use; i++) {
-        int pa_ret = BBchild.at(i)->processAll(i);
+        int pa_ret = BBchild.at(i).processAll(i);
         if(pa_ret == -1) {
           
           #ifdef _OPENMP
@@ -431,12 +447,12 @@ int swEngine::SpliceWizMultiCore(
 
       // combine unpaired reads after each fillReads / processAlls
       for(unsigned int i = 1; i < n_threads_to_use; i++) {
-        BBchild.at(0)->processSpares(*BBchild.at(i));
+        BBchild.at(0).processSpares(BBchild.at(i));
       }
     }
 
   #ifdef SPLICEWIZ
-    if(p.check_abort() || error_detected) {
+    if(pbar.check_abort() || error_detected) {
       // interrupted:
   #else
     if(error_detected) {
@@ -466,16 +482,16 @@ int swEngine::SpliceWizMultiCore(
         for(int i = 0; i < n_bases; i++) {
           int i_new = i + n_bases;
           if((unsigned int)i_new < n_threads_to_use) {
-            BBchild.at(i)->processSpares(*BBchild.at(i_new));
-            BBchild.at(i)->processStats(*BBchild.at(i_new));
+            BBchild.at(i).processSpares(BBchild.at(i_new));
+            BBchild.at(i).processStats(BBchild.at(i_new));
 
-            oJC.at(i)->Combine(*oJC.at(i_new));
-            oTJ.at(i)->Combine(*oTJ.at(i_new));
-            oChr.at(i)->Combine(*oChr.at(i_new));
-            oSP.at(i)->Combine(*oSP.at(i_new));
-            oROI.at(i)->Combine(*oROI.at(i_new));
-            oCB.at(i)->Combine(*oCB.at(i_new));
-            oFM.at(i)->Combine(*oFM.at(i_new));         
+            oJC.at(i).Combine(oJC.at(i_new));
+            oTJ.at(i).Combine(oTJ.at(i_new));
+            oChr.at(i).Combine(oChr.at(i_new));
+            oSP.at(i).Combine(oSP.at(i_new));
+            oROI.at(i).Combine(oROI.at(i_new));
+            oCB.at(i).Combine(oCB.at(i_new));
+            oFM.at(i).Combine(oFM.at(i_new));         
           }
         }
       }
@@ -486,7 +502,7 @@ int swEngine::SpliceWizMultiCore(
     ofCOV.open(s_output_cov.at(z), std::ofstream::binary);
     covWriter outCOV;
     outCOV.SetOutputHandle(&ofCOV);
-    oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
+    oFM.at(0).WriteBinary(&outCOV, verbose, n_threads_to_use);
     ofCOV.close();
 
   // Write output to file:  
@@ -509,10 +525,10 @@ int swEngine::SpliceWizMultiCore(
 
   // Write stats here:
     std::string myLine;
-    BBchild.at(0)->WriteOutput(myLine);
+    BBchild.at(0).WriteOutput(myLine);
     outGZ.writestring(myLine); outGZ.writeline("");
 
-    int directionality = oJC.at(0)->Directional(myLine);
+    int directionality = oJC.at(0).Directional(myLine);
     outGZ.writeline("Directionality\tValue"); 
     outGZ.writestring(myLine); outGZ.writeline("");
 
@@ -526,19 +542,19 @@ int swEngine::SpliceWizMultiCore(
     std::string myLine_Dir;
     std::string myLine_QC;
     
-    oROI.at(0)->WriteOutput(myLine_ROI, myLine_QC);
-    oJC.at(0)->WriteOutput(myLine_JC, myLine_QC);
-    oTJ.at(0)->WriteOutput(myLine_TJ, myLine_QC);
-    oSP.at(0)->WriteOutput(myLine_SP, myLine_QC);
-    oChr.at(0)->WriteOutput(myLine_Chr, myLine_QC);
-    oCB.at(0)->WriteOutput(
+    oROI.at(0).WriteOutput(myLine_ROI, myLine_QC);
+    oJC.at(0).WriteOutput(myLine_JC, myLine_QC);
+    oTJ.at(0).WriteOutput(myLine_TJ, myLine_QC);
+    oSP.at(0).WriteOutput(myLine_SP, myLine_QC);
+    oChr.at(0).WriteOutput(myLine_Chr, myLine_QC);
+    oCB.at(0).WriteOutput(
       myLine_ND, myLine_QC, 
-      *oJC.at(0), *oSP.at(0), 
-      *oFM.at(0), n_threads_to_use
+      oJC.at(0), oSP.at(0), 
+      oFM.at(0), n_threads_to_use
     );
     if (directionality != 0) {
-      oCB.at(0)->WriteOutput(myLine_Dir, myLine_QC, 
-        *oJC.at(0), *oSP.at(0), *oFM.at(0), 
+      oCB.at(0).WriteOutput(myLine_Dir, myLine_QC, 
+        oJC.at(0), oSP.at(0), oFM.at(0), 
         n_threads_to_use, directionality
       ); // Directional.
     }
@@ -576,432 +592,6 @@ int swEngine::SpliceWizMultiCore(
   return(0);
 }
 
-// SpliceWiz core:
-int swEngine::SpliceWizCore(
-    std::string const &bam_file, 
-    std::string const &s_output_txt, 
-    std::string const &s_output_cov,
-    bool const verbose,
-    bool const multithreadedRead
-) {
-
-  if(!checkFileExists(bam_file)) {
-    cout << "File " << bam_file << " does not exist!\n";
-    return(-1);
-  } 
- 
-	if(verbose) cout << "Processing BAM file " << bam_file << "\n";
-  
-  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multithreadedRead);
-
-  inbam.openFile(bam_file, n_threads_to_use);
-  
-  // Abort here if BAM corrupt
-  std::vector<std::string> s_chr_names;
-  std::vector<uint32_t> u32_chr_lens;
-  int chrcount = inbam.obtainChrs(s_chr_names, u32_chr_lens);
-  if(chrcount < 1) {
-    cout << bam_file << " - contains no chromosomes mapped\n";
-    return(-1);
-  }
-  
-  // Compile here a list of chromosomes; use BAM chromosomes for order
-  // Add reference-only chromosomes at the end
-  std::vector<std::string> bam_chr_name;
-  std::vector<uint32_t> bam_chr_len;
-  for(unsigned int i = 0; i < s_chr_names.size(); i++) {
-    for(unsigned int j = 0; j < ref_alias.size(); j++) {
-      if( 0==strncmp(
-            ref_alias.at(j).c_str(), 
-            s_chr_names.at(i).c_str(), 
-            s_chr_names.at(i).size()
-          ) && s_chr_names.at(i).size() == ref_alias.at(j).size()
-      ) {
-        bam_chr_name.push_back(ref_names.at(j));
-        bam_chr_len.push_back(u32_chr_lens.at(i));
-        break;
-      }
-    }
-    if(i == bam_chr_name.size()) {
-      bam_chr_name.push_back(s_chr_names.at(i));
-      bam_chr_len.push_back(u32_chr_lens.at(i));
-    }
-  }
-  // Now fill in reference chromosomes not in BAM:
-  for(unsigned int i = 0; i < ref_names.size(); i++) {
-    auto it = std::find(bam_chr_name.begin(), bam_chr_name.end(), ref_names.at(i));
-    if(it == bam_chr_name.end()) {
-      bam_chr_name.push_back(ref_names.at(i));
-      bam_chr_len.push_back(ref_lengths.at(i));      
-    }
-  }
-  
-  std::vector<CoverageBlocksIRFinder*> oCB(n_threads_to_use);
-  std::vector<SpansPoint*> oSP(n_threads_to_use);
-  std::vector<FragmentsInROI*> oROI(n_threads_to_use);
-  std::vector<FragmentsInChr*> oChr(n_threads_to_use);
-  std::vector<JunctionCount*> oJC(n_threads_to_use);
-  std::vector<TandemJunctions*> oTJ(n_threads_to_use);
-  std::vector<FragmentsMap*> oFM(n_threads_to_use);
-  std::vector<BAM2blocks*> BBchild(n_threads_to_use);
-
-  // Multi-threaded results container initialization
-  #ifdef _OPENMP
-  #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-  #endif
-  for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    oCB.at(i) = new CoverageBlocksIRFinder(CB_string);
-    oSP.at(i) = new SpansPoint(SP_string);
-    oROI.at(i) = new FragmentsInROI(ROI_string);
-    oChr.at(i) = new FragmentsInChr;
-    oJC.at(i) = new JunctionCount(JC_string);
-    oTJ.at(i) = new TandemJunctions(TJ_string);
-    oFM.at(i) = new FragmentsMap;
-    BBchild.at(i) = new BAM2blocks(bam_chr_name, bam_chr_len);
-
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&JunctionCount::ChrMapUpdate, &(*oJC.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&JunctionCount::ProcessBlocks, &(*oJC.at(i)), std::placeholders::_1) );
-
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&TandemJunctions::ChrMapUpdate, &(*oTJ.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&TandemJunctions::ProcessBlocks, &(*oTJ.at(i)), std::placeholders::_1) );
-    
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInChr::ChrMapUpdate, &(*oChr.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInChr::ProcessBlocks, &(*oChr.at(i)), std::placeholders::_1) );
-    
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&SpansPoint::ChrMapUpdate, &(*oSP.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&SpansPoint::ProcessBlocks, &(*oSP.at(i)), std::placeholders::_1) );
-        
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsInROI::ChrMapUpdate, &(*oROI.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsInROI::ProcessBlocks, &(*oROI.at(i)), std::placeholders::_1) );
-    
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&CoverageBlocks::ChrMapUpdate, &(*oCB.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&CoverageBlocks::ProcessBlocks, &(*oCB.at(i)), std::placeholders::_1) );
-
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
-
-    // BBchild.at(i)->openFile(&inbam);
-  }
-
-  // don't parallellise this, for safety reasons
-  for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    BBchild.at(i)->openFile(&inbam);
-  }
-  
-  // BAM processing loop
-  bool error_detected = false;
-#ifdef SPLICEWIZ
-  Progress p(inbam.GetFileSize(), verbose);
-  while(0 == inbam.fillReads() && !p.check_abort()) {
-    p.increment(inbam.IncProgress());
-    
-#else
-  while(0 == inbam.fillReads()) {
-#endif
-    
-    #ifdef _OPENMP
-    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-    #endif
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      int pa_ret = BBchild.at(i)->processAll(i);
-      if(pa_ret == -1) {
-        
-        #ifdef _OPENMP
-        #pragma omp critical
-        #endif
-        error_detected = true;
-      }
-    }
-    
-    if(error_detected) break;
-
-    // combine unpaired reads after each fillReads / processAlls
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-    }
-  }
-
-#ifdef SPLICEWIZ
-  if(p.check_abort() || error_detected) {
-    // interrupted:
-#else
-  if(error_detected) {
-#endif
-    
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete oJC.at(i);
-      delete oTJ.at(i);
-      delete oChr.at(i);
-      delete oSP.at(i);
-      delete oROI.at(i);
-      delete oCB.at(i);
-      delete oFM.at(i);
-      delete BBchild.at(i);
-    }
-    if(error_detected) {
-      return(-1);
-    }
-	// Process aborted; stop processBAM for all requests
-    return(-2);
-  }
-
-
-  if(n_threads_to_use > 1) {
-    if(verbose) cout << "Compiling data from threads\n";
-  // Combine objects (multi-threaded):
-    int n_rounds = ceil(log(n_threads_to_use) / log(2));
-    for(int j = n_rounds; j > 0; j--) {
-      int n_bases = (int)pow(2, j-1);
-      
-      #ifdef _OPENMP
-      #pragma omp parallel for num_threads(n_bases) schedule(static,1)
-      #endif
-      for(int i = 0; i < n_bases; i++) {
-        int i_new = i + n_bases;
-        if((unsigned int)i_new < n_threads_to_use) {
-          BBchild.at(i)->processSpares(*BBchild.at(i_new));
-          BBchild.at(i)->processStats(*BBchild.at(i_new));
-          delete BBchild.at(i_new);
-
-          oJC.at(i)->Combine(*oJC.at(i_new));
-          oTJ.at(i)->Combine(*oTJ.at(i_new));
-          oChr.at(i)->Combine(*oChr.at(i_new));
-          oSP.at(i)->Combine(*oSP.at(i_new));
-          oROI.at(i)->Combine(*oROI.at(i_new));
-          oCB.at(i)->Combine(*oCB.at(i_new));
-          oFM.at(i)->Combine(*oFM.at(i_new));
-          
-          delete oJC.at(i_new);
-          delete oTJ.at(i_new);
-          delete oChr.at(i_new);
-          delete oSP.at(i_new);
-          delete oROI.at(i_new);
-          delete oCB.at(i_new);
-          delete oFM.at(i_new);          
-        }
-      }
-    }
-  }
-
-  // Write Coverage Binary file:
-  std::ofstream ofCOV;
-  ofCOV.open(s_output_cov, std::ofstream::binary);
-  covWriter outCOV;
-  outCOV.SetOutputHandle(&ofCOV);
-  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
-  ofCOV.close();
-
-// Write output to file:  
-  if(verbose) cout << "Writing output file\n";
-
-  std::ofstream out;                            
-  out.open(s_output_txt, std::ios::binary);  // Open binary file
-  GZWriter outGZ;                               
-  outGZ.SetOutputHandle(&out); // GZ compression
-
-  int outret = outGZ.writeline("BAM_report\tValue"); 
-  if(outret != Z_OK) {
-    cout << "Error writing gzip-compressed output file\n";
-    out.close();
-    delete oJC.at(0);
-    delete oTJ.at(0);
-    delete oChr.at(0);
-    delete oSP.at(0);
-    delete oROI.at(0);
-    delete oCB.at(0);
-    delete oFM.at(0);
-    delete BBchild.at(0);
-    return(-1);
-  }
-
-  // Output stuff here
-
-// Write stats here:
-  std::string myLine;
-  BBchild.at(0)->WriteOutput(myLine);
-  outGZ.writestring(myLine); outGZ.writeline("");
-
-  int directionality = oJC.at(0)->Directional(myLine);
-  outGZ.writeline("Directionality\tValue"); 
-  outGZ.writestring(myLine); outGZ.writeline("");
-
-  // Generate output but save this to strings:
-  std::string myLine_ROI;
-  std::string myLine_JC;
-  std::string myLine_TJ;
-  std::string myLine_SP;
-  std::string myLine_Chr;
-  std::string myLine_ND;
-  std::string myLine_Dir;
-  std::string myLine_QC;
-  
-  oROI.at(0)->WriteOutput(myLine_ROI, myLine_QC);
-  oJC.at(0)->WriteOutput(myLine_JC, myLine_QC);
-  oTJ.at(0)->WriteOutput(myLine_TJ, myLine_QC);
-  oSP.at(0)->WriteOutput(myLine_SP, myLine_QC);
-  oChr.at(0)->WriteOutput(myLine_Chr, myLine_QC);
-  oCB.at(0)->WriteOutput(myLine_ND, myLine_QC, *oJC.at(0), *oSP.at(0), *oFM.at(0), n_threads_to_use);
-  if (directionality != 0) {
-    oCB.at(0)->WriteOutput(myLine_Dir, myLine_QC, *oJC.at(0), *oSP.at(0), *oFM.at(0), n_threads_to_use, directionality); // Directional.
-	}
-
-  outGZ.writeline("QC\tValue"); outGZ.writestring(myLine_QC); outGZ.writeline("");
-	
-  outGZ.writeline("ROIname\ttotal_hits\tpositive_strand_hits\tnegative_strand_hits");
-  outGZ.writestring(myLine_ROI); outGZ.writeline("");
-  
-  outGZ.writeline("JC_seqname\tstart\tend\tstrand\ttotal\tpos\tneg");
-  outGZ.writestring(myLine_JC); outGZ.writeline("");
-
-  outGZ.writeline("TJ_seqname\tstart1\tend1\tstart2\tend2\tstrand\ttotal\tpos\tneg");
-  outGZ.writestring(myLine_TJ); outGZ.writeline("");
-  
-  outGZ.writeline("SP_seqname\tcoord\ttotal\tpos\tneg");
-  outGZ.writestring(myLine_SP); outGZ.writeline("");
-  
-  outGZ.writeline("ChrCoverage_seqname\ttotal\tpos\tneg");
-  outGZ.writestring(myLine_Chr); outGZ.writeline("");
-  
-  outGZ.writestring(myLine_ND); outGZ.writeline("");
-  
-  if (directionality != 0) {
-    outGZ.writestring(myLine_Dir); outGZ.writeline("");
-  }
-  outGZ.flush(true);
-  out.flush(); out.close();
-  
-  // destroy objects:
-
-  delete oJC.at(0);
-  delete oTJ.at(0);
-  delete oChr.at(0);
-  delete oSP.at(0);
-  delete oROI.at(0);
-  delete oCB.at(0);
-  delete oFM.at(0);
-  delete BBchild.at(0);
-
-  return(0);
-}
-
-// BAM2COV core:
-int swEngine::BAM2COVcore(
-    std::string const &bam_file,
-    std::string const &s_output_cov,
-    bool const verbose,
-    bool const multithreadedRead
-) {
-  if(!checkFileExists(bam_file)) {
-    cout << "File " << bam_file << " does not exist!\n";
-    return(-1);
-  } 
-	if(verbose) cout << "BAM2COV: " << bam_file << "\n";
-  
-  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multithreadedRead);
-  inbam.openFile(bam_file, n_threads_to_use);
-  
-  // Abort here if BAM corrupt
-  std::vector<std::string> s_chr_names;
-  std::vector<uint32_t> u32_chr_lens;
-  int chrcount = inbam.obtainChrs(s_chr_names, u32_chr_lens);
-  if(chrcount < 1) {
-    cout << bam_file << " - contains no mapped chromosomes\n";
-    return(-1);
-  }
-
-  std::vector<FragmentsMap*> oFM;
-  std::vector<BAM2blocks*> BBchild;
-
-  for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    oFM.push_back(new FragmentsMap);
-    BBchild.push_back(new BAM2blocks(s_chr_names, u32_chr_lens));
-
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
-
-    BBchild.at(i)->openFile(&inbam);
-  }
-  
-  // BAM processing loop
-  bool error_detected = false;
-#ifdef SPLICEWIZ
-  Progress p(inbam.GetFileSize(), verbose);
-  while(0 == inbam.fillReads() && !p.check_abort()) {
-    p.increment(inbam.IncProgress());
-    
-#else
-  while(0 == inbam.fillReads()) {
-#endif
-    
-    #ifdef _OPENMP
-    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
-    #endif
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      int pa_ret = BBchild.at(i)->processAll(i);
-      if(pa_ret == -1) {
-        
-        #ifdef _OPENMP
-        #pragma omp critical
-        #endif
-        error_detected = true;
-      }
-    }
-    
-    if(error_detected) break;
-
-    // combine unpaired reads after each fillReads / processAlls
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-    }
-  }
-
-#ifdef SPLICEWIZ
-  if(p.check_abort() || error_detected) {
-    // interrupted:
-#else
-  if(error_detected) {
-#endif
-    
-    for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete oFM.at(i);
-      delete BBchild.at(i);
-    }
-    if(error_detected) {
-      return(-1);
-    }
-	// Process aborted; stop processBAM for all requests
-    return(-2);
-  }
-
-  if(n_threads_to_use > 1) {
-    if(verbose) cout << "Compiling data from threads\n";
-  // Combine BB's and process spares
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-      BBchild.at(0)->processStats(*BBchild.at(i));
-      delete BBchild.at(i);
-    }
-  // Combine objects:
-    for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      oFM.at(0)->Combine(*oFM.at(i));
-      delete oFM.at(i);
-    }
-  }
-
-  // Write Coverage Binary file:
-  std::ofstream ofCOV;
-  ofCOV.open(s_output_cov, std::ofstream::binary);
-  covWriter outCOV;
-  outCOV.SetOutputHandle(&ofCOV);
-  oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
-  ofCOV.close();
-
-  delete oFM.at(0);
-  delete BBchild.at(0);
-
-  return(0);
-}
-
 // BAM2COV core:
 int swEngine::doStatsCore(
     std::string const &bam_file,
@@ -1027,19 +617,24 @@ int swEngine::doStatsCore(
     return(-1);
   }
 
-  std::vector<BAM2blocks*> BBchild;
-
+  BBchild.clear();
+  BBchild.resize(n_threads_to_use);
   for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    BBchild.push_back(new BAM2blocks(s_chr_names, u32_chr_lens));
-    BBchild.at(i)->openFile(&inbam);
+    BBchild.at(i).initialize(s_chr_names, u32_chr_lens);
+    BBchild.at(i).openFile(&inbam);
   }
   
   // BAM processing loop
   bool error_detected = false;
 #ifdef SPLICEWIZ
-  Progress p(inbam.GetFileSize(), verbose);
-  while(0 == inbam.fillReads() && !p.check_abort()) {
-    p.increment(inbam.IncProgress());
+  // for compatibility with 32-bit file sizes
+  uint64_t filesize = inbam.GetFileSize();
+  int divFactor = 1;
+  if(filesize > 4294967295) divFactor = 1000000;
+
+  Progress pbar(filesize/divFactor, verbose);
+  while(0 == inbam.fillReads() && !pbar.check_abort()) {
+    pbar.increment(inbam.IncProgress()/divFactor);
     
 #else
   while(0 == inbam.fillReads()) {
@@ -1049,7 +644,7 @@ int swEngine::doStatsCore(
     #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
     #endif
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      int pa_ret = BBchild.at(i)->processAll(i);
+      int pa_ret = BBchild.at(i).processAll(i);
       if(pa_ret == -1) {
         
         #ifdef _OPENMP
@@ -1063,19 +658,19 @@ int swEngine::doStatsCore(
 
     // combine unpaired reads after each fillReads / processAlls
     for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0).processSpares(BBchild.at(i));
     }
   }
 
 #ifdef SPLICEWIZ
-  if(p.check_abort() || error_detected) {
+  if(pbar.check_abort() || error_detected) {
     // interrupted:
 #else
   if(error_detected) {
 #endif
     
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete BBchild.at(i);
+      // delete BBchild.at(i);
     }
     if(error_detected) {
       return(-1);
@@ -1088,9 +683,9 @@ int swEngine::doStatsCore(
     if(verbose) cout << "Compiling data from threads\n";
   // Combine BB's and process spares
     for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
-      BBchild.at(0)->processStats(*BBchild.at(i));
-      delete BBchild.at(i);
+      BBchild.at(0).processSpares(BBchild.at(i));
+      BBchild.at(0).processStats(BBchild.at(i));
+      // delete BBchild.at(i);
     }
   }
 
@@ -1106,19 +701,19 @@ int swEngine::doStatsCore(
   if(outret != Z_OK) {
     cout << "Error writing gzip-compressed output file\n";
     out.close();
-    delete BBchild.at(0);
+    // delete BBchild.at(0);
     return(-1);
   }
   
 // Write stats here:
   std::string myLine;
-  BBchild.at(0)->WriteOutput(myLine);
+  BBchild.at(0).WriteOutput(myLine);
   outGZ.writestring(myLine); outGZ.writeline("");
 
   outGZ.flush(true);
   out.flush(); out.close();
   
-  delete BBchild.at(0);
+  // delete BBchild.at(0);
 
   return(0);
 }
@@ -1153,26 +748,35 @@ int swEngine::MappabilityRegionsCore(
     return(-1);
   }
 
-  std::vector<FragmentsMap*> oFM;
-  std::vector<BAM2blocks*> BBchild;
+  // std::vector<FragmentsMap*> oFM;
+  // std::vector<BAM2blocks*> BBchild;
 
+  BBchild.clear();
+  BBchild.resize(n_threads_to_use);
+  oFM.resize(n_threads_to_use);
   for(unsigned int i = 0; i < n_threads_to_use; i++) {
-    oFM.push_back(new FragmentsMap);
-    BBchild.push_back(new BAM2blocks(s_chr_names, u32_chr_lens));
+    // oFM.push_back(FragmentsMap());
+    BBchild.at(i).initialize(s_chr_names, u32_chr_lens);
 
-    BBchild.at(i)->registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(*oFM.at(i)), std::placeholders::_1) );
-    BBchild.at(i)->registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(*oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(oFM.at(i)), std::placeholders::_1) );
 
-    BBchild.at(i)->openFile(&inbam);
+    BBchild.at(i).openFile(&inbam);
   }
   
   // BAM processing loop
   bool error_detected = false;
 #ifdef SPLICEWIZ
-  Progress p(inbam.GetFileSize(), verbose);
-  while(0 == inbam.fillReads() && !p.check_abort()) {
-    p.increment(inbam.IncProgress());
+  // for compatibility with 32-bit file sizes
+  uint64_t filesize = inbam.GetFileSize();
+  int divFactor = 1;
+  if(filesize > 4294967295) divFactor = 1000000;
+
+  Progress pbar(filesize/divFactor, verbose);
+  while(0 == inbam.fillReads() && !pbar.check_abort()) {
+    pbar.increment(inbam.IncProgress()/divFactor);
     
+
 #else
   while(0 == inbam.fillReads()) {
 #endif
@@ -1181,7 +785,7 @@ int swEngine::MappabilityRegionsCore(
     #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
     #endif
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      int pa_ret = BBchild.at(i)->processAll(i);
+      int pa_ret = BBchild.at(i).processAll(i);
       if(pa_ret == -1) {
         
         #ifdef _OPENMP
@@ -1195,20 +799,20 @@ int swEngine::MappabilityRegionsCore(
 
     // combine unpaired reads after each fillReads / processAlls
     for(unsigned int i = 1; i < n_threads_to_use; i++) {
-      BBchild.at(0)->processSpares(*BBchild.at(i));
+      BBchild.at(0).processSpares(BBchild.at(i));
     }
   }
 
 #ifdef SPLICEWIZ
-  if(p.check_abort() || error_detected) {
+  if(pbar.check_abort() || error_detected) {
     // interrupted:
 #else
   if(error_detected) {
 #endif
     
     for(unsigned int i = 0; i < n_threads_to_use; i++) {
-      delete oFM.at(i);
-      delete BBchild.at(i);
+      // delete oFM.at(i);
+      // delete BBchild.at(i);
     }
     if(error_detected) {
       return(-1);
@@ -1230,12 +834,12 @@ int swEngine::MappabilityRegionsCore(
       for(int i = 0; i < n_bases; i++) {
         int i_new = i + n_bases;
         if((unsigned int)i_new < n_threads_to_use) {
-          BBchild.at(i)->processSpares(*BBchild.at(i_new));
-          BBchild.at(i)->processStats(*BBchild.at(i_new));
-          delete BBchild.at(i_new);
+          BBchild.at(i).processSpares(BBchild.at(i_new));
+          BBchild.at(i).processStats(BBchild.at(i_new));
+          // delete BBchild.at(i_new);
 
-          oFM.at(i)->Combine(*oFM.at(i_new));
-          delete oFM.at(i_new);          
+          oFM.at(i).Combine(oFM.at(i_new));
+          // delete oFM.at(i_new);          
         }
       }
     }
@@ -1247,18 +851,149 @@ int swEngine::MappabilityRegionsCore(
     ofCOV.open(s_output_cov, std::ofstream::binary);
     covWriter outCOV;
     outCOV.SetOutputHandle(&ofCOV);
-    oFM.at(0)->WriteBinary(&outCOV, verbose, n_threads_to_use);
+    oFM.at(0).WriteBinary(&outCOV, verbose, n_threads_to_use);
     ofCOV.close();    
   }
 
   std::ofstream outFragsMap;
   outFragsMap.open(s_output_txt, std::ifstream::out);
 	
-  oFM.at(0)->WriteOutput(&outFragsMap, threshold, verbose, n_threads_to_use);
+  oFM.at(0).WriteOutput(&outFragsMap, threshold, verbose, n_threads_to_use);
   outFragsMap.flush(); outFragsMap.close();
 
-  delete oFM.at(0);
-  delete BBchild.at(0);
+  // delete oFM.at(0);
+  // delete BBchild.at(0);
+
+  return(0);
+}
+
+// SpliceWiz BAM2COV:
+int swEngine::BAM2COVcore(
+    std::string const &bam_file,
+    std::string const &s_output_cov,
+    bool const verbose,
+    bool const multithreadedRead
+) {
+  if(!checkFileExists(bam_file)) {
+    cout << "File " << bam_file << " does not exist!\n";
+    return(-1);
+  } 
+	if(verbose) cout 
+    << "SpliceWiz BAM2COV: " 
+    << bam_file << "\n";
+  
+  pbam_in inbam((size_t)5e8, (size_t)1e9, 5, multithreadedRead);
+  inbam.openFile(bam_file, n_threads_to_use);
+  
+  // Abort here if BAM corrupt
+  std::vector<std::string> s_chr_names;
+  std::vector<uint32_t> u32_chr_lens;
+  int chrcount = inbam.obtainChrs(s_chr_names, u32_chr_lens);
+  if(chrcount < 1) {
+    cout << bam_file << " - contains no mapped chromosomes\n";
+    return(-1);
+  }
+
+  BBchild.clear();
+  BBchild.resize(n_threads_to_use);
+  oFM.resize(n_threads_to_use);
+  for(unsigned int i = 0; i < n_threads_to_use; i++) {
+    // oFM.push_back(FragmentsMap());
+    BBchild.at(i).initialize(s_chr_names, u32_chr_lens);
+
+    BBchild.at(i).registerCallbackChrMappingChange( std::bind(&FragmentsMap::ChrMapUpdate, &(oFM.at(i)), std::placeholders::_1) );
+    BBchild.at(i).registerCallbackProcessBlocks( std::bind(&FragmentsMap::ProcessBlocks, &(oFM.at(i)), std::placeholders::_1) );
+
+    BBchild.at(i).openFile(&inbam);
+  }
+  
+  // BAM processing loop
+  bool error_detected = false;
+#ifdef SPLICEWIZ
+  // for compatibility with 32-bit file sizes
+  uint64_t filesize = inbam.GetFileSize();
+  int divFactor = 1;
+  if(filesize > 4294967295) divFactor = 1000000;
+
+  Progress pbar(filesize/divFactor, verbose);
+  while(0 == inbam.fillReads() && !pbar.check_abort()) {
+    pbar.increment(inbam.IncProgress()/divFactor);
+    
+
+#else
+  while(0 == inbam.fillReads()) {
+#endif
+    
+    #ifdef _OPENMP
+    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
+    #endif
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      int pa_ret = BBchild.at(i).processAll(i);
+      if(pa_ret == -1) {
+        
+        #ifdef _OPENMP
+        #pragma omp critical
+        #endif
+        error_detected = true;
+      }
+    }
+    
+    if(error_detected) break;
+
+    // combine unpaired reads after each fillReads / processAlls
+    for(unsigned int i = 1; i < n_threads_to_use; i++) {
+      BBchild.at(0).processSpares(BBchild.at(i));
+    }
+  }
+
+#ifdef SPLICEWIZ
+  if(pbar.check_abort() || error_detected) {
+    // interrupted:
+#else
+  if(error_detected) {
+#endif
+    
+    for(unsigned int i = 0; i < n_threads_to_use; i++) {
+      // delete oFM.at(i);
+      // delete BBchild.at(i);
+    }
+    if(error_detected) {
+      return(-1);
+    }
+	// Process aborted; stop processBAM for all requests
+    return(-2);
+  }
+
+  if(n_threads_to_use > 1) {
+    if(verbose) cout << "Compiling data from threads\n";
+  // Combine objects (multi-threaded):
+    int n_rounds = ceil(log(n_threads_to_use) / log(2));
+    for(int j = n_rounds; j > 0; j--) {
+      int n_bases = (int)pow(2, j-1);
+      
+      #ifdef _OPENMP
+      #pragma omp parallel for num_threads(n_bases) schedule(static,1)
+      #endif
+      for(int i = 0; i < n_bases; i++) {
+        int i_new = i + n_bases;
+        if((unsigned int)i_new < n_threads_to_use) {
+          BBchild.at(i).processSpares(BBchild.at(i_new));
+          BBchild.at(i).processStats(BBchild.at(i_new));
+
+          oFM.at(i).Combine(oFM.at(i_new));         
+        }
+      }
+    }
+  }
+
+
+  // Write Coverage Binary file:
+  std::ofstream ofCOV;
+  ofCOV.open(s_output_cov, std::ofstream::binary);
+  covWriter outCOV;
+  outCOV.SetOutputHandle(&ofCOV);
+  oFM.at(0).WriteBinary(&outCOV, verbose, n_threads_to_use);
+  ofCOV.close();    
 
   return(0);
 }

@@ -57,14 +57,6 @@ SpliceWizMain_multi <- function(reference_file, bam_files, output_files, max_thr
     .Call(`_SpliceWiz_SpliceWizMain_multi`, reference_file, bam_files, output_files, max_threads, verbose, multiRead)
 }
 
-readRefOnly <- function(reference_file, max_threads, verbose, loadCB, loadSP, loadROI, loadChr, loadJC, loadTJ, loadFM) {
-    .Call(`_SpliceWiz_readRefOnly`, reference_file, max_threads, verbose, loadCB, loadSP, loadROI, loadChr, loadJC, loadTJ, loadFM)
-}
-
-readSP <- function(reference_file, max_threads, verbose, freeMem) {
-    .Call(`_SpliceWiz_readSP`, reference_file, max_threads, verbose, freeMem)
-}
-
 c_GenerateMappabilityReads <- function(genome_file, out_fa, read_len, read_stride, error_pos) {
     .Call(`_SpliceWiz_c_GenerateMappabilityReads`, genome_file, out_fa, read_len, read_stride, error_pos)
 }

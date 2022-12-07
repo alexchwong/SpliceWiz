@@ -197,40 +197,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// readRefOnly
-int readRefOnly(std::string reference_file, int max_threads, bool verbose, bool loadCB, bool loadSP, bool loadROI, bool loadChr, bool loadJC, bool loadTJ, bool loadFM);
-RcppExport SEXP _SpliceWiz_readRefOnly(SEXP reference_fileSEXP, SEXP max_threadsSEXP, SEXP verboseSEXP, SEXP loadCBSEXP, SEXP loadSPSEXP, SEXP loadROISEXP, SEXP loadChrSEXP, SEXP loadJCSEXP, SEXP loadTJSEXP, SEXP loadFMSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::string >::type reference_file(reference_fileSEXP);
-    Rcpp::traits::input_parameter< int >::type max_threads(max_threadsSEXP);
-    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    Rcpp::traits::input_parameter< bool >::type loadCB(loadCBSEXP);
-    Rcpp::traits::input_parameter< bool >::type loadSP(loadSPSEXP);
-    Rcpp::traits::input_parameter< bool >::type loadROI(loadROISEXP);
-    Rcpp::traits::input_parameter< bool >::type loadChr(loadChrSEXP);
-    Rcpp::traits::input_parameter< bool >::type loadJC(loadJCSEXP);
-    Rcpp::traits::input_parameter< bool >::type loadTJ(loadTJSEXP);
-    Rcpp::traits::input_parameter< bool >::type loadFM(loadFMSEXP);
-    rcpp_result_gen = Rcpp::wrap(readRefOnly(reference_file, max_threads, verbose, loadCB, loadSP, loadROI, loadChr, loadJC, loadTJ, loadFM));
-    return rcpp_result_gen;
-END_RCPP
-}
-// readSP
-int readSP(std::string reference_file, int max_threads, bool verbose, bool freeMem);
-RcppExport SEXP _SpliceWiz_readSP(SEXP reference_fileSEXP, SEXP max_threadsSEXP, SEXP verboseSEXP, SEXP freeMemSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::string >::type reference_file(reference_fileSEXP);
-    Rcpp::traits::input_parameter< int >::type max_threads(max_threadsSEXP);
-    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    Rcpp::traits::input_parameter< bool >::type freeMem(freeMemSEXP);
-    rcpp_result_gen = Rcpp::wrap(readSP(reference_file, max_threads, verbose, freeMem));
-    return rcpp_result_gen;
-END_RCPP
-}
 // c_GenerateMappabilityReads
 int c_GenerateMappabilityReads(std::string genome_file, std::string out_fa, int read_len, int read_stride, int error_pos);
 RcppExport SEXP _SpliceWiz_c_GenerateMappabilityReads(SEXP genome_fileSEXP, SEXP out_faSEXP, SEXP read_lenSEXP, SEXP read_strideSEXP, SEXP error_posSEXP) {
@@ -308,8 +274,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SpliceWiz_c_gunzip", (DL_FUNC) &_SpliceWiz_c_gunzip, 2},
     {"_SpliceWiz_SpliceWizMain", (DL_FUNC) &_SpliceWiz_SpliceWizMain, 6},
     {"_SpliceWiz_SpliceWizMain_multi", (DL_FUNC) &_SpliceWiz_SpliceWizMain_multi, 6},
-    {"_SpliceWiz_readRefOnly", (DL_FUNC) &_SpliceWiz_readRefOnly, 10},
-    {"_SpliceWiz_readSP", (DL_FUNC) &_SpliceWiz_readSP, 4},
     {"_SpliceWiz_c_GenerateMappabilityReads", (DL_FUNC) &_SpliceWiz_c_GenerateMappabilityReads, 5},
     {"_SpliceWiz_c_GenerateMappabilityRegions", (DL_FUNC) &_SpliceWiz_c_GenerateMappabilityRegions, 6},
     {"_SpliceWiz_c_BAM2COV", (DL_FUNC) &_SpliceWiz_c_BAM2COV, 5},

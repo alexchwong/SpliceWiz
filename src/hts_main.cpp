@@ -25,6 +25,12 @@ SOFTWARE.  */
 #include <chrono>
 #include "hts_main.h"
 
+// for malloc_trim (Linux only)
+#ifdef __linux__
+#include <malloc.h>
+#endif
+
+#ifdef SPLICEWIZ
 
 // SpliceWiz core:
 int SpliceWizCore_htsMulti(
@@ -219,12 +225,9 @@ int SpliceWizCore_htsMulti(
     bam_hdr_destroy(header);
     bgzf_close(fp);
 
-  #ifdef SPLICEWIZ
+
     if(pbar.check_abort() || error_detected) {
       // interrupted:
-  #else
-    if(error_detected) {
-  #endif
       // no need to delete results object, it will go out of scope
       if(error_detected) {
         // return(-1);
@@ -356,6 +359,8 @@ int SpliceWizCore_htsMulti(
 
   return(0);
 }
+
+// *****************************************************************************
 
 // BAM2COV htslib core:
 int BAM2COVCore_hts(
@@ -506,17 +511,8 @@ int BAM2COVCore_hts(
   bam_hdr_destroy(header);
   bgzf_close(fp);
 
-#ifdef SPLICEWIZ
+
   if(pbar.check_abort() || error_detected) {
-    // interrupted:
-#else
-  if(error_detected) {
-#endif
-    
-    for(unsigned int i = 0; i < Engine.n_threads_to_use; i++) {
-      // delete oFM.at(i);
-      // delete BBchild.at(i);
-    }
     if(error_detected) {
       return(-1);
     }
@@ -558,8 +554,9 @@ int BAM2COVCore_hts(
   return(0);
 }
 
+// *****************************************************************************
 
-// SpliceWiz core:
+// doStats core:
 int doStatsCore_hts(
     swEngine_hts &Engine,
     std::string const &bam_file, 
@@ -701,16 +698,7 @@ int doStatsCore_hts(
   bam_hdr_destroy(header);
   bgzf_close(fp);
 
-#ifdef SPLICEWIZ
   if(pbar.check_abort() || error_detected) {
-    // interrupted:
-#else
-  if(error_detected) {
-#endif
-    
-    for(unsigned int i = 0; i < Engine.n_threads_to_use; i++) {
-      // delete BBchild.at(i);
-    }
     if(error_detected) {
       return(-1);
     }
@@ -769,6 +757,9 @@ int doStatsCore_hts(
   return(0);
 }
 
+// *****************************************************************************
+
+
 // [[Rcpp::export]]
 int SpliceWizMain_hts(
     std::string bam_file, std::string reference_file, std::string output_file,
@@ -806,6 +797,11 @@ int SpliceWizMain_hts(
     v_bam, v_out_txt, v_out_cov,
     verbose, read_pool
   );
+
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
 
   return(ret2);
 }
@@ -849,7 +845,10 @@ int SpliceWizMain_multi_hts(
     v_bam, v_out_txt, v_out_cov,
     verbose, read_pool
   );
-
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
   return(ret2);
 }
 
@@ -877,6 +876,11 @@ int c_BAM2COV_hts(
       s_bam, s_output_cov,
       verbose, read_pool
   );
+
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
 
   if(ret2 == -2) {
     cout << "Process interrupted running BAM2COV on " << s_bam << '\n';
@@ -926,6 +930,11 @@ int c_doStats_hts(
     auto time_sec = chrono::duration_cast<chrono::milliseconds>(check - start).count();
     cout << s_bam << " processed (" << time_sec << " milliseconds)\n";
   }
-  
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
   return(ret2);
 }
+
+#endif

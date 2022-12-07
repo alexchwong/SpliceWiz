@@ -448,7 +448,7 @@ int SpliceWizMain(
   );
   Engine.clear();
 #ifdef __linux__
-  cout << "malloc trim() = " << malloc_trim(0) << "\n";
+  malloc_trim(0);
 #endif
   return(ret2);
 }
@@ -498,76 +498,6 @@ int SpliceWizMain_multi(
 
   return(ret2);
 }
-
-// [[Rcpp::export]]
-int readRefOnly(
-    std::string reference_file,
-    int max_threads, bool verbose,
-    bool loadCB, bool loadSP, bool loadROI,
-    bool loadChr, bool loadJC, bool loadTJ, bool loadFM
-){
-  std::string s_ref = reference_file;
-  if(!checkFileExists(s_ref)) {
-    cout << "File " << s_ref << " does not exist!\n";
-    return(-1);
-  } 
-
-  swEngine_hts Engine;
-  Engine.Set_Threads(max_threads);
-
-  if(verbose) cout << "Reading reference file\n";
-  int ret = Engine.readReference(s_ref, verbose);
-  if(ret != 0) {
-    cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
-    return(ret);
-  }
-  std::vector<CoverageBlocksIRFinder> oCB;
-  std::vector<SpansPoint> oSP;
-  std::vector<FragmentsInROI> oROI;
-  std::vector<FragmentsInChr> oChr;
-  std::vector<JunctionCount> oJC;
-  std::vector<TandemJunctions> oTJ;
-  std::vector<FragmentsMap> oFM;
-  for(int i = 0; i < max_threads; i++) {
-    if(loadCB) oCB.push_back(CoverageBlocksIRFinder(Engine.CB_string));
-    if(loadSP) oSP.push_back(SpansPoint(Engine.SP_string));
-    if(loadROI) oROI.push_back(FragmentsInROI(Engine.ROI_string));
-    if(loadChr) oChr.push_back(FragmentsInChr());
-    if(loadJC) oJC.push_back(JunctionCount(Engine.JC_string));
-    if(loadTJ) oTJ.push_back(TandemJunctions(Engine.TJ_string));
-    if(loadFM) oFM.push_back(FragmentsMap());
-  }
-  return(ret);
-}
-
-// [[Rcpp::export]]
-int readSP(
-    std::string reference_file,
-    int max_threads, bool verbose, bool freeMem
-){
-  std::string s_ref = reference_file;
-  if(!checkFileExists(s_ref)) {
-    cout << "File " << s_ref << " does not exist!\n";
-    return(-1);
-  } 
-
-  swEngine_hts Engine;
-  Engine.Set_Threads(max_threads);
-
-  if(verbose) cout << "Reading reference file\n";
-  int ret = Engine.readReference(s_ref, verbose);
-  if(ret != 0) {
-    cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
-    return(ret);
-  }
-  
-  std::vector<SpansPoint> oSP;
-  for(int i = 0; i < max_threads; i++) {
-    oSP.push_back(SpansPoint(Engine.SP_string));
-  }
-  return(ret);
-}
-
 #endif
 
 // ############################ MAPPABILITY READS AND REGIONS ##################
@@ -720,6 +650,11 @@ int c_GenerateMappabilityRegions(
     verbose, false
   );
 
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
+
   return(ret);
 }
 
@@ -751,7 +686,12 @@ int c_BAM2COV(
   auto start = chrono::steady_clock::now();
   auto check = start;
   int ret2 = Engine.BAM2COVcore(s_bam, output_file, verbose, multiRead);
-  
+
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
+
   if(ret2 == -2) {
     cout << "Process interrupted running BAM2COV on " << s_bam << '\n';
     return(ret2);
@@ -793,6 +733,11 @@ int c_doStats(
   auto check = start;
   int ret2 = Engine.doStatsCore(s_bam, output_file, verbose, multiRead);
   
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
+
   if(ret2 == -2) {
     cout << "Process interrupted running doStats on " << s_bam << '\n';
     return(ret2);

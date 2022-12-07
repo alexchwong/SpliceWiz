@@ -48,6 +48,35 @@ swEngine_hts::swEngine_hts() {
   FMloaded = false;
 }
 
+void swEngine_hts::clear() {
+  oCB.clear();
+  oSP.clear();
+  oROI.clear();
+  oChr.clear();
+  oJC.clear();
+  oTJ.clear();
+  oFM.clear();
+  BBchild.clear();
+  
+  CB_string = "";
+  SP_string = "";
+  ROI_string = "";
+  JC_string = "";
+  TJ_string = "";
+  n_threads_to_use = 1;
+
+  refLoaded = false;
+  BAMLoaded = false;
+
+  CBloaded = false;
+  SPloaded = false;
+  ROIloaded = false;
+  Chrloaded = false;
+  JCloaded = false;
+  TJloaded = false;
+  FMloaded = false;
+}
+
 bool swEngine_hts::checkFileExists(const std::string& name) {
     std::ifstream f;
     f.open(name);

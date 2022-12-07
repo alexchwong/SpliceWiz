@@ -84,6 +84,7 @@ class swEngine_hts {
     
     /* Constructor */
     swEngine_hts();
+    void clear();
 
     int Set_Threads(int n_threads);
     bool checkFileExists(const std::string& name);

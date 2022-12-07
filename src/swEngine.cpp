@@ -53,6 +53,24 @@ void swEngine::clear() {
   oTJ.clear();
   oFM.clear();
   BBchild.clear();
+
+  CB_string = "";
+  SP_string = "";
+  ROI_string = "";
+  JC_string = "";
+  TJ_string = "";
+  n_threads_to_use = 1;
+  
+  refLoaded = false;
+  BAMLoaded = false;
+
+  CBloaded = false;
+  SPloaded = false;
+  ROIloaded = false;
+  Chrloaded = false;
+  JCloaded = false;
+  TJloaded = false;
+  FMloaded = false;
 }
 
 bool swEngine::checkFileExists(const std::string& name) {

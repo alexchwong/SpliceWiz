@@ -58,10 +58,6 @@ processing of reads. Default \code{1000000}}
 \link[Rsubread:featureCounts]{Rsubread::featureCounts} on the BAM files after counting spliced reads.
 If so, the output will be
 saved to \verb{"main.FC.Rds} in the \code{output_path} directory as a list object.}
-
-\item{multiRead}{(default \code{FALSE}) Whether to use multiple threads to read
-files. Set to \code{TRUE} to use multiple threads (improves performance if
-files are already cached into memory.}
 }
 \value{
 \code{processBAM_hts()} output will be saved to \code{output_path}. Output files

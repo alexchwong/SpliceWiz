@@ -42,9 +42,6 @@
 #'   saved to `"main.FC.Rds` in the `output_path` directory as a list object.
 #' @param verbose (default `FALSE`) Set to `TRUE` to allow `processBAM_hts()` to 
 #'   output progress bars and messages
-#' @param multiRead (default `FALSE`) Whether to use multiple threads to read
-#'   files. Set to `TRUE` to use multiple threads (improves performance if
-#'   files are already cached into memory.
 #' @param read_pool_size How many reads to decompress (htslib) prior to 
 #'   processing of reads. Default `1000000`
 #' @return `processBAM_hts()` output will be saved to `output_path`. Output files 

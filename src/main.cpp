@@ -25,6 +25,11 @@ SOFTWARE.  */
 #include <chrono>
 #include "main.h"
 
+// for malloc_trim (Linux only)
+#ifdef __linux__
+#include <malloc.h>
+#endif
+
 bool checkFileExists(const std::string& name) {
     std::ifstream f;
     f.open(name);
@@ -442,6 +447,9 @@ int SpliceWizMain(
     verbose, multiRead
   );
 
+#ifdef __linux__
+  cout << "malloc trim() = " << malloc_trim() << "\n";
+#endif
   return(ret2);
 }
 
@@ -483,6 +491,9 @@ int SpliceWizMain_multi(
     v_bam, v_out_txt, v_out_cov,
     verbose, multiRead
   );
+#ifdef __linux__
+  cout << "malloc trim() = " << malloc_trim() << "\n";
+#endif
 
   return(ret2);
 }

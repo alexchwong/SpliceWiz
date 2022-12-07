@@ -28,7 +28,7 @@ SOFTWARE.  */
 
 // SpliceWiz core:
 int SpliceWizCore_htsMulti(
-    swEngine_hts Engine,
+    swEngine_hts &Engine,
     std::vector<std::string> const &bam_file, 
     std::vector<std::string> const &s_output_txt, 
     std::vector<std::string> const &s_output_cov,
@@ -359,7 +359,7 @@ int SpliceWizCore_htsMulti(
 
 // BAM2COV htslib core:
 int BAM2COVCore_hts(
-    swEngine_hts Engine,
+    swEngine_hts &Engine,
     std::string const &bam_file, 
     std::string const &s_output_cov,
     bool const verbose,
@@ -561,7 +561,7 @@ int BAM2COVCore_hts(
 
 // SpliceWiz core:
 int doStatsCore_hts(
-    swEngine_hts Engine,
+    swEngine_hts &Engine,
     std::string const &bam_file, 
     std::string const &s_output_txt,
     bool const verbose,
@@ -808,10 +808,7 @@ int SpliceWizMain_hts(
   );
 
   return(ret2);
-  // return(0);
 }
-
-/*
 
 // [[Rcpp::export]]
 int SpliceWizMain_multi_hts(
@@ -932,4 +929,3 @@ int c_doStats_hts(
   
   return(ret2);
 }
-*/

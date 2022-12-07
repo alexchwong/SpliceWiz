@@ -17,7 +17,7 @@
 
 #ifdef SPLICEWIZ
   int SpliceWizCore_htsMulti(
-    swEngine_hts Engine,
+    swEngine_hts &Engine,
     std::vector<std::string> const &bam_file, 
     std::vector<std::string> const &s_output_txt, 
     std::vector<std::string> const &s_output_cov,
@@ -26,7 +26,7 @@
   );
 
   int BAM2COVCore_hts(
-    swEngine_hts Engine,
+    swEngine_hts &Engine,
     std::string const &bam_file, 
     std::string const &s_output_cov,
     bool const verbose,
@@ -34,7 +34,7 @@
   );
 
   int doStatsCore_hts(
-    swEngine_hts Engine,
+    swEngine_hts &Engine,
     std::string const &bam_file, 
     std::string const &s_output_txt,
     bool const verbose,

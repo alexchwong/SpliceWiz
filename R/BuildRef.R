@@ -342,7 +342,8 @@ buildRef <- function(
 
     # Check here whether fetching from TwoBitFile is problematic
     reference_data$genome <- .check_2bit_performance(reference_path,
-        reference_data$genome, verbose = verbose)        
+        reference_data$genome, verbose = verbose)
+    gc()
 
     dash_progress("Processing introns", N_steps)
     chromosomes <- .convert_chromosomes(chromosome_aliases)
@@ -361,14 +362,17 @@ buildRef <- function(
     if(!is.null(session)) {
         shiny::withProgress(message = "Determining NMD Transcripts", {
             .gen_nmd(reference_path, reference_data$genome,
-                verbose = verbose)
+                verbose = verbose, tryNew = TRUE)
         })
     } else {
-        .gen_nmd(reference_path, reference_data$genome, verbose = verbose)
+        .gen_nmd(reference_path, reference_data$genome, 
+            verbose = verbose, tryNew = TRUE)
     }
+    gc()
 
     dash_progress("Annotating Splice Events", N_steps)
     .gen_splice(reference_path, verbose = verbose)
+    gc()
     if (file.exists(file.path(reference_path, "fst", "Splice.fst")) &
         file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
         dash_progress("Translating AS Peptides", N_steps)
@@ -378,10 +382,7 @@ buildRef <- function(
     } else {
         dash_progress("No protein-coding splicing events detected", N_steps)
     }
-
-    if(verbose) message("Reference build finished")
-    dash_progress("Reference build finished", N_steps)
-
+   
     # Prepare a reference-specific cov_data for reference-only plots:
     cov_data <- .prepare_covplot_data(reference_path)
     saveRDS(cov_data, file.path(reference_path, "cov_data.Rds"))
@@ -396,6 +397,11 @@ buildRef <- function(
     settings.list$BuildVersion <- buildRef_version
 
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
+
+    if(verbose) message("Reference build finished")
+    dash_progress("Reference build finished", N_steps)
+    gc()
+
 }
 
 #' @describeIn Build-Reference-methods One-step function that fetches resources,
@@ -1209,20 +1215,18 @@ Get_GTF_file <- function(reference_path) {
         dup_gene_names <- unique(unique_gene_name[
             duplicated(unique_gene_name)])
         if(length(dup_gene_names) > 0) {
-            for(dup_gene in dup_gene_names) {
-                # Use raw transcript id instead of transcript name
-                if ("transcript_name" %in% names(mcols(gtf_gr))) {
-                    gtf_gr$transcript_name[gtf_gr$gene_name == dup_gene] <-
-                        gtf_gr$transcript_id[gtf_gr$gene_name == dup_gene]
-                }
-                # Replace {gene_name} with {gene_name}_{gene_id}
-                gtf_gr$gene_name[gtf_gr$gene_name == dup_gene] <-
-                    paste(
-                        dup_gene,
-                        gtf_gr$gene_id[gtf_gr$gene_name == dup_gene],
-                        sep = "_"
-                    )
+            if ("transcript_name" %in% names(mcols(gtf_gr))) {
+                gtf_gr$transcript_name[gtf_gr$gene_name %in% dup_gene_names] <-
+                    gtf_gr$transcript_id[gtf_gr$gene_name %in% dup_gene_names]
             }
+            
+            # Replace {gene_name} with {gene_name}_{gene_id}
+            gtf_gr$gene_name[gtf_gr$gene_name %in% dup_gene_names] <-
+                paste(
+                    gtf_gr$gene_name[gtf_gr$gene_name %in% dup_gene_names],
+                    gtf_gr$gene_id[gtf_gr$gene_name %in% dup_gene_names],
+                    sep = "_"
+                )
         }
     } else {
         gtf_gr$gene_name <- gtf_gr$gene_id
@@ -2567,13 +2571,20 @@ Get_GTF_file <- function(reference_path) {
 
 # Determines which spliced / IR transcripts are NMD substrates
 # Assumes NMD substrates if PTC is < 50 nt from last EJC
-.gen_nmd <- function(reference_path, genome, verbose = TRUE) {
+.gen_nmd <- function(reference_path, genome, verbose = TRUE, 
+    tryNew = FALSE, tr_per_block = 1000
+) {
 
     Exons.tr <- .gen_nmd_exons_trimmed(reference_path)
     protein.introns <- .gen_nmd_protein_introns(reference_path, Exons.tr)
 
-    NMD.Table <- .gen_nmd_determine(Exons.tr, protein.introns, genome, 50,
-        verbose = verbose)
+    if(tryNew) {
+        NMD.Table <- .gen_nmd_determine_new(Exons.tr, protein.introns, genome, 
+            50, verbose = verbose, tr_per_block = tr_per_block)    
+    } else {
+        NMD.Table <- .gen_nmd_determine(Exons.tr, protein.introns, genome, 50,
+            verbose = verbose)    
+    }
     protein.introns.red <- unique(
         protein.introns[, c("intron_id", "intron_type")])
     NMD.Table[protein.introns.red, on = "intron_id",
@@ -2616,6 +2627,8 @@ Get_GTF_file <- function(reference_path) {
         c("end") := get("sc_end")
     ]
     Exons.tr <- Exons.tr[get("start") < get("end")]
+    Exons.tr <- Exons.tr[,
+        c("seqnames", "start", "end", "strand", "transcript_id")]
     return(Exons.tr)
 }
 
@@ -2666,8 +2679,95 @@ Get_GTF_file <- function(reference_path) {
         on = c("seqnames", "start", "end", "strand", "transcript_id"),
         c("intron_type") := "UTR3"
     ]
-
+    protein.introns <- protein.introns[, c(
+        "transcript_id", "intron_id", 
+        "seqnames", "start", "end", "strand",
+        "intron_type"
+    )]
     return(protein.introns)
+}
+
+# Given a list of exons and introns, and genome sequence
+# - Generate a list of whether spliced or unspliced transcripts are NMD subs
+.gen_nmd_determine_new <- function(
+    exon.DT, intron.DT, genome, threshold = 50, verbose = TRUE,
+    tr_per_block = 1000
+) {
+    if(verbose) 
+        .log("Predicting NMD transcripts from genome sequence", "message")
+    exon.DT <- exon.DT[,
+        c("seqnames", "start", "end", "strand", "transcript_id")]
+    exon_gr <- .grDT(exon.DT)
+    if(verbose) message("...exonic transcripts")
+
+    set(exon.DT, , "seq", as.character(getSeq(genome, exon_gr)))
+    final <- .gen_nmd_determine_spliced_exon(exon.DT, intron.DT,
+        threshold = threshold)
+
+    intron.DT.use <- intron.DT[get("intron_type") != "UTR5"]
+    exon.DT.skinny <- exon.DT[, -("seq")]
+
+    uniqueTr <- unique(exon.DT$transcript_id)
+    # do n transcripts at a time
+    n_jobs <- 1 + floor(length(uniqueTr) / tr_per_block) 
+    jobsTr <- .split_vector(uniqueTr, n_jobs)
+        
+    if(verbose) {
+        message("...retained introns")
+        pb <- txtProgressBar(max = n_jobs, style = 3)
+    }
+    l_seq <- 1000
+
+    final_list <- list()
+    for (i in seq_len(n_jobs)) {
+        if(verbose) setTxtProgressBar(pb, i)
+        dash_progress("Determining NMD Transcripts: Calculating...", n_jobs)
+        final.part <- final[get("transcript_id") %in% jobsTr[[i]]]
+        intron.part <- intron.DT.use[
+            get("transcript_id") %in% jobsTr[[i]],
+            c("transcript_id", "intron_id",
+                "seqnames", "start", "end", "strand")
+        ]
+        if(nrow(intron.part) == 0) {
+            return(c())
+        } else {
+            set(intron.part, , "type", "intron")
+            exon.DT.part <- exon.DT[get("transcript_id") %in% jobsTr[[i]]]
+            exon.DT.skinny <- exon.DT.part[, -("seq")]
+
+            intron.part.upstream <- .gen_nmd_determine_build_introns_upstream(
+                intron.part, exon.DT.skinny, use_short = TRUE)
+            intron.part.upstream <- .gen_nmd_determine_retrieve_short_seq(
+                exon.DT.part, intron.part.upstream, genome, l_seq = l_seq)
+            final.part <- .gen_nmd_determine_translate(
+                final.part, intron.part.upstream, use_short = TRUE,
+                threshold = threshold)
+            intron_id_exclude <- unique(intron.part.upstream$intron_id)
+            intron_id_exclude <- intron_id_exclude[(
+                intron_id_exclude %in%
+                final.part[get("IRT_is_NMD") == TRUE, get("intron_id")]
+            )]
+            intron.part <- intron.part[!(get("intron_id") %in% intron_id_exclude)]
+
+            intron.part.upstream <- .gen_nmd_determine_build_introns_upstream(
+                intron.part, exon.DT.skinny, use_short = FALSE)
+            intron.part.upstream <- .gen_nmd_determine_retrieve_full_seq(
+                exon.DT.part, intron.part.upstream, genome)
+            final.part <- .gen_nmd_determine_translate(
+                final.part, intron.part.upstream, use_short = FALSE,
+                threshold = threshold)
+            
+            final_list[[i]] <- final.part
+        }
+    }
+    
+    true_final <- rbindlist(final_list)
+    if(verbose) {
+        setTxtProgressBar(pb, i)
+        close(pb)
+        message("done")
+    }
+    return(true_final)
 }
 
 # Given a list of exons and introns, and genome sequence
@@ -2747,9 +2847,11 @@ Get_GTF_file <- function(reference_path) {
     exon.MLE.DT <- copy(exon.DT)
     setorderv(exon.MLE.DT, "start")
     exon.MLE.DT[, c("elem_number") := data.table::rowid(get("transcript_id"))]
-    exon.MLE.DT[get("strand") == "-",
-        c("elem_number") := max(get("elem_number")) + 1 - get("elem_number"),
-        by = "transcript_id"]
+    if(any(exon.MLE.DT$strand == "-")) {
+        exon.MLE.DT[get("strand") == "-",
+            c("elem_number") := max(get("elem_number")) + 1 - get("elem_number"),
+            by = "transcript_id"]
+    }
     exon.MLE.DT[, by = "transcript_id",
         c("is_last_elem") := (get("elem_number") == max(get("elem_number")))]
     exon.MLE.DT <- exon.MLE.DT[get("is_last_elem") == FALSE]
@@ -2805,11 +2907,13 @@ Get_GTF_file <- function(reference_path) {
     setorderv(intron.part.upstream, c("seqnames", "start"))
     intron.part.upstream[,
         c("elem_number") := data.table::rowid(get("intron_id"))]
-    intron.part.upstream[get("strand") == "-",
-        c("elem_number") :=
-            max(get("elem_number")) + 1 - get("elem_number"),
-        by = "intron_id"
-    ]
+    if(any(intron.part.upstream$strand == "-")) {
+        intron.part.upstream[get("strand") == "-",
+            c("elem_number") :=
+                max(get("elem_number")) + 1 - get("elem_number"),
+            by = "intron_id"
+        ]    
+    }
 
     # trim exons downstream of intron
     intron.part.upstream.intron <- intron.part.upstream[get("type") == "intron"]
@@ -2823,14 +2927,15 @@ Get_GTF_file <- function(reference_path) {
                 get("type") == "intron"]
     } else {
         # remove last exon: then the terminus is the last exon junction
-        intron.part.upstream[,
-            by = "transcript_id",
-            c("is_last_elem") := (get("elem_number") == max(get("elem_number")))
-        ]
-        intron.part.upstream <-
-            intron.part.upstream[!get("is_last_elem") |
-                get("type") == "intron"]
-
+        if(nrow(intron.part.upstream) > 0) {
+            intron.part.upstream[, by = "transcript_id",
+                c("is_last_elem") := 
+                    (get("elem_number") == max(get("elem_number")))
+            ]
+            intron.part.upstream <-
+                intron.part.upstream[!get("is_last_elem") |
+                    get("type") == "intron"]
+        }
     }
     return(intron.part.upstream)
 }

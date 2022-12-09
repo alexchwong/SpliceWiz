@@ -386,7 +386,8 @@ buildRef <- function(
     # Prepare a reference-specific cov_data for reference-only plots:
     cov_data <- .prepare_covplot_data(reference_path)
     saveRDS(cov_data, file.path(reference_path, "cov_data.Rds"))
-
+    rm(cov_data, reference_data)
+    
     # Update settings.Rds only after everything is finalised
     settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
     settings.list$genome_type <- genome_type

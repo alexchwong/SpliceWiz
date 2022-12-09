@@ -131,6 +131,7 @@ collateData <- function(Experiment, reference_path, output_path,
         overwrite = FALSE, n_threads = 1,
         lowMemoryMode = TRUE
 ) {
+    if(lowMemoryMode) n_threads <- min(n_threads, 4)
     IRMode <- match.arg(IRMode)
     if (IRMode == "")
         .log(paste("In collateData(),",
@@ -168,10 +169,12 @@ collateData <- function(Experiment, reference_path, output_path,
             return()
         }
     }
-    samples_per_block <- 4
-    if(lowMemoryMode) samples_per_block <- 16
-    jobs <- .collateData_jobs(nrow(df.internal), BPPARAM_mod, samples_per_block)
-
+    # samples_per_block <- 4
+    # if(lowMemoryMode) samples_per_block <- 16
+    # jobs <- .collateData_jobs(
+    #     nrow(df.internal), BPPARAM_mod, samples_per_block)
+    jobs <- .split_vector(seq_len(nrow(df.internal)), n_threads)
+    
     dash_progress("Compiling Sample Stats", N_steps)
     .log("Compiling Sample Stats", "message")
     df.internal <- .collateData_stats(df.internal, jobs, BPPARAM_mod)
@@ -222,13 +225,15 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Generating NxtSE assays", N_steps)
     .log("Generating NxtSE assays", "message")
 
-    if(lowMemoryMode) {
-        n_threads_collate_assays <- 1
-    } else {
-        n_threads_collate_assays <- ceiling(min(
-            nrow(df.internal) / samples_per_block, n_threads
-        ))    
-    }
+    # if(lowMemoryMode) {
+        # n_threads_collate_assays <- 1
+    # } else {
+        # n_threads_collate_assays <- ceiling(min(
+            # nrow(df.internal) / samples_per_block, n_threads
+        # ))    
+    # }
+    n_threads_collate_assays <- n_threads
+    
     jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
         nrow(df.internal))
     BPPARAM_mod_progress <- .validate_threads(
@@ -249,7 +254,7 @@ collateData <- function(Experiment, reference_path, output_path,
     .log("Building Final NxtSE Object", "message")
 
     samples_per_block <- 16
-    if(lowMemoryMode) samples_per_block <- 4
+    # if(lowMemoryMode) samples_per_block <- 4
     assays <- .collateData_compile_assays_from_fst(df.internal,
         norm_output_path, samples_per_block)
 

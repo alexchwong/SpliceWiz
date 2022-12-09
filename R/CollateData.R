@@ -1849,21 +1849,31 @@ collateData <- function(Experiment, reference_path, output_path,
     Splice.Anno.Brief <- read.fst(
         file.path(reference_path, "fst", "Splice.fst"),
         as.data.table = TRUE, columns = c("EventName", "EventID"))
-    Splice.Options[Splice.Anno.Brief, on = "EventID",
-        c("EventName") := get("i.EventName")]
-    Splice.Options[Transcripts, on = "transcript_id",
-        c("transcript_biotype") := get("i.transcript_biotype")]
+    # Splice.Options[Splice.Anno.Brief, on = "EventID",
+        # c("EventName") := get("i.EventName")]
+    # Splice.Options[Transcripts, on = "transcript_id",
+        # c("transcript_biotype") := get("i.transcript_biotype")]
+    Splice.Options$EventName <- Splice.Anno.Brief$EventName[match(
+        Splice.Options$EventID, Splice.Anno.Brief$EventID)]
+    Splice.Options$transcript_biotype <- Transcripts$transcript_biotype[match(
+        Splice.Options$transcript_id, Transcripts$transcript_id)]
 
     Splice.Options.Summary <- copy(Splice.Options)
+    # Splice.Options.Summary[,
+        # c("tsl_min") := min(get("transcript_support_level")),
+        # by = c("EventID", "isoform")]
+    # Splice.Options.Summary[,
+        # c("any_is_PC") := any(get("is_protein_coding")),
+        # by = c("EventID", "isoform")]
+    # Splice.Options.Summary[,
+        # c("all_is_NMD") := all(grepl("decay", get("transcript_biotype"))),
+        # by = c("EventID", "isoform")]
     Splice.Options.Summary[,
-        c("tsl_min") := min(get("transcript_support_level")),
-        by = c("EventID", "isoform")]
-    Splice.Options.Summary[,
-        c("any_is_PC") := any(get("is_protein_coding")),
-        by = c("EventID", "isoform")]
-    Splice.Options.Summary[,
-        c("all_is_NMD") := all(grepl("decay", get("transcript_biotype"))),
-        by = c("EventID", "isoform")]
+        c("tsl_min", "any_is_PC", "all_is_NMD") := list(
+            min(get("transcript_support_level")),
+            any(get("is_protein_coding")),
+            all(grepl("decay", get("transcript_biotype")))
+        ), by = c("EventID", "isoform")]
 
     write.fst(as.data.frame(Splice.Options.Summary),
         file.path(norm_output_path, "annotation", "Splice.Options.Summary.fst"))
@@ -1891,77 +1901,174 @@ collateData <- function(Experiment, reference_path, output_path,
     candidate.introns <- as.data.table(
         read.fst(file.path(reference_path, "fst", "junctions.fst")))   
 
-    # Prioritise candidate.introns based on transcript importance
     rowEvent.Extended[get("EventType") == "IR",
         c("intron_id") := tstrsplit(get("EventName"), split = "/")[[2]]]
-    rowEvent.Extended[, c("Inc_Is_Protein_Coding") := FALSE]
-    rowEvent.Extended[, c("Exc_Is_Protein_Coding") := FALSE]
-    rowEvent.Extended[IR_NMD, on = "intron_id",
-        c("Exc_Is_Protein_Coding") := TRUE]
-    rowEvent.Extended[IR_NMD, on = "intron_id",
-        c("Inc_Is_Protein_Coding") := (get("i.intron_type") == "CDS")]
-    rowEvent.Extended[get("EventType") == "IR" &
-        get("Exc_Is_Protein_Coding") == FALSE, c("Exc_Is_NMD") := NA]
-    rowEvent.Extended[get("EventType") == "IR" &
-        get("Inc_Is_Protein_Coding") == FALSE, c("Inc_Is_NMD") := NA]
 
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
-        on = "EventName", c("Inc_Is_Protein_Coding") := get("i.any_is_PC")]
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
-        on = "EventName", c("Exc_Is_Protein_Coding") := get("i.any_is_PC")]
-    rowEvent.Extended[, c("Inc_Is_NMD", "Exc_Is_NMD") := list(FALSE, FALSE)]
-    rowEvent.Extended[IR_NMD[!is.na(get("splice_is_NMD"))], on = "intron_id",
-        c("Exc_Is_NMD") := get("i.splice_is_NMD")]
-    rowEvent.Extended[IR_NMD, on = "intron_id",
-        c("Inc_Is_NMD") := get("i.IRT_is_NMD")]
+    rowEvent.Extended.IR <- rowEvent.Extended[get("EventType") == "IR"]
+    rowEvent.Extended.splice <- rowEvent.Extended[get("EventType") != "IR"]
 
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
-        on = "EventName", c("Inc_Is_NMD") := get("i.all_is_NMD")]
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
-        on = "EventName", c("Exc_Is_NMD") := get("i.all_is_NMD")]
-    rowEvent.Extended[candidate.introns, on = "intron_id",
-        c("Inc_TSL") := get("i.transcript_support_level")]
-    rowEvent.Extended[candidate.introns, on = "intron_id",
-        c("Exc_TSL") := get("i.transcript_support_level")]
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
-        on = "EventName", c("Inc_TSL") := get("i.tsl_min")]
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
-        on = "EventName", c("Exc_TSL") := get("i.tsl_min")]
+    rowEvent.Extended.IR[, 
+        c("Inc_Is_Protein_Coding", "Exc_Is_Protein_Coding") := 
+        list(FALSE,FALSE)
+    ]
+    rowEvent.Extended.splice[, 
+        c("Inc_Is_Protein_Coding", "Exc_Is_Protein_Coding") := 
+        list(FALSE,FALSE)
+    ]
+    
+    # rowEvent.Extended[IR_NMD, on = "intron_id",
+        # c("Exc_Is_Protein_Coding") := TRUE]
+    # rowEvent.Extended[IR_NMD, on = "intron_id",
+        # c("Inc_Is_Protein_Coding") := (get("i.intron_type") == "CDS")]
+    rowEvent.Extended.IR[
+        get("intron_id") %in% IR_NMD$intron_id[IR_NMD$intron_type == "CDS"],
+        c("Inc_Is_Protein_Coding", "Exc_Is_Protein_Coding") := TRUE
+    ]
+
+    rowEvent.Extended.splice[
+        get("EventName") %in% Splice.Options.Summary$EventName[
+            Splice.Options.Summary$isoform == "A" &
+            Splice.Options.Summary$any_is_PC == TRUE
+        ],
+        c("Inc_Is_Protein_Coding") := TRUE
+    ]
+    rowEvent.Extended.splice[
+        get("EventName") %in% Splice.Options.Summary$EventName[
+            Splice.Options.Summary$isoform == "B" &
+            Splice.Options.Summary$any_is_PC == TRUE
+        ],
+        c("Exc_Is_Protein_Coding") := TRUE
+    ]
+
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
+        # on = "EventName", c("Inc_Is_Protein_Coding") := get("i.any_is_PC")]
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
+        # on = "EventName", c("Exc_Is_Protein_Coding") := get("i.any_is_PC")]
+
+
+    rowEvent.Extended.IR[, c("Exc_Is_NMD", "Inc_Is_NMD") := 
+        list(FALSE, FALSE)]
+    rowEvent.Extended.splice[, c("Exc_Is_NMD", "Inc_Is_NMD") := 
+        list(FALSE, FALSE)]
+
+    ## Important changes:
+    ## - for IR, NMD is
+    ##   - reported for all introns calculated in reference (not just CDS)
+    ##   - NA if intron not tested (not FALSE, as in version <= 1.1.2)
+    ##   - only true for spliced transcripts if true for all transcripts
+    ##     containing the same intron
+
+    # rowEvent.Extended[IR_NMD[!is.na(get("splice_is_NMD"))], on = "intron_id",
+        # c("Exc_Is_NMD") := get("i.splice_is_NMD")]
+    # rowEvent.Extended[IR_NMD, on = "intron_id",
+        # c("Inc_Is_NMD") := get("i.IRT_is_NMD")]
+    rowEvent.Extended.IR$Inc_Is_NMD <- IR_NMD$IRT_is_NMD[match(
+        rowEvent.Extended.IR$intron_id, IR_NMD$intron_id)]
+    rowEvent.Extended.IR$tmpExc_Is_NMD <- IR_NMD$splice_is_NMD[match(
+        rowEvent.Extended.IR$intron_id, IR_NMD$intron_id)]
+    rowEvent.Extended.IR[, 
+        c("sumExc_Is_NMD") := sum(get("tmpExc_Is_NMD") == TRUE, na.rm = TRUE),
+        by = "EventRegion"
+    ]
+    rowEvent.Extended.IR[, c("Exc_Is_NMD") := get("sumExc_Is_NMD") > 0]
+    rowEvent.Extended.IR$sumExc_Is_NMD <- NULL   
+    rowEvent.Extended.IR$tmpExc_Is_NMD <- NULL
+
+    rowEvent.Extended.IR[!(get("intron_id") %in% IR_NMD$intron_id),
+        c("Exc_Is_NMD", "Inc_Is_NMD") := list(NA, NA)]    
+    
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
+        # on = "EventName", c("Inc_Is_NMD") := get("i.all_is_NMD")]
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
+        # on = "EventName", c("Exc_Is_NMD") := get("i.all_is_NMD")]
+    tmpA <- Splice.Options.Summary[get("isoform") == "A"]
+    tmpB <- Splice.Options.Summary[get("isoform") == "B"]
+
+    rowEvent.Extended.splice$Inc_Is_NMD <- tmpA$all_is_NMD[match(
+        rowEvent.Extended.splice$EventName, tmpA$EventName)]
+    rowEvent.Extended.splice$Exc_Is_NMD <- tmpB$all_is_NMD[match(
+        rowEvent.Extended.splice$EventName, tmpB$EventName)]
+
+    rowEvent.Extended.IR[, c("Inc_TSL", "Exc_TSL") := list(NA, NA)]
+    rowEvent.Extended.splice[, c("Inc_TSL", "Exc_TSL") := list(NA, NA)]
+
+    # rowEvent.Extended[candidate.introns, on = "intron_id",
+        # c("Inc_TSL") := get("i.transcript_support_level")]
+    # rowEvent.Extended[candidate.introns, on = "intron_id",
+        # c("Exc_TSL") := get("i.transcript_support_level")]
+    rowEvent.Extended.IR$Inc_TSL <- 
+        candidate.introns$transcript_support_level[match(
+            rowEvent.Extended.IR$intron_id, candidate.introns$intron_id)]
+    rowEvent.Extended.IR$Exc_TSL <- 
+        candidate.introns$transcript_support_level[match(
+            rowEvent.Extended.IR$intron_id, candidate.introns$intron_id)]
+
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
+        # on = "EventName", c("Inc_TSL") := get("i.tsl_min")]
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
+        # on = "EventName", c("Exc_TSL") := get("i.tsl_min")]
+    rowEvent.Extended.splice$Inc_TSL <- tmpA$tsl_min[match(
+        rowEvent.Extended.splice$EventName, tmpA$EventName)]
+    rowEvent.Extended.splice$Exc_TSL <- tmpB$tsl_min[match(
+        rowEvent.Extended.splice$EventName, tmpB$EventName)]
         
     # Designate exclusive first intron / last intron
-    candidate.introns[, c("max_intron_number") :=
-        max(get("intron_number")), by = "Event"]
     candidate.introns[, c("inverse_intron_number") :=
         max(get("intron_number")) - get("intron_number") + 1, 
         by = "transcript_id"]
-    candidate.introns[, c("max_inv_intron_number") :=
-        max(get("inverse_intron_number")), by = "Event"]
-    candidate.introns[, c("Event1a") := get("Event")]
-    candidate.introns[, c("Event1b") := get("Event")]
+    candidate.introns[, 
+        c("max_intron_number", "max_inv_intron_number") := list(
+            max(get("intron_number")), max(get("inverse_intron_number"))), 
+        by = "Event"
+    ]
+
+    rowEvent.Extended <- rbind(rowEvent.Extended.IR, rowEvent.Extended.splice)
 
     # define Event1 / Event2
+    # rowEvent.Extended[get("EventType") == "IR",
+        # c("Event1a") := get("EventRegion")]
+    # rowEvent.Extended[Splice.Anno, on = "EventName",
+        # c("Event1a", "Event2a", "Event1b", "Event2b") :=
+        # list(get("i.Event1a"), get("i.Event2a"),
+            # get("i.Event1b"), get("i.Event2b"))]
+    rowEvent.Extended$Event1a <- Splice.Anno$Event1a[match(
+        rowEvent.Extended$EventName, Splice.Anno$EventName)]
+    rowEvent.Extended$Event2a <- Splice.Anno$Event2a[match(
+        rowEvent.Extended$EventName, Splice.Anno$EventName)]
+    rowEvent.Extended$Event1b <- Splice.Anno$Event1b[match(
+        rowEvent.Extended$EventName, Splice.Anno$EventName)]
+    rowEvent.Extended$Event2b <- Splice.Anno$Event2b[match(
+        rowEvent.Extended$EventName, Splice.Anno$EventName)]
     rowEvent.Extended[get("EventType") == "IR",
         c("Event1a") := get("EventRegion")]
-    rowEvent.Extended[Splice.Anno, on = "EventName",
-        c("Event1a", "Event2a", "Event1b", "Event2b") :=
-        list(get("i.Event1a"), get("i.Event2a"),
-            get("i.Event1b"), get("i.Event2b"))]
+    
+    # rowEvent.Extended[candidate.introns, on = "Event1a",
+        # c("iafi_A") := (get("i.max_intron_number") == 1)]
+    # rowEvent.Extended[candidate.introns, on = "Event1b",
+        # c("iafi_B") := (get("i.max_intron_number") == 1)]
+    # rowEvent.Extended[, c("is_always_first_intron") :=
+        # get("iafi_A") & get("iafi_B")]
+    # rowEvent.Extended[, c("iafi_A", "iafi_B") := list(NULL, NULL)]
 
-    rowEvent.Extended[candidate.introns, on = "Event1a",
-        c("iafi_A") := (get("i.max_intron_number") == 1)]
-    rowEvent.Extended[candidate.introns, on = "Event1b",
-        c("iafi_B") := (get("i.max_intron_number") == 1)]
-    rowEvent.Extended[, c("is_always_first_intron") :=
-        get("iafi_A") & get("iafi_B")]
-    rowEvent.Extended[, c("iafi_A", "iafi_B") := list(NULL, NULL)]
+    rowEvent.Extended$is_always_first_intron <-
+        rowEvent.Extended$Event1a %in% candidate.introns$Event[
+            candidate.introns$max_intron_number == 1] &
+        rowEvent.Extended$Event1b %in% candidate.introns$Event[
+            candidate.introns$max_intron_number == 1]       
 
-    rowEvent.Extended[candidate.introns, on = "Event1a",
-        c("iali_A") := (get("i.max_inv_intron_number") == 1)]
-    rowEvent.Extended[candidate.introns, on = "Event1b",
-        c("iali_B") := (get("i.max_inv_intron_number") == 1)]
-    rowEvent.Extended[, c("is_always_last_intron") :=
-        get("iali_A") & get("iali_B")]
-    rowEvent.Extended[, c("iali_A", "iali_B") := list(NULL, NULL)]
+    # rowEvent.Extended[candidate.introns, on = "Event1a",
+        # c("iali_A") := (get("i.max_inv_intron_number") == 1)]
+    # rowEvent.Extended[candidate.introns, on = "Event1b",
+        # c("iali_B") := (get("i.max_inv_intron_number") == 1)]
+    # rowEvent.Extended[, c("is_always_last_intron") :=
+        # get("iali_A") & get("iali_B")]
+    # rowEvent.Extended[, c("iali_A", "iali_B") := list(NULL, NULL)]
+
+    rowEvent.Extended$is_always_last_intron <-
+        rowEvent.Extended$Event1a %in% candidate.introns$Event[
+            candidate.introns$max_inv_intron_number == 1] &
+        rowEvent.Extended$Event1b %in% candidate.introns$Event[
+            candidate.introns$max_inv_intron_number == 1]       
     
     rowEvent.Extended[get("EventType") %in% c("MXE", "SE"),
         c("is_always_first_intron", "is_always_last_intron") := list(NA,NA)]
@@ -1983,8 +2090,8 @@ collateData <- function(Experiment, reference_path, output_path,
     write.fst(as.data.frame(rowEvent.Extended), 
         file.path(norm_output_path, "rowEvent.fst"))
 
-    rm(rowEvent.Extended, candidate.introns, IR_NMD,
-        Splice.Options.Summary, Splice.Anno)
+    rm(rowEvent.Extended, rowEvent.Extended.splice, rowEvent.Extended.IR,   
+        candidate.introns, IR_NMD, Splice.Options.Summary, Splice.Anno)
     gc()
 }
 

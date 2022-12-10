@@ -3152,9 +3152,7 @@ Get_GTF_file <- function(reference_path) {
 
 # Generate a list of MXE
 .gen_splice_MXE <- function(introns.skipcoord) {
-    introns_search_MXE <- introns.skipcoord[introns.skipcoord[,
-        .I[get("intron_number") < max(get("intron_number"))],
-        by = "transcript_id"]$V1]
+    introns_search_MXE <- introns.skipcoord[!is.na(get("skip_coord"))]
     introns_search_MXE <- introns_search_MXE[
         introns_search_MXE[, .N, by = c("skip_coord")],
         on = c("skip_coord"),

@@ -1047,11 +1047,10 @@ collateData <- function(Experiment, reference_path, output_path,
 ) {
     if(threadID != 2) return()
 
-    candidate.introns <- as.data.table(
-        read.fst(file.path(reference_path, "fst", "junctions.fst"))
-    )
-    # introns.skipcoord <- .gen_splice_skipcoord(
-        # reference_path, candidate.introns)
+    # candidate.introns <- as.data.table(
+        # read.fst(file.path(reference_path, "fst", "junctions.fst"))
+    # )
+    # candidate.introns[, c("seqnames") := as.character(get("seqnames"))]
         
     junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "junc.common.annotated.fst")))
@@ -1059,14 +1058,11 @@ collateData <- function(Experiment, reference_path, output_path,
     tj.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "tj.common.fst")))
     
-    candidate.introns[, c("seqnames") := as.character(get("seqnames"))]
     junc.common[, c("seqnames") := as.character(get("seqnames"))]
     tj.common[, c("seqnames") := as.character(get("seqnames"))]
-    # Strand assignment based on annotated junctions
-    
+
+    ### - Strand assignment based on annotated junctions - ###
     # First remove any tandem junctions not in junc.common
-    jc_events <- paste0(junc.common$seqnames, ":", 
-        junc.common$start, "-", junc.common$end, "/", junc.common$strand)
 
     jc_events_unstranded <- paste0(junc.common$seqnames, ":", 
         junc.common$start, "-", junc.common$end)
@@ -1085,6 +1081,7 @@ collateData <- function(Experiment, reference_path, output_path,
         strand = junc.common$strand
     )
 
+    # Match strands based on event1 / 2
     tj_event1 <- paste0(tj.common$seqnames, ":", 
         tj.common$start1, "-", tj.common$end1)
     tj_event2 <- paste0(tj.common$seqnames, ":", 
@@ -1109,42 +1106,29 @@ collateData <- function(Experiment, reference_path, output_path,
     tj.common$strand <- tj.strand$status
     tj.common <- tj.common[strand != ""]
     
-    # Filter for TJ for which tandem interval does not match known skip_coord
-    # skip_coord <- introns.skipcoord$skip_coord[
-        # !is.na(introns.skipcoord$skip_coord)]
-    # skip_coord <- unique(skip_coord)
-    # tj_skip <- paste0(tj.common$seqnames, ":", 
-        # tj.common$start1, "-", tj.common$end2, "/", tj.common$strand)
+    ### - Not sure we need to filter out non-novel exons - ###
+    # - tandem junctions can also help find novel A5/3SS and skipped exons
     
-    # tj.common <- tj.common[tj_skip %in% skip_coord | tj_skip %in% jc_events]
+    # exons_brief <- read.fst(
+        # path = file.path(reference_path, "fst", "Exons.fst"),
+        # columns = c("seqnames", "start", "end", "strand"),
+        # as.data.table = TRUE
+    # )
+    # exons_brief <- unique(exons_brief)
+    # exons_brief[, c("seqnames") := as.character(get("seqnames"))]
+    # exons_left <- paste0(exons_brief$seqnames, ":", exons_brief$start)
+    # tj_exon_left <- paste0(tj.common$seqnames, ":", tj.common$end1 + 1)
+    # exons_right <- paste0(exons_brief$seqnames, ":", exons_brief$end)
+    # tj_exon_right <- paste0(tj.common$seqnames, ":", tj.common$start2 - 1)
     
-    # Filter for TJ for which novel exon does not match 
-    #   any boundary with known exon
-    # Noting that if one boundary matches that of known exon, it is simply
-    #   an alt' splice site, not a novel casette exon
-    
-    exons_brief <- read.fst(
-        path = file.path(reference_path, "fst", "Exons.fst"),
-        columns = c("seqnames", "start", "end", "strand"),
-        as.data.table = TRUE
-    )
-    exons_brief <- unique(exons_brief)
-    exons_brief[, c("seqnames") := as.character(get("seqnames"))]
-    exons_left <- paste0(exons_brief$seqnames, ":", exons_brief$start)
-    tj_exon_left <- paste0(tj.common$seqnames, ":", tj.common$end1 + 1)
-    exons_right <- paste0(exons_brief$seqnames, ":", exons_brief$end)
-    tj_exon_right <- paste0(tj.common$seqnames, ":", tj.common$start2 - 1)
-    
-    tj.common <- tj.common[!(tj_exon_left %in% exons_left) &
-        !(tj_exon_right %in% exons_right)]
+    # tj.common.new <- tj.common[!(tj_exon_left %in% exons_left) &
+        # !(tj_exon_right %in% exons_right)]
 
     write.fst(as.data.frame(tj.common), file.path(norm_output_path, 
         "annotation", "tj.common.annotated.fst"))
 
     # Cleanup
-    # rm(introns.skipcoord)
-    rm(candidate.introns, junc.common, tj.common,
-        tj.strand, exons_brief)
+    rm(junc.common, tj.common, jc.strand, tj.strand)
     gc()
 }
 

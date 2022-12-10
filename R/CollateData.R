@@ -251,12 +251,13 @@ collateData <- function(Experiment, reference_path, output_path,
     gc()
 
     dash_progress("Building Final NxtSE Object", N_steps)
-    .log("Building Final NxtSE Object", "message")
-
+    .log("Saving assays into H5 file", "message")
     samples_per_block <- 16
     # if(lowMemoryMode) samples_per_block <- 4
     assays <- .collateData_compile_assays_from_fst(df.internal,
         norm_output_path, samples_per_block)
+
+    .log("Saving auxiliary data", "message")
 
     .collateData_write_stats(df.internal, norm_output_path)
     .collateData_write_colData(df.internal, coverage_files, norm_output_path)
@@ -270,11 +271,13 @@ collateData <- function(Experiment, reference_path, output_path,
     
     saveRDS(cov_data, file.path(norm_output_path, "annotation", "cov_data.Rds"))
 
+    .log("Assembling final NxtSE object", "message")
     # NEW compile NxtSE:
     colData.Rds <- readRDS(file.path(norm_output_path, "colData.Rds"))
     colData <- .makeSE_colData_clean(colData.Rds$df.anno)
     se <- .collateData_initialise_HDF5(norm_output_path, colData, assays)
 
+    .log("Saving final NxtSE object", "message")
     .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.rds"))
     if (dir.exists(file.path(norm_output_path, "temp"))) {
         unlink(file.path(norm_output_path, "temp"), recursive = TRUE)

@@ -32,7 +32,8 @@ ASE_edgeR(
   batch2 = "",
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
-  filter_antinear = FALSE
+  filter_antinear = FALSE,
+  useQL = TRUE
 )
 
 ASE_limma_timeseries(
@@ -130,6 +131,9 @@ denoted as "RI" events.}
 overlap over or near anti-sense genes. Default will exclude antiover but
 not antinear introns. These are ignored if strand-specific RNA-seq
 protocols are used.}
+
+\item{useQL}{(default \code{TRUE}) Whether to use edgeR's quasi-likelihood method
+to help reduce false positives from near-zero junction / intron counts.}
 
 \item{degrees_of_freedom}{(default \code{1}) The complexity of time series trends
 modeled by \code{ASE_limma_timeseries}. E.g., \code{1} will only model linear trends,

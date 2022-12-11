@@ -131,6 +131,9 @@ collateData <- function(Experiment, reference_path, output_path,
         overwrite = FALSE, n_threads = 1,
         lowMemoryMode = TRUE
 ) {
+    # TODO - dynamic memory management
+    # - see https://stackoverflow.com/questions/6457290/how-to-check-the-amount-of-ram
+
     if(lowMemoryMode) n_threads <- min(n_threads, 4)
     IRMode <- match.arg(IRMode)
     if (IRMode == "")
@@ -1150,38 +1153,48 @@ collateData <- function(Experiment, reference_path, output_path,
     novel_ref_path <- file.path(norm_output_path, "Reference")
     .validate_path(novel_ref_path, subdirs = "resource")
     
-    settings <- readRDS(file.path(reference_path, "settings.Rds"))
-    local.nonPolyAFile <- file.path(reference_path, "resource", 
-        "nonPolyAFile.resource")
-    local.MappabilityFile <- file.path(reference_path, "resource", 
-        "MappabilityFile.resource")
-    local.BlacklistFile <- file.path(reference_path, "resource", 
-        "BlacklistFile.resource")
-    nonPolyARef <- settings$nonPolyARef
-    MappabilityRef <- settings$MappabilityRef
-    BlacklistRef <- settings$BlacklistRef
-    if(file.exists(local.nonPolyAFile)) 
-        nonPolyARef <- local.nonPolyAFile
-    if(file.exists(local.MappabilityFile)) 
-        MappabilityRef <- local.MappabilityFile
-    if(file.exists(local.BlacklistFile)) 
-        BlacklistRef <- local.BlacklistFile
+    # settings <- readRDS(file.path(reference_path, "settings.Rds"))
+    # local.nonPolyAFile <- file.path(reference_path, "resource", 
+        # "nonPolyAFile.resource")
+    # local.MappabilityFile <- file.path(reference_path, "resource", 
+        # "MappabilityFile.resource")
+    # local.BlacklistFile <- file.path(reference_path, "resource", 
+        # "BlacklistFile.resource")
+    # nonPolyARef <- settings$nonPolyARef
+    # MappabilityRef <- settings$MappabilityRef
+    # BlacklistRef <- settings$BlacklistRef
+    # if(file.exists(local.nonPolyAFile)) 
+        # nonPolyARef <- local.nonPolyAFile
+    # if(file.exists(local.MappabilityFile)) 
+        # MappabilityRef <- local.MappabilityFile
+    # if(file.exists(local.BlacklistFile)) 
+        # BlacklistRef <- local.BlacklistFile
 
-    extra_files <- .fetch_genome_defaults(novel_ref_path,
-        settings$genome_type, nonPolyARef, 
-        MappabilityRef, BlacklistRef,
-        force_download = FALSE, verbose = FALSE)
+    # extra_files <- .fetch_genome_defaults(novel_ref_path,
+        # settings$genome_type, nonPolyARef, 
+        # MappabilityRef, BlacklistRef,
+        # force_download = FALSE, verbose = FALSE)
 
     if(verbose) message("...loading reference FASTA/GTF")
-    reference_data <- .get_reference_data(
-        reference_path = reference_path,
-        fasta = "", gtf = "", verbose = FALSE,
-        overwrite = FALSE, force_download = FALSE,
-        pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
-
-    reference_data$gtf_gr <- .validate_gtf_chromosomes(
-        reference_data$genome, reference_data$gtf_gr)
-    reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
+    if(file.exists(file.path(reference_path, "fst/gtf_fixed.fst"))) {
+        reference_data <- list(
+            genome = Get_Genome(reference_path, validate = FALSE,
+                as_DNAStringSet = !lowMemoryMode),
+            gtf_gr = .grDT(
+                read.fst(file.path(reference_path, "fst/gtf_fixed.fst")),
+                keep.extra.columns = TRUE
+            )
+        )
+    } else {
+        reference_data <- .get_reference_data(
+            reference_path = reference_path,
+            fasta = "", gtf = "", verbose = FALSE,
+            overwrite = FALSE, force_download = FALSE,
+            pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)    
+        reference_data$gtf_gr <- .validate_gtf_chromosomes(
+            reference_data$genome, reference_data$gtf_gr)
+        reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
+    }
 
     if(verbose) message("...injecting novel transcripts to GTF")
     # Insert novel gtf here
@@ -1200,7 +1213,7 @@ collateData <- function(Experiment, reference_path, output_path,
     if(verbose) message("...processing GTF")
     .process_gtf(c(reference_data$gtf_gr, novel_gtf), 
         novel_ref_path, verbose = FALSE)
-    extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
+    # extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
     reference_data$gtf_gr <- NULL # To save memory, remove original gtf
     rm(novel_gtf)
     gc()
@@ -1210,10 +1223,6 @@ collateData <- function(Experiment, reference_path, output_path,
         reference_data$genome, verbose = FALSE)
     .process_introns(novel_ref_path, reference_data$genome, 
         useExtendedTranscripts = TRUE, verbose = FALSE)
-    
-    # chromosomes <- readRDS(file.path(reference_path, "chromosomes.Rds"))
-    # .gen_irf(novel_ref_path, extra_files, reference_data$genome, chromosomes,
-        # verbose = FALSE)
 
     # No need to re-process SpliceWiz processBAM reference
     file.copy(file.path(reference_path, "fst", "Introns.Dir.fst"),

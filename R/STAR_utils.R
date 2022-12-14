@@ -434,7 +434,7 @@ STAR_alignReads <- function(
                 expectedBAM, "already exists. Set overwrite = TRUE to overwrite"
                 ), "warning"
             )
-            invisible()
+            return()
         }
     } else {
         .log(paste(

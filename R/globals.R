@@ -71,24 +71,26 @@ is_valid <- function(x) {
     cat(sprintf(...))
 }
 
-.validate_threads <- function(n_threads, as_BPPARAM = TRUE, 
-        useSnowParam = FALSE,
-        ...
+.validate_threads <- function(
+    n_threads, as_BPPARAM = TRUE, 
+    useSnowParam = FALSE, # If set to TRUE, forces Windows to use SnowParam
+    ...
 ) {
     n_threads_to_use <- as.numeric(n_threads)
-    if (is.na(n_threads_to_use)) {
-        .log("n_threads must be a numeric value")
-    }
+    if (is.na(n_threads_to_use)) .log("n_threads must be a numeric value")
+
     if (n_threads_to_use > parallel::detectCores()) {
         n_threads_to_use <- max(1, parallel::detectCores())
     }
     if (as_BPPARAM) {
-        if (useSnowParam || Sys.info()["sysname"] == "Windows") {
+        if (useSnowParam && Sys.info()["sysname"] == "Windows") {
             BPPARAM_mod <- BiocParallel::SnowParam(n_threads_to_use, ...)
             .log(paste("Using SnowParam", BPPARAM_mod$workers, "threads"),
                 "message")
             setSWthreads(1) 
             # SnowParam doesn't count as a fork for data.table or fst          
+        } else if(Sys.info()["sysname"] == "Windows") {
+            BPPARAM_mod <- BiocParallel::SerialParam()
         } else {
             BPPARAM_mod <- BiocParallel::MulticoreParam(n_threads_to_use, ...)
             .log(paste("Using MulticoreParam", BPPARAM_mod$workers, "threads"),
@@ -96,6 +98,7 @@ is_valid <- function(x) {
         }
         return(BPPARAM_mod)
     } else {
+        # Only used for STAR wrappers
         return(n_threads_to_use)
     }
 }

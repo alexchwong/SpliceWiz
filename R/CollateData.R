@@ -4,8 +4,11 @@
 #' output files belonging to an experiment.
 #'
 #' @details
-#' All sample [processBAM] outputs must be generated using the same
-#' reference.
+#' In Windows, collateData runs using only 1 thread, as 
+#' BiocParallel's MulticoreParam is not supported. 
+#' 
+#' It is assumed that all sample [processBAM] outputs were generated using the 
+#' same reference.
 #'
 #' The combination of junction counts and IR quantification from
 #' [processBAM] is used to calculate percentage spliced in (PSI) of alternative
@@ -176,7 +179,7 @@ collateData <- function(Experiment, reference_path, output_path,
     # if(lowMemoryMode) samples_per_block <- 16
     # jobs <- .collateData_jobs(
     #     nrow(df.internal), BPPARAM_mod, samples_per_block)
-    jobs <- .split_vector(seq_len(nrow(df.internal)), n_threads)
+    jobs <- .split_vector(seq_len(nrow(df.internal)), BPPARAM_mod$workers)
     
     dash_progress("Compiling Sample Stats", N_steps)
     .log("Compiling Sample Stats", "message")
@@ -203,7 +206,7 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Tidying up splice junctions and intron retentions", N_steps)
     .log("Tidying up splice junctions and intron retentions...", "message")
     
-    if(n_threads == 1) {
+    if(BPPARAM_mod$workers == 1) {
         .collateData_annotate(reference_path, norm_output_path, 
             stranded, novelSplicing, lowMemoryMode,
             minSamplesWithJunc = novelSplicing_minSamples, 
@@ -228,21 +231,19 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Generating NxtSE assays", N_steps)
     .log("Generating NxtSE assays", "message")
 
-    # if(lowMemoryMode) {
-        # n_threads_collate_assays <- 1
-    # } else {
-        # n_threads_collate_assays <- ceiling(min(
-            # nrow(df.internal) / samples_per_block, n_threads
-        # ))    
-    # }
+    # Re-define threads
     n_threads_collate_assays <- n_threads
     
-    jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
-        nrow(df.internal))
+    # One job per chunk - more memory efficient
+    jobs_2 <- .split_vector(
+        seq_len(nrow(df.internal)),
+        nrow(df.internal)
+    )
     BPPARAM_mod_progress <- .validate_threads(
         n_threads_collate_assays,
         progressbar = TRUE,
-        tasks = nrow(df.internal))
+        tasks = nrow(df.internal)
+    )
     agg.list <- BiocParallel::bplapply(
         seq_len(nrow(df.internal)),
         .collateData_compile_agglist,

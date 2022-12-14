@@ -72,6 +72,10 @@ cp -r inst/htslib_version/* .
 Then, from R:
 
 ```
+# Roxygenize for documentation on processBAM_hts() and BAM2COV_hts()
+devtools::document("/path/to/SpliceWiz")
+
+# Install the package
 install.packages(
     "/path/to/SpliceWiz", 
     repos = NULL, 

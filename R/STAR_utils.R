@@ -512,10 +512,13 @@ STAR_alignReads <- function(
             .log(paste(genome.2bit, "not found"))
         }
         .log("Extracting temp genome FASTA from TwoBit file", "message")
+        tmp <- rtracklayer::import(TwoBitFile(genome.2bit))
         rtracklayer::export(
-            rtracklayer::import(TwoBitFile(genome.2bit)),
+            tmp,
             genome.fa, "fasta"
         )
+        rm(tmp)
+        gc()
     }
     return(genome.fa)
 }

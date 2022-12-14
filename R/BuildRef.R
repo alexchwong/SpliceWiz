@@ -402,7 +402,7 @@ buildRef <- function(
     if(verbose) message("Reference build finished")
     dash_progress("Reference build finished", N_steps)
     gc()
-
+    return(invisible)
 }
 
 #' @describeIn Build-Reference-methods One-step function that fetches resources,

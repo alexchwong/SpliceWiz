@@ -10,6 +10,16 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// compiled_with_htslib
+int compiled_with_htslib();
+RcppExport SEXP _SpliceWiz_compiled_with_htslib() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(compiled_with_htslib());
+    return rcpp_result_gen;
+END_RCPP
+}
 // SpliceWizMain_hts
 int SpliceWizMain_hts(std::string bam_file, std::string reference_file, std::string output_file, bool verbose, int n_threads, int read_pool);
 RcppExport SEXP _SpliceWiz_SpliceWizMain_hts(SEXP bam_fileSEXP, SEXP reference_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP read_poolSEXP) {
@@ -260,6 +270,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_SpliceWiz_compiled_with_htslib", (DL_FUNC) &_SpliceWiz_compiled_with_htslib, 0},
     {"_SpliceWiz_SpliceWizMain_hts", (DL_FUNC) &_SpliceWiz_SpliceWizMain_hts, 6},
     {"_SpliceWiz_SpliceWizMain_multi_hts", (DL_FUNC) &_SpliceWiz_SpliceWizMain_multi_hts, 6},
     {"_SpliceWiz_c_BAM2COV_hts", (DL_FUNC) &_SpliceWiz_c_BAM2COV_hts, 5},

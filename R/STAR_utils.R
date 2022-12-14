@@ -339,7 +339,8 @@ STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
         if (pass == 1) {
             ref <- STAR_ref_path
             system2(command = "STAR", args = c(
-                "--genomeLoad", "LoadAndExit", "--genomeDir", ref
+                "--genomeLoad", "LoadAndExit", "--genomeDir", ref,
+                "--outFileNamePrefix", tempdir()
             ))
             loaded_ref <- ref
         }
@@ -347,7 +348,8 @@ STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
             if (pass == 2 && !is.null(two_pass_genome) && is.null(loaded_ref)) {
                 ref <- two_pass_genome
                 system2(command = "STAR", args = c(
-                    "--genomeLoad", "LoadAndExit", "--genomeDir", ref
+                    "--genomeLoad", "LoadAndExit", "--genomeDir", ref,
+                "--outFileNamePrefix", tempdir()
                 ))
                 loaded_ref <- ref
             }
@@ -398,7 +400,8 @@ STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
         }
         .log(paste("Unloading STAR reference:", loaded_ref), "message")
         system2(command = "STAR", args = c(
-            "--genomeLoad", "Remove", "--genomeDir", loaded_ref
+            "--genomeLoad", "Remove", "--genomeDir", loaded_ref,
+                "--outFileNamePrefix", tempdir()
         ))
         loaded_ref <- NULL
     }

@@ -78,6 +78,8 @@
 #'   If single reads are to be aligned, omit \code{fastq_2}
 #' @param memory_mode The parameter to be parsed to \code{--genomeLoad}; either
 #'   \code{NoSharedMemory} or \code{LoadAndKeep} are used.
+#' @param overwrite (default `FALSE`) If BAM file(s) already exist from a
+#'   previous run, whether these would be overwritten.
 #' @param ... Additional arguments to be parsed into
 #'   \code{generateSyntheticReads()}. See \link{Mappability-methods}.
 #' @return None. STAR will output files into the given output directories.
@@ -300,8 +302,11 @@ STAR_mappability <- function(
 #' @describeIn STAR-methods Aligns multiple sets of FASTQ files, belonging to
 #'   multiple samples
 #' @export
-STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
-        trim_adaptor = "AGATCGGAAG", two_pass = FALSE, n_threads = 4) {
+STAR_alignExperiment <- function(
+    Experiment, STAR_ref_path, BAM_output_path,
+    trim_adaptor = "AGATCGGAAG", two_pass = FALSE, n_threads = 4,
+    overwrite = FALSE
+) {
 
     .validate_STAR_version()
     STAR_ref_path <- .validate_STAR_reference(STAR_ref_path)
@@ -387,7 +392,9 @@ STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
                 trim_adaptor = trim_adaptor,
                 memory_mode = memory_mode,
                 additional_args = additional_args,
-                n_threads = n_threads)
+                n_threads = n_threads,
+                overwrite = overwrite
+            )
 
         } # end of FOR loop
 
@@ -417,8 +424,24 @@ STAR_alignReads <- function(
         trim_adaptor = "AGATCGGAAG",
         memory_mode = "NoSharedMemory",
         additional_args = NULL,
-        n_threads = 4
+        n_threads = 4,
+        overwrite = FALSE
 ) {
+    expectedBAM <- file.path(BAM_output_path, "Aligned.out.bam")
+    if(!overwrite) {
+        if(file.exists(expectedBAM)) {
+            .log(paste(
+                expectedBAM, "already exists. Set overwrite = TRUE to overwrite"
+                ), "warning"
+            )
+        }
+    } else {
+        .log(paste(
+            expectedBAM, "found, overwriting..."
+            ), "warning"
+        )
+        unlink(expectedBAM)
+    }
 
     .validate_STAR_version()
     STAR_ref_path <- .validate_STAR_reference(STAR_ref_path)

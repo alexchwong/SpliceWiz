@@ -354,7 +354,7 @@ STAR_alignExperiment <- function(
                 ref <- two_pass_genome
                 system2(command = "STAR", args = c(
                     "--genomeLoad", "LoadAndExit", "--genomeDir", ref,
-                "--outFileNamePrefix", tempdir()
+                    "--outFileNamePrefix", tempdir()
                 ))
                 loaded_ref <- ref
             }
@@ -431,9 +431,11 @@ STAR_alignReads <- function(
     if(!overwrite) {
         if(file.exists(expectedBAM)) {
             .log(paste(
-                expectedBAM, "already exists. Set overwrite = TRUE to overwrite"
+                expectedBAM, 
+                "already exists. Set overwrite = TRUE to overwrite"
                 ), "warning"
             )
+            message("") # for \n
             return()
         }
     } else {

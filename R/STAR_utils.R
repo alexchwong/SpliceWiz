@@ -844,7 +844,7 @@ STAR_loadGenomeGTF <- function(
         # sanity check overhangs
         if(is.na(as.numeric(sjdbOverhang))) sjdbOverhang <- 100
         sjdbOverhang <- floor(sjdbOverhang)
-        sjdbOverhang <- min(sjdbOverhang, 25)
+        sjdbOverhang <- max(sjdbOverhang, 25)
         args <- c(args, "--sjdbOverhang", sjdbOverhang)
     }
 

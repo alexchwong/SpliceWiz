@@ -757,7 +757,7 @@ STAR_buildGenome <- function(
     # sanity check sparsity
     if(is.na(as.numeric(sparsity))) sparsity <- 1
     sparsity <- floor(sparsity)
-    sparsity <- min(sparsity, 1)
+    sparsity <- max(sparsity, 1)
     
     args <- c(args, "--genomeSAsparseD", sparsity)
 

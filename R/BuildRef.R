@@ -128,6 +128,8 @@
 #'   `genome_type`. When set to false, the MappabilityExclusion default file
 #'   corresponding to `genome_type` will automatically be used.
 #' @param verbose (default `TRUE`) If `FALSE`, will silence progress messages
+#' @param ... For STAR_buildRef, additional parameters to be parsed into
+#'   `STAR_buildRef` which it runs internally. See [STAR_buildRef]
 #' @return
 #' For `getResources`: creates the following local resources:
 #' * `reference_path/resource/genome.2bit`: Local copy of the genome sequences
@@ -419,7 +421,8 @@ buildFullRef <- function(
         nonPolyARef = getNonPolyARef(genome_type),
         BlacklistRef = "",
         useExtendedTranscripts = TRUE,
-        n_threads = 4
+        n_threads = 4,
+        ...
 ) {
     if (!overwrite && 
             file.exists(file.path(reference_path, "SpliceWiz.ref.gz"))) {
@@ -435,7 +438,7 @@ buildFullRef <- function(
 
     STAR_buildRef(reference_path = reference_path,
         also_generate_mappability = use_STAR_mappability,
-        n_threads = n_threads)
+        n_threads = n_threads, ...)
     
     if(use_STAR_mappability) {
         use_genome_type <- ""

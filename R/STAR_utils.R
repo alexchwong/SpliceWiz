@@ -10,15 +10,15 @@
 #' **Pre-requisites**
 #'
 #' `STAR_buildRef()` and `STAR_buildGenome()` require prepared genome
-#' and gene annotation reference retrieved using [getResources], and
-#' (optionally) a SpliceWiz reference created using [buildRef]
+#' and gene annotation reference retrieved using [getResources], which is run
+#' internally by [buildRef]
 #'
 #' `STAR_loadGenomeGTF()` requires the above, and additionally a STAR genome 
 #' created using `STAR_buildGenome()` 
 #' 
 #' `STAR_alignExperiment()`, `STAR_alignReads()`, and `STAR_mappability()`: 
 #' requires a `STAR` genome, which can be built using `STAR_buildRef()` or
-#' `STAR_buildGenome()` / `STAR_loadGenomeGTF()`
+#' `STAR_buildGenome()` followed by `STAR_loadGenomeGTF()`
 #'
 #' **Function Description**
 #'
@@ -60,18 +60,16 @@
 #'    [getResources] must first be run using this path
 #'    as its `reference_path`
 #' @param STAR_ref_path (Default - the "STAR" subdirectory under
-#'    \code{reference_path}) The directory containing the STAR reference to be
+#'    `reference_path`) The directory containing the STAR reference to be
 #'    used or to contain the newly-generated STAR reference
-#' @param also_generate_mappability Whether \code{STAR_buildRef()} also
-#'   calculates Mappability Exclusion regions.
-#' @param map_depth_threshold (Default 4) The depth of mapped reads
+#' @param also_generate_mappability Whether `STAR_buildRef()` and 
+#'   `STAR_buildGenome()` also calculate Mappability Exclusion regions.
+#' @param map_depth_threshold (Default `4`) The depth of mapped reads
 #'   threshold at or below which Mappability exclusion regions are defined. See
-#'   [Mappability-methods].
-#'   Ignored if \code{also_generate_mappability = FALSE}
-#' @param sjdbOverhang (Default = 149) A STAR setting indicating the length of
+#'   [Mappability-methods]. Ignored if `also_generate_mappability = FALSE`
+#' @param sjdbOverhang (Default = 100) A STAR setting indicating the length of
 #'   the donor / acceptor sequence on each side of the junctions. Ideally equal
-#'   to (mate_length - 1). As the most common read length is 150, the default
-#'   of this function is 149. See the STAR aligner manual for details.
+#'   to (mate_length - 1). See the STAR aligner manual for details.
 #' @param n_threads The number of threads to run the STAR aligner.
 #' @param additional_args A character vector of additional arguments to be
 #'   parsed into STAR. See examples below.
@@ -83,12 +81,12 @@
 #'   BAMS inside subdirectories of this folder, named by sample names. In
 #'   `STAR_alignReads()`, STAR will output directly into this path.
 #' @param trim_adaptor The sequence of the Illumina adaptor to trim via STAR's
-#'   \code{--clip3pAdapterSeq} option
+#'   `--clip3pAdapterSeq` option
 #' @param two_pass Whether to use two-pass mapping. In
 #'   \code{STAR_alignExperiment()}, STAR will first align every sample
 #'   and generate a list of splice junctions but not BAM files. The junctions
 #'   are then given to STAR to generate a temporary genome (contained within
-#'   \code{_STARgenome}) subdirectory within that of the first sample), using
+#'   `_STARgenome`) subdirectory within that of the first sample), using
 #'   these junctions to improve novel junction detection. In
 #'   \code{STAR_alignReads()}, STAR will run \code{--twopassMode Basic}
 #' @param fastq_1,fastq_2 In STAR_alignReads: character vectors giving the
@@ -140,6 +138,7 @@
 #'
 #' STAR_buildRef(
 #'     reference_path = "Reference_FTP",
+#'     STAR_ref_path = file.path("Reference_FTP", "STAR"),
 #'     n_threads = 8,
 #'     also_generate_mappability = TRUE
 #' )
@@ -158,6 +157,7 @@
 #'
 #' STAR_buildRef(
 #'     reference_path = "Reference_chrZ",
+#'     STAR_ref_path = file.path("Reference_chrZ", "STAR"),
 #'     n_threads = 8,
 #'     additional_args = c("--genomeSAindexNbases", "7"),
 #'     also_generate_mappability = TRUE
@@ -173,9 +173,9 @@
 #' # 4a) Align a single sample using the STAR reference
 #'
 #' STAR_alignReads(
+#'     fastq_1 = "sample1_1.fastq", fastq_2 = "sample1_2.fastq",
 #'     STAR_ref_path = file.path("Reference_FTP", "STAR"),
 #'     BAM_output_path = "./bams/sample1",
-#'     fastq_1 = "sample1_1.fastq", fastq_2 = "sample1_2.fastq",
 #'     n_threads = 8
 #' )
 #'
@@ -193,8 +193,8 @@
 #'     Experiment = Experiment,
 #'     STAR_ref_path = file.path("Reference_FTP", "STAR"),
 #'     BAM_output_path = "./bams",
-#'     two_pass = TRUE,
-#'     n_threads = 8
+#'     n_threads = 8,
+#'     two_pass = TRUE
 #' )
 #'
 #' # - Building a STAR genome (only) reference, and injecting GTF as a
@@ -209,9 +209,8 @@
 #'
 #' STAR_buildGenome(
 #'     reference_path = "Reference_FTP",
-#'     STAR_ref_path = "Reference_FTP/STAR_genomeOnly",
-#'     n_threads = 8,
-#'     also_generate_mappability = FALSE,
+#'     STAR_ref_path = file.path("Reference_FTP", "STAR_genomeOnly"),
+#'     n_threads = 8
 #' )
 #'
 #' # - Injecting a GTF into a genome-only STAR reference
@@ -223,9 +222,10 @@
 #'
 #' STAR_new_ref <- STAR_loadGenomeGTF(
 #'     reference_path = "Reference_FTP",
-#'     STAR_ref_path = "Reference_FTP/STAR_genomeOnly",
-#'     sjdbOverhang = 100,
-#'     STARgenome_output = file.path(tempdir(), "STAR")
+#'     STAR_ref_path = file.path("Reference_FTP", "STAR_genomeOnly"),
+#'     STARgenome_output = file.path(tempdir(), "STAR"),
+#'     n_threads = 4,
+#'     sjdbOverhang = 100
 #' )
 #' 
 #' # This new reference can then be used to align your experiment:
@@ -234,8 +234,8 @@
 #'     Experiment = Experiment,
 #'     STAR_ref_path = STAR_new_ref,
 #'     BAM_output_path = "./bams",
-#'     two_pass = TRUE,
-#'     n_threads = 8
+#'     n_threads = 8,
+#'     two_pass = TRUE
 #' )
 #'
 #' # Typically, one should `clean up` the on-the-fly STAR reference (as it is
@@ -266,12 +266,12 @@ STAR_version <- function() .validate_STAR_version(type = "message")
 STAR_buildRef <- function(
         reference_path,
         STAR_ref_path = file.path(reference_path, "STAR"),
+        n_threads = 4,
+        overwrite = FALSE,
+        sjdbOverhang = 100,
+        sparsity = 1,
         also_generate_mappability = FALSE,
         map_depth_threshold = 4,
-        sjdbOverhang = 100,
-        n_threads = 4,
-        sparsity = 1,
-        overwrite = FALSE,
         additional_args = NULL,
         ...
 ) {
@@ -353,9 +353,13 @@ STAR_buildRef <- function(
 #' @return For `STAR_alignExperiment()`: None
 #' @export
 STAR_alignExperiment <- function(
-    Experiment, STAR_ref_path, BAM_output_path,
-    trim_adaptor = "AGATCGGAAG", two_pass = FALSE, n_threads = 4,
-    overwrite = FALSE
+    Experiment, 
+    STAR_ref_path, 
+    BAM_output_path,
+    n_threads = 4,
+    overwrite = FALSE,
+    two_pass = FALSE, 
+    trim_adaptor = "AGATCGGAAG"
 ) {
 
     .validate_STAR_version()
@@ -469,14 +473,16 @@ STAR_alignExperiment <- function(
 #' @return For `STAR_alignReads()`: None
 #' @export
 STAR_alignReads <- function(
-        fastq_1 = c("./sample_1.fastq"), fastq_2 = NULL,
-        STAR_ref_path, BAM_output_path,
+        fastq_1 = c("./sample_1.fastq"), 
+        fastq_2 = NULL,
+        STAR_ref_path, 
+        BAM_output_path,
+        n_threads = 4,
+        overwrite = FALSE,
         two_pass = FALSE,
         trim_adaptor = "AGATCGGAAG",
         memory_mode = "NoSharedMemory",
-        additional_args = NULL,
-        n_threads = 4,
-        overwrite = FALSE
+        additional_args = NULL
 ) {
     expectedBAM <- file.path(BAM_output_path, "Aligned.out.bam")
     if(!overwrite) {
@@ -693,10 +699,11 @@ STAR_alignReads <- function(
 STAR_buildGenome <- function(
     reference_path,
     STAR_ref_path = file.path(reference_path, "STAR"),
-    also_generate_mappability = FALSE,
     n_threads = 4,
-    sparsity = 1,
     overwrite = FALSE,
+    sparsity = 1,
+    also_generate_mappability = FALSE,
+    map_depth_threshold = 4,
     additional_args = NULL,
     ...
 ) {
@@ -791,10 +798,12 @@ STAR_buildGenome <- function(
 STAR_loadGenomeGTF <- function(
     reference_path,
     STAR_ref_path,
+    STARgenome_output = file.path(tempdir(), "STAR"),
+    n_threads = 4,
+    overwrite = FALSE,
     sjdbOverhang = 100,
     extraFASTA = "",
-    STARgenome_output = file.path(tempdir(), "STAR"),
-    overwrite = FALSE
+    additional_args = NULL
 ) {
     .validate_reference_resource(reference_path)
     .validate_STAR_version()

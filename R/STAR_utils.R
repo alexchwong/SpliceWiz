@@ -806,7 +806,6 @@ STAR_loadGenomeGTF <- function(
     .validate_STAR_version()
     .validate_STAR_reference(STAR_ref_path)
 
-
     # Prepare GTF
     transcripts.gtf <- .STAR_get_GTF(reference_path)
 
@@ -843,7 +842,7 @@ STAR_loadGenomeGTF <- function(
         "--runThreadN", .validate_threads(n_threads, as_BPPARAM = FALSE))
 
     nch <- nchar(STARgenome_output)
-    if(substr(STARgenome_output, nch,nch) != "/")
+    if(substr(STARgenome_output, nch,nch) == "/")
         STARgenome_output <- substr(STARgenome_output, 1, nch-1)
     # create output directory (destroy old STAR ref if already exists)
     if(dir.exists(STARgenome_output)) {
@@ -960,8 +959,6 @@ STAR_mappability <- function(
     .validate_STAR_reference(STAR_ref_path)
 
     .log("Loading STAR two-pass genome", type = "message")
-
-    args <- c("--runMode", "genomeGenerate")
     args <- c(args, "--genomeDir", STAR_ref_path)
 
     args <- c(args, "--sjdbFileChrStartEnd",
@@ -973,7 +970,7 @@ STAR_mappability <- function(
         .validate_threads(n_threads, as_BPPARAM = FALSE))
 
     nch <- nchar(STARgenome_output)
-    if(substr(STARgenome_output, nch,nch) != "/")
+    if(substr(STARgenome_output, nch,nch) == "/")
         STARgenome_output <- substr(STARgenome_output, 1, nch-1)
     # create output directory (destroy old STAR ref if already exists)
     if(dir.exists(STARgenome_output)) {

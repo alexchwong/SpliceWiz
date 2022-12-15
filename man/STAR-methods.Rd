@@ -6,9 +6,9 @@
 \alias{STAR_alignExperiment}
 \alias{STAR_alignReads}
 \alias{STAR_version}
-\alias{STAR_mappability}
 \alias{STAR_buildGenome}
 \alias{STAR_loadGenomeGTF}
+\alias{STAR_mappability}
 \title{STAR wrappers for building reference for STAR, and aligning RNA-sequencing}
 \usage{
 STAR_version()
@@ -21,32 +21,22 @@ STAR_buildRef(
   sjdbOverhang = 100,
   n_threads = 4,
   sparsity = 1,
+  overwrite = FALSE,
   additional_args = NULL,
-  ...
-)
-
-STAR_mappability(
-  reference_path,
-  STAR_ref_path = file.path(reference_path, "STAR"),
-  map_depth_threshold = 4,
-  n_threads = 4,
   ...
 )
 
 STAR_alignExperiment(
-  fastq_1 = c("./sample_1.fastq"),
-  fastq_2 = NULL,
+  Experiment,
   STAR_ref_path,
   BAM_output_path,
-  two_pass = FALSE,
   trim_adaptor = "AGATCGGAAG",
-  memory_mode = "NoSharedMemory",
-  additional_args = NULL,
+  two_pass = FALSE,
   n_threads = 4,
   overwrite = FALSE
 )
 
-STAR_alignExperiment(
+STAR_alignReads(
   fastq_1 = c("./sample_1.fastq"),
   fastq_2 = NULL,
   STAR_ref_path,
@@ -65,6 +55,7 @@ STAR_buildGenome(
   also_generate_mappability = FALSE,
   n_threads = 4,
   sparsity = 1,
+  overwrite = FALSE,
   additional_args = NULL,
   ...
 )
@@ -76,6 +67,14 @@ STAR_loadGenomeGTF(
   extraFASTA = "",
   STARgenome_output = file.path(tempdir(), "STAR"),
   overwrite = FALSE
+)
+
+STAR_mappability(
+  reference_path,
+  STAR_ref_path = file.path(reference_path, "STAR"),
+  map_depth_threshold = 4,
+  n_threads = 4,
+  ...
 )
 }
 \arguments{
@@ -108,20 +107,29 @@ genome generation and mapping using < 16 Gb of RAM, albeit with slightly
 lower mapping rate (~ 0.1\% lower, according to STAR's author). Setting
 this to higher values is experimental (and not tested)}
 
+\item{overwrite}{(default \code{FALSE})
+For \code{STAR_buildRef}, \code{STAR_buildGenome} and \code{STAR_loadGenomeGTF} -
+if STAR genome already exists, should it be overwritten.
+For \code{STAR_alignExperiment} and \code{STAR_alignReads} - if BAM file already
+exists, should it be overwritten.}
+
 \item{additional_args}{A character vector of additional arguments to be
 parsed into STAR. See examples below.}
 
 \item{...}{Additional arguments to be parsed into
 \code{generateSyntheticReads()}. See \link{Mappability-methods}.}
 
-\item{fastq_1, fastq_2}{In STAR_alignReads: character vectors giving the
-path(s) of one or more FASTQ (or FASTA) files to be aligned.
-If single reads are to be aligned, omit \code{fastq_2}}
+\item{Experiment}{A two or three-column data frame with the columns denoting
+sample names, forward-FASTQ and reverse-FASTQ files. This can be
+conveniently generated using \link{findFASTQ}}
 
 \item{BAM_output_path}{The path under which STAR outputs the aligned BAM
 files. In \code{STAR_alignExperiment()}, STAR will output aligned
 BAMS inside subdirectories of this folder, named by sample names. In
 \code{STAR_alignReads()}, STAR will output directly into this path.}
+
+\item{trim_adaptor}{The sequence of the Illumina adaptor to trim via STAR's
+\code{--clip3pAdapterSeq} option}
 
 \item{two_pass}{Whether to use two-pass mapping. In
 \code{STAR_alignExperiment()}, STAR will first align every sample
@@ -131,73 +139,62 @@ are then given to STAR to generate a temporary genome (contained within
 these junctions to improve novel junction detection. In
 \code{STAR_alignReads()}, STAR will run \code{--twopassMode Basic}}
 
-\item{trim_adaptor}{The sequence of the Illumina adaptor to trim via STAR's
-\code{--clip3pAdapterSeq} option}
+\item{fastq_1, fastq_2}{In STAR_alignReads: character vectors giving the
+path(s) of one or more FASTQ (or FASTA) files to be aligned.
+If single reads are to be aligned, omit \code{fastq_2}}
 
 \item{memory_mode}{The parameter to be parsed to \code{--genomeLoad}; either
 \code{NoSharedMemory} or \code{LoadAndKeep} are used.}
-
-\item{overwrite}{(default \code{FALSE}) If BAM file(s) already exist from a
-previous run, whether these would be overwritten.}
 
 \item{extraFASTA}{(default \code{""}) One or more FASTA files containing spike-in
 genome sequences (e.g. ERCC, Sequins), as required.}
 
 \item{STARgenome_output}{The output path of the created on-the-fly genome}
-
-\item{Experiment}{A two or three-column data frame with the columns denoting
-sample names, forward-FASTQ and reverse-FASTQ files. This can be
-conveniently generated using \link{findFASTQ}}
 }
 \value{
 For \code{STAR_version()}: The STAR version
 
 For \code{STAR_buildRef()}: None
 
-For \code{STAR_mappability()}: None
-
 For \code{STAR_alignExperiment()}: None
 
-For \code{STAR_alignExperiment()}: None
+For \code{STAR_alignReads()}: None
 
 For \code{STAR_buildGenome()}: None
 
 For \code{STAR_loadGenomeGTF()}:
 The path of the on-the-fly STAR genome, typically in the subdirectory
 "_STARgenome" within the given \code{STARgenome_output} directory
+
+For \code{STAR_mappability()}: None
 }
 \description{
-These functions run the STAR aligner to build a STAR genome reference,
-calculate mappability exclusion regions using STAR, and align one or more
-FASTQ files (single or paired) to the generated genome. These functions only
-work on Linux-based systems with STAR installed. STAR must be
-accessible via \verb{$PATH}. See details and examples
+These STAR helper / wrapper functions allow users to (1) create a STAR
+genome reference (with or without GTF), (2) align one or more RNA-seq
+samples, and (3) calculate regions of low mappability. STAR references
+can be created using one-step (genome and GTF), or two-step (genome first,
+then on-the-fly with injected GTF) approaches.
 }
 \details{
 \strong{Pre-requisites}
 
-\code{STAR_buildRef} requires \link{getResources} to be run to fetch the
-required genome and gene annotation files.
+\code{STAR_buildRef()} and \code{STAR_buildGenome()} require prepared genome
+and gene annotation reference retrieved using \link{getResources}, and
+(optionally) a SpliceWiz reference created using \link{buildRef}
 
-\code{STAR_mappability}, \code{STAR_alignExperiment} and \code{STAR_alignReads} requires a
-\code{STAR} genome, which can be built using \code{STAR_buildRef}
+\code{STAR_loadGenomeGTF()} requires the above, and additionally a STAR genome
+created using \code{STAR_buildGenome()}
+
+\code{STAR_alignExperiment()}, \code{STAR_alignReads()}, and \code{STAR_mappability()}:
+requires a \code{STAR} genome, which can be built using \code{STAR_buildRef()} or
+\code{STAR_buildGenome()} / \code{STAR_loadGenomeGTF()}
 
 \strong{Function Description}
 
-For \code{STAR_buildRef}: this function
-will create a \code{STAR} genome reference in the \code{STAR} subdirectory in the
-path given by \code{reference_path}. Optionally, it will run \code{STAR_mappability}
+For \code{STAR_buildRef}: this function will create a \code{STAR} genome reference
+using the same genome FASTA and gene annotation GTF used to create
+the SpliceWiz reference. Optionally, it will run \code{STAR_mappability}
 if \code{also_generate_mappability} is set to \code{TRUE}
-
-For \code{STAR_mappability}: this function will first
-will run \link{generateSyntheticReads}, then use the given \code{STAR} genome to
-align the synthetic reads using \code{STAR}. The aligned BAM file will then be
-processed using \link{calculateMappability} to calculate the
-lowly-mappable genomic regions,
-producing the \code{MappabilityExclusion.bed.gz} output file.
-
-For \code{STAR_alignReads}: aligns a single or pair of FASTQ files to the given
-\code{STAR} genome using the \code{STAR} aligner.
 
 For \code{STAR_alignExperiment}: aligns a set of FASTQ or paired FASTQ files
 using the given
@@ -205,10 +202,28 @@ using the given
 A data.frame specifying sample names and corresponding FASTQ files are
 required
 
+For \code{STAR_alignReads}: aligns a single or pair of FASTQ files to the given
+\code{STAR} genome using the \code{STAR} aligner.
+
 For \code{STAR_buildGenome}: Creates a STAR genome reference, using ONLY the
 FASTA file used to create the SpliceWiz reference. This allows users to
 create a single STAR reference for use with multiple transcriptome (GTF)
-references (on different occasions).
+references (on different occasions). Optionally, it will run
+\code{STAR_mappability} if \code{also_generate_mappability} is set to \code{TRUE}
+
+For \code{STAR_loadGenomeGTF}: Creates an "on-the-fly" STAR genome, injecting GTF
+from the given SpliceWiz \code{reference_path}, setting \code{sjdbOverhang} setting,
+and (optionally) any spike-ins via the \code{extraFASTA} parameter.
+This allows users to create a single STAR reference for use with multiple
+transcriptome (GTF) references, with different sjdbOverhang settings,
+and/or spike-ins (on different occasions or for different projects).
+
+For \code{STAR_mappability}: this function will first
+will run \link{generateSyntheticReads}, then use the given \code{STAR} genome to
+align the synthetic reads using \code{STAR}. The aligned BAM file will then be
+processed using \link{calculateMappability} to calculate the
+lowly-mappable genomic regions,
+producing the \code{MappabilityExclusion.bed.gz} output file.
 }
 \section{Functions}{
 \itemize{
@@ -217,26 +232,20 @@ references (on different occasions).
 \item \code{STAR_buildRef()}: Creates a STAR genome reference, using both FASTA
 and GTF files used to create the SpliceWiz reference
 
-\item \code{STAR_mappability()}: Calculates lowly-mappable genomic regions using STAR
-
 \item \code{STAR_alignExperiment()}: Aligns multiple sets of FASTQ files, belonging to
 multiple samples
 
-\item \code{STAR_alignExperiment()}: Aligns a single sample (with single or paired FASTQ
+\item \code{STAR_alignReads()}: Aligns a single sample (with single or paired FASTQ
 or FASTA files)
 
 \item \code{STAR_buildGenome()}: Creates a STAR genome reference, using ONLY the
 FASTA file used to create the SpliceWiz reference
 
-\item \code{STAR_loadGenomeGTF()}: Creates an \code{on-the-fly} STAR genome, injecting GTF
-from the given SpliceWiz \code{reference_path}, setting sjdbOverhang setting,
+\item \code{STAR_loadGenomeGTF()}: Creates an "on-the-fly" STAR genome, injecting GTF
+from the given SpliceWiz \code{reference_path}, setting \code{sjdbOverhang} setting,
 and (optionally) any spike-ins as \code{extraFASTA}
-For \code{STAR_loadGenomeGTF}: Creates an "on-the-fly" STAR genome, injecting GTF
-from the given SpliceWiz \code{reference_path}, setting sjdbOverhang setting,
-and (optionally) any spike-ins as \code{extraFASTA}.
-This allows users to create a single STAR reference for use with multiple
-transcriptome (GTF) references, with different sjdbOverhang settings,
-and/or spike-ins (on different occasions / for different projects).
+
+\item \code{STAR_mappability()}: Calculates lowly-mappable genomic regions using STAR
 
 }}
 \examples{

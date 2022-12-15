@@ -560,8 +560,8 @@ STAR_alignReads <- function(
 }
 
 .validate_STAR_version <- function(type = "error") {
-    if (Sys.info()["sysname"] != "Linux") {
-        .log("STAR wrappers are only supported on Linux", type = type)
+    if (!(Sys.info()["sysname"] %in% c("Linux", "Darwin"))) {
+        .log("STAR is only supported on Linux or MacOS", type = type)
     }
     star_version <- NULL
     tryCatch({

@@ -83,12 +83,11 @@
 #' @param trim_adaptor The sequence of the Illumina adaptor to trim via STAR's
 #'   `--clip3pAdapterSeq` option
 #' @param two_pass Whether to use two-pass mapping. In
-#'   \code{STAR_alignExperiment()}, STAR will first align every sample
-#'   and generate a list of splice junctions but not BAM files. The junctions
-#'   are then given to STAR to generate a temporary genome (contained within
-#'   `_STARgenome`) subdirectory within that of the first sample), using
-#'   these junctions to improve novel junction detection. In
-#'   \code{STAR_alignReads()}, STAR will run \code{--twopassMode Basic}
+#'   `STAR_alignExperiment()`, STAR first-pass will align every sample
+#'   to generate a list of splice junctions but not BAM files. The junctions
+#'   are then given to STAR to generate a temporary genome containing
+#'   information about novel junctions, thereby improving novel junction
+#'   detection. In `STAR_alignReads()`, STAR will use `--twopassMode Basic`
 #' @param fastq_1,fastq_2 In STAR_alignReads: character vectors giving the
 #'   path(s) of one or more FASTQ (or FASTA) files to be aligned.
 #'   If single reads are to be aligned, omit \code{fastq_2}
@@ -207,10 +206,12 @@
 #' #   GTF files should not be mixed (unless the chromosome GTF names have
 #' #   been fixed)
 #'
+#' # - also set sparsity = 2 to build human genome in < 16 Gb RAM
+#'
 #' STAR_buildGenome(
 #'     reference_path = "Reference_FTP",
 #'     STAR_ref_path = file.path("Reference_FTP", "STAR_genomeOnly"),
-#'     n_threads = 8
+#'     n_threads = 8, sparsity = 2
 #' )
 #'
 #' # - Injecting a GTF into a genome-only STAR reference
@@ -404,13 +405,17 @@ STAR_alignExperiment <- function(
             loaded_ref <- ref
         }
         for (i in seq_len(length(samples))) {
-            if (pass == 2 && !is.null(two_pass_genome) && is.null(loaded_ref)) {
-                ref <- two_pass_genome
+            # Generate two-pass genome using spoof reads
+            if(pass == 2 && is.null(two_pass_genome) && !is.null(SJ.files)) {
+                two_pass_genome <- .STAR_twopassGenome(
+                    STAR_ref_path, SJ_files = SJ.files$path,
+                    n_threads = n_threads
+                )
                 system2(command = "STAR", args = c(
                     "--genomeLoad", "LoadAndExit", "--genomeDir", ref,
                     "--outFileNamePrefix", tempdir()
                 ))
-                loaded_ref <- ref
+                loaded_ref <- ref <- two_pass_genome
             }
 
             sample <- samples[i]
@@ -425,15 +430,6 @@ STAR_alignExperiment <- function(
             memory_mode <- "LoadAndKeep"
             if (two_pass && pass == 1) {
                 additional_args <- c("--outSAMtype", "None")
-            } else if (two_pass && pass == 2 && !is.null(SJ.files)) {
-                additional_args <- c("--sjdbFileChrStartEnd",
-                    paste(SJ.files$path, collapse = " "),
-                    "--sjdbInsertSave", "All"
-                )
-                two_pass_genome <- file.path(BAM_output_path, sample,
-                    "_STARgenome")
-                SJ.files <- NULL
-                memory_mode <- "NoSharedMemory"
             } else {
                 additional_args <- NULL
             }
@@ -465,6 +461,10 @@ STAR_alignExperiment <- function(
                 "--outFileNamePrefix", tempdir()
         ))
         loaded_ref <- NULL
+        
+        if(pass == 2 && !is.null(two_pass_genome)) {
+            unlink(file.path(tempdir(), "STAR_twopass"), recursive = TRUE)
+        }
     }
 }
 
@@ -952,4 +952,68 @@ STAR_mappability <- function(
     } else {
         .log("Mappability Exclusion calculations not performed", "warning")
     }
+}
+
+.STAR_twopassGenome <- function(
+    STAR_ref_path,
+    STARgenome_output = file.path(tempdir(), "STAR_twopass"),
+    SJ_files = "",
+    n_threads = 4,
+    overwrite = TRUE
+) {
+    .validate_STAR_version()
+    .validate_STAR_reference(STAR_ref_path)
+
+    .log("Loading STAR two-pass genome", type = "message")
+
+    args <- <- c("--runMode", "genomeGenerate")
+    args <- c(args, "--genomeDir", STAR_ref_path)
+
+    args <- c(args, "--sjdbFileChrStartEnd",
+        paste(SJ_files, collapse = " "),
+        "--sjdbInsertSave", "All"
+    )
+
+    args <- c(args, "--runThreadN", 
+        .validate_threads(n_threads, as_BPPARAM = FALSE))
+
+    nch <- nchar(STARgenome_output)
+    if(substr(STARgenome_output, nch,nch) != "/")
+        STARgenome_output <- substr(STARgenome_output, 1, nch-1)
+    # create output directory (destroy old STAR ref if already exists)
+    if(dir.exists(STARgenome_output)) {
+        if(
+            file.exists(file.path(STARgenome_output, "genomeParameters.txt")) &&
+            !overwrite
+        ) {
+            .log(paste(
+                STARgenome_output, "already exists.",
+                "Set overwrite = TRUE to override"
+            ))
+        } else if(
+            file.exists(file.path(STARgenome_output, "genomeParameters.txt"))
+        ) {
+            # Likely location of STAR ref, remove before generating STAR ref
+            unlink(STARgenome_output, recursive = FALSE)
+        }
+    }
+    .validate_path(STARgenome_output)    
+    args <- c(args, "--outFileNamePrefix", paste0(STARgenome_output,"/"))
+
+    args <- c(args, "--readFilesIn", 
+        system.file(
+            "extdata/spoof_1.fq",
+            package = "SpliceWiz"
+        ),
+        system.file(
+            "extdata/spoof_1.fq",
+            package = "SpliceWiz"
+        )
+    )
+
+    system2(command = "STAR", args = args)
+
+    return(.validate_STAR_reference(
+        file.path(STARgenome_output, "_STARgenome")
+    ))
 }

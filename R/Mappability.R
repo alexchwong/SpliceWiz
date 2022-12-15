@@ -86,14 +86,17 @@
 #'
 #' # (2a) Build the Rsubread genome index:
 #'
-#' setwd(ref_path)
-#' Rsubread::buildindex(basename = "./reference_index",
-#'     reference = chrZ_genome())
+#' subreadIndexPath <- file.path(ref_path, "Rsubread")
+#' if(!dir.exists(subreadIndexPath)) dir.create(subreadIndexPath)
+#' Rsubread::buildindex(
+#'     basename = file.path(subreadIndexPath, "reference_index"), 
+#'     reference = chrZ_genome()
+#' )
 #'
 #' # (2b) Align the synthetic reads using Rsubread::subjunc()
 #'
 #' Rsubread::subjunc(
-#'     index = "./reference_index",
+#'     index = file.path(subreadIndexPath, "reference_index"), 
 #'     readfile1 = file.path(ref_path, "Mappability", "Reads.fa"),
 #'     output_file = file.path(ref_path, "Mappability", "AlignedReads.bam"),
 #'     useAnnotation = TRUE,

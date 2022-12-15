@@ -206,12 +206,15 @@
 #' #   GTF files should not be mixed (unless the chromosome GTF names have
 #' #   been fixed)
 #'
-#' # - also set sparsity = 2 to build human genome in < 16 Gb RAM
+#' # - also set sparsity = 2 to build human genome so that it will fit in
+#' #   16 Gb RAM. NB: this step's RAM usage can be set using the
+#' #   `--limitGenomeGenerateRAM` parameter
 #'
 #' STAR_buildGenome(
 #'     reference_path = "Reference_FTP",
 #'     STAR_ref_path = file.path("Reference_FTP", "STAR_genomeOnly"),
-#'     n_threads = 8, sparsity = 2
+#'     n_threads = 8, sparsity = 2,
+#'     additional_args = c("--limitGenomeGenerateRAM", "16000000000")
 #' )
 #'
 #' # - Injecting a GTF into a genome-only STAR reference
@@ -301,8 +304,12 @@ STAR_buildRef <- function(
         } else if(
             file.exists(file.path(STAR_ref_path, "genomeParameters.txt"))
         ) {
-            # Likely location of STAR ref, remove before generating STAR ref
-            unlink(STAR_ref_path, recursive = FALSE)
+            .log(
+                paste(
+                    "Overwriting STAR reference in", STAR_ref_path
+                ), "message"
+            )
+            unlink(list.files(STAR_ref_path), recursive = FALSE)
         }
     }
 
@@ -494,9 +501,10 @@ STAR_alignReads <- function(
             return()
         }
     } else {
-        .log(paste(
-            expectedBAM, "found, overwriting..."
-            ), "warning"
+        .log(
+            paste(
+                "Overwriting", expectedBAM
+            ), "message"
         )
         unlink(expectedBAM)
     }
@@ -738,8 +746,12 @@ STAR_buildGenome <- function(
         } else if(
             file.exists(file.path(STAR_ref_path, "genomeParameters.txt"))
         ) {
-            # Likely location of STAR ref, remove before generating STAR ref
-            unlink(STAR_ref_path, recursive = FALSE)
+            .log(
+                paste(
+                    "Overwriting STAR reference in", STAR_ref_path
+                ), "message"
+            )
+            unlink(list.files(STAR_ref_path), recursive = FALSE)
         }
     }
 

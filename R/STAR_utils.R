@@ -592,7 +592,7 @@ STAR_alignReads <- function(
         .log(paste(STAR_ref_path, 
             "does not appear to be a valid STAR reference"))    
     } else {
-        .log(paste(STAR_ref_path, "on-the-fly STAR genome created"))
+        .log(paste(STAR_ref_path, "on-the-fly STAR genome created"), "message")
     }
     return(normalizePath(STAR_ref_path))
 }

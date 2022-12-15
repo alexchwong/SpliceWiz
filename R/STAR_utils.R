@@ -587,6 +587,16 @@ STAR_alignReads <- function(
     return(normalizePath(STAR_ref_path))
 }
 
+.validate_OTF_STAR_reference <- function(STAR_ref_path) {
+    if (!file.exists(file.path(STAR_ref_path, "genomeParameters.txt"))) {
+        .log(paste(STAR_ref_path, 
+            "does not appear to be a valid STAR reference"))    
+    } else {
+        .log(paste(STAR_ref_path, "on-the-fly STAR genome created"))
+    }
+    return(normalizePath(STAR_ref_path))
+}
+
 # Creates a temporary FASTA file from locally-stored TwoBit
 .STAR_get_FASTA <- function(reference_path) {
     genome.fa <- file.path(reference_path, "resource", "genome.fa")
@@ -884,7 +894,7 @@ STAR_loadGenomeGTF <- function(
    
     .STAR_clean_temp_FASTA_GTF(reference_path)
 
-    return(.validate_STAR_reference(
+    return(.validate_OTF_STAR_reference(
         file.path(STARgenome_output, "_STARgenome")
     ))
 }
@@ -1005,7 +1015,7 @@ STAR_mappability <- function(
 
     system2(command = "STAR", args = args)
 
-    return(.validate_STAR_reference(
+    return(.validate_OTF_STAR_reference(
         file.path(STARgenome_output, "_STARgenome")
     ))
 }

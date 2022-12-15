@@ -322,14 +322,12 @@ STAR_buildRef <- function(
     if (!("--runThreadN" %in% additional_args)) args <- c(args,
         "--runThreadN", .validate_threads(n_threads, as_BPPARAM = FALSE))
 
-    if (!is.null(additional_args) && all(is.character(additional_args))) {
-        # sanity check sparsity
-        if(is.na(as.numeric(sparsity))) sparsity <- 1
-        sparsity <- floor(sparsity)
-        sparsity <- min(sparsity, 1)
-        
-        args <- c(args, "--genomeSAsparseD", sparsity)
-    }
+    # sanity check sparsity
+    if(is.na(as.numeric(sparsity))) sparsity <- 1
+    sparsity <- floor(sparsity)
+    sparsity <- min(sparsity, 1)
+    args <- c(args, "--genomeSAsparseD", sparsity)
+
     if (!is.null(additional_args) && all(is.character(additional_args))) {
         args <- c(args, additional_args)
     }
@@ -746,14 +744,13 @@ STAR_buildGenome <- function(
     if (!("--runThreadN" %in% additional_args)) args <- c(args,
         "--runThreadN", .validate_threads(n_threads, as_BPPARAM = FALSE))
 
-    if (!is.null(additional_args) && all(is.character(additional_args))) {
-        # sanity check sparsity
-        if(is.na(as.numeric(sparsity))) sparsity <- 1
-        sparsity <- floor(sparsity)
-        sparsity <- min(sparsity, 1)
-        
-        args <- c(args, "--genomeSAsparseD", sparsity)
-    }
+    # sanity check sparsity
+    if(is.na(as.numeric(sparsity))) sparsity <- 1
+    sparsity <- floor(sparsity)
+    sparsity <- min(sparsity, 1)
+    
+    args <- c(args, "--genomeSAsparseD", sparsity)
+
     if (!is.null(additional_args) && all(is.character(additional_args))) {
         args <- c(args, additional_args)
     }

@@ -45,7 +45,8 @@ buildFullRef(
   nonPolyARef = getNonPolyARef(genome_type),
   BlacklistRef = "",
   useExtendedTranscripts = TRUE,
-  n_threads = 4
+  n_threads = 4,
+  ...
 )
 
 getNonPolyARef(genome_type)
@@ -136,6 +137,9 @@ corresponding to \code{genome_type} will automatically be used.}
 and mappability calculations. Multi-threading is not used for SpliceWiz
 reference generation (but multiple cores are utilised in data-table
 and fst file processing automatically, where available). See \link{STAR-methods}}
+
+\item{...}{For STAR_buildRef, additional parameters to be parsed into
+\code{STAR_buildRef} which it runs internally. See \link{STAR_buildRef}}
 }
 \value{
 For \code{getResources}: creates the following local resources:

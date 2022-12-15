@@ -966,7 +966,7 @@ STAR_mappability <- function(
 
     .log("Loading STAR two-pass genome", type = "message")
 
-    args <- <- c("--runMode", "genomeGenerate")
+    args <- c("--runMode", "genomeGenerate")
     args <- c(args, "--genomeDir", STAR_ref_path)
 
     args <- c(args, "--sjdbFileChrStartEnd",

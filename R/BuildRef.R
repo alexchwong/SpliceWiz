@@ -436,10 +436,21 @@ buildFullRef <- function(
     STAR_buildRef(reference_path = reference_path,
         also_generate_mappability = use_STAR_mappability,
         n_threads = n_threads)
-
+    
+    if(use_STAR_mappability) {
+        use_genome_type <- ""
+        use_npa_type <- nonPolyARef
+        if(use_npa_type == "" & genome_type != "") {
+            use_npa_type <- getNonPolyARef(genome_type)
+        }
+    } else {
+        use_genome_type <- genome_type
+        use_npa_type <- nonPolyARef
+    }
+    
     buildRef(reference_path = reference_path,
-        genome_type = genome_type,
-        nonPolyARef = nonPolyARef,
+        genome_type = use_genome_type, # makes sure generated map-ref is used
+        nonPolyARef = use_npa_type,
         BlacklistRef = BlacklistRef,
         chromosome_aliases = chromosome_aliases,
         useExtendedTranscripts = useExtendedTranscripts)

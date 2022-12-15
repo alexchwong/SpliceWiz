@@ -959,7 +959,7 @@ STAR_mappability <- function(
     .validate_STAR_reference(STAR_ref_path)
 
     .log("Loading STAR two-pass genome", type = "message")
-    args <- c(args, "--genomeDir", STAR_ref_path)
+    args <- c("--genomeDir", STAR_ref_path)
 
     args <- c(args, "--sjdbFileChrStartEnd",
         paste(SJ_files, collapse = " "),

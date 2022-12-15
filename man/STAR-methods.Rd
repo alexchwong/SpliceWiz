@@ -130,12 +130,11 @@ BAMS inside subdirectories of this folder, named by sample names. In
 \code{STAR_alignReads()}, STAR will output directly into this path.}
 
 \item{two_pass}{Whether to use two-pass mapping. In
-\code{STAR_alignExperiment()}, STAR will first align every sample
-and generate a list of splice junctions but not BAM files. The junctions
-are then given to STAR to generate a temporary genome (contained within
-\verb{_STARgenome}) subdirectory within that of the first sample), using
-these junctions to improve novel junction detection. In
-\code{STAR_alignReads()}, STAR will run \code{--twopassMode Basic}}
+\code{STAR_alignExperiment()}, STAR first-pass will align every sample
+to generate a list of splice junctions but not BAM files. The junctions
+are then given to STAR to generate a temporary genome containing
+information about novel junctions, thereby improving novel junction
+detection. In \code{STAR_alignReads()}, STAR will use \verb{--twopassMode Basic}}
 
 \item{trim_adaptor}{The sequence of the Illumina adaptor to trim via STAR's
 \code{--clip3pAdapterSeq} option}
@@ -348,10 +347,12 @@ STAR_alignExperiment(
 #   GTF files should not be mixed (unless the chromosome GTF names have
 #   been fixed)
 
+# - also set sparsity = 2 to build human genome in < 16 Gb RAM
+
 STAR_buildGenome(
     reference_path = "Reference_FTP",
     STAR_ref_path = file.path("Reference_FTP", "STAR_genomeOnly"),
-    n_threads = 8
+    n_threads = 8, sparsity = 2
 )
 
 # - Injecting a GTF into a genome-only STAR reference

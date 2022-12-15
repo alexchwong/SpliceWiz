@@ -819,8 +819,6 @@ STAR_loadGenomeGTF <- function(
     )
 
     args <- NULL
-    if (!("--runMode" %in% additional_args)) args <- c(
-        "--runMode", "genomeGenerate")
 
     if (!("--genomeDir" %in% additional_args)) args <- c(args,
         "--genomeDir", STAR_ref_path)

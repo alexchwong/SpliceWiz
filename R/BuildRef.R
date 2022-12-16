@@ -1674,14 +1674,22 @@ Get_GTF_file <- function(reference_path) {
         paste0(get("transcript_id"), "_Intron", get("intron_number"))]
 
     # Annotate introns with gene and transcript names and biotype
-    candidate.introns[Transcripts,
-        on = "transcript_id",
-        c("gene_name", "gene_id", "transcript_name", "transcript_biotype") :=
-            list(
-                get("i.gene_name"), get("i.gene_id"),
-                get("i.transcript_name"), get("i.transcript_biotype")
-            )
-    ]
+    # candidate.introns[Transcripts,
+        # on = "transcript_id",
+        # c("gene_name", "gene_id", "transcript_name", "transcript_biotype") :=
+            # list(
+                # get("i.gene_name"), get("i.gene_id"),
+                # get("i.transcript_name"), get("i.transcript_biotype")
+            # )
+    # ]
+    sourceMatch <- match(candidate.introns$transcript_id, 
+        Transcripts$transcript_id)
+    candidate.introns$gene_name <- Transcripts$gene_name[sourceMatch]
+    candidate.introns$gene_id <- Transcripts$gene_id[sourceMatch]
+    candidate.introns$transcript_name <- 
+        Transcripts$transcript_name[sourceMatch]
+    candidate.introns$transcript_biotype <- 
+        Transcripts$transcript_biotype[sourceMatch]
     return(candidate.introns)
 }
 
@@ -1720,10 +1728,14 @@ Get_GTF_file <- function(reference_path) {
 
     # Annotate TSL:
     if ("transcript_support_level" %in% colnames(Transcripts)) {
-        candidate.introns[Transcripts, on = "transcript_id",
-            c("transcript_support_level") :=
-                list(get("i.transcript_support_level"))
-        ]
+        # candidate.introns[Transcripts, on = "transcript_id",
+            # c("transcript_support_level") :=
+                # list(get("i.transcript_support_level"))
+        # ]
+        candidate.introns$transcript_support_level <-
+            Transcripts$transcript_support_level[match(
+                candidate.introns$transcript_id, Transcripts$transcript_id
+        )]
         candidate.introns[, c("transcript_support_level") :=
             tstrsplit(get("transcript_support_level"), split = " ")[[1]]]
         candidate.introns[
@@ -1736,10 +1748,12 @@ Get_GTF_file <- function(reference_path) {
     if(!is.null(Proteins)) {
         if ("protein_id" %in% colnames(Proteins)) {
             Proteins.red <- unique(Proteins[, c("transcript_id", "protein_id")])
-            candidate.introns[Proteins.red,
-                on = "transcript_id",
-                c("protein_id") := list(get("i.protein_id"))
-            ]
+            # candidate.introns[Proteins.red,
+                # on = "transcript_id",
+                # c("protein_id") := list(get("i.protein_id"))
+            # ]
+            candidate.introns$protein_id <- Proteins.red$protein_id[match(
+                candidate.introns$transcript_id, Proteins.red$transcript_id)]
         }
     } else {
         candidate.introns$protein_id <- NA
@@ -1748,10 +1762,12 @@ Get_GTF_file <- function(reference_path) {
     # Annotate ccds_id:
     if ("ccds_id" %in% colnames(Exons)) {
         Exons.red <- unique(Exons[, c("transcript_id", "ccds_id")])
-        candidate.introns[Exons.red,
-            on = "transcript_id",
-            c("ccds_id") := list(get("i.ccds_id"))
-        ]
+        # candidate.introns[Exons.red,
+            # on = "transcript_id",
+            # c("ccds_id") := list(get("i.ccds_id"))
+        # ]
+        candidate.introns$ccds_id <- Exons.red$ccds_id[match(
+            candidate.introns$transcript_id, Exons.red$transcript_id)]
     }
     return(candidate.introns)
 }
@@ -2223,31 +2239,58 @@ Get_GTF_file <- function(reference_path) {
     IntronCover.summa <- unique(
         IntronCover.summa[, c("intron_id", "num_blocks", "inclbases")],
         by = "intron_id")
-    IntronCover.summa[as.data.table(introns.unique),
-        on = "intron_id",
-        c("seqnames", "intron_start", "intron_end",
-            "intron_width", "width", "strand", "gene_name", "transcript_id")
-        := list(get("i.seqnames"), get("i.intron_start"),
-                get("i.intron_end"), get("i.intron_width"),
-                get("i.width"), get("i.strand"), get("i.gene_name"),
-                get("i.transcript_id"))
-    ]
+    source <- as.data.table(introns.unique)
+    sourceMatch <- match(IntronCover.summa$intron_id, source$intron_id)
+    # IntronCover.summa[as.data.table(introns.unique),
+        # on = "intron_id",
+        # c("seqnames", "intron_start", "intron_end",
+            # "intron_width", "width", "strand", "gene_name", "transcript_id")
+        # := list(get("i.seqnames"), get("i.intron_start"),
+                # get("i.intron_end"), get("i.intron_width"),
+                # get("i.width"), get("i.strand"), get("i.gene_name"),
+                # get("i.transcript_id"))
+    # ]
+    IntronCover.summa$seqnames <- source$seqnames[sourceMatch]
+    IntronCover.summa$intron_start <- source$intron_start[sourceMatch]
+    IntronCover.summa$intron_end <- source$intron_end[sourceMatch]
+    IntronCover.summa$intron_width <- source$intron_width[sourceMatch]
+    IntronCover.summa$width <- source$width[sourceMatch]
+    IntronCover.summa$strand <- source$strand[sourceMatch]
+    IntronCover.summa$gene_name <- source$gene_name[sourceMatch]
+    IntronCover.summa$transcript_id <- source$transcript_id[sourceMatch]
+    
     if (stranded) {
-        IntronCover.summa[as.data.table(introns.unique), on = "intron_id",
-            c("known_exon_dir", "GG", "EG_up", "EG_down") :=
-            list(get("i.known_exon_dir"), get("i.gene_group_stranded"),
-                get("i.exon_group_stranded_upstream"),
-                get("i.exon_group_stranded_downstream"))
-        ]
+        # IntronCover.summa[as.data.table(introns.unique), on = "intron_id",
+            # c("known_exon_dir", "GG", "EG_up", "EG_down") :=
+            # list(get("i.known_exon_dir"), get("i.gene_group_stranded"),
+                # get("i.exon_group_stranded_upstream"),
+                # get("i.exon_group_stranded_downstream"))
+        # ]
+        IntronCover.summa$known_exon_dir <- source$known_exon_dir[sourceMatch]
+        IntronCover.summa$GG <- 
+            source$gene_group_stranded[sourceMatch]
+        IntronCover.summa$EG_up <- 
+            source$exon_group_stranded_upstream[sourceMatch]
+        IntronCover.summa$EG_down <- 
+            source$exon_group_stranded_downstream[sourceMatch]
     } else {
-        IntronCover.summa[as.data.table(introns.unique), on = "intron_id",
-            c("known_exon_nd", "antiover", "antinear",
-                "GG", "EG_up", "EG_down") :=
-            list(get("i.known_exon_nd"), get("i.antiover"), get("i.antinear"),
-                get("i.gene_group_unstranded"),
-                get("i.exon_group_unstranded_upstream"),
-                get("i.exon_group_unstranded_downstream"))
-        ]
+        # IntronCover.summa[as.data.table(introns.unique), on = "intron_id",
+            # c("known_exon_nd", "antiover", "antinear",
+                # "GG", "EG_up", "EG_down") :=
+            # list(get("i.known_exon_nd"), get("i.antiover"), get("i.antinear"),
+                # get("i.gene_group_unstranded"),
+                # get("i.exon_group_unstranded_upstream"),
+                # get("i.exon_group_unstranded_downstream"))
+        # ]
+        IntronCover.summa$known_exon_nd <- source$known_exon_dir[sourceMatch]
+        IntronCover.summa$antiover <- source$antiover[sourceMatch]
+        IntronCover.summa$antinear <- source$antinear[sourceMatch]
+        IntronCover.summa$GG <- 
+            source$gene_group_unstranded[sourceMatch]
+        IntronCover.summa$EG_up <- 
+            source$exon_group_unstranded_upstream[sourceMatch]
+        IntronCover.summa$EG_down <- 
+            source$exon_group_unstranded_downstream[sourceMatch]
     }
     IntronCover.summa[, c("exclbases") :=
         get("intron_width") - get("inclbases")]
@@ -2607,9 +2650,10 @@ Get_GTF_file <- function(reference_path) {
     }
     protein.introns.red <- unique(
         protein.introns[, c("intron_id", "intron_type")])
-    NMD.Table[protein.introns.red, on = "intron_id",
-        c("intron_type") := get("i.intron_type")]
-
+    # NMD.Table[protein.introns.red, on = "intron_id",
+        # c("intron_type") := get("i.intron_type")]
+    NMD.Table$intron_type <- protein.introns.red$intron_type[match(
+        NMD.Table$intron_id, protein.introns.red$intron_id)]
     write.fst(NMD.Table, file.path(reference_path, "fst", "IR.NMD.fst"))
     gc()
 }

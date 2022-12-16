@@ -364,11 +364,11 @@ buildRef <- function(
     if(!is.null(session)) {
         shiny::withProgress(message = "Determining NMD Transcripts", {
             .gen_nmd(reference_path, reference_data$genome,
-                verbose = verbose, tryNew = TRUE)
+                verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
         })
     } else {
         .gen_nmd(reference_path, reference_data$genome, 
-            verbose = verbose, tryNew = TRUE)
+            verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
     }
     gc()
 
@@ -2881,13 +2881,19 @@ Get_GTF_file <- function(reference_path) {
     exon.MLE.DT <- exon.MLE.DT[, c("transcript_id", "seq")]
     splice <- exon.MLE.DT[, lapply(.SD, paste0, collapse = ""),
         by = "transcript_id"]
-    splice[as.numeric(regexpr("N", get("seq"))) < 0,
+    splice[
+        is.na(as.vector(stri_locate_first_fixed(get("seq"), "N")[,1])),
         c("AA") := .translate_fuzzy(.trim_3(get("seq")))
     ]
     # Find nucleotide position of first stop codon
-    splice[, c("stop_pos") :=
-        as.numeric(regexpr("\\*", get("AA"))) * 3 - 2]
-    splice[get("stop_pos") < 0, c("stop_pos") := NA]
+    # splice[, c("stop_pos") :=
+        # as.numeric(regexpr("\\*", get("AA"))) * 3 - 2]
+    # splice[get("stop_pos") < 0, c("stop_pos") := NA]
+
+    splice[, c("stop_pos") := as.vector(
+        stri_locate_first_fixed(get("AA"), "*")[,1])]
+    splice[!is.na(get("stop_pos")), c("stop_pos") := get("stop_pos") * 3 - 2]
+    
     splice[, c("splice_len") := nchar(get("seq"))]
     splice[!is.na(get("AA")),
         c("stop_to_EJ") := get("splice_len") - get("stop_pos")]
@@ -2937,8 +2943,14 @@ Get_GTF_file <- function(reference_path) {
 
     # trim exons downstream of intron
     intron.part.upstream.intron <- intron.part.upstream[get("type") == "intron"]
-    intron.part.upstream[intron.part.upstream.intron,
-        on = "intron_id", c("intron_pos") := get("i.elem_number")
+    # intron.part.upstream[intron.part.upstream.intron,
+        # on = "intron_id", c("intron_pos") := get("i.elem_number")
+    # ]
+    intron.part.upstream$intron_pos <- intron.part.upstream.intron$elem_number[
+        match(
+            intron.part.upstream$intron_id,
+            intron.part.upstream.intron$intron_id
+        )
     ]
     intron.part.upstream <- intron.part.upstream[!is.na(get("intron_pos"))]
     if (use_short) {
@@ -3025,18 +3037,26 @@ Get_GTF_file <- function(reference_path) {
     IRT <- elems[,
         lapply(.SD, paste0, collapse = ""), by = "intron_id"]
     # trim
-    IRT[, c("seq") := substr(get("seq"), 1,
-        nchar(get("seq")) - (nchar(get("seq")) %% 3))]
+    # IRT[, c("seq") := substr(get("seq"), 1,
+        # nchar(get("seq")) - (nchar(get("seq")) %% 3))]
+    seqlens <- 3 * floor(nchar(IRT$seq) / 3)
+    IRT[, c("seq") := substr(get("seq"), 1, seqlens)]
+    # IRT[
+        # as.numeric(regexpr("N", get("seq"))) < 0,
+        # c("AA") := .translate_fuzzy(.trim_3(get("seq")))
+    # ]
     IRT[
-        as.numeric(regexpr("N", get("seq"))) < 0,
-        c("AA") := .translate_fuzzy(.trim_3(get("seq")))
+        is.na(as.vector(stri_locate_first_fixed(get("seq"), "N")[,1])),
+        c("AA") := .translate_fuzzy(get("seq"))
     ]
-
+    
     # Find nucleotide position of first stop codon
-    IRT[, c("stop_pos") :=
-        as.numeric(regexpr("\\*", get("AA"))) * 3 - 2]
+    IRT[, c("stop_pos") := as.vector(
+        stri_locate_first_fixed(get("AA"), "*")[,1])]
+    IRT[!is.na(get("stop_pos")), c("stop_pos") := get("stop_pos") * 3 - 2]
+    
     IRT[get("stop_pos") < 0, c("stop_pos") := NA]
-    IRT[, c("IRT_len") := nchar(get("seq"))]
+    IRT[, c("IRT_len") := 3 * floor(nchar(get("seq")) / 3)]
     IRT[!is.na(get("AA")), c("stop_to_EJ") :=
         get("IRT_len") - get("stop_pos")]
     IRT[, c("use_short") := use_short]

@@ -766,11 +766,17 @@ Get_GTF_file <- function(reference_path) {
     .validate_path(reference_path, subdirs = "resource")
     if (!is_valid(fasta)) {
         twobit <- file.path(reference_path, "resource", "genome.2bit")
-        if (!file.exists(twobit)) .log(paste(fasta, "doesn't exist"))
+        if (!file.exists(twobit)) 
+            .log(paste(
+                twobit, "doesn't exist. Please run getResources()"
+            ))
     }
     if (!is_valid(gtf)) {
         gtf <- file.path(reference_path, "resource", "transcripts.gtf.gz")
-        if (!file.exists(gtf)) .log(paste(gtf, "doesn't exist"))
+        if (!file.exists(gtf))
+             .log(paste(
+                gtf, "doesn't exist. Please run getResources()"
+            ))       
     }
     # URLS are checked at BiocFileCache step contained within .parse_valid_file
 

@@ -493,7 +493,8 @@ int SpliceWizMain_multi(
   );
   Engine.clear();
 #ifdef __linux__
-  cout << "malloc trim() = " << malloc_trim(0) << "\n";
+  // cout << "malloc trim() = " << malloc_trim(0) << "\n";
+  malloc_trim(0);
 #endif
 
   return(ret2);

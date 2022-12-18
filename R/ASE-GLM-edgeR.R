@@ -65,6 +65,8 @@
 #'   details
 #' @param results The return value of `testASE_edgeR()`, to be used as input to
 #'   append mean and delta PSI values onto.
+#' @param useQL (default `TRUE`) Whether to use edgeR's quasi-likelihood method
+#'   to help reduce false positives from near-zero junction / intron counts.
 #' @return 
 #'   `fitASE_edgeR` and `fitASE_edgeR_custom` returns a named list containing
 #'   the following:
@@ -227,10 +229,11 @@ NULL
 #'   given design formula
 #' @export
 fitASE_edgeR <- function(
-        se,
-        strModelFormula, strASEFormula,
-        IRmode = c("all", "annotated", "annotated_binary"),
-        filter_antiover = TRUE, filter_antinear = FALSE
+    se,
+    strModelFormula, strASEFormula,
+    useQL = TRUE,
+    IRmode = c("all", "annotated", "annotated_binary"),
+    filter_antiover = TRUE, filter_antinear = FALSE
 ) {
     .check_package_installed("edgeR", "3.32.0")
     models <- .ASE_get_models(se, strModelFormula, strASEFormula)
@@ -257,7 +260,7 @@ fitASE_edgeR <- function(
 
     .log("Fitting edgeR contrast for included / excluded counts together",
         "message")
-    fit_ASE <- .ASE_edgeR_fitASE(se_use, models$design_ASE)
+    fit_ASE <- .ASE_edgeR_fitASE(se_use, models$design_ASE, useQL)
 
     return(list(
         IncExc = fit_IncExc$fit,
@@ -272,6 +275,7 @@ fitASE_edgeR <- function(
 #' @export
 fitASE_edgeR_custom <- function(
         se, model_IncExc, model_ASE,
+        useQL = TRUE,
         IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE
 ) {
@@ -299,7 +303,7 @@ fitASE_edgeR_custom <- function(
 
     .log("Fitting edgeR contrast for included / excluded counts together",
         "message")
-    fit_ASE <- .ASE_edgeR_fitASE(se_use, model_ASE)
+    fit_ASE <- .ASE_edgeR_fitASE(se_use, model_ASE, useQL)
 
     return(list(
         IncExc = fit_IncExc$fit,
@@ -319,11 +323,22 @@ testASE_edgeR <- function(
     coef_ASE = ncol(fit[["model_ASE"]]), 
     contrast_ASE = NULL
 ) {
+    useQL <- !is.null(fit$ASE$df.residual.zeros)
+    
     se_use <- se[rownames(se) %in% rownames(fit$ASE)]
-    qlf_IncExc <- edgeR::glmQLFTest(
-        fit$IncExc,
-        coef = coef_IncExc, contrast = contrast_IncExc
-    )
+    
+    if(useQL) {
+        qlf_IncExc <- edgeR::glmQLFTest(
+            fit$IncExc,
+            coef = coef_IncExc, contrast = contrast_IncExc
+        )    
+    } else {
+        qlf_IncExc <- edgeR::glmLRT(
+            fit$IncExc,
+            coef = coef_IncExc, contrast = contrast_IncExc
+        )  
+    }
+    
     res_IncExc <- edgeR::topTags(qlf_IncExc, n = nrow(fit$fit_IncExc))
     res_IncExc$table$EventName <- rownames(res_IncExc$table)
 
@@ -335,10 +350,17 @@ testASE_edgeR <- function(
     res.exc[, c("EventName") :=
         sub(".Excluded","",get("EventName"), fixed=TRUE)]
         
-    qlf_ASE <- edgeR::glmQLFTest(
-        fit$ASE,
-        coef = coef_ASE, contrast = contrast_ASE
-    )
+    if(useQL) {
+        qlf_ASE <- edgeR::glmQLFTest(
+            fit$ASE,
+            coef = coef_ASE, contrast = contrast_ASE
+        )
+    } else {
+        qlf_ASE <- edgeR::glmLRT(
+            fit$ASE,
+            coef = coef_ASE, contrast = contrast_ASE
+        )
+    }
     res_ASE <- edgeR::topTags(qlf_ASE, n = nrow(fit$fit_IncExc))
     res_ASE$table$EventName <- rownames(res_ASE)
     
@@ -350,7 +372,9 @@ testASE_edgeR <- function(
     
     res_ASE <- res_ASE[res.inc, on = "EventName"]
     res_ASE <- res_ASE[res.exc, on = "EventName"]
-    setorderv(res_ASE, "F", order = -1)
+    
+    orderCol <- ifelse(useQL, "F", "LR")
+    setorderv(res_ASE, orderCol, order = -1)
     
     rowData <- as.data.frame(rowData(se_use))
     rowData.DT <- .ASE_add_flags(as.data.table(rowData[,
@@ -438,7 +462,7 @@ addPSI_edgeR <- function(
     ))
 }
 
-.ASE_edgeR_fitASE <- function(se, model) {
+.ASE_edgeR_fitASE <- function(se, model, useQL = TRUE) {
     countData <- as.matrix(cbind(assay(se, "Included"),
         assay(se, "Excluded")))
 
@@ -456,7 +480,11 @@ addPSI_edgeR <- function(
     y <- edgeR::DGEList(counts=countData, remove.zeros = FALSE)
     y <- edgeR::estimateDisp(y, model)
     
-    fit <- edgeR::glmQLFit(y, model)
+    if(useQL) {
+        fit <- edgeR::glmQLFit(y, model)    
+    } else {
+        fit <- edgeR::glmFit(y, model)
+    }
     return(list(
         fit = fit,
         model = model

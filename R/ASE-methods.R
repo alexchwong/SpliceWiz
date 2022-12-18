@@ -206,6 +206,13 @@
 #' require("limma")
 #' res_limma <- ASE_limma(se, "treatment", "A", "B")
 #'
+#' # edgeR analysis (counts modeled using negative binomial distribution)
+#' # - QL: whether quasi-likelihood method was used
+#'
+#' require("edgeR")
+#' res_edgeR <- ASE_edgeR(se, "treatment", "A", "B", useQL = FALSE)
+#' res_edgeR_QL <- ASE_edgeR(se, "treatment", "A", "B", useQL = TRUE)
+#'
 #' # DoubleExpSeq analysis (counts modeled using beta binomial distribution)
 #'
 #' require("DoubleExpSeq")
@@ -322,9 +329,9 @@ ASE_limma <- function(se, test_factor, test_nom, test_denom,
 ASE_edgeR <- function(
         se, test_factor, test_nom, test_denom,
         batch1 = "", batch2 = "",
+        useQL = TRUE,
         IRmode = c("all", "annotated", "annotated_binary"),
-        filter_antiover = TRUE, filter_antinear = FALSE,
-        useQL = TRUE
+        filter_antiover = TRUE, filter_antinear = FALSE
 ) {
 
     .check_package_installed("edgeR", "3.32.0")
@@ -460,6 +467,7 @@ ASE_limma_timeseries <- function(se, test_factor,
 ASE_edgeR_timeseries <- function(se, test_factor,
         batch1 = "", batch2 = "",
         degrees_of_freedom = 1,
+        useQL = TRUE,
         IRmode = c("all", "annotated", "annotated_binary"),
         filter_antiover = TRUE, filter_antinear = FALSE
 ) {
@@ -478,7 +486,7 @@ ASE_edgeR_timeseries <- function(se, test_factor,
         "message")
     res.edgeR <- .ASE_edgeR_contrast_ts(se_use,
         test_factor,
-        batch1, batch2, degrees_of_freedom)
+        batch1, batch2, degrees_of_freedom, useQL)
     res.inc <- res.edgeR[grepl(".Included", get("EventName"))]
     res.inc[, c("EventName") :=
         sub(".Included","",get("EventName"), fixed=TRUE)]
@@ -493,7 +501,7 @@ ASE_edgeR_timeseries <- function(se, test_factor,
         rowData$EventName %in% res.exc$EventName,]
     res.ASE <- .ASE_edgeR_contrast_ASE_ts(se_use,
         test_factor, # test_nom, test_denom,
-        batch1, batch2, degrees_of_freedom)
+        batch1, batch2, degrees_of_freedom, useQL)
 
     colnames(res.inc)[-ncol(res.inc)] <- paste(
         "Inc", colnames(res.inc)[-ncol(res.inc)], sep = ".")
@@ -502,7 +510,9 @@ ASE_edgeR_timeseries <- function(se, test_factor,
 
     res.ASE <- res.ASE[res.inc, on = "EventName"]
     res.ASE <- res.ASE[res.exc, on = "EventName"]
-    setorderv(res.ASE, "F", order = -1)
+    
+    orderCol <- ifelse(useQL, "F", "LR")
+    setorderv(res.ASE, orderCol, order = -1)
     
     condlist <- as.list(sort(unique(
         unlist(colData(se)[, test_factor]
@@ -839,7 +849,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 }
 
 .ASE_edgeR_contrast_ts <- function(se, test_factor, # test_nom, test_denom,
-        batch1, batch2, degrees) {
+        batch1, batch2, degrees, useQL) {
     in_data <- .ASE_contrast_expr_ts(
         se, test_factor, 
         # test_nom, test_denom,
@@ -850,8 +860,13 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     y <- edgeR::calcNormFactors(y)
     y <- edgeR::estimateDisp(y,in_data$design1)
     
-    fit <- edgeR::glmQLFit(y, in_data$design1)
-    qlf <- edgeR::glmQLFTest(fit, coef = in_data$coef)
+    if(useQL) {
+        fit <- edgeR::glmQLFit(y, in_data$design1)
+        qlf <- edgeR::glmQLFTest(fit, coef = in_data$coef)        
+    } else {
+        fit <- edgeR::glmFit(y, in_data$design1)
+        qlf <- edgeR::glmLRT(fit, coef = in_data$coef)            
+    }
 
     res <- edgeR::topTags(qlf, n = nrow(y))
     res$table$EventName <- rownames(res)
@@ -935,7 +950,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 }
 
 .ASE_edgeR_contrast_ASE_ts <- function(se, test_factor, # test_nom, test_denom,
-        batch1, batch2, degrees) {
+        batch1, batch2, degrees, useQL) {
     in_data <- .ASE_contrast_ASE_ts(se, test_factor, 
         # test_nom, test_denom,
         batch1, batch2, degrees)
@@ -943,8 +958,13 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     y <- edgeR::DGEList(counts=in_data$countData)
     y <- edgeR::estimateDisp(y,in_data$design1)
     
-    fit <- edgeR::glmQLFit(y, in_data$design1)
-    qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)
+    if(useQL) {
+        fit <- edgeR::glmQLFit(y, in_data$design1)
+        qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)        
+    } else {
+        fit <- edgeR::glmFit(y, in_data$design1)
+        qlf <- edgeR::glmLRT(fit, contrast = in_data$contrast)            
+    }
 
     res <- edgeR::topTags(qlf, n = nrow(y))
     res$table$EventName <- rownames(res)

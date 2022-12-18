@@ -30,10 +30,10 @@ ASE_edgeR(
   test_denom,
   batch1 = "",
   batch2 = "",
+  useQL = TRUE,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
-  filter_antinear = FALSE,
-  useQL = TRUE
+  filter_antinear = FALSE
 )
 
 ASE_limma_timeseries(
@@ -53,6 +53,7 @@ ASE_edgeR_timeseries(
   batch1 = "",
   batch2 = "",
   degrees_of_freedom = 1,
+  useQL = TRUE,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE
@@ -353,6 +354,13 @@ colData(se)$replicate <- rep(c("P","Q","R"), 2)
 
 require("limma")
 res_limma <- ASE_limma(se, "treatment", "A", "B")
+
+# edgeR analysis (counts modeled using negative binomial distribution)
+# - QL: whether quasi-likelihood method was used
+
+require("edgeR")
+res_edgeR <- ASE_edgeR(se, "treatment", "A", "B", useQL = FALSE)
+res_edgeR_QL <- ASE_edgeR(se, "treatment", "A", "B", useQL = TRUE)
 
 # DoubleExpSeq analysis (counts modeled using beta binomial distribution)
 

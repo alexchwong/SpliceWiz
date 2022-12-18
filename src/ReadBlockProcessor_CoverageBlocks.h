@@ -56,7 +56,8 @@ class CoverageBlocks : public ReadBlockProcessor {
 		std::vector<BEDrecord> BEDrecords;
 
 	public:
-		void ProcessBlocks(const FragmentBlocks &fragblock);
+		void Reset();
+    void ProcessBlocks(const FragmentBlocks &fragblock);
 		void ChrMapUpdate(const std::vector<chr_entry> &chrmap);
 		void loadRef(std::istringstream &IN);
 		int WriteOutput(std::string& output, const FragmentsMap &FM) const;
@@ -74,7 +75,9 @@ class CoverageBlocks : public ReadBlockProcessor {
 
 class CoverageBlocksIRFinder : public CoverageBlocks {
 	public:
+    CoverageBlocksIRFinder();
     CoverageBlocksIRFinder(std::string &refString);
+    void initialize(std::string &refString);
 		void Combine(CoverageBlocksIRFinder &child);
 		int WriteOutput(std::string& output, std::string& QC, const JunctionCount &JC, const SpansPoint &SP, const FragmentsMap &FM, int n_threads = 1, int directionality = 0) const;
 };

@@ -1,4 +1,4 @@
-/* BAM2blocks.h Convert reads / fragments to FragmentBlocks
+/* htsBAM2blocks_htslib.h Convert reads / fragments to FragmentBlocks (htslib)
 
 Copyright (C) 2021 Alex Chit Hei Wong
 Copyright (C) 2016 William Ritchie
@@ -22,19 +22,25 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.  */
 
-#ifndef CODE_BAM2BLOCKS
-#define CODE_BAM2BLOCKS
+#ifdef WITH_HTSLIB
+
+#ifndef CODE_BAM2BLOCKS_HTS
+#define CODE_BAM2BLOCKS_HTS
 
 #include "includedefine.h"
 #include "SpliceWiz.h"
-#include "ompBAM.hpp"
+
+#include "htslib/hfile.h"
+#include "htslib/sam.h"
+#include "htslib/bgzf.h"
+#include "htslib/thread_pool.h"
 
 #include "FragmentBlocks.h"
 
 /* Little Endian .. for big endian each group of 4 bytes needs to be reversed before individual members are accessed. */
 
 
-class BAM2blocks {
+class htsBAM2blocks {
     FragmentBlocks oBlocks;
 
     std::vector< std::function<void(const std::vector<chr_entry> &)> > callbacksChrMappingChange;
@@ -42,8 +48,8 @@ class BAM2blocks {
 
     void cigar2block(uint32_t * cigar, uint16_t n_cigar_op, std::vector<int> &starts, std::vector<int> &lens, int &ret_genome_len);
 
-    unsigned int processPair(pbam1_t * read1, pbam1_t * read2);
-    unsigned int processSingle(pbam1_t * read1, bool mappability_mode = false);
+    unsigned int processPair(bam1_t * read1, bam1_t * read2);
+    unsigned int processSingle(bam1_t * read1, bool mappability_mode = false);
 
     // Statistics.
     unsigned long cReadsProcessed;
@@ -57,35 +63,40 @@ class BAM2blocks {
     unsigned long cSkippedReads;
     unsigned long cChimericReads;
 
-    pbam1_t reads[2];
-    pbam_in * IN;
-    
+    bam1_t * reads[2];
+
     std::vector<chr_entry> chrs;
 
-    std::map< std::string, pbam1_t* > * spare_reads;
-    pbam1_t * SupplyRead(std::string& read_name);    
-    int realizeSpareReads();
+    std::map< std::string, bam1_t* > * spare_reads;
+    bam1_t * SupplyRead(std::string& read_name);    
+    // int realizeSpareReads();
+    int read_name(bam1_t * b, std::string & dest);
 
 // Disable copy construction / assignment (doing so triggers compile errors)
-    BAM2blocks(const BAM2blocks &t);
-    BAM2blocks & operator = (const BAM2blocks &t);
+    htsBAM2blocks(const htsBAM2blocks &t);
+    htsBAM2blocks & operator = (const htsBAM2blocks &t);
   public:
-  	BAM2blocks();
-    BAM2blocks(BAM2blocks&& rhs);
-  	BAM2blocks(
+  	htsBAM2blocks();
+    htsBAM2blocks(htsBAM2blocks&& rhs);
+  	htsBAM2blocks(
       std::vector<std::string> & ref_names, 
       std::vector<uint32_t> & ref_lengths
     );  // Define BB with defined references
-    void initialize(
+  	void initialize(
       std::vector<std::string> & ref_names, 
       std::vector<uint32_t> & ref_lengths
-    );
-    ~BAM2blocks();
-  	unsigned int openFile(pbam_in * _IN);
+    );  // Define BB with defined references
+    ~htsBAM2blocks();
+    
+  	unsigned int initializeChrs();
 
-  	int processAll(unsigned int thread_number = 0, bool mappability_mode = false);
-  	int processSpares(BAM2blocks& other);
-  	int processStats(BAM2blocks& other);
+  	int processAll(
+      std::vector<bam1_t*> & bpool, int starts, int ends,
+      bool mappability_mode = false
+    );
+
+  	int processSpares(htsBAM2blocks& other);
+  	int processStats(htsBAM2blocks& other);
 
   	int WriteOutput(std::string& output);
 
@@ -93,5 +104,7 @@ class BAM2blocks {
     void registerCallbackProcessBlocks( std::function<void(const FragmentBlocks &)> callback );
 };
 
+
+#endif
 
 #endif

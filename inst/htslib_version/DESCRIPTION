@@ -51,7 +51,6 @@ Imports:
 	shinyFiles,
 	shinyWidgets,
 	shinydashboard,
-    stringi,
 	rhandsontable,
 	DT,
 	grDevices,
@@ -67,9 +66,11 @@ LinkingTo:
     ompBAM,
     Rcpp,
     zlibbioc, 
-	RcppProgress  
+	RcppProgress,
+    Rhtslib (>= 1.13.1)    
 SystemRequirements:
-    C++11, GNU make
+    C++11, GNU make,
+    libbz2 & liblzma & libcurl (with header files)
 Collate: AllImports.R
 	RcppExports.R
 	zzz.R
@@ -91,6 +92,7 @@ Collate: AllImports.R
 	Mappability.R
     ProcessBAM_docs.R
 	ProcessBAM.R
+    ProcessBAM_hts.R
 	CollateData.R
 	MakeSE.R
 	Filters.R
@@ -117,7 +119,7 @@ Collate: AllImports.R
 	SpliceWiz-package.R
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.2.2
 VignetteBuilder: knitr
 biocViews: Software, Transcriptomics, RNASeq, AlternativeSplicing, Coverage, 
   DifferentialSplicing, DifferentialExpression, GUI, Sequencing

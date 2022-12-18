@@ -25,6 +25,11 @@ SOFTWARE.  */
 #include <chrono>
 #include "main.h"
 
+// for malloc_trim (Linux only)
+#ifdef __linux__
+#include <malloc.h>
+#endif
+
 bool checkFileExists(const std::string& name) {
     std::ifstream f;
     f.open(name);
@@ -419,51 +424,32 @@ int SpliceWizMain(
    
   std::string s_bam = bam_file;
   std::string s_ref = reference_file;  
-  if(!checkFileExists(s_bam)) {
-    cout << "File " << s_bam << " does not exist!\n";
-    return(-1);
-  } 
-  if(!checkFileExists(s_ref)) {
-    cout << "File " << s_ref << " does not exist!\n";
-    return(-1);
-  } 
+
+	std::vector< std::string > v_bam;
+	std::vector< std::string > v_out_txt;
+	std::vector< std::string > v_out_cov;
+
+  v_bam.push_back(s_bam);
+  v_out_txt.push_back(s_output_txt);
+  v_out_cov.push_back(s_output_cov);
 
   swEngine Engine;
-  int use_threads = Engine.Set_Threads(n_threads);
+  Engine.Set_Threads(n_threads);
+
+  if(verbose) cout << "Reading reference file\n";
   int ret = Engine.readReference(s_ref, verbose);
   if(ret != 0) {
     cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
     return(ret);
   }
-  
-  if(verbose) {
-    cout << "Running SpliceWiz on " << s_bam;
-    if(Has_OpenMP() != 0) cout << " with OpenMP ";
-    cout << "using " << use_threads << " threads"
-      << "\n" << "Reference: " << s_ref << "\n"
-      << "Output file: " << s_output_txt << "\t" << s_output_cov << "\n\n"
-      << "Reading reference file\n";
-  }
-
-  // main:
-  auto start = chrono::steady_clock::now();
-  auto check = start;
-  int ret2 = Engine.SpliceWizCore(
-      s_bam, s_output_txt, s_output_cov,
-      verbose, multiRead
+  int ret2 = Engine.SpliceWizMultiCore(
+    v_bam, v_out_txt, v_out_cov,
+    verbose, multiRead
   );
-    
-  if(ret2 == -2) {
-    cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
-    return(ret2);
-  } else if(ret2 == -1) {
-    cout << "Error encountered processing " << s_bam << "\n";
-  } else {
-    check = chrono::steady_clock::now();
-    auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
-    cout << s_bam << " processed (" << time_sec << " seconds)\n";
-  }
-  
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
   return(ret2);
 }
 
@@ -478,10 +464,12 @@ int SpliceWizMain_multi(
 		return(1);	
 	}
 	std::vector< std::string > v_bam;
-	std::vector< std::string > v_out;
+	std::vector< std::string > v_out_txt;
+	std::vector< std::string > v_out_cov;
   for(int z = 0; z < bam_files.size(); z++) {
 		v_bam.push_back(string(bam_files(z)));
-		v_out.push_back(string(output_files(z)));
+		v_out_txt.push_back(string(output_files(z)) + ".txt.gz");
+		v_out_cov.push_back(string(output_files(z)) + ".cov");
 	}
 
   std::string s_ref = reference_file;
@@ -493,39 +481,24 @@ int SpliceWizMain_multi(
   swEngine Engine;
   Engine.Set_Threads(max_threads);
 
-  cout << "Reading reference file\n";
+  if(verbose) cout << "Reading reference file\n";
   int ret = Engine.readReference(s_ref, verbose);
   if(ret != 0) {
     cout << "Reading Reference file failed. Check if SpliceWiz.ref.gz exists and is a valid SpliceWiz reference\n";
     return(ret);
   }
+  int ret2 = Engine.SpliceWizMultiCore(
+    v_bam, v_out_txt, v_out_cov,
+    verbose, multiRead
+  );
+  Engine.clear();
+#ifdef __linux__
+  // cout << "malloc trim() = " << malloc_trim(0) << "\n";
+  malloc_trim(0);
+#endif
 
-  for(unsigned int z = 0; z < v_bam.size(); z++) {
-    std::string s_bam = v_bam.at(z);
-		std::string s_output_txt = v_out.at(z) + ".txt.gz";
-		std::string s_output_cov = v_out.at(z) + ".cov";
-
-    auto start = chrono::steady_clock::now();
-    auto check = start;
-    int ret2 = Engine.SpliceWizCore(
-      s_bam, s_output_txt, s_output_cov,
-      verbose, multiRead
-    );
-    if(ret2 == -2) {
-      cout << "Process interrupted running SpliceWiz on " << s_bam << '\n';
-      return(ret2);
-    } else if(ret2 == -1) {
-      cout << "Error encountered processing " << s_bam << "\n";
-    } else {
-      check = chrono::steady_clock::now();
-      auto time_sec = chrono::duration_cast<chrono::seconds>(check - start).count();
-      cout << s_bam << " processed (" << time_sec << " seconds)\n";
-    }
-  }
-
-  return(0);
+  return(ret2);
 }
-
 #endif
 
 // ############################ MAPPABILITY READS AND REGIONS ##################
@@ -678,6 +651,11 @@ int c_GenerateMappabilityRegions(
     verbose, false
   );
 
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
+
   return(ret);
 }
 
@@ -697,10 +675,81 @@ int c_BAM2COV(
 #endif
 
   swEngine Engine;
-  Engine.Set_Threads(n_threads);
+  int nthr = Engine.Set_Threads(n_threads);
+  
+  std::string s_bam = bam_file;
+  
+  if(verbose) {
+    cout << "Running BAM2COV (ompBAM) " << s_bam;
+    cout << " using " << nthr << " threads\n";
+  }
 
-  int ret = Engine.BAM2COVcore(bam_file, output_file, verbose, multiRead);
-  return(ret);
+  auto start = chrono::steady_clock::now();
+  auto check = start;
+  int ret2 = Engine.BAM2COVcore(s_bam, output_file, verbose, multiRead);
+
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
+
+  if(ret2 == -2) {
+    cout << "Process interrupted running BAM2COV on " << s_bam << '\n';
+    return(ret2);
+  } else if(ret2 == -1) {
+    cout << "Error encountered processing " << s_bam << "\n";
+  } else {
+    check = chrono::steady_clock::now();
+    auto time_sec = chrono::duration_cast<chrono::milliseconds>(check - start).count();
+    cout << s_bam << " processed (" << time_sec << " milliseconds)\n";
+  }
+  return(ret2);
+}
+
+#ifdef SPLICEWIZ
+// [[Rcpp::export]]
+int c_doStats(
+    std::string bam_file, std::string output_file, 
+    bool verbose, int n_threads, bool multiRead
+){
+  
+#else
+int c_doStats(
+    std::string bam_file, std::string output_file, int n_threads, bool multiRead
+){	
+	bool verbose = true;
+#endif
+
+  swEngine Engine;
+  int nthr = Engine.Set_Threads(n_threads);
+  
+  std::string s_bam = bam_file;
+  
+  if(verbose) {
+    cout << "Running doStats (ompBAM) " << s_bam;
+    cout << " using " << nthr << " threads\n";
+  }
+
+  auto start = chrono::steady_clock::now();
+  auto check = start;
+  int ret2 = Engine.doStatsCore(s_bam, output_file, verbose, multiRead);
+  
+  Engine.clear();
+#ifdef __linux__
+  malloc_trim(0);
+#endif
+
+  if(ret2 == -2) {
+    cout << "Process interrupted running doStats on " << s_bam << '\n';
+    return(ret2);
+  } else if(ret2 == -1) {
+    cout << "Error encountered processing " << s_bam << "\n";
+  } else {
+    check = chrono::steady_clock::now();
+    auto time_sec = chrono::duration_cast<chrono::milliseconds>(check - start).count();
+    cout << s_bam << " processed (" << time_sec << " milliseconds)\n";
+  }
+  return(ret2);
 }
 
 // ################################## MAIN #####################################

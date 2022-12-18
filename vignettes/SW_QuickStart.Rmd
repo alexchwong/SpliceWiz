@@ -75,6 +75,14 @@ false positives with low-expressing events or with PSI close to 0 or 1.
 
 edgeR-based wrappers `ASE_edgeR()` and `ASE_edgeR_timeseries()` work identically
 to limma (syntax-wise)
+
+We have also implemented GLM-based edgeR-wrapper functions. Please refer to the
+relevant documentation to view a worked example:
+
+```{r, eval = FALSE}
+?`ASE-GLM-edgeR`
+```
+
 </details>
 \
 
@@ -1308,15 +1316,15 @@ res_limma_annotated_binaryIR <- ASE_limma(
 )
 ```
 \
-<\details>
+</details>
 \
 
 <details>
 <summary>Can I account for batch factors?</summary>
 \
-`ASE_limma`, `ASE_DESeq` and `ASE_satuRn` can accept up to 2 categories of 
-batches from which to normalize. For example, to normalize the analysis by the 
-`batch` category, one would run:
+`ASE_limma`, `ASE_edgeR`, `ASE_DESeq` and `ASE_satuRn` can accept up to 2
+categories of batches from which to normalize. For example, to normalize the 
+analysis by the `batch` category, one would run:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
 require("limma")
@@ -1378,7 +1386,25 @@ res_deseq_cont <- ASE_DESeq(
 )
 ```
 \
-<\details>
+</details>
+\
+<details>
+<summary>(New in 1.1.3) Advanced GLM-based differential ASE analysis with edgeR</summary>
+\
+
+We have implemented wrapper functions enabling advanced users to perform
+differential ASE analysis by constructing their own design matrices. This allows
+users to evaluate effects of covariates in complex experimental models.
+
+We will be building a separate vignette to illustrate the full functionality
+of these edgeR-based functions, but for now a quick example can be found in the
+relevant documentation, which can be viewed via:
+
+```{r, eval = FALSE}
+?`ASE-GLM-edgeR`
+```
+\
+</details>
 \
 
 ## Visualization

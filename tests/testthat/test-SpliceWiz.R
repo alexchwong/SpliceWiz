@@ -1,6 +1,6 @@
 test_that("SpliceWiz pipeline reproduces NxtSE object", {
-    bams = SpliceWiz_example_bams()
-    chr_alias = data.frame(old = "chrZ", new = "chrZ")
+    bams <- SpliceWiz_example_bams()
+    chr_alias <- data.frame(old = "chrZ", new = "chrZ")
 
     buildRef(
         fasta = chrZ_genome(), 
@@ -12,6 +12,7 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
     processBAM(bams$path, bams$sample,
         reference_path = file.path(tempdir(), "Reference"),
         output_path = file.path(tempdir(), "SpliceWiz_Output"),
+        overwrite = TRUE,
         n_threads = 1
     )
     expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
@@ -19,13 +20,13 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
     collateData(expr, 
         reference_path = file.path(tempdir(), "Reference"),
         output_path = file.path(tempdir(), "Collated_output"),
-        novelSplicing = FALSE
+        novelSplicing = FALSE, overwrite = TRUE,
     )
 
     se <- makeSE(collate_path = file.path(tempdir(), "Collated_output"))
     
     # Test identical assays
-    se_realized = realize_NxtSE(se)
+    se_realized <- realize_NxtSE(se)
     
     se_compare <- SpliceWiz_example_NxtSE()
     

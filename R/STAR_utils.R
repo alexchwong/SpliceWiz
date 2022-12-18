@@ -1,26 +1,53 @@
 #' STAR wrappers for building reference for STAR, and aligning RNA-sequencing
 #'
-#' These functions run the STAR aligner to build a STAR genome reference,
-#' calculate mappability exclusion regions using STAR, and align one or more
-#' FASTQ files (single or paired) to the generated genome. These functions only
-#' work on Linux-based systems with STAR installed. STAR must be
-#' accessible via `$PATH`. See details and examples
+#' These STAR helper / wrapper functions allow users to (1) create a STAR
+#' genome reference (with or without GTF), (2) align one or more RNA-seq
+#' samples, and (3) calculate regions of low mappability. STAR references
+#' can be created using one-step (genome and GTF), or two-step (genome first,
+#' then on-the-fly with injected GTF) approaches.
 #'
 #' @details
 #' **Pre-requisites**
 #'
-#' `STAR_buildRef` requires [getResources] to be run to fetch the
-#' required genome and gene annotation files.
+#' `STAR_buildRef()` and `STAR_buildGenome()` require prepared genome
+#' and gene annotation reference retrieved using [getResources], which is run
+#' internally by [buildRef]
 #'
-#' `STAR_mappability`, `STAR_alignExperiment` and `STAR_alignReads` requires a
-#' `STAR` genome, which can be built using `STAR_buildRef`
+#' `STAR_loadGenomeGTF()` requires the above, and additionally a STAR genome 
+#' created using `STAR_buildGenome()` 
+#' 
+#' `STAR_alignExperiment()`, `STAR_alignReads()`, and `STAR_mappability()`: 
+#' requires a `STAR` genome, which can be built using `STAR_buildRef()` or
+#' `STAR_buildGenome()` followed by `STAR_loadGenomeGTF()`
 #'
 #' **Function Description**
 #'
-#' For `STAR_buildRef`: this function
-#'   will create a `STAR` genome reference in the `STAR` subdirectory in the
-#'   path given by `reference_path`. Optionally, it will run `STAR_mappability`
+#' For `STAR_buildRef`: this function will create a `STAR` genome reference 
+#'   using the same genome FASTA and gene annotation GTF used to create
+#'   the SpliceWiz reference. Optionally, it will run `STAR_mappability`
 #'   if `also_generate_mappability` is set to `TRUE`
+#'
+#' For `STAR_alignExperiment`: aligns a set of FASTQ or paired FASTQ files
+#'   using the given
+#'   `STAR` genome using the `STAR` aligner.
+#'   A data.frame specifying sample names and corresponding FASTQ files are
+#'   required
+#'
+#' For `STAR_alignReads`: aligns a single or pair of FASTQ files to the given
+#'   `STAR` genome using the `STAR` aligner.
+#' 
+#' For `STAR_buildGenome`: Creates a STAR genome reference, using ONLY the
+#'   FASTA file used to create the SpliceWiz reference. This allows users to
+#'   create a single STAR reference for use with multiple transcriptome (GTF)
+#'   references (on different occasions). Optionally, it will run 
+#'   `STAR_mappability` if `also_generate_mappability` is set to `TRUE`
+#'
+#' For `STAR_loadGenomeGTF`: Creates an "on-the-fly" STAR genome, injecting GTF
+#' from the given SpliceWiz `reference_path`, setting `sjdbOverhang` setting,
+#' and (optionally) any spike-ins via the `extraFASTA` parameter.
+#' This allows users to create a single STAR reference for use with multiple 
+#' transcriptome (GTF) references, with different sjdbOverhang settings,
+#' and/or spike-ins (on different occasions or for different projects).
 #'
 #' For `STAR_mappability`: this function will first
 #'   will run [generateSyntheticReads], then use the given `STAR` genome to 
@@ -29,31 +56,20 @@
 #'   lowly-mappable genomic regions,
 #'   producing the `MappabilityExclusion.bed.gz` output file.
 #'
-#' For `STAR_alignReads`: aligns a single or pair of FASTQ files to the given
-#'   `STAR` genome using the `STAR` aligner.
-#'
-#' For `STAR_alignExperiment`: aligns a set of FASTQ or paired FASTQ files
-#'   using the given
-#'   `STAR` genome using the `STAR` aligner.
-#'   A data.frame specifying sample names and corresponding FASTQ files are
-#'   required
-#'
 #' @param reference_path The path to the reference.
 #'    [getResources] must first be run using this path
 #'    as its `reference_path`
 #' @param STAR_ref_path (Default - the "STAR" subdirectory under
-#'    \code{reference_path}) The directory containing the STAR reference to be
+#'    `reference_path`) The directory containing the STAR reference to be
 #'    used or to contain the newly-generated STAR reference
-#' @param also_generate_mappability Whether \code{STAR_buildRef()} also
-#'   calculates Mappability Exclusion regions.
-#' @param map_depth_threshold (Default 4) The depth of mapped reads
+#' @param also_generate_mappability Whether `STAR_buildRef()` and 
+#'   `STAR_buildGenome()` also calculate Mappability Exclusion regions.
+#' @param map_depth_threshold (Default `4`) The depth of mapped reads
 #'   threshold at or below which Mappability exclusion regions are defined. See
-#'   [Mappability-methods].
-#'   Ignored if \code{also_generate_mappability = FALSE}
-#' @param sjdbOverhang (Default = 149) A STAR setting indicating the length of
+#'   [Mappability-methods]. Ignored if `also_generate_mappability = FALSE`
+#' @param sjdbOverhang (Default = 100) A STAR setting indicating the length of
 #'   the donor / acceptor sequence on each side of the junctions. Ideally equal
-#'   to (mate_length - 1). As the most common read length is 150, the default
-#'   of this function is 149. See the STAR aligner manual for details.
+#'   to (mate_length - 1). See the STAR aligner manual for details.
 #' @param n_threads The number of threads to run the STAR aligner.
 #' @param additional_args A character vector of additional arguments to be
 #'   parsed into STAR. See examples below.
@@ -65,22 +81,32 @@
 #'   BAMS inside subdirectories of this folder, named by sample names. In
 #'   `STAR_alignReads()`, STAR will output directly into this path.
 #' @param trim_adaptor The sequence of the Illumina adaptor to trim via STAR's
-#'   \code{--clip3pAdapterSeq} option
+#'   `--clip3pAdapterSeq` option
 #' @param two_pass Whether to use two-pass mapping. In
-#'   \code{STAR_alignExperiment()}, STAR will first align every sample
-#'   and generate a list of splice junctions but not BAM files. The junctions
-#'   are then given to STAR to generate a temporary genome (contained within
-#'   \code{_STARgenome}) subdirectory within that of the first sample), using
-#'   these junctions to improve novel junction detection. In
-#'   \code{STAR_alignReads()}, STAR will run \code{--twopassMode Basic}
+#'   `STAR_alignExperiment()`, STAR first-pass will align every sample
+#'   to generate a list of splice junctions but not BAM files. The junctions
+#'   are then given to STAR to generate a temporary genome containing
+#'   information about novel junctions, thereby improving novel junction
+#'   detection. In `STAR_alignReads()`, STAR will use `--twopassMode Basic`
 #' @param fastq_1,fastq_2 In STAR_alignReads: character vectors giving the
 #'   path(s) of one or more FASTQ (or FASTA) files to be aligned.
 #'   If single reads are to be aligned, omit \code{fastq_2}
 #' @param memory_mode The parameter to be parsed to \code{--genomeLoad}; either
 #'   \code{NoSharedMemory} or \code{LoadAndKeep} are used.
+#' @param overwrite (default `FALSE`) If BAM file(s) already exist from a
+#'   previous run, whether these would be overwritten.
+#' @param sparsity (default `1`) Sets STAR's `--genomeSAsparseD` option. For
+#'   human (and mouse) genomes, set this to `2` to allow STAR to perform
+#'   genome generation and mapping using < 16 Gb of RAM, albeit with slightly
+#'   lower mapping rate (~ 0.1% lower, according to STAR's author). Setting
+#'   this to higher values is experimental (and not tested)
+#' @param overwrite (default `FALSE`)
+#'   For `STAR_buildRef`, `STAR_buildGenome` and `STAR_loadGenomeGTF` - 
+#'     if STAR genome already exists, should it be overwritten.
+#'   For `STAR_alignExperiment` and `STAR_alignReads` - if BAM file already
+#'     exists, should it be overwritten.
 #' @param ... Additional arguments to be parsed into
 #'   \code{generateSyntheticReads()}. See \link{Mappability-methods}.
-#' @return None. STAR will output files into the given output directories.
 #' @examples
 #' # 0) Check that STAR is installed and compatible with SpliceWiz
 #'
@@ -111,11 +137,12 @@
 #'
 #' STAR_buildRef(
 #'     reference_path = "Reference_FTP",
+#'     STAR_ref_path = file.path("Reference_FTP", "STAR"),
 #'     n_threads = 8,
 #'     also_generate_mappability = TRUE
 #' )
 #'
-#' # 2 alt) Generates STAR genome of the example SpliceWiz genome.
+#' # 2a) Generates STAR genome of the example SpliceWiz genome.
 #' #     This demonstrates using custom STAR parameters, as the example 
 #' #     SpliceWiz genome is ~100k in length, 
 #' #     so --genomeSAindexNbases needs to be
@@ -129,6 +156,7 @@
 #'
 #' STAR_buildRef(
 #'     reference_path = "Reference_chrZ",
+#'     STAR_ref_path = file.path("Reference_chrZ", "STAR"),
 #'     n_threads = 8,
 #'     additional_args = c("--genomeSAindexNbases", "7"),
 #'     also_generate_mappability = TRUE
@@ -144,9 +172,9 @@
 #' # 4a) Align a single sample using the STAR reference
 #'
 #' STAR_alignReads(
+#'     fastq_1 = "sample1_1.fastq", fastq_2 = "sample1_2.fastq",
 #'     STAR_ref_path = file.path("Reference_FTP", "STAR"),
 #'     BAM_output_path = "./bams/sample1",
-#'     fastq_1 = "sample1_1.fastq", fastq_2 = "sample1_2.fastq",
 #'     n_threads = 8
 #' )
 #'
@@ -164,9 +192,62 @@
 #'     Experiment = Experiment,
 #'     STAR_ref_path = file.path("Reference_FTP", "STAR"),
 #'     BAM_output_path = "./bams",
-#'     two_pass = TRUE,
-#'     n_threads = 8
+#'     n_threads = 8,
+#'     two_pass = TRUE
 #' )
+#'
+#' # - Building a STAR genome (only) reference, and injecting GTF as a
+#' #   subsequent step
+#' #
+#' #   This is useful for users who want to create a single STAR genome, for
+#' #   experimentation with different GTF files.
+#' #   It is important to note that the chromosome names of the genome (FASTA)
+#' #   file and the GTF file needs to be identical. Thus, Ensembl and Gencode
+#' #   GTF files should not be mixed (unless the chromosome GTF names have
+#' #   been fixed)
+#'
+#' # - also set sparsity = 2 to build human genome so that it will fit in
+#' #   16 Gb RAM. NB: this step's RAM usage can be set using the
+#' #   `--limitGenomeGenerateRAM` parameter
+#'
+#' STAR_buildGenome(
+#'     reference_path = "Reference_FTP",
+#'     STAR_ref_path = file.path("Reference_FTP", "STAR_genomeOnly"),
+#'     n_threads = 8, sparsity = 2,
+#'     additional_args = c("--limitGenomeGenerateRAM", "16000000000")
+#' )
+#'
+#' # - Injecting a GTF into a genome-only STAR reference
+#' #
+#' #   This creates an on-the-fly STAR genome, using a GTF file 
+#' #   (derived from a SpliceWiz reference) into a new location.
+#' #   This allows a single STAR reference to use multiple GTFs
+#' #   on different occasions.
+#'
+#' STAR_new_ref <- STAR_loadGenomeGTF(
+#'     reference_path = "Reference_FTP",
+#'     STAR_ref_path = file.path("Reference_FTP", "STAR_genomeOnly"),
+#'     STARgenome_output = file.path(tempdir(), "STAR"),
+#'     n_threads = 4,
+#'     sjdbOverhang = 100
+#' )
+#' 
+#' # This new reference can then be used to align your experiment:
+#'
+#' STAR_alignExperiment(
+#'     Experiment = Experiment,
+#'     STAR_ref_path = STAR_new_ref,
+#'     BAM_output_path = "./bams",
+#'     n_threads = 8,
+#'     two_pass = TRUE
+#' )
+#'
+#' # Typically, one should `clean up` the on-the-fly STAR reference (as it is
+#' #   large!). If it is in a temporary directory, it will be cleaned up
+#' #   when the current R session ends; otherwise this needs to be done manually:
+#'
+#' unlink(file.path(tempdir(), "STAR"), recursive = TRUE)
+#'
 #' }
 #' @name STAR-methods
 #' @aliases
@@ -178,17 +259,23 @@
 NULL
 
 #' @describeIn STAR-methods Checks whether STAR is installed, and its version
+#' @return For `STAR_version()`: The STAR version
 #' @export
 STAR_version <- function() .validate_STAR_version(type = "message")
 
-#' @describeIn STAR-methods Creates a STAR genome reference.
+#' @describeIn STAR-methods Creates a STAR genome reference, using both FASTA
+#'   and GTF files used to create the SpliceWiz reference
+#' @return For `STAR_buildRef()`: None
 #' @export
-STAR_buildRef <- function(reference_path,
+STAR_buildRef <- function(
+        reference_path,
         STAR_ref_path = file.path(reference_path, "STAR"),
-        also_generate_mappability = TRUE,
-        map_depth_threshold = 4,
-        sjdbOverhang = 149,
         n_threads = 4,
+        overwrite = FALSE,
+        sjdbOverhang = 100,
+        sparsity = 1,
+        also_generate_mappability = FALSE,
+        map_depth_threshold = 4,
         additional_args = NULL,
         ...
 ) {
@@ -205,6 +292,28 @@ STAR_buildRef <- function(reference_path,
     if (!("--runMode" %in% additional_args)) args <- c(
         "--runMode", "genomeGenerate")
 
+    if(dir.exists(STAR_ref_path)) {
+        if(
+            file.exists(file.path(STAR_ref_path, "genomeParameters.txt")) &&
+            !overwrite
+        ) {
+            .log(paste(
+                STAR_ref_path, "already exists.",
+                "Set overwrite = TRUE to override"
+            ))
+        } else if(
+            file.exists(file.path(STAR_ref_path, "genomeParameters.txt"))
+        ) {
+            .log(
+                paste(
+                    "Overwriting STAR reference in", STAR_ref_path
+                ), "message"
+            )
+            unlink(list.files(STAR_ref_path), recursive = FALSE)
+        }
+    }
+
+    .validate_path(STAR_ref_path)
     if (!("--genomeDir" %in% additional_args)) args <- c(args,
         "--genomeDir", STAR_ref_path)
 
@@ -219,6 +328,12 @@ STAR_buildRef <- function(reference_path,
 
     if (!("--runThreadN" %in% additional_args)) args <- c(args,
         "--runThreadN", .validate_threads(n_threads, as_BPPARAM = FALSE))
+
+    # sanity check sparsity
+    if(is.na(as.numeric(sparsity))) sparsity <- 1
+    sparsity <- floor(sparsity)
+    sparsity <- max(sparsity, 1)
+    args <- c(args, "--genomeSAsparseD", sparsity)
 
     if (!is.null(additional_args) && all(is.character(additional_args))) {
         args <- c(args, additional_args)
@@ -239,69 +354,19 @@ STAR_buildRef <- function(reference_path,
     .STAR_clean_temp_FASTA_GTF(reference_path)
 }
 
-#' @describeIn STAR-methods Calculates lowly-mappable genomic regions using STAR
-#' @export
-STAR_mappability <- function(
-        reference_path,
-        STAR_ref_path = file.path(reference_path, "STAR"),
-        map_depth_threshold = 4,
-        n_threads = 4,
-        ...
-) {
-    .validate_reference_resource(reference_path)
-    .validate_STAR_version()
-    STAR_ref_path <- .validate_STAR_reference(STAR_ref_path)
-    mappability_reads_fasta <- file.path(
-        reference_path, "Mappability", "Reads.fa")
-    generateSyntheticReads(reference_path, ...)
-
-    .log(paste("Aligning genome fragments back to the genome, from:",
-        mappability_reads_fasta), type = "message")
-    aligned_bam <- file.path(reference_path, "Mappability",
-        "Aligned.out.bam")
-    STAR_alignReads(
-        fastq_1 = mappability_reads_fasta,
-        fastq_2 = NULL,
-        STAR_ref_path = STAR_ref_path,
-        BAM_output_path = dirname(aligned_bam),
-        n_threads = n_threads,
-        trim_adaptor = "",
-        additional_args = c(
-            "--outSAMstrandField", "None",
-            "--outSAMattributes", "None"
-        )
-    )
-    if (file.exists(aligned_bam)) {
-        # Cleaan up fasta
-        if (file.exists(mappability_reads_fasta))
-            file.remove(mappability_reads_fasta)
-
-        .log(paste("Calculating Mappability from:", aligned_bam),
-            type = "message")
-        calculateMappability(
-            reference_path = reference_path,
-            aligned_bam = aligned_bam,
-            threshold = map_depth_threshold,
-            n_threads = n_threads
-        )
-    } else {
-        .log("STAR failed to align mappability reads", "warning")
-    }
-    if (file.exists(file.path(reference_path, "Mappability",
-            "MappabilityExclusion.bed.gz"))) {
-        message("Mappability Exclusion calculations complete")
-        # Clean up BAM
-        if (file.exists(aligned_bam)) file.remove(aligned_bam)
-    } else {
-        .log("Mappability Exclusion calculations not performed", "warning")
-    }
-}
-
 #' @describeIn STAR-methods Aligns multiple sets of FASTQ files, belonging to
 #'   multiple samples
+#' @return For `STAR_alignExperiment()`: None
 #' @export
-STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
-        trim_adaptor = "AGATCGGAAG", two_pass = FALSE, n_threads = 4) {
+STAR_alignExperiment <- function(
+    Experiment, 
+    STAR_ref_path, 
+    BAM_output_path,
+    n_threads = 4,
+    overwrite = FALSE,
+    two_pass = FALSE, 
+    trim_adaptor = "AGATCGGAAG"
+) {
 
     .validate_STAR_version()
     STAR_ref_path <- .validate_STAR_reference(STAR_ref_path)
@@ -339,17 +404,23 @@ STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
         if (pass == 1) {
             ref <- STAR_ref_path
             system2(command = "STAR", args = c(
-                "--genomeLoad", "LoadAndExit", "--genomeDir", ref
+                "--genomeLoad", "LoadAndExit", "--genomeDir", ref,
+                "--outFileNamePrefix", tempdir()
             ))
             loaded_ref <- ref
         }
         for (i in seq_len(length(samples))) {
-            if (pass == 2 && !is.null(two_pass_genome) && is.null(loaded_ref)) {
-                ref <- two_pass_genome
+            # Generate two-pass genome using spoof reads
+            if(pass == 2 && is.null(two_pass_genome) && !is.null(SJ.files)) {
+                two_pass_genome <- .STAR_twopassGenome(
+                    STAR_ref_path, SJ_files = SJ.files$path,
+                    n_threads = n_threads
+                )
                 system2(command = "STAR", args = c(
-                    "--genomeLoad", "LoadAndExit", "--genomeDir", ref
+                    "--genomeLoad", "LoadAndExit", "--genomeDir", ref,
+                    "--outFileNamePrefix", tempdir()
                 ))
-                loaded_ref <- ref
+                loaded_ref <- ref <- two_pass_genome
             }
 
             sample <- samples[i]
@@ -364,15 +435,6 @@ STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
             memory_mode <- "LoadAndKeep"
             if (two_pass && pass == 1) {
                 additional_args <- c("--outSAMtype", "None")
-            } else if (two_pass && pass == 2 && !is.null(SJ.files)) {
-                additional_args <- c("--sjdbFileChrStartEnd",
-                    paste(SJ.files$path, collapse = " "),
-                    "--sjdbInsertSave", "All"
-                )
-                two_pass_genome <- file.path(BAM_output_path, sample,
-                    "_STARgenome")
-                SJ.files <- NULL
-                memory_mode <- "NoSharedMemory"
             } else {
                 additional_args <- NULL
             }
@@ -385,7 +447,9 @@ STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
                 trim_adaptor = trim_adaptor,
                 memory_mode = memory_mode,
                 additional_args = additional_args,
-                n_threads = n_threads)
+                n_threads = n_threads,
+                overwrite = overwrite
+            )
 
         } # end of FOR loop
 
@@ -398,24 +462,52 @@ STAR_alignExperiment <- function(Experiment, STAR_ref_path, BAM_output_path,
         }
         .log(paste("Unloading STAR reference:", loaded_ref), "message")
         system2(command = "STAR", args = c(
-            "--genomeLoad", "Remove", "--genomeDir", loaded_ref
+            "--genomeLoad", "Remove", "--genomeDir", loaded_ref,
+                "--outFileNamePrefix", tempdir()
         ))
         loaded_ref <- NULL
+        
+        if(pass == 2 && !is.null(two_pass_genome)) {
+            unlink(file.path(tempdir(), "STAR_twopass"), recursive = TRUE)
+        }
     }
 }
 
 #' @describeIn STAR-methods Aligns a single sample (with single or paired FASTQ
 #'   or FASTA files)
+#' @return For `STAR_alignReads()`: None
 #' @export
 STAR_alignReads <- function(
-        fastq_1 = c("./sample_1.fastq"), fastq_2 = NULL,
-        STAR_ref_path, BAM_output_path,
+        fastq_1 = c("./sample_1.fastq"), 
+        fastq_2 = NULL,
+        STAR_ref_path, 
+        BAM_output_path,
+        n_threads = 4,
+        overwrite = FALSE,
         two_pass = FALSE,
         trim_adaptor = "AGATCGGAAG",
         memory_mode = "NoSharedMemory",
-        additional_args = NULL,
-        n_threads = 4
+        additional_args = NULL
 ) {
+    expectedBAM <- file.path(BAM_output_path, "Aligned.out.bam")
+    if(!overwrite) {
+        if(file.exists(expectedBAM)) {
+            .log(paste(
+                expectedBAM, 
+                "already exists. Set overwrite = TRUE to overwrite"
+                ), "warning"
+            )
+            message("") # for \n
+            return()
+        }
+    } else {
+        .log(
+            paste(
+                "Overwriting", expectedBAM
+            ), "message"
+        )
+        unlink(expectedBAM)
+    }
 
     .validate_STAR_version()
     STAR_ref_path <- .validate_STAR_reference(STAR_ref_path)
@@ -474,8 +566,8 @@ STAR_alignReads <- function(
 }
 
 .validate_STAR_version <- function(type = "error") {
-    if (Sys.info()["sysname"] != "Linux") {
-        .log("STAR wrappers are only supported on Linux", type = type)
+    if (!(Sys.info()["sysname"] %in% c("Linux", "Darwin"))) {
+        .log("STAR is only supported on Linux or MacOS", type = type)
     }
     star_version <- NULL
     tryCatch({
@@ -493,12 +585,23 @@ STAR_alignReads <- function(
     if (!is.null(star_version) && star_version >= "2.5.0") {
         .log(paste("STAR version", star_version), type = "message")
     }
+    return(star_version)
 }
 
 .validate_STAR_reference <- function(STAR_ref_path) {
     if (!file.exists(file.path(STAR_ref_path, "genomeParameters.txt")))
         .log(paste(
             STAR_ref_path, "does not appear to be a valid STAR reference"))
+    return(normalizePath(STAR_ref_path))
+}
+
+.validate_OTF_STAR_reference <- function(STAR_ref_path) {
+    if (!file.exists(file.path(STAR_ref_path, "genomeParameters.txt"))) {
+        .log(paste(STAR_ref_path, 
+            "does not appear to be a valid STAR reference"))    
+    } else {
+        .log(paste(STAR_ref_path, "on-the-fly STAR genome created"), "message")
+    }
     return(normalizePath(STAR_ref_path))
 }
 
@@ -512,10 +615,13 @@ STAR_alignReads <- function(
             .log(paste(genome.2bit, "not found"))
         }
         .log("Extracting temp genome FASTA from TwoBit file", "message")
+        tmp <- rtracklayer::import(TwoBitFile(genome.2bit))
         rtracklayer::export(
-            rtracklayer::import(TwoBitFile(genome.2bit)),
+            tmp,
             genome.fa, "fasta"
         )
+        rm(tmp)
+        gc()
     }
     return(genome.fa)
 }
@@ -587,4 +693,341 @@ STAR_alignReads <- function(
     if (nchar(sequence) != ACGT_sum) {
         .log("Adaptor sequence can only contain A, C, G or T")
     }
+}
+
+# New approach to STAR utilities
+#
+# Functions
+# - STAR_buildGenome: builds transcriptome-agnostic genome STAR reference
+# - STAR_loadGenome: loads STAR genome into shared memory
+#   - adding extra features as required, including:
+#     - transcriptome GTF file
+#     - sjdbOverhang settings
+#     - any spike-ins (as FASTA files)
+# - STAR_alignReads: aligns single or paired FASTQ reads using either
+#     a given STAR genome, or the loaded STAR genome
+# - STAR_alignExperiment: pipeline for STAR analysis with multiple samples
+
+#' @describeIn STAR-methods Creates a STAR genome reference, using ONLY the
+#'   FASTA file used to create the SpliceWiz reference
+#' @return For `STAR_buildGenome()`: None
+#' @export
+STAR_buildGenome <- function(
+    reference_path,
+    STAR_ref_path = file.path(reference_path, "STAR"),
+    n_threads = 4,
+    overwrite = FALSE,
+    sparsity = 1,
+    also_generate_mappability = FALSE,
+    map_depth_threshold = 4,
+    additional_args = NULL,
+    ...
+) {
+    .validate_reference_resource(reference_path)
+    .validate_STAR_version()
+
+    genome.fa <- .STAR_get_FASTA(reference_path)
+
+    .log(paste("Building STAR genome from", reference_path), type = "message")
+
+    args <- NULL
+    if (!("--runMode" %in% additional_args)) args <- c(
+        "--runMode", "genomeGenerate")
+
+    if(dir.exists(STAR_ref_path)) {
+        if(
+            file.exists(file.path(STAR_ref_path, "genomeParameters.txt")) &&
+            !overwrite
+        ) {
+            .log(paste(
+                STAR_ref_path, "already exists.",
+                "Set overwrite = TRUE to override"
+            ))
+        } else if(
+            file.exists(file.path(STAR_ref_path, "genomeParameters.txt"))
+        ) {
+            .log(
+                paste(
+                    "Overwriting STAR reference in", STAR_ref_path
+                ), "message"
+            )
+            unlink(list.files(STAR_ref_path), recursive = FALSE)
+        }
+    }
+
+    .validate_path(STAR_ref_path)
+    if (!("--genomeDir" %in% additional_args)) args <- c(args,
+        "--genomeDir", STAR_ref_path)
+
+
+    if (!("--genomeFastaFiles" %in% additional_args)) args <- c(args,
+        "--genomeFastaFiles", genome.fa)
+
+    if (!("--runThreadN" %in% additional_args)) args <- c(args,
+        "--runThreadN", .validate_threads(n_threads, as_BPPARAM = FALSE))
+
+    # sanity check sparsity
+    if(is.na(as.numeric(sparsity))) sparsity <- 1
+    sparsity <- floor(sparsity)
+    sparsity <- max(sparsity, 1)
+    
+    args <- c(args, "--genomeSAsparseD", sparsity)
+
+    if (!is.null(additional_args) && all(is.character(additional_args))) {
+        args <- c(args, additional_args)
+    }
+    system2(command = "STAR", args = args)
+
+    # Perform STAR_mappability by inserting GTF from SpliceWiz reference
+    if (also_generate_mappability) {
+        tmpGenome <- STAR_loadGenomeGTF(
+            STAR_ref_path,
+            reference_path = reference_path,
+            sjdbOverhang = 100,
+            STARgenome_output = file.path(tempdir(), "STARmap"),
+            overwrite = TRUE
+        )
+        
+        STAR_mappability(
+            reference_path = reference_path,
+            STAR_ref_path = tmpGenome,
+            map_depth_threshold = map_depth_threshold,
+            n_threads = n_threads,
+            ...
+        )
+        
+        unlink(file.path(tempdir(), "STARmap"), recursive = TRUE)
+    }
+
+    # Clean up
+    .STAR_clean_temp_FASTA_GTF(reference_path)
+}
+
+
+#' @describeIn STAR-methods Creates an "on-the-fly" STAR genome, injecting GTF
+#' from the given SpliceWiz `reference_path`, setting `sjdbOverhang` setting,
+#' and (optionally) any spike-ins as `extraFASTA`
+#' @param extraFASTA (default `""`) One or more FASTA files containing spike-in
+#'   genome sequences (e.g. ERCC, Sequins), as required.
+#' @param STARgenome_output The output path of the created on-the-fly genome
+#' @return For `STAR_loadGenomeGTF()`:
+#'   The path of the on-the-fly STAR genome, typically in the subdirectory
+#'   "_STARgenome" within the given `STARgenome_output` directory
+#' @export
+STAR_loadGenomeGTF <- function(
+    reference_path,
+    STAR_ref_path,
+    STARgenome_output = file.path(tempdir(), "STAR"),
+    n_threads = 4,
+    overwrite = FALSE,
+    sjdbOverhang = 100,
+    extraFASTA = "",
+    additional_args = NULL
+) {
+    .validate_reference_resource(reference_path)
+    .validate_STAR_version()
+    .validate_STAR_reference(STAR_ref_path)
+
+    # Prepare GTF
+    transcripts.gtf <- .STAR_get_GTF(reference_path)
+
+    .log(paste(
+        "Loading STAR genome from", STAR_ref_path, "with injected GTF"),
+        type = "message"
+    )
+
+    args <- NULL
+
+    if (!("--genomeDir" %in% additional_args)) args <- c(args,
+        "--genomeDir", STAR_ref_path)
+
+    if (!("--genomeFastaFiles" %in% additional_args)) {
+        if(all(file.exists(extraFASTA))) {
+            args <- c(args, "--genomeFastaFiles", extraFASTA)
+        } else if(length(extraFASTA) != 1 || extraFASTA != "") {
+            .log(paste("Some files in extraFASTA do not exist... aborting"))
+        }
+    }
+
+    if (!("--sjdbGTFfile" %in% additional_args)) args <- c(args,
+        "--sjdbGTFfile", transcripts.gtf)
+
+    if (!("--sjdbOverhang" %in% additional_args)) {
+        # sanity check overhangs
+        if(is.na(as.numeric(sjdbOverhang))) sjdbOverhang <- 100
+        sjdbOverhang <- floor(sjdbOverhang)
+        sjdbOverhang <- max(sjdbOverhang, 25)
+        args <- c(args, "--sjdbOverhang", sjdbOverhang)
+    }
+
+    if (!("--runThreadN" %in% additional_args)) args <- c(args,
+        "--runThreadN", .validate_threads(n_threads, as_BPPARAM = FALSE))
+
+    nch <- nchar(STARgenome_output)
+    if(substr(STARgenome_output, nch,nch) == "/")
+        STARgenome_output <- substr(STARgenome_output, 1, nch-1)
+    # create output directory (destroy old STAR ref if already exists)
+    if(dir.exists(STARgenome_output)) {
+        if(
+            file.exists(file.path(STARgenome_output, "genomeParameters.txt")) &&
+            !overwrite
+        ) {
+            .log(paste(
+                STARgenome_output, "already exists.",
+                "Set overwrite = TRUE to override"
+            ))
+        } else if(
+            file.exists(file.path(STARgenome_output, "genomeParameters.txt"))
+        ) {
+            # Likely location of STAR ref, remove before generating STAR ref
+            unlink(STARgenome_output, recursive = FALSE)
+        }
+    }
+    .validate_path(STARgenome_output)    
+    args <- c(args, "--outFileNamePrefix", paste0(STARgenome_output,"/"))
+
+    if (!is.null(additional_args) && all(is.character(additional_args))) {
+        args <- c(args, additional_args)
+    }
+
+    args <- c(args, "--sjdbInsertSave", "All")
+    args <- c(args, "--readFilesIn", 
+        system.file(
+            "extdata/spoof_1.fq",
+            package = "SpliceWiz"
+        ),
+        system.file(
+            "extdata/spoof_1.fq",
+            package = "SpliceWiz"
+        )
+    )
+
+    system2(command = "STAR", args = args)
+   
+    .STAR_clean_temp_FASTA_GTF(reference_path)
+
+    return(.validate_OTF_STAR_reference(
+        file.path(STARgenome_output, "_STARgenome")
+    ))
+}
+
+#' @describeIn STAR-methods Calculates lowly-mappable genomic regions using STAR
+#' @return For `STAR_mappability()`: None
+#' @export
+STAR_mappability <- function(
+        reference_path,
+        STAR_ref_path = file.path(reference_path, "STAR"),
+        map_depth_threshold = 4,
+        n_threads = 4,
+        ...
+) {
+    .validate_reference_resource(reference_path)
+    .validate_STAR_version()
+    STAR_ref_path <- .validate_STAR_reference(STAR_ref_path)
+    mappability_reads_fasta <- file.path(
+        reference_path, "Mappability", "Reads.fa")
+    generateSyntheticReads(reference_path, ...)
+
+    .log(paste("Aligning genome fragments back to the genome, from:",
+        mappability_reads_fasta), type = "message")
+    aligned_bam <- file.path(reference_path, "Mappability",
+        "Aligned.out.bam")
+    STAR_alignReads(
+        fastq_1 = mappability_reads_fasta,
+        fastq_2 = NULL,
+        STAR_ref_path = STAR_ref_path,
+        BAM_output_path = dirname(aligned_bam),
+        n_threads = n_threads,
+        trim_adaptor = "",
+        additional_args = c(
+            "--outSAMstrandField", "None",
+            "--outSAMattributes", "None"
+        )
+    )
+    if (file.exists(aligned_bam)) {
+        # Cleaan up fasta
+        if (file.exists(mappability_reads_fasta))
+            file.remove(mappability_reads_fasta)
+
+        .log(paste("Calculating Mappability from:", aligned_bam),
+            type = "message")
+        calculateMappability(
+            reference_path = reference_path,
+            aligned_bam = aligned_bam,
+            threshold = map_depth_threshold,
+            n_threads = n_threads
+        )
+    } else {
+        .log("STAR failed to align mappability reads", "warning")
+    }
+    if (file.exists(file.path(reference_path, "Mappability",
+            "MappabilityExclusion.bed.gz"))) {
+        message("Mappability Exclusion calculations complete")
+        # Clean up BAM
+        if (file.exists(aligned_bam)) file.remove(aligned_bam)
+    } else {
+        .log("Mappability Exclusion calculations not performed", "warning")
+    }
+}
+
+.STAR_twopassGenome <- function(
+    STAR_ref_path,
+    STARgenome_output = file.path(tempdir(), "STAR_twopass"),
+    SJ_files = "",
+    n_threads = 4,
+    overwrite = TRUE
+) {
+    .validate_STAR_version()
+    .validate_STAR_reference(STAR_ref_path)
+
+    .log("Loading STAR two-pass genome", type = "message")
+    args <- c("--genomeDir", STAR_ref_path)
+
+    args <- c(args, "--sjdbFileChrStartEnd",
+        paste(SJ_files, collapse = " "),
+        "--sjdbInsertSave", "All"
+    )
+
+    args <- c(args, "--runThreadN", 
+        .validate_threads(n_threads, as_BPPARAM = FALSE))
+
+    nch <- nchar(STARgenome_output)
+    if(substr(STARgenome_output, nch,nch) == "/")
+        STARgenome_output <- substr(STARgenome_output, 1, nch-1)
+    # create output directory (destroy old STAR ref if already exists)
+    if(dir.exists(STARgenome_output)) {
+        if(
+            file.exists(file.path(STARgenome_output, "genomeParameters.txt")) &&
+            !overwrite
+        ) {
+            .log(paste(
+                STARgenome_output, "already exists.",
+                "Set overwrite = TRUE to override"
+            ))
+        } else if(
+            file.exists(file.path(STARgenome_output, "genomeParameters.txt"))
+        ) {
+            # Likely location of STAR ref, remove before generating STAR ref
+            unlink(STARgenome_output, recursive = FALSE)
+        }
+    }
+    .validate_path(STARgenome_output)    
+    args <- c(args, "--outFileNamePrefix", paste0(STARgenome_output,"/"))
+
+    args <- c(args, "--readFilesIn", 
+        system.file(
+            "extdata/spoof_1.fq",
+            package = "SpliceWiz"
+        ),
+        system.file(
+            "extdata/spoof_1.fq",
+            package = "SpliceWiz"
+        )
+    )
+
+    system2(command = "STAR", args = args)
+
+    return(.validate_OTF_STAR_reference(
+        file.path(STARgenome_output, "_STARgenome")
+    ))
 }

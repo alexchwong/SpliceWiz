@@ -4,8 +4,11 @@
 #' output files belonging to an experiment.
 #'
 #' @details
-#' All sample [processBAM] outputs must be generated using the same
-#' reference.
+#' In Windows, collateData runs using only 1 thread, as 
+#' BiocParallel's MulticoreParam is not supported. 
+#' 
+#' It is assumed that all sample [processBAM] outputs were generated using the 
+#' same reference.
 #'
 #' The combination of junction counts and IR quantification from
 #' [processBAM] is used to calculate percentage spliced in (PSI) of alternative
@@ -131,6 +134,10 @@ collateData <- function(Experiment, reference_path, output_path,
         overwrite = FALSE, n_threads = 1,
         lowMemoryMode = TRUE
 ) {
+    # TODO - dynamic memory management
+    # - see https://stackoverflow.com/questions/6457290/how-to-check-the-amount-of-ram
+
+    if(lowMemoryMode) n_threads <- min(n_threads, 4)
     IRMode <- match.arg(IRMode)
     if (IRMode == "")
         .log(paste("In collateData(),",
@@ -168,10 +175,12 @@ collateData <- function(Experiment, reference_path, output_path,
             return()
         }
     }
-    samples_per_block <- 4
-    if(lowMemoryMode) samples_per_block <- 16
-    jobs <- .collateData_jobs(nrow(df.internal), BPPARAM_mod, samples_per_block)
-
+    # samples_per_block <- 4
+    # if(lowMemoryMode) samples_per_block <- 16
+    # jobs <- .collateData_jobs(
+    #     nrow(df.internal), BPPARAM_mod, samples_per_block)
+    jobs <- .split_vector(seq_len(nrow(df.internal)), BPPARAM_mod$workers)
+    
     dash_progress("Compiling Sample Stats", N_steps)
     .log("Compiling Sample Stats", "message")
     df.internal <- .collateData_stats(df.internal, jobs, BPPARAM_mod)
@@ -197,7 +206,7 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Tidying up splice junctions and intron retentions", N_steps)
     .log("Tidying up splice junctions and intron retentions...", "message")
     
-    if(n_threads == 1) {
+    if(BPPARAM_mod$workers == 1) {
         .collateData_annotate(reference_path, norm_output_path, 
             stranded, novelSplicing, lowMemoryMode,
             minSamplesWithJunc = novelSplicing_minSamples, 
@@ -222,19 +231,19 @@ collateData <- function(Experiment, reference_path, output_path,
     dash_progress("Generating NxtSE assays", N_steps)
     .log("Generating NxtSE assays", "message")
 
-    if(lowMemoryMode) {
-        n_threads_collate_assays <- 1
-    } else {
-        n_threads_collate_assays <- ceiling(min(
-            nrow(df.internal) / samples_per_block, n_threads
-        ))    
-    }
-    jobs_2 <- .split_vector(seq_len(nrow(df.internal)),
-        nrow(df.internal))
+    # Re-define threads
+    n_threads_collate_assays <- n_threads
+    
+    # One job per chunk - more memory efficient
+    jobs_2 <- .split_vector(
+        seq_len(nrow(df.internal)),
+        nrow(df.internal)
+    )
     BPPARAM_mod_progress <- .validate_threads(
         n_threads_collate_assays,
         progressbar = TRUE,
-        tasks = nrow(df.internal))
+        tasks = nrow(df.internal)
+    )
     agg.list <- BiocParallel::bplapply(
         seq_len(nrow(df.internal)),
         .collateData_compile_agglist,
@@ -246,12 +255,13 @@ collateData <- function(Experiment, reference_path, output_path,
     gc()
 
     dash_progress("Building Final NxtSE Object", N_steps)
-    .log("Building Final NxtSE Object", "message")
-
+    .log("Saving assays into H5 file", "message")
     samples_per_block <- 16
-    if(lowMemoryMode) samples_per_block <- 4
+    # if(lowMemoryMode) samples_per_block <- 4
     assays <- .collateData_compile_assays_from_fst(df.internal,
         norm_output_path, samples_per_block)
+
+    .log("Saving auxiliary data", "message")
 
     .collateData_write_stats(df.internal, norm_output_path)
     .collateData_write_colData(df.internal, coverage_files, norm_output_path)
@@ -265,11 +275,13 @@ collateData <- function(Experiment, reference_path, output_path,
     
     saveRDS(cov_data, file.path(norm_output_path, "annotation", "cov_data.Rds"))
 
+    .log("Assembling final NxtSE object", "message")
     # NEW compile NxtSE:
     colData.Rds <- readRDS(file.path(norm_output_path, "colData.Rds"))
     colData <- .makeSE_colData_clean(colData.Rds$df.anno)
     se <- .collateData_initialise_HDF5(norm_output_path, colData, assays)
 
+    .log("Saving final NxtSE object", "message")
     .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.rds"))
     if (dir.exists(file.path(norm_output_path, "temp"))) {
         unlink(file.path(norm_output_path, "temp"), recursive = TRUE)
@@ -1042,11 +1054,10 @@ collateData <- function(Experiment, reference_path, output_path,
 ) {
     if(threadID != 2) return()
 
-    candidate.introns <- as.data.table(
-        read.fst(file.path(reference_path, "fst", "junctions.fst"))
-    )
-    # introns.skipcoord <- .gen_splice_skipcoord(
-        # reference_path, candidate.introns)
+    # candidate.introns <- as.data.table(
+        # read.fst(file.path(reference_path, "fst", "junctions.fst"))
+    # )
+    # candidate.introns[, c("seqnames") := as.character(get("seqnames"))]
         
     junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "junc.common.annotated.fst")))
@@ -1054,14 +1065,11 @@ collateData <- function(Experiment, reference_path, output_path,
     tj.common <- as.data.table(read.fst(file.path(norm_output_path, 
         "annotation", "tj.common.fst")))
     
-    candidate.introns[, c("seqnames") := as.character(get("seqnames"))]
     junc.common[, c("seqnames") := as.character(get("seqnames"))]
     tj.common[, c("seqnames") := as.character(get("seqnames"))]
-    # Strand assignment based on annotated junctions
-    
+
+    ### - Strand assignment based on annotated junctions - ###
     # First remove any tandem junctions not in junc.common
-    jc_events <- paste0(junc.common$seqnames, ":", 
-        junc.common$start, "-", junc.common$end, "/", junc.common$strand)
 
     jc_events_unstranded <- paste0(junc.common$seqnames, ":", 
         junc.common$start, "-", junc.common$end)
@@ -1080,6 +1088,7 @@ collateData <- function(Experiment, reference_path, output_path,
         strand = junc.common$strand
     )
 
+    # Match strands based on event1 / 2
     tj_event1 <- paste0(tj.common$seqnames, ":", 
         tj.common$start1, "-", tj.common$end1)
     tj_event2 <- paste0(tj.common$seqnames, ":", 
@@ -1104,42 +1113,29 @@ collateData <- function(Experiment, reference_path, output_path,
     tj.common$strand <- tj.strand$status
     tj.common <- tj.common[strand != ""]
     
-    # Filter for TJ for which tandem interval does not match known skip_coord
-    # skip_coord <- introns.skipcoord$skip_coord[
-        # !is.na(introns.skipcoord$skip_coord)]
-    # skip_coord <- unique(skip_coord)
-    # tj_skip <- paste0(tj.common$seqnames, ":", 
-        # tj.common$start1, "-", tj.common$end2, "/", tj.common$strand)
+    ### - Not sure we need to filter out non-novel exons - ###
+    # - tandem junctions can also help find novel A5/3SS and skipped exons
     
-    # tj.common <- tj.common[tj_skip %in% skip_coord | tj_skip %in% jc_events]
+    # exons_brief <- read.fst(
+        # path = file.path(reference_path, "fst", "Exons.fst"),
+        # columns = c("seqnames", "start", "end", "strand"),
+        # as.data.table = TRUE
+    # )
+    # exons_brief <- unique(exons_brief)
+    # exons_brief[, c("seqnames") := as.character(get("seqnames"))]
+    # exons_left <- paste0(exons_brief$seqnames, ":", exons_brief$start)
+    # tj_exon_left <- paste0(tj.common$seqnames, ":", tj.common$end1 + 1)
+    # exons_right <- paste0(exons_brief$seqnames, ":", exons_brief$end)
+    # tj_exon_right <- paste0(tj.common$seqnames, ":", tj.common$start2 - 1)
     
-    # Filter for TJ for which novel exon does not match 
-    #   any boundary with known exon
-    # Noting that if one boundary matches that of known exon, it is simply
-    #   an alt' splice site, not a novel casette exon
-    
-    exons_brief <- read.fst(
-        path = file.path(reference_path, "fst", "Exons.fst"),
-        columns = c("seqnames", "start", "end", "strand"),
-        as.data.table = TRUE
-    )
-    exons_brief <- unique(exons_brief)
-    exons_brief[, c("seqnames") := as.character(get("seqnames"))]
-    exons_left <- paste0(exons_brief$seqnames, ":", exons_brief$start)
-    tj_exon_left <- paste0(tj.common$seqnames, ":", tj.common$end1 + 1)
-    exons_right <- paste0(exons_brief$seqnames, ":", exons_brief$end)
-    tj_exon_right <- paste0(tj.common$seqnames, ":", tj.common$start2 - 1)
-    
-    tj.common <- tj.common[!(tj_exon_left %in% exons_left) &
-        !(tj_exon_right %in% exons_right)]
+    # tj.common.new <- tj.common[!(tj_exon_left %in% exons_left) &
+        # !(tj_exon_right %in% exons_right)]
 
     write.fst(as.data.frame(tj.common), file.path(norm_output_path, 
         "annotation", "tj.common.annotated.fst"))
 
     # Cleanup
-    # rm(introns.skipcoord)
-    rm(candidate.introns, junc.common, tj.common,
-        tj.strand, exons_brief)
+    rm(junc.common, tj.common, jc.strand, tj.strand)
     gc()
 }
 
@@ -1158,38 +1154,48 @@ collateData <- function(Experiment, reference_path, output_path,
     novel_ref_path <- file.path(norm_output_path, "Reference")
     .validate_path(novel_ref_path, subdirs = "resource")
     
-    settings <- readRDS(file.path(reference_path, "settings.Rds"))
-    local.nonPolyAFile <- file.path(reference_path, "resource", 
-        "nonPolyAFile.resource")
-    local.MappabilityFile <- file.path(reference_path, "resource", 
-        "MappabilityFile.resource")
-    local.BlacklistFile <- file.path(reference_path, "resource", 
-        "BlacklistFile.resource")
-    nonPolyARef <- settings$nonPolyARef
-    MappabilityRef <- settings$MappabilityRef
-    BlacklistRef <- settings$BlacklistRef
-    if(file.exists(local.nonPolyAFile)) 
-        nonPolyARef <- local.nonPolyAFile
-    if(file.exists(local.MappabilityFile)) 
-        MappabilityRef <- local.MappabilityFile
-    if(file.exists(local.BlacklistFile)) 
-        BlacklistRef <- local.BlacklistFile
+    # settings <- readRDS(file.path(reference_path, "settings.Rds"))
+    # local.nonPolyAFile <- file.path(reference_path, "resource", 
+        # "nonPolyAFile.resource")
+    # local.MappabilityFile <- file.path(reference_path, "resource", 
+        # "MappabilityFile.resource")
+    # local.BlacklistFile <- file.path(reference_path, "resource", 
+        # "BlacklistFile.resource")
+    # nonPolyARef <- settings$nonPolyARef
+    # MappabilityRef <- settings$MappabilityRef
+    # BlacklistRef <- settings$BlacklistRef
+    # if(file.exists(local.nonPolyAFile)) 
+        # nonPolyARef <- local.nonPolyAFile
+    # if(file.exists(local.MappabilityFile)) 
+        # MappabilityRef <- local.MappabilityFile
+    # if(file.exists(local.BlacklistFile)) 
+        # BlacklistRef <- local.BlacklistFile
 
-    extra_files <- .fetch_genome_defaults(novel_ref_path,
-        settings$genome_type, nonPolyARef, 
-        MappabilityRef, BlacklistRef,
-        force_download = FALSE, verbose = FALSE)
+    # extra_files <- .fetch_genome_defaults(novel_ref_path,
+        # settings$genome_type, nonPolyARef, 
+        # MappabilityRef, BlacklistRef,
+        # force_download = FALSE, verbose = FALSE)
 
     if(verbose) message("...loading reference FASTA/GTF")
-    reference_data <- .get_reference_data(
-        reference_path = reference_path,
-        fasta = "", gtf = "", verbose = FALSE,
-        overwrite = FALSE, force_download = FALSE,
-        pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
-
-    reference_data$gtf_gr <- .validate_gtf_chromosomes(
-        reference_data$genome, reference_data$gtf_gr)
-    reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
+    if(file.exists(file.path(reference_path, "fst/gtf_fixed.fst"))) {
+        reference_data <- list(
+            genome = Get_Genome(reference_path, validate = FALSE,
+                as_DNAStringSet = !lowMemoryMode),
+            gtf_gr = .grDT(
+                read.fst(file.path(reference_path, "fst/gtf_fixed.fst")),
+                keep.extra.columns = TRUE
+            )
+        )
+    } else {
+        reference_data <- .get_reference_data(
+            reference_path = reference_path,
+            fasta = "", gtf = "", verbose = FALSE,
+            overwrite = FALSE, force_download = FALSE,
+            pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)    
+        reference_data$gtf_gr <- .validate_gtf_chromosomes(
+            reference_data$genome, reference_data$gtf_gr)
+        reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
+    }
 
     if(verbose) message("...injecting novel transcripts to GTF")
     # Insert novel gtf here
@@ -1208,7 +1214,7 @@ collateData <- function(Experiment, reference_path, output_path,
     if(verbose) message("...processing GTF")
     .process_gtf(c(reference_data$gtf_gr, novel_gtf), 
         novel_ref_path, verbose = FALSE)
-    extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
+    # extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
     reference_data$gtf_gr <- NULL # To save memory, remove original gtf
     rm(novel_gtf)
     gc()
@@ -1218,10 +1224,6 @@ collateData <- function(Experiment, reference_path, output_path,
         reference_data$genome, verbose = FALSE)
     .process_introns(novel_ref_path, reference_data$genome, 
         useExtendedTranscripts = TRUE, verbose = FALSE)
-    
-    # chromosomes <- readRDS(file.path(reference_path, "chromosomes.Rds"))
-    # .gen_irf(novel_ref_path, extra_files, reference_data$genome, chromosomes,
-        # verbose = FALSE)
 
     # No need to re-process SpliceWiz processBAM reference
     file.copy(file.path(reference_path, "fst", "Introns.Dir.fst"),
@@ -1844,21 +1846,31 @@ collateData <- function(Experiment, reference_path, output_path,
     Splice.Anno.Brief <- read.fst(
         file.path(reference_path, "fst", "Splice.fst"),
         as.data.table = TRUE, columns = c("EventName", "EventID"))
-    Splice.Options[Splice.Anno.Brief, on = "EventID",
-        c("EventName") := get("i.EventName")]
-    Splice.Options[Transcripts, on = "transcript_id",
-        c("transcript_biotype") := get("i.transcript_biotype")]
+    # Splice.Options[Splice.Anno.Brief, on = "EventID",
+        # c("EventName") := get("i.EventName")]
+    # Splice.Options[Transcripts, on = "transcript_id",
+        # c("transcript_biotype") := get("i.transcript_biotype")]
+    Splice.Options$EventName <- Splice.Anno.Brief$EventName[match(
+        Splice.Options$EventID, Splice.Anno.Brief$EventID)]
+    Splice.Options$transcript_biotype <- Transcripts$transcript_biotype[match(
+        Splice.Options$transcript_id, Transcripts$transcript_id)]
 
     Splice.Options.Summary <- copy(Splice.Options)
+    # Splice.Options.Summary[,
+        # c("tsl_min") := min(get("transcript_support_level")),
+        # by = c("EventID", "isoform")]
+    # Splice.Options.Summary[,
+        # c("any_is_PC") := any(get("is_protein_coding")),
+        # by = c("EventID", "isoform")]
+    # Splice.Options.Summary[,
+        # c("all_is_NMD") := all(grepl("decay", get("transcript_biotype"))),
+        # by = c("EventID", "isoform")]
     Splice.Options.Summary[,
-        c("tsl_min") := min(get("transcript_support_level")),
-        by = c("EventID", "isoform")]
-    Splice.Options.Summary[,
-        c("any_is_PC") := any(get("is_protein_coding")),
-        by = c("EventID", "isoform")]
-    Splice.Options.Summary[,
-        c("all_is_NMD") := all(grepl("decay", get("transcript_biotype"))),
-        by = c("EventID", "isoform")]
+        c("tsl_min", "any_is_PC", "all_is_NMD") := list(
+            min(get("transcript_support_level")),
+            any(get("is_protein_coding")),
+            all(grepl("decay", get("transcript_biotype")))
+        ), by = c("EventID", "isoform")]
 
     write.fst(as.data.frame(Splice.Options.Summary),
         file.path(norm_output_path, "annotation", "Splice.Options.Summary.fst"))
@@ -1886,77 +1898,174 @@ collateData <- function(Experiment, reference_path, output_path,
     candidate.introns <- as.data.table(
         read.fst(file.path(reference_path, "fst", "junctions.fst")))   
 
-    # Prioritise candidate.introns based on transcript importance
     rowEvent.Extended[get("EventType") == "IR",
         c("intron_id") := tstrsplit(get("EventName"), split = "/")[[2]]]
-    rowEvent.Extended[, c("Inc_Is_Protein_Coding") := FALSE]
-    rowEvent.Extended[, c("Exc_Is_Protein_Coding") := FALSE]
-    rowEvent.Extended[IR_NMD, on = "intron_id",
-        c("Exc_Is_Protein_Coding") := TRUE]
-    rowEvent.Extended[IR_NMD, on = "intron_id",
-        c("Inc_Is_Protein_Coding") := (get("i.intron_type") == "CDS")]
-    rowEvent.Extended[get("EventType") == "IR" &
-        get("Exc_Is_Protein_Coding") == FALSE, c("Exc_Is_NMD") := NA]
-    rowEvent.Extended[get("EventType") == "IR" &
-        get("Inc_Is_Protein_Coding") == FALSE, c("Inc_Is_NMD") := NA]
 
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
-        on = "EventName", c("Inc_Is_Protein_Coding") := get("i.any_is_PC")]
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
-        on = "EventName", c("Exc_Is_Protein_Coding") := get("i.any_is_PC")]
-    rowEvent.Extended[, c("Inc_Is_NMD", "Exc_Is_NMD") := list(FALSE, FALSE)]
-    rowEvent.Extended[IR_NMD[!is.na(get("splice_is_NMD"))], on = "intron_id",
-        c("Exc_Is_NMD") := get("i.splice_is_NMD")]
-    rowEvent.Extended[IR_NMD, on = "intron_id",
-        c("Inc_Is_NMD") := get("i.IRT_is_NMD")]
+    rowEvent.Extended.IR <- rowEvent.Extended[get("EventType") == "IR"]
+    rowEvent.Extended.splice <- rowEvent.Extended[get("EventType") != "IR"]
 
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
-        on = "EventName", c("Inc_Is_NMD") := get("i.all_is_NMD")]
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
-        on = "EventName", c("Exc_Is_NMD") := get("i.all_is_NMD")]
-    rowEvent.Extended[candidate.introns, on = "intron_id",
-        c("Inc_TSL") := get("i.transcript_support_level")]
-    rowEvent.Extended[candidate.introns, on = "intron_id",
-        c("Exc_TSL") := get("i.transcript_support_level")]
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
-        on = "EventName", c("Inc_TSL") := get("i.tsl_min")]
-    rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
-        on = "EventName", c("Exc_TSL") := get("i.tsl_min")]
+    rowEvent.Extended.IR[, 
+        c("Inc_Is_Protein_Coding", "Exc_Is_Protein_Coding") := 
+        list(FALSE,FALSE)
+    ]
+    rowEvent.Extended.splice[, 
+        c("Inc_Is_Protein_Coding", "Exc_Is_Protein_Coding") := 
+        list(FALSE,FALSE)
+    ]
+    
+    # rowEvent.Extended[IR_NMD, on = "intron_id",
+        # c("Exc_Is_Protein_Coding") := TRUE]
+    # rowEvent.Extended[IR_NMD, on = "intron_id",
+        # c("Inc_Is_Protein_Coding") := (get("i.intron_type") == "CDS")]
+    rowEvent.Extended.IR[
+        get("intron_id") %in% IR_NMD$intron_id[IR_NMD$intron_type == "CDS"],
+        c("Inc_Is_Protein_Coding", "Exc_Is_Protein_Coding") := TRUE
+    ]
+
+    rowEvent.Extended.splice[
+        get("EventName") %in% Splice.Options.Summary$EventName[
+            Splice.Options.Summary$isoform == "A" &
+            Splice.Options.Summary$any_is_PC == TRUE
+        ],
+        c("Inc_Is_Protein_Coding") := TRUE
+    ]
+    rowEvent.Extended.splice[
+        get("EventName") %in% Splice.Options.Summary$EventName[
+            Splice.Options.Summary$isoform == "B" &
+            Splice.Options.Summary$any_is_PC == TRUE
+        ],
+        c("Exc_Is_Protein_Coding") := TRUE
+    ]
+
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
+        # on = "EventName", c("Inc_Is_Protein_Coding") := get("i.any_is_PC")]
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
+        # on = "EventName", c("Exc_Is_Protein_Coding") := get("i.any_is_PC")]
+
+
+    rowEvent.Extended.IR[, c("Exc_Is_NMD", "Inc_Is_NMD") := 
+        list(FALSE, FALSE)]
+    rowEvent.Extended.splice[, c("Exc_Is_NMD", "Inc_Is_NMD") := 
+        list(FALSE, FALSE)]
+
+    ## Important changes:
+    ## - for IR, NMD is
+    ##   - reported for all introns calculated in reference (not just CDS)
+    ##   - NA if intron not tested (not FALSE, as in version <= 1.1.2)
+    ##   - only true for spliced transcripts if true for all transcripts
+    ##     containing the same intron
+
+    # rowEvent.Extended[IR_NMD[!is.na(get("splice_is_NMD"))], on = "intron_id",
+        # c("Exc_Is_NMD") := get("i.splice_is_NMD")]
+    # rowEvent.Extended[IR_NMD, on = "intron_id",
+        # c("Inc_Is_NMD") := get("i.IRT_is_NMD")]
+    rowEvent.Extended.IR$Inc_Is_NMD <- IR_NMD$IRT_is_NMD[match(
+        rowEvent.Extended.IR$intron_id, IR_NMD$intron_id)]
+    rowEvent.Extended.IR$tmpExc_Is_NMD <- IR_NMD$splice_is_NMD[match(
+        rowEvent.Extended.IR$intron_id, IR_NMD$intron_id)]
+    rowEvent.Extended.IR[, 
+        c("sumExc_Is_NMD") := sum(get("tmpExc_Is_NMD") == TRUE, na.rm = TRUE),
+        by = "EventRegion"
+    ]
+    rowEvent.Extended.IR[, c("Exc_Is_NMD") := get("sumExc_Is_NMD") > 0]
+    rowEvent.Extended.IR$sumExc_Is_NMD <- NULL   
+    rowEvent.Extended.IR$tmpExc_Is_NMD <- NULL
+
+    rowEvent.Extended.IR[!(get("intron_id") %in% IR_NMD$intron_id),
+        c("Exc_Is_NMD", "Inc_Is_NMD") := list(NA, NA)]    
+    
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
+        # on = "EventName", c("Inc_Is_NMD") := get("i.all_is_NMD")]
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
+        # on = "EventName", c("Exc_Is_NMD") := get("i.all_is_NMD")]
+    tmpA <- Splice.Options.Summary[get("isoform") == "A"]
+    tmpB <- Splice.Options.Summary[get("isoform") == "B"]
+
+    rowEvent.Extended.splice$Inc_Is_NMD <- tmpA$all_is_NMD[match(
+        rowEvent.Extended.splice$EventName, tmpA$EventName)]
+    rowEvent.Extended.splice$Exc_Is_NMD <- tmpB$all_is_NMD[match(
+        rowEvent.Extended.splice$EventName, tmpB$EventName)]
+
+    rowEvent.Extended.IR[, c("Inc_TSL", "Exc_TSL") := list(NA, NA)]
+    rowEvent.Extended.splice[, c("Inc_TSL", "Exc_TSL") := list(NA, NA)]
+
+    # rowEvent.Extended[candidate.introns, on = "intron_id",
+        # c("Inc_TSL") := get("i.transcript_support_level")]
+    # rowEvent.Extended[candidate.introns, on = "intron_id",
+        # c("Exc_TSL") := get("i.transcript_support_level")]
+    rowEvent.Extended.IR$Inc_TSL <- 
+        candidate.introns$transcript_support_level[match(
+            rowEvent.Extended.IR$intron_id, candidate.introns$intron_id)]
+    rowEvent.Extended.IR$Exc_TSL <- 
+        candidate.introns$transcript_support_level[match(
+            rowEvent.Extended.IR$intron_id, candidate.introns$intron_id)]
+
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
+        # on = "EventName", c("Inc_TSL") := get("i.tsl_min")]
+    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
+        # on = "EventName", c("Exc_TSL") := get("i.tsl_min")]
+    rowEvent.Extended.splice$Inc_TSL <- tmpA$tsl_min[match(
+        rowEvent.Extended.splice$EventName, tmpA$EventName)]
+    rowEvent.Extended.splice$Exc_TSL <- tmpB$tsl_min[match(
+        rowEvent.Extended.splice$EventName, tmpB$EventName)]
         
     # Designate exclusive first intron / last intron
-    candidate.introns[, c("max_intron_number") :=
-        max(get("intron_number")), by = "Event"]
     candidate.introns[, c("inverse_intron_number") :=
         max(get("intron_number")) - get("intron_number") + 1, 
         by = "transcript_id"]
-    candidate.introns[, c("max_inv_intron_number") :=
-        max(get("inverse_intron_number")), by = "Event"]
-    candidate.introns[, c("Event1a") := get("Event")]
-    candidate.introns[, c("Event1b") := get("Event")]
+    candidate.introns[, 
+        c("max_intron_number", "max_inv_intron_number") := list(
+            max(get("intron_number")), max(get("inverse_intron_number"))), 
+        by = "Event"
+    ]
+
+    rowEvent.Extended <- rbind(rowEvent.Extended.IR, rowEvent.Extended.splice)
 
     # define Event1 / Event2
+    # rowEvent.Extended[get("EventType") == "IR",
+        # c("Event1a") := get("EventRegion")]
+    # rowEvent.Extended[Splice.Anno, on = "EventName",
+        # c("Event1a", "Event2a", "Event1b", "Event2b") :=
+        # list(get("i.Event1a"), get("i.Event2a"),
+            # get("i.Event1b"), get("i.Event2b"))]
+    rowEvent.Extended$Event1a <- Splice.Anno$Event1a[match(
+        rowEvent.Extended$EventName, Splice.Anno$EventName)]
+    rowEvent.Extended$Event2a <- Splice.Anno$Event2a[match(
+        rowEvent.Extended$EventName, Splice.Anno$EventName)]
+    rowEvent.Extended$Event1b <- Splice.Anno$Event1b[match(
+        rowEvent.Extended$EventName, Splice.Anno$EventName)]
+    rowEvent.Extended$Event2b <- Splice.Anno$Event2b[match(
+        rowEvent.Extended$EventName, Splice.Anno$EventName)]
     rowEvent.Extended[get("EventType") == "IR",
         c("Event1a") := get("EventRegion")]
-    rowEvent.Extended[Splice.Anno, on = "EventName",
-        c("Event1a", "Event2a", "Event1b", "Event2b") :=
-        list(get("i.Event1a"), get("i.Event2a"),
-            get("i.Event1b"), get("i.Event2b"))]
+    
+    # rowEvent.Extended[candidate.introns, on = "Event1a",
+        # c("iafi_A") := (get("i.max_intron_number") == 1)]
+    # rowEvent.Extended[candidate.introns, on = "Event1b",
+        # c("iafi_B") := (get("i.max_intron_number") == 1)]
+    # rowEvent.Extended[, c("is_always_first_intron") :=
+        # get("iafi_A") & get("iafi_B")]
+    # rowEvent.Extended[, c("iafi_A", "iafi_B") := list(NULL, NULL)]
 
-    rowEvent.Extended[candidate.introns, on = "Event1a",
-        c("iafi_A") := (get("i.max_intron_number") == 1)]
-    rowEvent.Extended[candidate.introns, on = "Event1b",
-        c("iafi_B") := (get("i.max_intron_number") == 1)]
-    rowEvent.Extended[, c("is_always_first_intron") :=
-        get("iafi_A") & get("iafi_B")]
-    rowEvent.Extended[, c("iafi_A", "iafi_B") := list(NULL, NULL)]
+    rowEvent.Extended$is_always_first_intron <-
+        rowEvent.Extended$Event1a %in% candidate.introns$Event[
+            candidate.introns$max_intron_number == 1] &
+        rowEvent.Extended$Event1b %in% candidate.introns$Event[
+            candidate.introns$max_intron_number == 1]       
 
-    rowEvent.Extended[candidate.introns, on = "Event1a",
-        c("iali_A") := (get("i.max_inv_intron_number") == 1)]
-    rowEvent.Extended[candidate.introns, on = "Event1b",
-        c("iali_B") := (get("i.max_inv_intron_number") == 1)]
-    rowEvent.Extended[, c("is_always_last_intron") :=
-        get("iali_A") & get("iali_B")]
-    rowEvent.Extended[, c("iali_A", "iali_B") := list(NULL, NULL)]
+    # rowEvent.Extended[candidate.introns, on = "Event1a",
+        # c("iali_A") := (get("i.max_inv_intron_number") == 1)]
+    # rowEvent.Extended[candidate.introns, on = "Event1b",
+        # c("iali_B") := (get("i.max_inv_intron_number") == 1)]
+    # rowEvent.Extended[, c("is_always_last_intron") :=
+        # get("iali_A") & get("iali_B")]
+    # rowEvent.Extended[, c("iali_A", "iali_B") := list(NULL, NULL)]
+
+    rowEvent.Extended$is_always_last_intron <-
+        rowEvent.Extended$Event1a %in% candidate.introns$Event[
+            candidate.introns$max_inv_intron_number == 1] &
+        rowEvent.Extended$Event1b %in% candidate.introns$Event[
+            candidate.introns$max_inv_intron_number == 1]       
     
     rowEvent.Extended[get("EventType") %in% c("MXE", "SE"),
         c("is_always_first_intron", "is_always_last_intron") := list(NA,NA)]
@@ -1978,8 +2087,8 @@ collateData <- function(Experiment, reference_path, output_path,
     write.fst(as.data.frame(rowEvent.Extended), 
         file.path(norm_output_path, "rowEvent.fst"))
 
-    rm(rowEvent.Extended, candidate.introns, IR_NMD,
-        Splice.Options.Summary, Splice.Anno)
+    rm(rowEvent.Extended, rowEvent.Extended.splice, rowEvent.Extended.IR,   
+        candidate.introns, IR_NMD, Splice.Options.Summary, Splice.Anno)
     gc()
 }
 

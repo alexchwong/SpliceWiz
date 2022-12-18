@@ -30,6 +30,7 @@ ASE_edgeR(
   test_denom,
   batch1 = "",
   batch2 = "",
+  useQL = TRUE,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE
@@ -52,6 +53,7 @@ ASE_edgeR_timeseries(
   batch1 = "",
   batch2 = "",
   degrees_of_freedom = 1,
+  useQL = TRUE,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE
@@ -130,6 +132,9 @@ denoted as "RI" events.}
 overlap over or near anti-sense genes. Default will exclude antiover but
 not antinear introns. These are ignored if strand-specific RNA-seq
 protocols are used.}
+
+\item{useQL}{(default \code{TRUE}) Whether to use edgeR's quasi-likelihood method
+to help reduce false positives from near-zero junction / intron counts.}
 
 \item{degrees_of_freedom}{(default \code{1}) The complexity of time series trends
 modeled by \code{ASE_limma_timeseries}. E.g., \code{1} will only model linear trends,
@@ -349,6 +354,13 @@ colData(se)$replicate <- rep(c("P","Q","R"), 2)
 
 require("limma")
 res_limma <- ASE_limma(se, "treatment", "A", "B")
+
+# edgeR analysis (counts modeled using negative binomial distribution)
+# - QL: whether quasi-likelihood method was used
+
+require("edgeR")
+res_edgeR <- ASE_edgeR(se, "treatment", "A", "B", useQL = FALSE)
+res_edgeR_QL <- ASE_edgeR(se, "treatment", "A", "B", useQL = TRUE)
 
 # DoubleExpSeq analysis (counts modeled using beta binomial distribution)
 

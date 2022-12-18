@@ -1,4 +1,4 @@
-test_that("SpliceWiz pipeline reproduces NxtSE object", {
+test_that("SpliceWiz (htslib) pipeline reproduces NxtSE object", {
     bams <- SpliceWiz_example_bams()
     chr_alias <- data.frame(old = "chrZ", new = "chrZ")
 
@@ -9,25 +9,25 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
         chromosome_aliases = chr_alias
     )
     
-    processBAM(bams$path, bams$sample,
+    processBAM_hts(bams$path, bams$sample,
         reference_path = file.path(tempdir(), "Reference"),
-        output_path = file.path(tempdir(), "SpliceWiz_Output"),
-        n_threads = 1
+        output_path = file.path(tempdir(), "SpliceWiz_Output_hts"),
+        n_threads = 1, overwrite = TRUE, read_pool_size = 50000
     )
-    expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output"))
     
+    expr <- findSpliceWizOutput(file.path(tempdir(), "SpliceWiz_Output_hts"))
     collateData(expr, 
         reference_path = file.path(tempdir(), "Reference"),
-        output_path = file.path(tempdir(), "Collated_output_novel"),
-        novelSplicing = TRUE
+        output_path = file.path(tempdir(), "Collated_output"),
+        novelSplicing = FALSE
     )
 
-    se <- makeSE(collate_path = file.path(tempdir(), "Collated_output_novel"))
+    se <- makeSE(collate_path = file.path(tempdir(), "Collated_output"))
     
     # Test identical assays
     se_realized <- realize_NxtSE(se)
     
-    se_compare <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
+    se_compare <- SpliceWiz_example_NxtSE()
     
     expect_equal(
         assay(se_realized, "Included"), 
@@ -58,6 +58,13 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
         sampleQC(se_realized)[,-1], 
         sampleQC(se_compare)[,-1]
     )
+
+    for(i in seq_len(ncol(se))) {
+        expect_equal(
+            openssl::md5(file(covfile(se_realized)[i])), 
+            openssl::md5(file(covfile(se_compare)[i]))
+        )
+    }
 
     expect_equal(
         up_inc(se_realized), 

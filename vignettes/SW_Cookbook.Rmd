@@ -68,18 +68,24 @@ buildRef(
 
 ### Prepare genome resources and building the reference as separate steps
 
-`buildRef()` first fetches the genome and gene annotations and makes a 
-compressed local copy in the `resources` subdirectory of the given reference
-path. This can sometimes be a long process (especially when downloading the
-genome from the internet). Also, one may choose to generate the mappability
-exclusion regions manually (see `Reference Generation` - 
-`Mappability exclusion generation using Rsubread` section). This needs to occur
-prior to generation of the SpliceWiz reference.
+`buildRef()` first runs `getResources()`, which prepares the genome and gene 
+annotations by storing a compressed local copy in the `resources` subdirectory 
+of the given reference path. Specifically, a binary compressed version of the 
+FASTA file (a.k.a. TwoBitFile), and a gzipped GTF file. If `fasta` and/or `gtf` 
+are https or ftp links, the resources will be downloaded from the internet 
+(which may take a while).
 
-To separately prepare the annotation data and build the SpliceWiz reference,
-use the `getResources()` function to specify the FASTA and GTF files. Once
-`getResources()` has completed successfully, call `buildRef()` and leave
-the `fasta` and `gtf` arguments blank, as in the example below:
+After local compressed versions of the genome and gene annotations are prepared,
+`buildRef()` will proceed to generate the SpliceWiz reference.
+
+Note that these two steps can be run separately. `getResources()` will prepare
+local compressed copies of the FASTA / GTF resources without generating the
+SpliceWiz reference. Running `buildRef()`, with `reference_path` specifying
+where the resources were prepared previously with `getResources()`, will perform
+the 2nd step (SpliceWiz reference generation) without needing to prepare the
+genome resources (in this case, set the parameters `fasta = ""` and `gtf = ""`).
+
+As an example, the below steps:
 
 ```{r eval=FALSE}
 getResources(
@@ -90,6 +96,17 @@ getResources(
 
 buildRef(
     reference_path = ref_path,
+    fasta = "", gtf = "",
+    genome_type = "hg38"
+)
+```
+is equivalent to this:
+
+```{r eval=FALSE}
+buildRef(
+    reference_path = ref_path,
+    fasta = "genome.fa",
+    gtf = "transcripts.gtf"
     genome_type = "hg38"
 )
 ```
@@ -98,7 +115,7 @@ buildRef(
 ### Overwriting an existing reference, but using the same annotations
 
 To re-build and overwrite an existing reference, using the same resource 
-annotations:
+annotations, set `overwrite = TRUE`
 
 ```{r eval=FALSE}
 # Assuming hg38 genome:
@@ -109,6 +126,10 @@ buildRef(
     overwrite = TRUE
 )
 ```
+\
+If `buildRef()` is run without setting `overwrite = TRUE`, it will terminate if
+the file `SpliceWiz.ref.gz` is found within the reference directory.
+
 \
 
 ### Create a SpliceWiz reference using web resources from Ensembl's FTP
@@ -163,8 +184,7 @@ buildRef(
 ```
 
 `Build-Reference-methods` will recognise the inputs of `fasta` and `gtf` as
-AnnotationHub resources as they begin with "AH".
-\
+AnnotationHub resources if they begin with "AH".
 \
 
 ### Create a SpliceWiz reference from species other than human or mouse
@@ -181,6 +201,10 @@ buildRef(
     genome_type = ""
 )
 ```
+\
+If one wishes to prepare a Mappability Exclusion for species other than human
+or mouse, please see the `Calculating Mappability Exclusions using STAR` section
+below.
 \
 
 # STAR reference generation
@@ -219,17 +243,70 @@ STAR_BuildRef(
 
 ```
 \
+Note that, by default, `STAR_BuildRef` will store the STAR genome reference in
+the `STAR` subdirectory within `reference_path`. To override this setting, set
+the `STAR_ref_path` parameter to a directory path of your choice, e.g.:
 
-### Building a STAR reference alongside the SpliceWiz reference
+```{r, eval = FALSE}
+STAR_BuildRef(
+    reference_path = ref_path,
+    STAR_ref_path = "/path/to/another/directory",
+    n_threads = 8
+)
+```
+\
+
+### Calculating Mappability Exclusions using STAR
+
+The `STAR_mappability` wrapper function will use the STAR aligner to calculate
+regions of low mappability within the given genome. 
+
+```{r eval = FALSE}
+STAR_mappability(
+  reference_path = ref_path,
+  STAR_ref_path = file.path(ref_path, "STAR"),
+  map_depth_threshold = 4,
+  n_threads = 4,
+  read_len = 70,
+  read_stride = 10,
+  error_pos = 35
+)
+```
+
+In the above example, `STAR_mappability()` will use the given STAR reference
+(inside the `STAR_ref_path` directory), and the genome found within the
+`reference_path` SpliceWiz reference, to generate synthetic reads.
+
+* `read_len` specifies the length of these synthetic reads (default `70`)
+* `read_stride` specifies the nucleotide distance between adjacent synthetic 
+reads (default `10`). These will be generated with alternate `+` / `-` strand
+* `error_pos` introduces a single nucleotide error at the specified position
+(default `35`), which will generate an SNP at the center of the 70-nt synthetic
+read.
+
+These synthetic reads will then be aligned back to the STAR genome to create a
+BAM file, which is later processed to measure the coverage depth of the genome
+by these synthetic reads.
+
+Finally, regions with coverage depth of `map_depth_threshold` or below will be
+defined as regions of "low mappability". In the above example, 70-nt reads of
+10-nt stride will produce synthetic reads such that each nucleotide is expected
+to have a coverage of `70 / 10 = 7` nucleotides. A coverage of `4` nucleotides
+or less equates to a coverage of < ~60% of expected depth.
+\
+
+### Building BOTH STAR and SpliceWiz references together
 
 If `STAR` is available on the same computer or server where R/RStudio
 is being run, we can use the one-line function `buildFullRef`. This
 function will:
-* Prepare the resources from the given FASTA and GTF files
-* Generate a STAR genome
+
+* Prepare the resources from the given FASTA and GTF files (runs `getResources`)
+* Generate a STAR genome (runs `STAR_BuildRef`)
 * Use the STAR genome and the FASTA file to *de-novo* calculate and define low
-  mappability regions
+  mappability regions (runs `STAR_mappability`)
 * Build the SpliceWiz reference using the genome resources and mappability file
+  (runs `buildRef`)
 
 ```{r eval=FALSE}
 buildFullRef(
@@ -244,15 +321,17 @@ buildFullRef(
 `n_threads` specify how many threads should be used to build the STAR reference
 and to calculate the low mappability regions
 \
-\
 
 ### Mappability exclusion generation using Rsubread
 
-Finally, if `STAR` is not available, `Rsubread` is available on Bioconductor to
+If `STAR` is not available, `Rsubread` is available on Bioconductor for 
+alignment and can be used to
 perform mappability calculations. The example code in the manual is displayed
 here for convenience, to demonstrate how this would be done:
 
 ```{r eval = FALSE}
+require(Rsubread)
+
 # (1a) Creates genome resource files 
 
 ref_path <- file.path(tempdir(), "Reference")
@@ -273,14 +352,17 @@ generateSyntheticReads(
 
 # (2a) Build the Rsubread genome index:
 
-setwd(ref_path)
-Rsubread::buildindex(basename = "./reference_index", 
-    reference = chrZ_genome())
+subreadIndexPath <- file.path(ref_path, "Rsubread")
+if(!dir.exists(subreadIndexPath)) dir.create(subreadIndexPath)
+Rsubread::buildindex(
+    basename = file.path(subreadIndexPath, "reference_index"), 
+    reference = chrZ_genome()
+)
 
 # (2b) Align the synthetic reads using Rsubread::subjunc()
 
 Rsubread::subjunc(
-    index = "./reference_index", 
+    index = file.path(subreadIndexPath, "reference_index"), 
     readfile1 = file.path(ref_path, "Mappability", "Reads.fa"), 
     output_file = file.path(ref_path, "Mappability", "AlignedReads.bam"), 
     useAnnotation = TRUE, 
@@ -297,11 +379,22 @@ calculateMappability(
 
 # (4) Build the SpliceWiz reference using the calculated Mappability Exclusions
 
-buildRef(ref_path)      
+buildRef(ref_path, genome_type = "", MappabilityRef = "")
 
 ```
 \
+If `MappabilityRef = ""` and `genome_type = ""` are set, `buildRef` will
+automatically use the file `Mappability/MappabilityExclusion.bed.gz` as its
+Mappability Exclusion resource. The default `nonPolyARef` can be set by
+the `getNonPolyARef()` function, e.g.:
 
+```{r, eval = FALSE}
+buildRef(ref_path, genome_type = "", MappabilityRef = "",
+    nonPolyARef = getNonPolyARef("hg38")
+) 
+```
+
+\
 # Aligning Raw RNA-seq data using SpliceWiz's STAR wrappers
 \
 First, remember to check that STAR is available via command line:
@@ -314,13 +407,18 @@ STAR_version()
 
 ```{r eval = FALSE}
 STAR_alignReads(
+    fastq_1 = "sample1_1.fastq", fastq_2 = "sample1_2.fastq",
     STAR_ref_path = file.path(ref_path, "STAR"),
     BAM_output_path = "./bams/sample1",
-    fastq_1 = "sample1_1.fastq", fastq_2 = "sample1_2.fastq",
-    n_threads = 8
+    n_threads = 8,
+    trim_adaptor = "AGATCGGAAG"
 )
 ```
 \
+Note that by default, `STAR_alignReads()` will "trim" Illumina adapters 
+(in fact they will be soft-clipped using STAR's `--clip3pAdapterSeq` option). 
+To disable this feature, set `trim_adapter = ""` in the `STAR_alignReads()`
+function.
 
 ### Aligning multiple samples using STAR
 
@@ -343,7 +441,9 @@ STAR_alignExperiment(
 ```
 
 To use two-pass mapping, set `two_pass = TRUE`. We recommend disabling this
-feature, as one-pass mapping is adequate in typical-use cases.
+feature, as one-pass mapping is adequate in typical-use cases. Two-pass mapping
+is recommended if one expects a large number of novel splicing events or if the
+gene annotations (of transcript isoforms) is likely to be incomplete.
 \
 \
 
@@ -357,11 +457,25 @@ file extension. For example, to recursively identify FASTQ files of the format
 
 ```{r eval = FALSE}
 # Assuming sequencing files are named by their respective sample names
-fastq_files <- findFASTQ("./sequencing_files", paired = TRUE,
-    fastq_suffix = ".fq.gz", level = 0)
+fastq_files <- findFASTQ(
+    sample_path = "./sequencing_files", 
+    paired = TRUE,
+    fastq_suffix = ".fq.gz", level = 0
+)
 ```
 
-Then, these can be aligned as follows:
+For gzipped fastq files, `fastq_suffix` should be `".fq.gz"` or `".fastq.gz"`.
+For uncompressed fastq files, it should be `".fq"` or `".fastq"`. Please
+check your files in order to correctly set this option.
+
+`findFASTQ()` will return a 2- or 3-column data frame (depending if `paired` was
+set to `FALSE` or `TRUE`, respectively). The first column is the sample name
+(the file name, if `level = 0`, or the parent directory name, if `level = 1`).
+The subsequent columns are the paths of the forward and reverse reads.
+
+The data.frame returned by the `findFASTQ()` function can be parsed into the
+`STAR_alignExperiment` function. This will align all samples contained in the
+data.frame parsed via the `Experiment` parameter.
 
 ```{r eval = FALSE}
 STAR_alignExperiment(
@@ -372,7 +486,13 @@ STAR_alignExperiment(
     two_pass = FALSE
 )
 ```
+\
+Note that, if a directory contains multiple forward and reverse FASTQ files,
+they will be aligned to the same BAM file. This can be done by setting
+`level = 1` in the `findFASTQ()` function, resulting in multiple rows with the
+same sample name.
 
+\
 # Running processBAM on BAM files
 
 To conveniently find all BAM files recursively in a given path:
@@ -385,10 +505,15 @@ This convenience function returns the putative sample names, either from BAM
 file names themselves (`level = 0`), or from the names of their parent 
 directories (`level = 1`).
 
+First, ensure that a SpliceWiz reference has been generated using the 
+`buildRef()` function. This reference should be parsed into the `reference_path`
+parameter of the `processBAM()` function.
+
 To run `processBAM()` using 4 OpenMP threads:
 
 ```{r eval=FALSE}
-# assume SpliceWiz reference has been generated in `ref_path`
+# assume SpliceWiz reference has been generated in `ref_path` using the 
+# `buildRef()` function.
 
 processBAM(
     bamfiles = bams$path,
@@ -401,6 +526,7 @@ processBAM(
 ```
 \
 
+`
 ### Creating COV files from BAM files without running processBAM
 
 Sometimes one may wish to create a COV file from a BAM file without running
@@ -415,13 +541,21 @@ reference:
 BAM2COV(
     bamfiles = bams$path,
     sample_names = bams$sample,
-    output_path = "./pb_output",
+    output_path = "./cov_output",
     n_threads = 4,
     useOpenMP = TRUE
 )
 ```
 \
+Note that, by default, `processBAM` and `BAM2COV` will use OpenMP where 
+available (which is natively supported on Windows and Linux). For MacOS, if
+OpenMP is not available, these functions will use BiocParallel's 
+`MulticoreParam` to multi-thread process BAM files (1 BAM per thread). Beware
+that this may take a lot of RAM! (Typically 5-10 Gb per BAM file). We highly
+suggest considering installing OpenMP libraries on MacOS, as this will lower
+RAM usage.
 
+\
 # Collating the experiment
 
 Assuming the SpliceWiz reference is in `ref_path`, after running `processBAM()`
@@ -444,7 +578,17 @@ collateData(
 ```
 
 * NB: Novel splicing detection can be enabled by setting `novelSplicing = TRUE`.
-See the SpliceWiz Quick-Start vignette for more details.
+See the Quick-Start vignette for more details about the various parameters
+associated with novel splicing detection.
+
+```{r eval = FALSE}
+collateData(
+    Experiment = expr,
+    reference_path = ref_path,
+    output_path = "./NxtSE_output_novelSplicing",
+    novelSplicing = TRUE
+)
+```
 
 Then, the collated data can be imported as a `NxtSE` object, which is an object
 that inherits `SummarizedExperiment` and has specialized containers to hold

@@ -12,6 +12,7 @@ fitASE_edgeR(
   se,
   strModelFormula,
   strASEFormula,
+  useQL = TRUE,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE
@@ -21,6 +22,7 @@ fitASE_edgeR_custom(
   se,
   model_IncExc,
   model_ASE,
+  useQL = TRUE,
   IRmode = c("all", "annotated", "annotated_binary"),
   filter_antiover = TRUE,
   filter_antinear = FALSE
@@ -52,6 +54,9 @@ batch factors (if any), and \code{test_factor} is the variate of interest.}
 interactiion term with \code{ASE}. For example, following the above example,
 the ASE formula should be
 \code{"~0 + batch1 + batch2 + test_factor + test_factor:ASE"}}
+
+\item{useQL}{(default \code{TRUE}) Whether to use edgeR's quasi-likelihood method
+to help reduce false positives from near-zero junction / intron counts.}
 
 \item{IRmode}{(default \code{all}) Choose the approach to quantify IR events.
 Default \code{all} considers all introns as potentially retained, and calculates

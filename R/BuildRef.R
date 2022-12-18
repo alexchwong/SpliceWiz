@@ -128,6 +128,8 @@
 #'   `genome_type`. When set to false, the MappabilityExclusion default file
 #'   corresponding to `genome_type` will automatically be used.
 #' @param verbose (default `TRUE`) If `FALSE`, will silence progress messages
+#' @param ... For STAR_buildRef, additional parameters to be parsed into
+#'   `STAR_buildRef` which it runs internally. See [STAR_buildRef]
 #' @return
 #' For `getResources`: creates the following local resources:
 #' * `reference_path/resource/genome.2bit`: Local copy of the genome sequences
@@ -342,7 +344,8 @@ buildRef <- function(
 
     # Check here whether fetching from TwoBitFile is problematic
     reference_data$genome <- .check_2bit_performance(reference_path,
-        reference_data$genome, verbose = verbose)        
+        reference_data$genome, verbose = verbose)
+    gc()
 
     dash_progress("Processing introns", N_steps)
     chromosomes <- .convert_chromosomes(chromosome_aliases)
@@ -361,14 +364,17 @@ buildRef <- function(
     if(!is.null(session)) {
         shiny::withProgress(message = "Determining NMD Transcripts", {
             .gen_nmd(reference_path, reference_data$genome,
-                verbose = verbose)
+                verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
         })
     } else {
-        .gen_nmd(reference_path, reference_data$genome, verbose = verbose)
+        .gen_nmd(reference_path, reference_data$genome, 
+            verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
     }
+    gc()
 
     dash_progress("Annotating Splice Events", N_steps)
     .gen_splice(reference_path, verbose = verbose)
+    gc()
     if (file.exists(file.path(reference_path, "fst", "Splice.fst")) &
         file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
         dash_progress("Translating AS Peptides", N_steps)
@@ -378,14 +384,12 @@ buildRef <- function(
     } else {
         dash_progress("No protein-coding splicing events detected", N_steps)
     }
-
-    if(verbose) message("Reference build finished")
-    dash_progress("Reference build finished", N_steps)
-
+   
     # Prepare a reference-specific cov_data for reference-only plots:
     cov_data <- .prepare_covplot_data(reference_path)
     saveRDS(cov_data, file.path(reference_path, "cov_data.Rds"))
-
+    rm(cov_data, reference_data)
+    
     # Update settings.Rds only after everything is finalised
     settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
     settings.list$genome_type <- genome_type
@@ -396,6 +400,11 @@ buildRef <- function(
     settings.list$BuildVersion <- buildRef_version
 
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
+
+    if(verbose) message("Reference build finished")
+    dash_progress("Reference build finished", N_steps)
+    gc()
+    invisible()
 }
 
 #' @describeIn Build-Reference-methods One-step function that fetches resources,
@@ -412,7 +421,8 @@ buildFullRef <- function(
         nonPolyARef = getNonPolyARef(genome_type),
         BlacklistRef = "",
         useExtendedTranscripts = TRUE,
-        n_threads = 4
+        n_threads = 4,
+        ...
 ) {
     if (!overwrite && 
             file.exists(file.path(reference_path, "SpliceWiz.ref.gz"))) {
@@ -428,11 +438,22 @@ buildFullRef <- function(
 
     STAR_buildRef(reference_path = reference_path,
         also_generate_mappability = use_STAR_mappability,
-        n_threads = n_threads)
-
+        n_threads = n_threads, ...)
+    
+    if(use_STAR_mappability) {
+        use_genome_type <- ""
+        use_npa_type <- nonPolyARef
+        if(use_npa_type == "" & genome_type != "") {
+            use_npa_type <- getNonPolyARef(genome_type)
+        }
+    } else {
+        use_genome_type <- genome_type
+        use_npa_type <- nonPolyARef
+    }
+    
     buildRef(reference_path = reference_path,
-        genome_type = genome_type,
-        nonPolyARef = nonPolyARef,
+        genome_type = use_genome_type, # makes sure generated map-ref is used
+        nonPolyARef = use_npa_type,
         BlacklistRef = BlacklistRef,
         chromosome_aliases = chromosome_aliases,
         useExtendedTranscripts = useExtendedTranscripts)
@@ -745,11 +766,17 @@ Get_GTF_file <- function(reference_path) {
     .validate_path(reference_path, subdirs = "resource")
     if (!is_valid(fasta)) {
         twobit <- file.path(reference_path, "resource", "genome.2bit")
-        if (!file.exists(twobit)) .log(paste(fasta, "doesn't exist"))
+        if (!file.exists(twobit)) 
+            .log(paste(
+                twobit, "doesn't exist. Please run getResources()"
+            ))
     }
     if (!is_valid(gtf)) {
         gtf <- file.path(reference_path, "resource", "transcripts.gtf.gz")
-        if (!file.exists(gtf)) .log(paste(gtf, "doesn't exist"))
+        if (!file.exists(gtf))
+             .log(paste(
+                gtf, "doesn't exist. Please run getResources()"
+            ))       
     }
     # URLS are checked at BiocFileCache step contained within .parse_valid_file
 
@@ -1209,20 +1236,18 @@ Get_GTF_file <- function(reference_path) {
         dup_gene_names <- unique(unique_gene_name[
             duplicated(unique_gene_name)])
         if(length(dup_gene_names) > 0) {
-            for(dup_gene in dup_gene_names) {
-                # Use raw transcript id instead of transcript name
-                if ("transcript_name" %in% names(mcols(gtf_gr))) {
-                    gtf_gr$transcript_name[gtf_gr$gene_name == dup_gene] <-
-                        gtf_gr$transcript_id[gtf_gr$gene_name == dup_gene]
-                }
-                # Replace {gene_name} with {gene_name}_{gene_id}
-                gtf_gr$gene_name[gtf_gr$gene_name == dup_gene] <-
-                    paste(
-                        dup_gene,
-                        gtf_gr$gene_id[gtf_gr$gene_name == dup_gene],
-                        sep = "_"
-                    )
+            if ("transcript_name" %in% names(mcols(gtf_gr))) {
+                gtf_gr$transcript_name[gtf_gr$gene_name %in% dup_gene_names] <-
+                    gtf_gr$transcript_id[gtf_gr$gene_name %in% dup_gene_names]
             }
+            
+            # Replace {gene_name} with {gene_name}_{gene_id}
+            gtf_gr$gene_name[gtf_gr$gene_name %in% dup_gene_names] <-
+                paste(
+                    gtf_gr$gene_name[gtf_gr$gene_name %in% dup_gene_names],
+                    gtf_gr$gene_id[gtf_gr$gene_name %in% dup_gene_names],
+                    sep = "_"
+                )
         }
     } else {
         gtf_gr$gene_name <- gtf_gr$gene_id
@@ -1282,6 +1307,11 @@ Get_GTF_file <- function(reference_path) {
 .process_gtf <- function(gtf_gr, reference_path, verbose = TRUE) {
     # Create "fst" subdirectory if not exists
     .validate_path(reference_path, subdirs = "fst")
+    
+    # For collateData rapid recall later
+    write.fst(as.data.frame(gtf_gr),
+        file.path(reference_path, "fst", "gtf_fixed.fst"))
+        
     if(verbose) .log("Processing gtf file...", "message")
     if(verbose) message("...genes")
     Genes_group <- .process_gtf_genes(gtf_gr, reference_path, verbose)
@@ -2567,13 +2597,20 @@ Get_GTF_file <- function(reference_path) {
 
 # Determines which spliced / IR transcripts are NMD substrates
 # Assumes NMD substrates if PTC is < 50 nt from last EJC
-.gen_nmd <- function(reference_path, genome, verbose = TRUE) {
+.gen_nmd <- function(reference_path, genome, verbose = TRUE, 
+    tryNew = FALSE, tr_per_block = 1000
+) {
 
     Exons.tr <- .gen_nmd_exons_trimmed(reference_path)
     protein.introns <- .gen_nmd_protein_introns(reference_path, Exons.tr)
 
-    NMD.Table <- .gen_nmd_determine(Exons.tr, protein.introns, genome, 50,
-        verbose = verbose)
+    if(tryNew) {
+        NMD.Table <- .gen_nmd_determine_new(Exons.tr, protein.introns, genome, 
+            50, verbose = verbose, tr_per_block = tr_per_block)    
+    } else {
+        NMD.Table <- .gen_nmd_determine(Exons.tr, protein.introns, genome, 50,
+            verbose = verbose)    
+    }
     protein.introns.red <- unique(
         protein.introns[, c("intron_id", "intron_type")])
     NMD.Table[protein.introns.red, on = "intron_id",
@@ -2616,6 +2653,8 @@ Get_GTF_file <- function(reference_path) {
         c("end") := get("sc_end")
     ]
     Exons.tr <- Exons.tr[get("start") < get("end")]
+    Exons.tr <- Exons.tr[,
+        c("seqnames", "start", "end", "strand", "transcript_id")]
     return(Exons.tr)
 }
 
@@ -2666,8 +2705,95 @@ Get_GTF_file <- function(reference_path) {
         on = c("seqnames", "start", "end", "strand", "transcript_id"),
         c("intron_type") := "UTR3"
     ]
-
+    protein.introns <- protein.introns[, c(
+        "transcript_id", "intron_id", 
+        "seqnames", "start", "end", "strand",
+        "intron_type"
+    )]
     return(protein.introns)
+}
+
+# Given a list of exons and introns, and genome sequence
+# - Generate a list of whether spliced or unspliced transcripts are NMD subs
+.gen_nmd_determine_new <- function(
+    exon.DT, intron.DT, genome, threshold = 50, verbose = TRUE,
+    tr_per_block = 1000
+) {
+    if(verbose) 
+        .log("Predicting NMD transcripts from genome sequence", "message")
+    exon.DT <- exon.DT[,
+        c("seqnames", "start", "end", "strand", "transcript_id")]
+    exon_gr <- .grDT(exon.DT)
+    if(verbose) message("...exonic transcripts")
+
+    set(exon.DT, , "seq", as.character(getSeq(genome, exon_gr)))
+    final <- .gen_nmd_determine_spliced_exon(exon.DT, intron.DT,
+        threshold = threshold)
+
+    intron.DT.use <- intron.DT[get("intron_type") != "UTR5"]
+    exon.DT.skinny <- exon.DT[, -("seq")]
+
+    uniqueTr <- unique(exon.DT$transcript_id)
+    # do n transcripts at a time
+    n_jobs <- 1 + floor(length(uniqueTr) / tr_per_block) 
+    jobsTr <- .split_vector(uniqueTr, n_jobs)
+        
+    if(verbose) {
+        message("...retained introns")
+        pb <- txtProgressBar(max = n_jobs, style = 3)
+    }
+    l_seq <- 1000
+
+    final_list <- list()
+    for (i in seq_len(n_jobs)) {
+        if(verbose) setTxtProgressBar(pb, i)
+        dash_progress("Determining NMD Transcripts: Calculating...", n_jobs)
+        final.part <- final[get("transcript_id") %in% jobsTr[[i]]]
+        intron.part <- intron.DT.use[
+            get("transcript_id") %in% jobsTr[[i]],
+            c("transcript_id", "intron_id",
+                "seqnames", "start", "end", "strand")
+        ]
+        if(nrow(intron.part) == 0) {
+            return(c())
+        } else {
+            set(intron.part, , "type", "intron")
+            exon.DT.part <- exon.DT[get("transcript_id") %in% jobsTr[[i]]]
+            exon.DT.skinny <- exon.DT.part[, -("seq")]
+
+            intron.part.upstream <- .gen_nmd_determine_build_introns_upstream(
+                intron.part, exon.DT.skinny, use_short = TRUE)
+            intron.part.upstream <- .gen_nmd_determine_retrieve_short_seq(
+                exon.DT.part, intron.part.upstream, genome, l_seq = l_seq)
+            final.part <- .gen_nmd_determine_translate(
+                final.part, intron.part.upstream, use_short = TRUE,
+                threshold = threshold)
+            intron_id_exclude <- unique(intron.part.upstream$intron_id)
+            intron_id_exclude <- intron_id_exclude[(
+                intron_id_exclude %in%
+                final.part[get("IRT_is_NMD") == TRUE, get("intron_id")]
+            )]
+            intron.part <- intron.part[!(get("intron_id") %in% intron_id_exclude)]
+
+            intron.part.upstream <- .gen_nmd_determine_build_introns_upstream(
+                intron.part, exon.DT.skinny, use_short = FALSE)
+            intron.part.upstream <- .gen_nmd_determine_retrieve_full_seq(
+                exon.DT.part, intron.part.upstream, genome)
+            final.part <- .gen_nmd_determine_translate(
+                final.part, intron.part.upstream, use_short = FALSE,
+                threshold = threshold)
+            
+            final_list[[i]] <- final.part
+        }
+    }
+    
+    true_final <- rbindlist(final_list)
+    if(verbose) {
+        setTxtProgressBar(pb, i)
+        close(pb)
+        message("done")
+    }
+    return(true_final)
 }
 
 # Given a list of exons and introns, and genome sequence
@@ -2747,9 +2873,11 @@ Get_GTF_file <- function(reference_path) {
     exon.MLE.DT <- copy(exon.DT)
     setorderv(exon.MLE.DT, "start")
     exon.MLE.DT[, c("elem_number") := data.table::rowid(get("transcript_id"))]
-    exon.MLE.DT[get("strand") == "-",
-        c("elem_number") := max(get("elem_number")) + 1 - get("elem_number"),
-        by = "transcript_id"]
+    if(any(exon.MLE.DT$strand == "-")) {
+        exon.MLE.DT[get("strand") == "-",
+            c("elem_number") := max(get("elem_number")) + 1 - get("elem_number"),
+            by = "transcript_id"]
+    }
     exon.MLE.DT[, by = "transcript_id",
         c("is_last_elem") := (get("elem_number") == max(get("elem_number")))]
     exon.MLE.DT <- exon.MLE.DT[get("is_last_elem") == FALSE]
@@ -2759,13 +2887,19 @@ Get_GTF_file <- function(reference_path) {
     exon.MLE.DT <- exon.MLE.DT[, c("transcript_id", "seq")]
     splice <- exon.MLE.DT[, lapply(.SD, paste0, collapse = ""),
         by = "transcript_id"]
-    splice[as.numeric(regexpr("N", get("seq"))) < 0,
+    splice[
+        is.na(as.vector(stri_locate_first_fixed(get("seq"), "N")[,1])),
         c("AA") := .translate_fuzzy(.trim_3(get("seq")))
     ]
     # Find nucleotide position of first stop codon
-    splice[, c("stop_pos") :=
-        as.numeric(regexpr("\\*", get("AA"))) * 3 - 2]
-    splice[get("stop_pos") < 0, c("stop_pos") := NA]
+    # splice[, c("stop_pos") :=
+        # as.numeric(regexpr("\\*", get("AA"))) * 3 - 2]
+    # splice[get("stop_pos") < 0, c("stop_pos") := NA]
+
+    splice[, c("stop_pos") := as.vector(
+        stri_locate_first_fixed(get("AA"), "*")[,1])]
+    splice[!is.na(get("stop_pos")), c("stop_pos") := get("stop_pos") * 3 - 2]
+    
     splice[, c("splice_len") := nchar(get("seq"))]
     splice[!is.na(get("AA")),
         c("stop_to_EJ") := get("splice_len") - get("stop_pos")]
@@ -2805,16 +2939,24 @@ Get_GTF_file <- function(reference_path) {
     setorderv(intron.part.upstream, c("seqnames", "start"))
     intron.part.upstream[,
         c("elem_number") := data.table::rowid(get("intron_id"))]
-    intron.part.upstream[get("strand") == "-",
-        c("elem_number") :=
-            max(get("elem_number")) + 1 - get("elem_number"),
-        by = "intron_id"
-    ]
+    if(any(intron.part.upstream$strand == "-")) {
+        intron.part.upstream[get("strand") == "-",
+            c("elem_number") :=
+                max(get("elem_number")) + 1 - get("elem_number"),
+            by = "intron_id"
+        ]    
+    }
 
     # trim exons downstream of intron
     intron.part.upstream.intron <- intron.part.upstream[get("type") == "intron"]
-    intron.part.upstream[intron.part.upstream.intron,
-        on = "intron_id", c("intron_pos") := get("i.elem_number")
+    # intron.part.upstream[intron.part.upstream.intron,
+        # on = "intron_id", c("intron_pos") := get("i.elem_number")
+    # ]
+    intron.part.upstream$intron_pos <- intron.part.upstream.intron$elem_number[
+        match(
+            intron.part.upstream$intron_id,
+            intron.part.upstream.intron$intron_id
+        )
     ]
     intron.part.upstream <- intron.part.upstream[!is.na(get("intron_pos"))]
     if (use_short) {
@@ -2823,14 +2965,15 @@ Get_GTF_file <- function(reference_path) {
                 get("type") == "intron"]
     } else {
         # remove last exon: then the terminus is the last exon junction
-        intron.part.upstream[,
-            by = "transcript_id",
-            c("is_last_elem") := (get("elem_number") == max(get("elem_number")))
-        ]
-        intron.part.upstream <-
-            intron.part.upstream[!get("is_last_elem") |
-                get("type") == "intron"]
-
+        if(nrow(intron.part.upstream) > 0) {
+            intron.part.upstream[, by = "transcript_id",
+                c("is_last_elem") := 
+                    (get("elem_number") == max(get("elem_number")))
+            ]
+            intron.part.upstream <-
+                intron.part.upstream[!get("is_last_elem") |
+                    get("type") == "intron"]
+        }
     }
     return(intron.part.upstream)
 }
@@ -2900,18 +3043,26 @@ Get_GTF_file <- function(reference_path) {
     IRT <- elems[,
         lapply(.SD, paste0, collapse = ""), by = "intron_id"]
     # trim
-    IRT[, c("seq") := substr(get("seq"), 1,
-        nchar(get("seq")) - (nchar(get("seq")) %% 3))]
+    # IRT[, c("seq") := substr(get("seq"), 1,
+        # nchar(get("seq")) - (nchar(get("seq")) %% 3))]
+    seqlens <- 3 * floor(nchar(IRT$seq) / 3)
+    IRT[, c("seq") := substr(get("seq"), 1, seqlens)]
+    # IRT[
+        # as.numeric(regexpr("N", get("seq"))) < 0,
+        # c("AA") := .translate_fuzzy(.trim_3(get("seq")))
+    # ]
     IRT[
-        as.numeric(regexpr("N", get("seq"))) < 0,
-        c("AA") := .translate_fuzzy(.trim_3(get("seq")))
+        is.na(as.vector(stri_locate_first_fixed(get("seq"), "N")[,1])),
+        c("AA") := .translate_fuzzy(get("seq"))
     ]
-
+    
     # Find nucleotide position of first stop codon
-    IRT[, c("stop_pos") :=
-        as.numeric(regexpr("\\*", get("AA"))) * 3 - 2]
+    IRT[, c("stop_pos") := as.vector(
+        stri_locate_first_fixed(get("AA"), "*")[,1])]
+    IRT[!is.na(get("stop_pos")), c("stop_pos") := get("stop_pos") * 3 - 2]
+    
     IRT[get("stop_pos") < 0, c("stop_pos") := NA]
-    IRT[, c("IRT_len") := nchar(get("seq"))]
+    IRT[, c("IRT_len") := 3 * floor(nchar(get("seq")) / 3)]
     IRT[!is.na(get("AA")), c("stop_to_EJ") :=
         get("IRT_len") - get("stop_pos")]
     IRT[, c("use_short") := use_short]
@@ -3014,41 +3165,77 @@ Get_GTF_file <- function(reference_path) {
     setorder(GeneOrder, seqnames, start, end, strand)
 
     introns.skipcoord <- copy(candidate.introns)
-    introns.skipcoord[, c("gene_id") :=
-        factor(get("gene_id"), GeneOrder[, get("gene_id")], ordered = TRUE)]
-
+    # introns.skipcoord[, c("gene_id") :=
+        # factor(get("gene_id"), GeneOrder[, get("gene_id")], ordered = TRUE)]
     setorderv(introns.skipcoord,
+        # c("gene_id", "transcript_name", "intron_number"))
+        c("transcript_name", "intron_number"))
+    finalCols <- colnames(candidate.introns)
+    
+    introns.skipcoord[, c("max_intron_number") := max(get("intron_number")),
+        by = "transcript_id"]
+    getCols <- c("transcript_id", "seqnames", "start", "end", 
+        "strand", "intron_number")
+    introns.skipcoord.first <- introns.skipcoord[
+        get("intron_number") < get("max_intron_number"), getCols,
+        by = "transcript_id", with = FALSE
+    ]
+    introns.skipcoord.last <- introns.skipcoord[
+        get("intron_number") > 1, getCols,
+        with = FALSE
+    ]
+    skip_coords <- ifelse(introns.skipcoord.first$strand == "+",
+        paste0(introns.skipcoord.first$seqnames, ":",
+            introns.skipcoord.first$start, "-", 
+            introns.skipcoord.last$end, "/+"
+        ),
+        paste0(introns.skipcoord.first$seqnames, ":",
+            introns.skipcoord.last$start, "-", 
+            introns.skipcoord.first$end, "/-"
+        )
+    )
+
+    introns.skipcoord.first[, c("skip_coord") := skip_coords]
+    introns.skipcoord.last[, c("skip_coord_2") := skip_coords]
+
+    introns.skipcoord.final <- introns.skipcoord.first[candidate.introns, 
+        on = getCols]
+    introns.skipcoord.final <- introns.skipcoord.last[introns.skipcoord.final, 
+        on = getCols]
+    introns.skipcoord.final <- introns.skipcoord.final[,
+        c(finalCols, "skip_coord", "skip_coord_2"), with = FALSE]
+
+    introns.skipcoord.final[, c("gene_id") :=
+        factor(get("gene_id"), GeneOrder[, get("gene_id")], ordered = TRUE)]
+    setorderv(introns.skipcoord.final,
         c("gene_id", "transcript_name", "intron_number"))
 
-    introns.skipcoord[, c("skip_coord") := ""]
-    introns.skipcoord[get("strand") == "+",
-        c("skip_coord") := paste0(
-                get("seqnames"), ":", get("intron_start"),
-                "-", data.table::shift(get("intron_end"), 1, NA, "lead"),
-                "/", get("strand")
-        ),
-        by = "transcript_id"
-    ]
-    introns.skipcoord[get("strand") == "-",
-        c("skip_coord") := paste0(
-                get("seqnames"), ":",
-                data.table::shift(get("intron_start"), 1, NA, "lead"),
-                "-", get("intron_end"), "/", get("strand")
-        ),
-        by = "transcript_id"
-    ]
-    introns.skipcoord[grepl("NA", get("skip_coord")), c("skip_coord") := NA]
+    # introns.skipcoord[get("strand") == "+",
+        # c("skip_coord") := paste0(
+                # get("seqnames"), ":", get("intron_start"),
+                # "-", data.table::shift(get("intron_end"), 1, NA, "lead"),
+                # "/", get("strand")
+        # ),
+        # by = "transcript_id"
+    # ]
+    # introns.skipcoord[get("strand") == "-",
+        # c("skip_coord") := paste0(
+                # get("seqnames"), ":",
+                # data.table::shift(get("intron_start"), 1, NA, "lead"),
+                # "-", get("intron_end"), "/", get("strand")
+        # ),
+        # by = "transcript_id"
+    # ]
+    # introns.skipcoord[grepl("NA", get("skip_coord")), c("skip_coord") := NA]
 
-    introns.skipcoord[, c("skip_coord_2") :=
-        data.table::shift(get("skip_coord"), 1, NA, "lag")]
-    return(introns.skipcoord)
+    # introns.skipcoord[, c("skip_coord_2") :=
+        # data.table::shift(get("skip_coord"), 1, NA, "lag")]
+    return(introns.skipcoord.final)
 }
 
 # Generate a list of MXE
 .gen_splice_MXE <- function(introns.skipcoord) {
-    introns_search_MXE <- introns.skipcoord[introns.skipcoord[,
-        .I[get("intron_number") < max(get("intron_number"))],
-        by = "transcript_id"]$V1]
+    introns_search_MXE <- introns.skipcoord[!is.na(get("skip_coord"))]
     introns_search_MXE <- introns_search_MXE[
         introns_search_MXE[, .N, by = c("skip_coord")],
         on = c("skip_coord"),
@@ -3065,7 +3252,7 @@ Get_GTF_file <- function(reference_path) {
         list(introns_search_MXE_pos, introns_search_MXE_neg))
     introns_search_MXE <- introns_search_MXE[,
         c("skip_coord", "gene_id", "Event", "transcript_id",
-            "transcript_name", "intron_number")]
+            "transcript_name", "intron_number", "intron_id")]
     setnames(introns_search_MXE, old = "Event", new = "Event1")
 
     introns_search_MXE2 <- introns.skipcoord[,
@@ -3080,6 +3267,8 @@ Get_GTF_file <- function(reference_path) {
 
     introns_search_MXE <- unique(introns_search_MXE,
         by = c("Event1", "Event2"))
+    introns_search_MXE[, c("intron_id_a", "intron_id_b") := list(
+        get("intron_id"), get("intron_id"))]
 
     if (nrow(introns_search_MXE) > 0) {
         introns_found_MXE <- introns_search_MXE[,
@@ -3089,24 +3278,35 @@ Get_GTF_file <- function(reference_path) {
                 o <- cumsum(c(0, (.N - 2L):1))
                 edge2 <- i - o[edge1]
                 .(
-                    gene_id = get("gene_id")[edge1],
-                    gene_id_b = get("gene_id")[edge2],
-                    Event1a = get("Event1")[edge1],
-                    Event1b = get("Event1")[edge2],
-                    Event2a = get("Event2")[edge1],
-                    Event2b = get("Event2")[edge2],
-                    transcript_id_a = get("transcript_id")[edge1],
-                    transcript_id_b = get("transcript_id")[edge2],
-                    transcript_name_a = get("transcript_name")[edge1],
-                    transcript_name_b = get("transcript_name")[edge2],
-                    intron_number_a = get("intron_number")[edge1],
-                    intron_number_b = get("intron_number")[edge2]
+                    intron_id_a = get("intron_id")[edge1],
+                    intron_id_b = get("intron_id")[edge2]
                 )
             }, by = "skip_coord"
         ]
-        # Make sure to exclude A3SS / A5SS events:
+        introns_found_MXE <- introns_found_MXE[introns_search_MXE,
+            on = "intron_id_a", 
+            c("gene_id", "Event1a", "Event2a", "transcript_id_a",
+                "transcript_name_a", "intron_number_a") := 
+            list(get("i.gene_id"), get("i.Event1"), get("i.Event2"),
+                get("i.transcript_id"), get("i.transcript_name"),
+                get("i.intron_number"))
+        ]
+        introns_found_MXE <- introns_found_MXE[introns_search_MXE,
+            on = "intron_id_b", 
+            c("gene_id_b", "Event1b", "Event2b", "transcript_id_b",
+                "transcript_name_b", "intron_number_b") := 
+            list(get("i.gene_id"), get("i.Event1"), get("i.Event2"),
+                get("i.transcript_id"), get("i.transcript_name"),
+                get("i.intron_number"))
+        ]
         introns_found_MXE <- introns_found_MXE[get("Event1a") != get("Event1b")]
         introns_found_MXE <- introns_found_MXE[get("Event2a") != get("Event2b")]
+        introns_found_MXE <- introns_found_MXE[,
+            c("skip_coord", "gene_id", "gene_id_b",
+            "Event1a", "Event1b", "Event2a", "Event2b",
+            "transcript_id_a","transcript_id_b",
+            "transcript_name_a","transcript_name_b",
+            "intron_number_a", "intron_number_b"), with = FALSE]
 
         setorderv(introns_found_MXE, c("gene_id", "transcript_name_a"))
         introns_found_MXE[, c("EventName") := paste0(
@@ -3238,7 +3438,8 @@ Get_GTF_file <- function(reference_path) {
         order = c(1, 1, -1))
     introns_search_AFE_pos <- introns_search_AFE_pos[,
         c("seqnames", "intron_end", "strand", "Event", "gene_id",
-            "transcript_id", "transcript_name", "intron_number")]
+            "transcript_id", "transcript_name", "intron_number",
+            "intron_id")]
     setnames(introns_search_AFE_pos, old = "intron_end", new = "intron_coord")
 
     introns_search_AFE_neg <- introns_search_AFE[get("strand") == "-"]
@@ -3246,12 +3447,15 @@ Get_GTF_file <- function(reference_path) {
         c("seqnames", "intron_start", "intron_end"))
     introns_search_AFE_neg <- introns_search_AFE_neg[,
         c("seqnames", "intron_start", "strand", "Event", "gene_id",
-            "transcript_id", "transcript_name", "intron_number")]
+            "transcript_id", "transcript_name", "intron_number",
+            "intron_id")]
     setnames(introns_search_AFE_neg, old = "intron_start", new = "intron_coord")
 
     introns_search_AFE <- rbindlist(
         list(introns_search_AFE_pos, introns_search_AFE_neg))
     introns_search_AFE <- unique(introns_search_AFE, by = "Event")
+    introns_search_AFE[, c("intron_id_a", "intron_id_b") := list(
+        get("intron_id"), get("intron_id"))]
 
     introns_found_AFE <- introns_search_AFE[,
         {
@@ -3260,22 +3464,38 @@ Get_GTF_file <- function(reference_path) {
             o <- cumsum(c(0, (.N - 2L):1))
             edge2 <- i - o[edge1]
             .(
-                gene_id = get("gene_id")[edge1],
-                gene_id_b = get("gene_id")[edge2],
-                Event1a = get("Event")[edge1],
-                Event1b = get("Event")[edge2],
-                Event2a = NA, Event2b = NA, EventRegion = get("Event")[edge2],
-                transcript_id_a = get("transcript_id")[edge1],
-                transcript_id_b = get("transcript_id")[edge2],
-                transcript_name_a = get("transcript_name")[edge1],
-                transcript_name_b = get("transcript_name")[edge2],
-                intron_number_a = get("intron_number")[edge1],
-                intron_number_b = get("intron_number")[edge2]
+                intron_id_a = get("intron_id")[edge1],
+                intron_id_b = get("intron_id")[edge2]
             )
         }, by = c("seqnames", "strand", "intron_coord")
     ]
+    introns_found_AFE <- introns_found_AFE[introns_search_AFE,
+        on = "intron_id_a", 
+        c("gene_id", "Event1a", "Event2a", "transcript_id_a",
+            "transcript_name_a", "intron_number_a") := 
+        list(get("i.gene_id"), get("i.Event"), NA,
+            get("i.transcript_id"), get("i.transcript_name"),
+            get("i.intron_number"))
+    ]
+    introns_found_AFE <- introns_found_AFE[introns_search_AFE,
+        on = "intron_id_b", 
+        c("gene_id_b", "Event1b", "Event2b", "EventRegion",
+            "transcript_id_b", "transcript_name_b", "intron_number_b") := 
+        list(get("i.gene_id"), get("i.Event"), NA, get("i.Event"),
+            get("i.transcript_id"), get("i.transcript_name"),
+            get("i.intron_number"))
+    ]
+    introns_found_AFE <- introns_found_AFE[, c(
+        "seqnames", "strand", "intron_coord", 
+        "gene_id", "gene_id_b",
+        "Event1a", "Event1b", "Event2a", "Event2b", "EventRegion",
+        "transcript_id_a","transcript_id_b",
+        "transcript_name_a","transcript_name_b",
+        "intron_number_a", "intron_number_b"
+    ), with = FALSE]
     introns_found_AFE <- introns_found_AFE[!is.na(get("gene_id"))]
     introns_found_AFE <- unique(introns_found_AFE, by = c("Event1a", "Event1b"))
+
     setorderv(introns_found_AFE, c("gene_id", "transcript_name_a"))
     introns_found_AFE <- introns_found_AFE[,
         c("EventName") := paste0(
@@ -3312,7 +3532,8 @@ Get_GTF_file <- function(reference_path) {
         c("seqnames", "intron_start", "intron_end"))
     introns_search_ALE_pos <- introns_search_ALE_pos[,
         c("seqnames", "intron_start", "strand", "Event", "gene_id",
-            "transcript_id", "transcript_name", "intron_number")]
+            "transcript_id", "transcript_name", "intron_number",
+            "intron_id")]
     setnames(introns_search_ALE_pos,
         old = "intron_start", new = "intron_coord")
 
@@ -3322,12 +3543,15 @@ Get_GTF_file <- function(reference_path) {
         order = c(1, 1, -1))
     introns_search_ALE_neg <- introns_search_ALE_neg[,
         c("seqnames", "intron_end", "strand", "Event", "gene_id",
-            "transcript_id", "transcript_name", "intron_number")]
+            "transcript_id", "transcript_name", "intron_number",
+            "intron_id")]
     setnames(introns_search_ALE_neg, old = "intron_end", new = "intron_coord")
 
     introns_search_ALE <- rbindlist(
         list(introns_search_ALE_pos, introns_search_ALE_neg))
     introns_search_ALE <- unique(introns_search_ALE, by = "Event")
+    introns_search_ALE[, c("intron_id_a", "intron_id_b") := list(
+        get("intron_id"), get("intron_id"))]
 
     introns_found_ALE <- introns_search_ALE[,
         {
@@ -3336,22 +3560,38 @@ Get_GTF_file <- function(reference_path) {
             o <- cumsum(c(0, (.N - 2L):1))
             edge2 <- i - o[edge1]
             .(
-                gene_id = get("gene_id")[edge1],
-                gene_id_b = get("gene_id")[edge2],
-                Event1a = get("Event")[edge1],
-                Event1b = get("Event")[edge2],
-                Event2a = NA, Event2b = NA, EventRegion = get("Event")[edge2],
-                transcript_id_a = get("transcript_id")[edge1],
-                transcript_id_b = get("transcript_id")[edge2],
-                transcript_name_a = get("transcript_name")[edge1],
-                transcript_name_b = get("transcript_name")[edge2],
-                intron_number_a = get("intron_number")[edge1],
-                intron_number_b = get("intron_number")[edge2]
+                intron_id_a = get("intron_id")[edge1],
+                intron_id_b = get("intron_id")[edge2]
             )
         }, by = c("seqnames", "strand", "intron_coord")
     ]
+    introns_found_ALE <- introns_found_ALE[introns_search_ALE,
+        on = "intron_id_a", 
+        c("gene_id", "Event1a", "Event2a", "transcript_id_a",
+            "transcript_name_a", "intron_number_a") := 
+        list(get("i.gene_id"), get("i.Event"), NA,
+            get("i.transcript_id"), get("i.transcript_name"),
+            get("i.intron_number"))
+    ]
+    introns_found_ALE <- introns_found_ALE[introns_search_ALE,
+        on = "intron_id_b", 
+        c("gene_id_b", "Event1b", "Event2b", "EventRegion",
+            "transcript_id_b", "transcript_name_b", "intron_number_b") := 
+        list(get("i.gene_id"), get("i.Event"), NA, get("i.Event"),
+            get("i.transcript_id"), get("i.transcript_name"),
+            get("i.intron_number"))
+    ]
+    introns_found_ALE <- introns_found_ALE[, c(
+        "seqnames", "strand", "intron_coord", 
+        "gene_id", "gene_id_b",
+        "Event1a", "Event1b", "Event2a", "Event2b", "EventRegion",
+        "transcript_id_a","transcript_id_b",
+        "transcript_name_a","transcript_name_b",
+        "intron_number_a", "intron_number_b"
+    ), with = FALSE]
     introns_found_ALE <- introns_found_ALE[!is.na(get("gene_id"))]
     introns_found_ALE <- unique(introns_found_ALE, by = c("Event1a", "Event1b"))
+
     setorderv(introns_found_ALE, c("gene_id", "transcript_name_a"))
     introns_found_ALE <- introns_found_ALE[,
         c("EventName") := paste0("ALE:", get("transcript_name_a"), "-exon",
@@ -3388,15 +3628,15 @@ Get_GTF_file <- function(reference_path) {
 # Generate a list of A5SS
 .gen_splice_A5SS <- function(candidate.introns) {
     introns_search_A5SS <- copy(.gen_splice_ASS_common(candidate.introns))
-    introns_search_A5SS_pos <- introns_search_A5SS[get("strand") == "+"]
 
+    introns_search_A5SS_pos <- introns_search_A5SS[get("strand") == "+"]
     setorderv(introns_search_A5SS_pos,
         c("seqnames", "intron_end", "intron_start"),
         order = c(1, 1, -1))
     introns_search_A5SS_pos <- introns_search_A5SS_pos[,
         c("seqnames", "intron_end", "strand", "Event", "gene_id",
             "transcript_id", "transcript_name", "intron_number",
-            "exon_groups_start", "exon_groups_end")]
+            "exon_groups_start", "exon_groups_end", "intron_id")]
     setnames(introns_search_A5SS_pos,
         old = "intron_end", new = "intron_coord")
 
@@ -3406,13 +3646,16 @@ Get_GTF_file <- function(reference_path) {
     introns_search_A5SS_neg <- introns_search_A5SS_neg[,
         c("seqnames", "intron_start", "strand", "Event", "gene_id",
             "transcript_id", "transcript_name", "intron_number",
-            "exon_groups_start", "exon_groups_end")]
+            "exon_groups_start", "exon_groups_end", "intron_id")]
     setnames(introns_search_A5SS_neg,
         old = "intron_start", new = "intron_coord")
 
     introns_search_A5SS <- rbindlist(
         list(introns_search_A5SS_pos, introns_search_A5SS_neg))
     introns_search_A5SS <- unique(introns_search_A5SS, by = "Event")
+    introns_search_A5SS[, c("intron_id_a", "intron_id_b") := list(
+        get("intron_id"), get("intron_id"))]
+
     introns_found_A5SS <- introns_search_A5SS[,
         {
             edge1 <- rep(seq_len(.N), (.N:1) - 1L)
@@ -3420,28 +3663,41 @@ Get_GTF_file <- function(reference_path) {
             o <- cumsum(c(0, (.N - 2L):1))
             edge2 <- i - o[edge1]
             .(
-                gene_id = get("gene_id")[edge1],
-                gene_id_b = get("gene_id")[edge2],
-                Event1a = get("Event")[edge1],
-                Event1b = get("Event")[edge2],
-                Event2a = NA, Event2b = NA, EventRegion = get("Event")[edge2],
-                transcript_id_a = get("transcript_id")[edge1],
-                transcript_id_b = get("transcript_id")[edge2],
-                transcript_name_a = get("transcript_name")[edge1],
-                transcript_name_b = get("transcript_name")[edge2],
-                intron_number_a = get("intron_number")[edge1],
-                intron_number_b = get("intron_number")[edge2]#,
-                # exon_groups_start_a = get("exon_groups_start")[edge1],
-                # exon_groups_start_b = get("exon_groups_start")[edge2],
-                # exon_groups_end_a = get("exon_groups_end")[edge1],
-                # exon_groups_end_b = get("exon_groups_end")[edge2]
+                intron_id_a = get("intron_id")[edge1],
+                intron_id_b = get("intron_id")[edge2]
             )
         }, by = c("seqnames", "strand", "intron_coord",
             "exon_groups_start", "exon_groups_end")
     ]
+    introns_found_A5SS <- introns_found_A5SS[introns_search_A5SS,
+        on = "intron_id_a", 
+        c("gene_id", "Event1a", "Event2a", "transcript_id_a",
+            "transcript_name_a", "intron_number_a") := 
+        list(get("i.gene_id"), get("i.Event"), NA,
+            get("i.transcript_id"), get("i.transcript_name"),
+            get("i.intron_number"))
+    ]
+    introns_found_A5SS <- introns_found_A5SS[introns_search_A5SS,
+        on = "intron_id_b", 
+        c("gene_id_b", "Event1b", "Event2b", "EventRegion",
+            "transcript_id_b", "transcript_name_b", "intron_number_b") := 
+        list(get("i.gene_id"), get("i.Event"), NA, get("i.Event"),
+            get("i.transcript_id"), get("i.transcript_name"),
+            get("i.intron_number"))
+    ]
+    introns_found_A5SS <- introns_found_A5SS[, c(
+        "seqnames", "strand", "intron_coord",
+            "exon_groups_start", "exon_groups_end", 
+        "gene_id", "gene_id_b",
+        "Event1a", "Event1b", "Event2a", "Event2b", "EventRegion",
+        "transcript_id_a","transcript_id_b",
+        "transcript_name_a","transcript_name_b",
+        "intron_number_a", "intron_number_b"
+    ), with = FALSE]
     introns_found_A5SS <- introns_found_A5SS[!is.na(get("gene_id"))]
     introns_found_A5SS <- unique(introns_found_A5SS,
         by = c("Event1a", "Event1b"))
+
     # filter by same exon group starts and ends:
     # introns_found_A5SS <- introns_found_A5SS[
         # get("exon_groups_start_a") == get("exon_groups_start_b")]
@@ -3477,7 +3733,7 @@ Get_GTF_file <- function(reference_path) {
     introns_search_A3SS_pos <- introns_search_A3SS_pos[,
         c("seqnames", "intron_start", "strand", "Event", "gene_id",
             "transcript_id", "transcript_name", "intron_number",
-            "exon_groups_start", "exon_groups_end")]
+            "exon_groups_start", "exon_groups_end", "intron_id")]
     setnames(introns_search_A3SS_pos,
         old = "intron_start", new = "intron_coord")
 
@@ -3488,13 +3744,15 @@ Get_GTF_file <- function(reference_path) {
     introns_search_A3SS_neg <- introns_search_A3SS_neg[,
         c("seqnames", "intron_end", "strand", "Event", "gene_id",
             "transcript_id", "transcript_name", "intron_number",
-            "exon_groups_start", "exon_groups_end")]
+            "exon_groups_start", "exon_groups_end", "intron_id")]
     setnames(introns_search_A3SS_neg,
         old = "intron_end", new = "intron_coord")
 
     introns_search_A3SS <- rbindlist(
         list(introns_search_A3SS_pos, introns_search_A3SS_neg))
     introns_search_A3SS <- unique(introns_search_A3SS, by = "Event")
+    introns_search_A3SS[, c("intron_id_a", "intron_id_b") := list(
+        get("intron_id"), get("intron_id"))]
 
     introns_found_A3SS <- introns_search_A3SS[,
         {
@@ -3503,33 +3761,40 @@ Get_GTF_file <- function(reference_path) {
             o <- cumsum(c(0, (.N - 2L):1))
             edge2 <- i - o[edge1]
             .(
-                gene_id = get("gene_id")[edge1],
-                gene_id_b = get("gene_id")[edge2],
-                Event1a = get("Event")[edge1],
-                Event1b = get("Event")[edge2],
-                Event2a = NA, Event2b = NA, EventRegion = get("Event")[edge2],
-                transcript_id_a = get("transcript_id")[edge1],
-                transcript_id_b = get("transcript_id")[edge2],
-                transcript_name_a = get("transcript_name")[edge1],
-                transcript_name_b = get("transcript_name")[edge2],
-                intron_number_a = get("intron_number")[edge1],
-                intron_number_b = get("intron_number")[edge2]#,
-                # exon_groups_start_a = get("exon_groups_start")[edge1],
-                # exon_groups_start_b = get("exon_groups_start")[edge2],
-                # exon_groups_end_a = get("exon_groups_end")[edge1],
-                # exon_groups_end_b = get("exon_groups_end")[edge2]
+                intron_id_a = get("intron_id")[edge1],
+                intron_id_b = get("intron_id")[edge2]
             )
         }, by = c("seqnames", "strand", "intron_coord",
             "exon_groups_start", "exon_groups_end")
     ]
+    introns_found_A3SS <- introns_found_A3SS[introns_search_A3SS,
+        on = "intron_id_a", 
+        c("gene_id", "Event1a", "Event2a", "transcript_id_a",
+            "transcript_name_a", "intron_number_a") := 
+        list(get("i.gene_id"), get("i.Event"), NA,
+            get("i.transcript_id"), get("i.transcript_name"),
+            get("i.intron_number"))
+    ]
+    introns_found_A3SS <- introns_found_A3SS[introns_search_A3SS,
+        on = "intron_id_b", 
+        c("gene_id_b", "Event1b", "Event2b", "EventRegion",
+            "transcript_id_b", "transcript_name_b", "intron_number_b") := 
+        list(get("i.gene_id"), get("i.Event"), NA, get("i.Event"),
+            get("i.transcript_id"), get("i.transcript_name"),
+            get("i.intron_number"))
+    ]
+    introns_found_A3SS <- introns_found_A3SS[, c(
+        "seqnames", "strand", "intron_coord",
+            "exon_groups_start", "exon_groups_end", 
+        "gene_id", "gene_id_b",
+        "Event1a", "Event1b", "Event2a", "Event2b", "EventRegion",
+        "transcript_id_a","transcript_id_b",
+        "transcript_name_a","transcript_name_b",
+        "intron_number_a", "intron_number_b"
+    ), with = FALSE]
     introns_found_A3SS <- introns_found_A3SS[!is.na(get("gene_id"))]
     introns_found_A3SS <- unique(introns_found_A3SS,
         by = c("Event1a", "Event1b"))
-    # filter by same exon group starts and ends:
-    # introns_found_A3SS <- introns_found_A3SS[
-        # get("exon_groups_start_a") == get("exon_groups_start_b")]
-    # introns_found_A3SS <- introns_found_A3SS[
-        # get("exon_groups_end_a") == get("exon_groups_end_b")]
 
     setorderv(introns_found_A3SS, c("gene_id", "transcript_name_a"))
     introns_found_A3SS <- introns_found_A3SS[,

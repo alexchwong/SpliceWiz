@@ -22,6 +22,17 @@ SOFTWARE.  */
 
 #include "ReadBlockProcessor_FragmentsMap.h"
 
+void FragmentsMap::Reset() {
+  chrs.resize(0);
+  for(unsigned int i = 0; i < 3; i++) {
+    chrName_vec_final[i].resize(0);
+    chrName_vec_new[i].resize(0);
+    temp_chrName_vec_new[i].resize(0);
+  }
+  frag_count = 0;
+  final_is_sorted = false;
+}
+
 void FragmentsMap::ChrMapUpdate(const std::vector<chr_entry> &chrmap) {
   std::vector< std::pair<unsigned int, int> > empty_vector;
   empty_vector.push_back(std::make_pair (0,0));

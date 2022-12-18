@@ -53,3 +53,7 @@ c_BAM2COV <- function(bam_file, output_file, verbose, n_threads, multiRead) {
     .Call(`_SpliceWiz_c_BAM2COV`, bam_file, output_file, verbose, n_threads, multiRead)
 }
 
+c_doStats <- function(bam_file, output_file, verbose, n_threads, multiRead) {
+    .Call(`_SpliceWiz_c_doStats`, bam_file, output_file, verbose, n_threads, multiRead)
+}
+

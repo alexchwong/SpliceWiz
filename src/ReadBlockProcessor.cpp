@@ -26,23 +26,142 @@ SOFTWARE.  */
 
 // Constructors from strings:
 
-JunctionCount::JunctionCount(std::string &refString) {
+JunctionCount::JunctionCount() {
+  // do nothing
+}
+
+void JunctionCount::initialize(std::string &refString) {
   std::istringstream inJuncCount;
   inJuncCount.str(refString);
   loadRef(inJuncCount);
 }
 
-SpansPoint::SpansPoint(std::string &refString) {
+JunctionCount::JunctionCount(std::string &refString) {
+  initialize(refString);
+}
+
+SpansPoint::SpansPoint() {
   setSpanLength(5,4);
+}
+
+void SpansPoint::initialize(std::string &refString) {
   std::istringstream inSpansPoint;
   inSpansPoint.str(refString);
   loadRef(inSpansPoint);
 }
 
+SpansPoint::SpansPoint(std::string &refString) {
+  initialize(refString);
+}
+
+FragmentsInROI::FragmentsInROI() {
+  //
+}
+
 FragmentsInROI::FragmentsInROI(std::string &refString) {
+  initialize(refString);
+}
+
+void FragmentsInROI::initialize(std::string &refString) {
   std::istringstream inFragmentsInROI;
   inFragmentsInROI.str(refString);
   loadRef(inFragmentsInROI);
+}
+
+// Reset functions
+
+void JunctionCount::Reset() {
+  // Iterate over chroms
+  for(
+    auto itChr = chrName_junc_count.begin(); 
+    itChr != chrName_junc_count.end(); 
+    itChr++
+  ) {
+    // Iterate over elements per chrom
+    for(
+      auto itJn = itChr->second.cbegin(); 
+      itJn != itChr->second.cend();
+      /* no increment */
+    ) {
+      // Delete all novel junctions
+      if(itJn->second[2] == 0) {
+        // Remove elements with zero direction
+        // - https://stackoverflow.com/questions/8234779/how-to-remove-from-a-map-while-iterating-it
+        itChr->second.erase(itJn++);
+      } else {
+        ++itJn;
+      }
+    }
+    
+    // Iterate remaining elements and set everything to zero
+    for(
+      auto itJn = itChr->second.begin(); 
+      itJn != itChr->second.end();
+      itJn++
+    ) {
+      itJn->second[0] = 0;
+      itJn->second[1] = 0;
+    }
+  }
+  // Reset all single-sided counts
+  for(
+    auto itChr = chrName_juncLeft_count.begin(); 
+    itChr != chrName_juncLeft_count.end(); 
+    itChr++
+  ) {
+    std::map<unsigned int,unsigned int[2]> * newMap = 
+      new std::map<unsigned int,unsigned int[2]>;
+    itChr->second.swap(*newMap);
+    delete newMap;
+  }
+  for(
+    auto itChr = chrName_juncRight_count.begin(); 
+    itChr != chrName_juncRight_count.end(); 
+    itChr++
+  ) {
+    std::map<unsigned int,unsigned int[2]> * newMap = 
+      new std::map<unsigned int,unsigned int[2]>;
+    itChr->second.swap(*newMap);
+    delete newMap;
+  }
+}
+
+void SpansPoint::Reset() {
+  for (
+    auto it_chr=chrName_pos.begin(); 
+    it_chr!=chrName_pos.end(); 
+    it_chr++
+  ) {  
+    chrName_count[0][it_chr->first].clear();
+    chrName_count[1][it_chr->first].clear();
+    chrName_count[0][it_chr->first].resize(it_chr->second.size(), 0);
+    chrName_count[1][it_chr->first].resize(it_chr->second.size(), 0);
+  }
+}
+
+void FragmentsInChr::Reset() {
+  // std::map<string, std::vector<unsigned int>> chrName_count;
+  for(
+    auto itChr = chrName_count.begin(); 
+    itChr != chrName_count.end(); 
+    itChr++
+  ) {
+    itChr->second.clear();
+  }
+}
+
+void FragmentsInROI::Reset() {
+    // chrName_count[0][s_chr].push_back(&RegionID_counter[0][s_name]);
+    // chrName_count[1][s_chr].push_back(&RegionID_counter[1][s_name]);
+  for(unsigned int i = 0; i < 2; i++) {
+    for(
+      auto itChr = RegionID_counter[i].begin(); 
+      itChr != RegionID_counter[i].end(); 
+      itChr++
+    ) {
+      itChr->second = 0;
+    }
+  }
 }
 
 //chrName_junc_count holds the data structure -- ChrName(string) -> Junc Start/End -> count.

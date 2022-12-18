@@ -96,8 +96,11 @@ will have to be re-assigned using \verb{covfile(se)<-}. See \link{makeSE}
 output files belonging to an experiment.
 }
 \details{
-All sample \link{processBAM} outputs must be generated using the same
-reference.
+In Windows, collateData runs using only 1 thread, as
+BiocParallel's MulticoreParam is not supported.
+
+It is assumed that all sample \link{processBAM} outputs were generated using the
+same reference.
 
 The combination of junction counts and IR quantification from
 \link{processBAM} is used to calculate percentage spliced in (PSI) of alternative

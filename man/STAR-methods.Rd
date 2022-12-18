@@ -6,6 +6,8 @@
 \alias{STAR_alignExperiment}
 \alias{STAR_alignReads}
 \alias{STAR_version}
+\alias{STAR_buildGenome}
+\alias{STAR_loadGenomeGTF}
 \alias{STAR_mappability}
 \title{STAR wrappers for building reference for STAR, and aligning RNA-sequencing}
 \usage{
@@ -14,12 +16,60 @@ STAR_version()
 STAR_buildRef(
   reference_path,
   STAR_ref_path = file.path(reference_path, "STAR"),
-  also_generate_mappability = TRUE,
-  map_depth_threshold = 4,
-  sjdbOverhang = 149,
   n_threads = 4,
+  overwrite = FALSE,
+  sjdbOverhang = 100,
+  sparsity = 1,
+  also_generate_mappability = FALSE,
+  map_depth_threshold = 4,
   additional_args = NULL,
   ...
+)
+
+STAR_alignExperiment(
+  Experiment,
+  STAR_ref_path,
+  BAM_output_path,
+  n_threads = 4,
+  overwrite = FALSE,
+  two_pass = FALSE,
+  trim_adaptor = "AGATCGGAAG"
+)
+
+STAR_alignReads(
+  fastq_1 = c("./sample_1.fastq"),
+  fastq_2 = NULL,
+  STAR_ref_path,
+  BAM_output_path,
+  n_threads = 4,
+  overwrite = FALSE,
+  two_pass = FALSE,
+  trim_adaptor = "AGATCGGAAG",
+  memory_mode = "NoSharedMemory",
+  additional_args = NULL
+)
+
+STAR_buildGenome(
+  reference_path,
+  STAR_ref_path = file.path(reference_path, "STAR"),
+  n_threads = 4,
+  overwrite = FALSE,
+  sparsity = 1,
+  also_generate_mappability = FALSE,
+  map_depth_threshold = 4,
+  additional_args = NULL,
+  ...
+)
+
+STAR_loadGenomeGTF(
+  reference_path,
+  STAR_ref_path,
+  STARgenome_output = file.path(tempdir(), "STAR"),
+  n_threads = 4,
+  overwrite = FALSE,
+  sjdbOverhang = 100,
+  extraFASTA = "",
+  additional_args = NULL
 )
 
 STAR_mappability(
@@ -28,27 +78,6 @@ STAR_mappability(
   map_depth_threshold = 4,
   n_threads = 4,
   ...
-)
-
-STAR_alignExperiment(
-  Experiment,
-  STAR_ref_path,
-  BAM_output_path,
-  trim_adaptor = "AGATCGGAAG",
-  two_pass = FALSE,
-  n_threads = 4
-)
-
-STAR_alignReads(
-  fastq_1 = c("./sample_1.fastq"),
-  fastq_2 = NULL,
-  STAR_ref_path,
-  BAM_output_path,
-  two_pass = FALSE,
-  trim_adaptor = "AGATCGGAAG",
-  memory_mode = "NoSharedMemory",
-  additional_args = NULL,
-  n_threads = 4
 )
 }
 \arguments{
@@ -60,20 +89,30 @@ as its \code{reference_path}}
 \code{reference_path}) The directory containing the STAR reference to be
 used or to contain the newly-generated STAR reference}
 
-\item{also_generate_mappability}{Whether \code{STAR_buildRef()} also
-calculates Mappability Exclusion regions.}
-
-\item{map_depth_threshold}{(Default 4) The depth of mapped reads
-threshold at or below which Mappability exclusion regions are defined. See
-\link{Mappability-methods}.
-Ignored if \code{also_generate_mappability = FALSE}}
-
-\item{sjdbOverhang}{(Default = 149) A STAR setting indicating the length of
-the donor / acceptor sequence on each side of the junctions. Ideally equal
-to (mate_length - 1). As the most common read length is 150, the default
-of this function is 149. See the STAR aligner manual for details.}
-
 \item{n_threads}{The number of threads to run the STAR aligner.}
+
+\item{overwrite}{(default \code{FALSE})
+For \code{STAR_buildRef}, \code{STAR_buildGenome} and \code{STAR_loadGenomeGTF} -
+if STAR genome already exists, should it be overwritten.
+For \code{STAR_alignExperiment} and \code{STAR_alignReads} - if BAM file already
+exists, should it be overwritten.}
+
+\item{sjdbOverhang}{(Default = 100) A STAR setting indicating the length of
+the donor / acceptor sequence on each side of the junctions. Ideally equal
+to (mate_length - 1). See the STAR aligner manual for details.}
+
+\item{sparsity}{(default \code{1}) Sets STAR's \code{--genomeSAsparseD} option. For
+human (and mouse) genomes, set this to \code{2} to allow STAR to perform
+genome generation and mapping using < 16 Gb of RAM, albeit with slightly
+lower mapping rate (~ 0.1\% lower, according to STAR's author). Setting
+this to higher values is experimental (and not tested)}
+
+\item{also_generate_mappability}{Whether \code{STAR_buildRef()} and
+\code{STAR_buildGenome()} also calculate Mappability Exclusion regions.}
+
+\item{map_depth_threshold}{(Default \code{4}) The depth of mapped reads
+threshold at or below which Mappability exclusion regions are defined. See
+\link{Mappability-methods}. Ignored if \code{also_generate_mappability = FALSE}}
 
 \item{additional_args}{A character vector of additional arguments to be
 parsed into STAR. See examples below.}
@@ -90,16 +129,15 @@ files. In \code{STAR_alignExperiment()}, STAR will output aligned
 BAMS inside subdirectories of this folder, named by sample names. In
 \code{STAR_alignReads()}, STAR will output directly into this path.}
 
+\item{two_pass}{Whether to use two-pass mapping. In
+\code{STAR_alignExperiment()}, STAR first-pass will align every sample
+to generate a list of splice junctions but not BAM files. The junctions
+are then given to STAR to generate a temporary genome containing
+information about novel junctions, thereby improving novel junction
+detection. In \code{STAR_alignReads()}, STAR will use \verb{--twopassMode Basic}}
+
 \item{trim_adaptor}{The sequence of the Illumina adaptor to trim via STAR's
 \code{--clip3pAdapterSeq} option}
-
-\item{two_pass}{Whether to use two-pass mapping. In
-\code{STAR_alignExperiment()}, STAR will first align every sample
-and generate a list of splice junctions but not BAM files. The junctions
-are then given to STAR to generate a temporary genome (contained within
-\code{_STARgenome}) subdirectory within that of the first sample), using
-these junctions to improve novel junction detection. In
-\code{STAR_alignReads()}, STAR will run \code{--twopassMode Basic}}
 
 \item{fastq_1, fastq_2}{In STAR_alignReads: character vectors giving the
 path(s) of one or more FASTQ (or FASTA) files to be aligned.
@@ -107,32 +145,78 @@ If single reads are to be aligned, omit \code{fastq_2}}
 
 \item{memory_mode}{The parameter to be parsed to \code{--genomeLoad}; either
 \code{NoSharedMemory} or \code{LoadAndKeep} are used.}
+
+\item{STARgenome_output}{The output path of the created on-the-fly genome}
+
+\item{extraFASTA}{(default \code{""}) One or more FASTA files containing spike-in
+genome sequences (e.g. ERCC, Sequins), as required.}
 }
 \value{
-None. STAR will output files into the given output directories.
+For \code{STAR_version()}: The STAR version
+
+For \code{STAR_buildRef()}: None
+
+For \code{STAR_alignExperiment()}: None
+
+For \code{STAR_alignReads()}: None
+
+For \code{STAR_buildGenome()}: None
+
+For \code{STAR_loadGenomeGTF()}:
+The path of the on-the-fly STAR genome, typically in the subdirectory
+"_STARgenome" within the given \code{STARgenome_output} directory
+
+For \code{STAR_mappability()}: None
 }
 \description{
-These functions run the STAR aligner to build a STAR genome reference,
-calculate mappability exclusion regions using STAR, and align one or more
-FASTQ files (single or paired) to the generated genome. These functions only
-work on Linux-based systems with STAR installed. STAR must be
-accessible via \verb{$PATH}. See details and examples
+These STAR helper / wrapper functions allow users to (1) create a STAR
+genome reference (with or without GTF), (2) align one or more RNA-seq
+samples, and (3) calculate regions of low mappability. STAR references
+can be created using one-step (genome and GTF), or two-step (genome first,
+then on-the-fly with injected GTF) approaches.
 }
 \details{
 \strong{Pre-requisites}
 
-\code{STAR_buildRef} requires \link{getResources} to be run to fetch the
-required genome and gene annotation files.
+\code{STAR_buildRef()} and \code{STAR_buildGenome()} require prepared genome
+and gene annotation reference retrieved using \link{getResources}, which is run
+internally by \link{buildRef}
 
-\code{STAR_mappability}, \code{STAR_alignExperiment} and \code{STAR_alignReads} requires a
-\code{STAR} genome, which can be built using \code{STAR_buildRef}
+\code{STAR_loadGenomeGTF()} requires the above, and additionally a STAR genome
+created using \code{STAR_buildGenome()}
+
+\code{STAR_alignExperiment()}, \code{STAR_alignReads()}, and \code{STAR_mappability()}:
+requires a \code{STAR} genome, which can be built using \code{STAR_buildRef()} or
+\code{STAR_buildGenome()} followed by \code{STAR_loadGenomeGTF()}
 
 \strong{Function Description}
 
-For \code{STAR_buildRef}: this function
-will create a \code{STAR} genome reference in the \code{STAR} subdirectory in the
-path given by \code{reference_path}. Optionally, it will run \code{STAR_mappability}
+For \code{STAR_buildRef}: this function will create a \code{STAR} genome reference
+using the same genome FASTA and gene annotation GTF used to create
+the SpliceWiz reference. Optionally, it will run \code{STAR_mappability}
 if \code{also_generate_mappability} is set to \code{TRUE}
+
+For \code{STAR_alignExperiment}: aligns a set of FASTQ or paired FASTQ files
+using the given
+\code{STAR} genome using the \code{STAR} aligner.
+A data.frame specifying sample names and corresponding FASTQ files are
+required
+
+For \code{STAR_alignReads}: aligns a single or pair of FASTQ files to the given
+\code{STAR} genome using the \code{STAR} aligner.
+
+For \code{STAR_buildGenome}: Creates a STAR genome reference, using ONLY the
+FASTA file used to create the SpliceWiz reference. This allows users to
+create a single STAR reference for use with multiple transcriptome (GTF)
+references (on different occasions). Optionally, it will run
+\code{STAR_mappability} if \code{also_generate_mappability} is set to \code{TRUE}
+
+For \code{STAR_loadGenomeGTF}: Creates an "on-the-fly" STAR genome, injecting GTF
+from the given SpliceWiz \code{reference_path}, setting \code{sjdbOverhang} setting,
+and (optionally) any spike-ins via the \code{extraFASTA} parameter.
+This allows users to create a single STAR reference for use with multiple
+transcriptome (GTF) references, with different sjdbOverhang settings,
+and/or spike-ins (on different occasions or for different projects).
 
 For \code{STAR_mappability}: this function will first
 will run \link{generateSyntheticReads}, then use the given \code{STAR} genome to
@@ -140,29 +224,28 @@ align the synthetic reads using \code{STAR}. The aligned BAM file will then be
 processed using \link{calculateMappability} to calculate the
 lowly-mappable genomic regions,
 producing the \code{MappabilityExclusion.bed.gz} output file.
-
-For \code{STAR_alignReads}: aligns a single or pair of FASTQ files to the given
-\code{STAR} genome using the \code{STAR} aligner.
-
-For \code{STAR_alignExperiment}: aligns a set of FASTQ or paired FASTQ files
-using the given
-\code{STAR} genome using the \code{STAR} aligner.
-A data.frame specifying sample names and corresponding FASTQ files are
-required
 }
 \section{Functions}{
 \itemize{
 \item \code{STAR_version()}: Checks whether STAR is installed, and its version
 
-\item \code{STAR_buildRef()}: Creates a STAR genome reference.
-
-\item \code{STAR_mappability()}: Calculates lowly-mappable genomic regions using STAR
+\item \code{STAR_buildRef()}: Creates a STAR genome reference, using both FASTA
+and GTF files used to create the SpliceWiz reference
 
 \item \code{STAR_alignExperiment()}: Aligns multiple sets of FASTQ files, belonging to
 multiple samples
 
 \item \code{STAR_alignReads()}: Aligns a single sample (with single or paired FASTQ
 or FASTA files)
+
+\item \code{STAR_buildGenome()}: Creates a STAR genome reference, using ONLY the
+FASTA file used to create the SpliceWiz reference
+
+\item \code{STAR_loadGenomeGTF()}: Creates an "on-the-fly" STAR genome, injecting GTF
+from the given SpliceWiz \code{reference_path}, setting \code{sjdbOverhang} setting,
+and (optionally) any spike-ins as \code{extraFASTA}
+
+\item \code{STAR_mappability()}: Calculates lowly-mappable genomic regions using STAR
 
 }}
 \examples{
@@ -195,11 +278,12 @@ getResources(
 
 STAR_buildRef(
     reference_path = "Reference_FTP",
+    STAR_ref_path = file.path("Reference_FTP", "STAR"),
     n_threads = 8,
     also_generate_mappability = TRUE
 )
 
-# 2 alt) Generates STAR genome of the example SpliceWiz genome.
+# 2a) Generates STAR genome of the example SpliceWiz genome.
 #     This demonstrates using custom STAR parameters, as the example 
 #     SpliceWiz genome is ~100k in length, 
 #     so --genomeSAindexNbases needs to be
@@ -213,6 +297,7 @@ getResources(
 
 STAR_buildRef(
     reference_path = "Reference_chrZ",
+    STAR_ref_path = file.path("Reference_chrZ", "STAR"),
     n_threads = 8,
     additional_args = c("--genomeSAindexNbases", "7"),
     also_generate_mappability = TRUE
@@ -228,9 +313,9 @@ buildRef(reference_path = "Reference_FTP", genome_type = "hg38")
 # 4a) Align a single sample using the STAR reference
 
 STAR_alignReads(
+    fastq_1 = "sample1_1.fastq", fastq_2 = "sample1_2.fastq",
     STAR_ref_path = file.path("Reference_FTP", "STAR"),
     BAM_output_path = "./bams/sample1",
-    fastq_1 = "sample1_1.fastq", fastq_2 = "sample1_2.fastq",
     n_threads = 8
 )
 
@@ -248,9 +333,62 @@ STAR_alignExperiment(
     Experiment = Experiment,
     STAR_ref_path = file.path("Reference_FTP", "STAR"),
     BAM_output_path = "./bams",
-    two_pass = TRUE,
-    n_threads = 8
+    n_threads = 8,
+    two_pass = TRUE
 )
+
+# - Building a STAR genome (only) reference, and injecting GTF as a
+#   subsequent step
+#
+#   This is useful for users who want to create a single STAR genome, for
+#   experimentation with different GTF files.
+#   It is important to note that the chromosome names of the genome (FASTA)
+#   file and the GTF file needs to be identical. Thus, Ensembl and Gencode
+#   GTF files should not be mixed (unless the chromosome GTF names have
+#   been fixed)
+
+# - also set sparsity = 2 to build human genome so that it will fit in
+#   16 Gb RAM. NB: this step's RAM usage can be set using the
+#   `--limitGenomeGenerateRAM` parameter
+
+STAR_buildGenome(
+    reference_path = "Reference_FTP",
+    STAR_ref_path = file.path("Reference_FTP", "STAR_genomeOnly"),
+    n_threads = 8, sparsity = 2,
+    additional_args = c("--limitGenomeGenerateRAM", "16000000000")
+)
+
+# - Injecting a GTF into a genome-only STAR reference
+#
+#   This creates an on-the-fly STAR genome, using a GTF file 
+#   (derived from a SpliceWiz reference) into a new location.
+#   This allows a single STAR reference to use multiple GTFs
+#   on different occasions.
+
+STAR_new_ref <- STAR_loadGenomeGTF(
+    reference_path = "Reference_FTP",
+    STAR_ref_path = file.path("Reference_FTP", "STAR_genomeOnly"),
+    STARgenome_output = file.path(tempdir(), "STAR"),
+    n_threads = 4,
+    sjdbOverhang = 100
+)
+
+# This new reference can then be used to align your experiment:
+
+STAR_alignExperiment(
+    Experiment = Experiment,
+    STAR_ref_path = STAR_new_ref,
+    BAM_output_path = "./bams",
+    n_threads = 8,
+    two_pass = TRUE
+)
+
+# Typically, one should `clean up` the on-the-fly STAR reference (as it is
+#   large!). If it is in a temporary directory, it will be cleaned up
+#   when the current R session ends; otherwise this needs to be done manually:
+
+unlink(file.path(tempdir(), "STAR"), recursive = TRUE)
+
 }
 }
 \seealso{

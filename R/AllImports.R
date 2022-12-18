@@ -19,7 +19,9 @@
 #' @importFrom BiocGenerics nrow ncol rbind cbind
 #' @importFrom BiocParallel SnowParam MulticoreParam SerialParam
 #' @importFrom BiocParallel bpparam bplapply
-#' @importFrom Biostrings readDNAStringSet DNAStringSet translate
+#' @importFrom Biostrings readDNAStringSet DNAStringSet 
+#' @importFrom Biostrings translate
+#' @importFrom stringi stri_locate_first_fixed
 #' @importFrom BSgenome getSeq
 #' @importFrom DelayedArray qlogis plogis rowMeans DelayedArray rowSums
 #' @importFrom DelayedMatrixStats rowSds rowAnyNAs rowMaxs
@@ -86,8 +88,4 @@ SE_charbound <- function(idx, txt, fmt) {
         stop(sprintf(fmt, msg))
     }
     idx
-}
-
-idxstats <- function(bam_file, n_threads) {
-    idxstats_pbam(bam_file, n_threads)
 }

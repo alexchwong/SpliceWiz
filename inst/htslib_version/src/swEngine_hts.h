@@ -1,4 +1,4 @@
-/* swEngine.h Core SpliceWiz processBAM engine
+/* swEngine_hts.h Core SpliceWiz processBAM engine (htslib)
 
 Copyright (C) 2021 Alex Chit Hei Wong
 
@@ -20,8 +20,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.  */
 
-#ifndef CODE_SWENGINE
-#define CODE_SWENGINE
+#ifdef WITH_HTSLIB
+
+#ifndef CODE_SWENGINE_HTS
+#define CODE_SWENGINE_HTS
 
 #include "includedefine.h"
 #include "SpliceWiz.h"    // Full Rcpp functionality incl RcppProgress
@@ -32,15 +34,27 @@ SOFTWARE.  */
 
 #include <chrono>
 
-#include "BAM2blocks.h"       // For BB
+// #include "BAM2blocks.h"       // For BB
+#include "BAM2blocks_htslib.h"       // For BB
 #include "covTools.h"         // For COV I/O
 #include "FastaReader.h"
 #include "GZTools.h"          // For gzip I/O
 #include "ReadBlockProcessor_CoverageBlocks.h"  // includes FragmentsMap and others
 #include "ReadBlockProcessor_TandemJunctions.h"
 
-class swEngine {
+#include <sys/stat.h>
+uint64_t GetFileSize(std::string filename);
+
+class swEngine_hts {
   private:
+  public:
+    // Essentially same as swEngine except all its variables are public
+    // so the pipelines can run in main function
+    // this is because htslib in combination with OpenMP leads to slowdowns
+    // when the function is run inside a public function within this object
+    // - don't know why
+    
+    /* variables */
     std::vector<std::string> ref_names; 
     std::vector<std::string> ref_alias;
     std::vector<uint32_t> ref_lengths;
@@ -58,7 +72,7 @@ class swEngine {
     std::vector<JunctionCount> oJC;
     std::vector<TandemJunctions> oTJ;
     std::vector<FragmentsMap> oFM;
-    std::vector<BAM2blocks> BBchild;
+    std::vector<htsBAM2blocks> BBchild;
 
     bool refLoaded;
     bool CBloaded;
@@ -69,15 +83,16 @@ class swEngine {
     bool TJloaded;
     bool FMloaded;
     bool BAMLoaded;
-  public:
-    swEngine();
+    
+    /* Constructor */
+    swEngine_hts();
     void clear();
 
     int Set_Threads(int n_threads);
     bool checkFileExists(const std::string& name);
     int ReadChrAlias(std::istringstream &IN);
     int readReference(std::string &reference_file, bool const verbose = FALSE);
-    
+
     int loadReference();
     int loadReference(
       bool loadCB,
@@ -90,42 +105,13 @@ class swEngine {
     );
     int refreshReference();
     int associateBAM(
-      pbam_in * _IN, 
       std::vector<string> chr_name,
       std::vector<uint32_t> chr_len
     );
 
-    int SpliceWizMultiCore(
-      std::vector<std::string> &bam_file, 
-      std::vector<std::string> &s_output_txt, 
-      std::vector<std::string> &s_output_cov,
-      bool const verbose,
-      bool const multithreadedRead = false
-    );
-
-    int BAM2COVcore(
-      std::string const &bam_file, 
-      std::string const &s_output_cov,
-      bool const verbose,
-      bool const multithreadedRead = false
-    );
-
-    int doStatsCore(
-      std::string const &bam_file, 
-      std::string const &s_output_txt,
-      bool const verbose,
-      bool const multithreadedRead = false
-    );
-
-    int MappabilityRegionsCore(
-      std::string const &bam_file,
-      std::string const &s_output_txt,
-      std::string const &s_output_cov,
-      int threshold,
-      bool const includeCov,
-      bool const verbose,
-      bool const multithreadedRead
-    );
 };
+
+#endif
+
 
 #endif

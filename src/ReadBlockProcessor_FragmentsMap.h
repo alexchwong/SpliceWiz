@@ -47,8 +47,9 @@ private:
 
 	bool final_is_sorted = false;
   
-  vector<chr_entry> chrs;
+  std::vector<chr_entry> chrs;
 public:
+  void Reset();
 	void Combine(FragmentsMap &child);
 	
   int sort_and_collapse_final(bool verbose, unsigned int n_threads_to_use);

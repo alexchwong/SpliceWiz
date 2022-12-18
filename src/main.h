@@ -8,9 +8,13 @@
 #include <omp.h>
 #endif
 
+#include "BAM2blocks.h"       // For BB
 #include "covTools.h"         // For COV I/O
 #include "FastaReader.h"
 #include "GZTools.h"          // For gzip I/O
+#include "ReadBlockProcessor_CoverageBlocks.h"  // includes FragmentsMap and others
+#include "ReadBlockProcessor_TandemJunctions.h"
+
 #include "synthReadGenerator.h"
 
 #include "swEngine.h"
@@ -67,6 +71,11 @@ int c_gunzip(std::string s_in, std::string s_out);
     bool verbose = true, int n_threads = 1, bool multiRead = false
   );
 
+  int c_doStats(
+    std::string bam_file, std::string output_file, 
+    bool verbose, int n_threads, bool multiRead
+  );
+
 #else
   int SpliceWizMain(
       std::string bam_file, std::string reference_file, std::string s_output_txt,
@@ -86,6 +95,10 @@ int c_gunzip(std::string s_in, std::string s_out);
   int c_BAM2COV(
     std::string bam_file, std::string output_file, 
     int n_threads = 1, bool multiRead = false
+  );
+
+  int c_doStats(
+      std::string bam_file, std::string output_file, int n_threads, bool multiRead
   );
 
   int main(int argc, char * argv[]);

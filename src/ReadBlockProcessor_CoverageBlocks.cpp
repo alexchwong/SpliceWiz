@@ -24,6 +24,10 @@ SOFTWARE.  */
 
 #include "ReadBlockProcessor_CoverageBlocks.h"
 
+void CoverageBlocks::Reset() {
+  // Nothing needs to be done?
+}
+
 void CoverageBlocks::loadRef(std::istringstream &IN) {
 	std::string myLine;
 	std::string myField;
@@ -266,11 +270,20 @@ int CoverageBlocks::WriteOutput(std::string& output, const FragmentsMap &FM) con
 	return 0;
 }
 
+CoverageBlocksIRFinder::CoverageBlocksIRFinder() {
+  //
+}
+
 CoverageBlocksIRFinder::CoverageBlocksIRFinder(std::string &refString) {
+  initialize(refString);
+}
+
+void CoverageBlocksIRFinder::initialize(std::string &refString) {
   std::istringstream inCoverageBlocks;
   inCoverageBlocks.str(refString);
   loadRef(inCoverageBlocks);
 }
+
 
 void CoverageBlocksIRFinder::Combine(CoverageBlocksIRFinder &child) {
   // do nothing; combining not necessary
@@ -302,7 +315,7 @@ int CoverageBlocksIRFinder::WriteOutput(std::string& output, std::string& QC,
   unsigned int n_jobs = 1 + (BEDrecords.size() / n_threads);
 
 #ifdef _OPENMP
-  #pragma omp parallel for
+  #pragma omp parallel for num_threads(n_threads) schedule(static,1)
 #endif  
   for(unsigned int i = 0; i < (unsigned int)n_threads; i++) {
     unsigned int refID = 0;

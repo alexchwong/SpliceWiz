@@ -22,6 +22,17 @@ SOFTWARE.  */
 
 #include "ReadBlockProcessor_FragmentsMap.h"
 
+void FragmentsMap::Reset() {
+  chrs.resize(0);
+  for(unsigned int i = 0; i < 3; i++) {
+    chrName_vec_final[i].resize(0);
+    chrName_vec_new[i].resize(0);
+    temp_chrName_vec_new[i].resize(0);
+  }
+  frag_count = 0;
+  final_is_sorted = false;
+}
+
 void FragmentsMap::ChrMapUpdate(const std::vector<chr_entry> &chrmap) {
   std::vector< std::pair<unsigned int, int> > empty_vector;
   empty_vector.push_back(std::make_pair (0,0));
@@ -99,13 +110,15 @@ int FragmentsMap::sort_and_collapse_temp() {
 }
 
 // Final sorting. Also converts from loci/diff to loci/depth
-int FragmentsMap::sort_and_collapse_final(bool verbose) {
+int FragmentsMap::sort_and_collapse_final(
+    bool verbose, unsigned int n_threads_to_use
+) {
   if(!final_is_sorted) {
     sort_and_collapse_temp();
     if(verbose)  cout << "Performing final sort of fragment maps\n";
 
 #ifdef _OPENMP
-      #pragma omp parallel for
+    #pragma omp parallel for num_threads(n_threads_to_use) schedule(static,1)
 #endif
     for(unsigned int k = 0; k < 3 * chrs.size(); k++) {
       unsigned int j = k / chrs.size();
@@ -223,7 +236,7 @@ int FragmentsMap::WriteBinary(
 ) {
   if(!final_is_sorted) {
     // Perform this separately as this is now multi-threaded
-    sort_and_collapse_final(verbose);   
+    sort_and_collapse_final(verbose, n_threads_to_use);   
   }
   if(verbose)  cout << "Writing COV file\n";
 
@@ -251,7 +264,7 @@ int FragmentsMap::WriteBinary(
 }
 
 int FragmentsMap::WriteOutput(std::ostream *os, 
-    int threshold, bool verbose)  {
+    int threshold, bool verbose, unsigned int n_threads_to_use)  {
 
   // This is called on mappability
 
@@ -264,7 +277,7 @@ int FragmentsMap::WriteOutput(std::ostream *os,
 
   unsigned int refID = 0;
   if(!final_is_sorted) {
-    sort_and_collapse_final(verbose);
+    sort_and_collapse_final(verbose, n_threads_to_use);
   }
   if(verbose)  cout << "Writing Mappability Exclusions\n";
 #ifdef SPLICEWIZ

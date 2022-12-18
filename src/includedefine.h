@@ -46,6 +46,9 @@ class chr_entry {
     std::string chr_name;
     int32_t chr_len;
     
+    chr_entry() {
+      refID = 0; chr_name = ""; chr_len = 0;
+    };
     chr_entry(unsigned int a, std::string b, int32_t c) {
       refID = a;
       chr_name = b;

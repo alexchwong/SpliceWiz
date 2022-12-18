@@ -181,15 +181,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// idxstats_pbam
-int idxstats_pbam(std::string bam_file, int n_threads_to_use);
-RcppExport SEXP _SpliceWiz_idxstats_pbam(SEXP bam_fileSEXP, SEXP n_threads_to_useSEXP) {
+// c_doStats
+int c_doStats(std::string bam_file, std::string output_file, bool verbose, int n_threads, bool multiRead);
+RcppExport SEXP _SpliceWiz_c_doStats(SEXP bam_fileSEXP, SEXP output_fileSEXP, SEXP verboseSEXP, SEXP n_threadsSEXP, SEXP multiReadSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type bam_file(bam_fileSEXP);
-    Rcpp::traits::input_parameter< int >::type n_threads_to_use(n_threads_to_useSEXP);
-    rcpp_result_gen = Rcpp::wrap(idxstats_pbam(bam_file, n_threads_to_use));
+    Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type multiRead(multiReadSEXP);
+    rcpp_result_gen = Rcpp::wrap(c_doStats(bam_file, output_file, verbose, n_threads, multiRead));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -208,7 +211,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SpliceWiz_c_GenerateMappabilityReads", (DL_FUNC) &_SpliceWiz_c_GenerateMappabilityReads, 5},
     {"_SpliceWiz_c_GenerateMappabilityRegions", (DL_FUNC) &_SpliceWiz_c_GenerateMappabilityRegions, 6},
     {"_SpliceWiz_c_BAM2COV", (DL_FUNC) &_SpliceWiz_c_BAM2COV, 5},
-    {"_SpliceWiz_idxstats_pbam", (DL_FUNC) &_SpliceWiz_idxstats_pbam, 2},
+    {"_SpliceWiz_c_doStats", (DL_FUNC) &_SpliceWiz_c_doStats, 5},
     {NULL, NULL, 0}
 };
 

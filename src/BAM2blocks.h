@@ -71,10 +71,15 @@ class BAM2blocks {
     BAM2blocks & operator = (const BAM2blocks &t);
   public:
   	BAM2blocks();
+    BAM2blocks(BAM2blocks&& rhs);
   	BAM2blocks(
       std::vector<std::string> & ref_names, 
       std::vector<uint32_t> & ref_lengths
     );  // Define BB with defined references
+    void initialize(
+      std::vector<std::string> & ref_names, 
+      std::vector<uint32_t> & ref_lengths
+    );
     ~BAM2blocks();
   	unsigned int openFile(pbam_in * _IN);
 

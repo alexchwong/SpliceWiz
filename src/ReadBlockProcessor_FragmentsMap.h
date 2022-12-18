@@ -47,16 +47,23 @@ private:
 
 	bool final_is_sorted = false;
   
-  vector<chr_entry> chrs;
+  std::vector<chr_entry> chrs;
 public:
+  void Reset();
 	void Combine(FragmentsMap &child);
 	
-  int sort_and_collapse_final(bool verbose);
+  int sort_and_collapse_final(bool verbose, unsigned int n_threads_to_use);
 
   void ProcessBlocks(const FragmentBlocks &blocks);
   void ChrMapUpdate(const std::vector<chr_entry> &chrmap);
-  int WriteOutput(std::ostream *os, int threshold = 4, bool verbose = false) ;
-  int WriteBinary(covWriter *os, bool verbose = false, unsigned int n_threads_to_use = 1) ;
+  int WriteOutput(
+    std::ostream *os, int threshold = 4, 
+    bool verbose = false, unsigned int n_threads_to_use = 1
+  ) ;
+  int WriteBinary(
+    covWriter *os, bool verbose = false, 
+    unsigned int n_threads_to_use = 1
+  ) ;
   
   void updateCoverageHist(std::map<unsigned int,unsigned int> &hist, unsigned int start, unsigned int end, unsigned int dir, const unsigned int &refID, bool debug = false) const;
 };

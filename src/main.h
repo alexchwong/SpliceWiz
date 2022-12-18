@@ -15,22 +15,16 @@
 #include "ReadBlockProcessor_CoverageBlocks.h"  // includes FragmentsMap and others
 #include "ReadBlockProcessor_TandemJunctions.h"
 
+#include "synthReadGenerator.h"
+
+#include "swEngine.h"
+
+bool checkFileExists(const std::string& name);
+
 int Has_OpenMP();
-int Set_Threads(int n_threads);
 int Test_OpenMP_For();
 
 bool c_Check_Cov(std::string s_in);
-
-// ########################### MAPPABILITY INTERNAL FN #########################
-
-std::string GenerateReadError(
-    char * input_read, 
-    const unsigned int read_len, 
-    const unsigned int error_pos,
-    const unsigned int direction, 
-    const unsigned int error_seed
-);
-bool checkDNA(char * input_read, unsigned int read_len);
 
 // #############################################################################
 
@@ -49,39 +43,6 @@ bool checkDNA(char * input_read, unsigned int read_len);
 #endif
 
 int c_gunzip(std::string s_in, std::string s_out);
-
-int ReadChrAlias(std::istringstream &IN,
-    std::vector<std::string> &ref_names, 
-    std::vector<std::string> &ref_alias,
-    std::vector<uint32_t> &ref_lengths
-);
-
-int readReferenceToStrings(std::string &reference_file, 
-    std::vector<std::string> &ref_names, 
-    std::vector<std::string> &ref_alias,
-    std::vector<uint32_t> &ref_lengths,
-    std::string &CB_string,
-    std::string &SP_string,
-    std::string &ROI_string,
-    std::string &JC_string,
-    std::string &TJ_string,
-    bool verbose
-);
-
-int SpliceWizCore(std::string const &bam_file, 
-    std::string const &s_output_txt, std::string const &s_output_cov,
-    std::vector<std::string> &ref_names, 
-    std::vector<std::string> &ref_alias,
-    std::vector<uint32_t> &ref_lengths,
-    std::string &CB_string,
-    std::string &SP_string,
-    std::string &ROI_string,
-    std::string &JC_string,
-    std::string &TJ_string,
-    bool const verbose,
-    int n_threads = 1,
-    bool const multithreadedRead = false
-);
 
 #ifdef SPLICEWIZ
   int SpliceWizMain(
@@ -110,6 +71,11 @@ int SpliceWizCore(std::string const &bam_file,
     bool verbose = true, int n_threads = 1, bool multiRead = false
   );
 
+  int c_doStats(
+    std::string bam_file, std::string output_file, 
+    bool verbose, int n_threads, bool multiRead
+  );
+
 #else
   int SpliceWizMain(
       std::string bam_file, std::string reference_file, std::string s_output_txt,
@@ -129,6 +95,10 @@ int SpliceWizCore(std::string const &bam_file,
   int c_BAM2COV(
     std::string bam_file, std::string output_file, 
     int n_threads = 1, bool multiRead = false
+  );
+
+  int c_doStats(
+      std::string bam_file, std::string output_file, int n_threads, bool multiRead
   );
 
   int main(int argc, char * argv[]);

@@ -124,65 +124,65 @@ by housing additional assays pertaining to IR and splice junction counts.
 }
 \section{Functions}{
 \itemize{
-\item \code{NxtSE}: Constructor function for NxtSE; akin to
+\item \code{NxtSE()}: Constructor function for NxtSE; akin to
 SummarizedExperiment(...)
 
-\item \code{up_inc,NxtSE-method}: Gets upstream included events (SE/MXE), or
+\item \code{up_inc(NxtSE)}: Gets upstream included events (SE/MXE), or
 upstream exon-intron spanning reads (IR)
 
-\item \code{down_inc,NxtSE-method}: Gets downstream included events (SE/MXE), or
+\item \code{down_inc(NxtSE)}: Gets downstream included events (SE/MXE), or
 downstream exon-intron spanning reads (IR)
 
-\item \code{up_exc,NxtSE-method}: Gets upstream excluded events (MXE only)
+\item \code{up_exc(NxtSE)}: Gets upstream excluded events (MXE only)
 
-\item \code{down_exc,NxtSE-method}: Gets downstream excluded events (MXE only)
+\item \code{down_exc(NxtSE)}: Gets downstream excluded events (MXE only)
 
-\item \code{covfile,NxtSE-method}: Gets a named vector with
+\item \code{covfile(NxtSE)}: Gets a named vector with
 the paths to the corresponding COV files
 
-\item \code{sampleQC,NxtSE-method}: Gets a data frame with the QC parameters
+\item \code{sampleQC(NxtSE)}: Gets a data frame with the QC parameters
 of the samples
 
-\item \code{ref,NxtSE-method}: Retrieves a list of annotation data associated
+\item \code{ref(NxtSE)}: Retrieves a list of annotation data associated
 with this NxtSE object; primarily used in plotCoverage()
 
-\item \code{junc_PSI,NxtSE-method}: Getter for junction PSI DelayedMatrix;
+\item \code{junc_PSI(NxtSE)}: Getter for junction PSI DelayedMatrix;
 primarily used in plotCoverage()
 
-\item \code{junc_counts,NxtSE-method}: Getter for junction counts DelayedMatrix;
+\item \code{junc_counts(NxtSE)}: Getter for junction counts DelayedMatrix;
 primarily used in plotCoverage()
 
-\item \code{junc_gr,NxtSE-method}: Getter for junction GenomicRanges coordinates;
+\item \code{junc_gr(NxtSE)}: Getter for junction GenomicRanges coordinates;
 primarily used in plotCoverage()
 
-\item \code{realize_NxtSE,NxtSE-method}: Converts all DelayedMatrix assays as matrices
+\item \code{realize_NxtSE(NxtSE)}: Converts all DelayedMatrix assays as matrices
 (i.e. performs all delayed calculation and loads resulting object
 to RAM)
 
-\item \code{up_inc<-,NxtSE-method}: Sets upstream included events (SE/MXE), or
+\item \code{up_inc(NxtSE) <- value}: Sets upstream included events (SE/MXE), or
 upstream exon-intron spanning reads (IR)
 
-\item \code{down_inc<-,NxtSE-method}: Sets downstream included events (SE/MXE), or
+\item \code{down_inc(NxtSE) <- value}: Sets downstream included events (SE/MXE), or
 downstream exon-intron spanning reads (IR)
 
-\item \code{up_exc<-,NxtSE-method}: Sets upstream excluded events (MXE only)
+\item \code{up_exc(NxtSE) <- value}: Sets upstream excluded events (MXE only)
 
-\item \code{down_exc<-,NxtSE-method}: Sets downstream excluded events (MXE only)
+\item \code{down_exc(NxtSE) <- value}: Sets downstream excluded events (MXE only)
 
-\item \code{covfile<-,NxtSE-method}: Sets the paths to the corresponding COV files
+\item \code{covfile(NxtSE) <- value}: Sets the paths to the corresponding COV files
 
-\item \code{sampleQC<-,NxtSE-method}: Sets the values in the data frame containing
+\item \code{sampleQC(NxtSE) <- value}: Sets the values in the data frame containing
 sample QC
 
-\item \code{[,NxtSE,ANY,ANY,ANY-method}: Subsets a NxtSE object
+\item \code{x[i}: Subsets a NxtSE object
 
-\item \code{[<-,NxtSE,ANY,ANY,NxtSE-method}: Sets a subsetted NxtSE object
+\item \code{`[`(x = NxtSE, i = ANY, j = ANY) <- value}: Sets a subsetted NxtSE object
 
-\item \code{cbind,NxtSE-method}: Combines two NxtSE objects (by samples - columns)
+\item \code{cbind(NxtSE)}: Combines two NxtSE objects (by samples - columns)
 
-\item \code{rbind,NxtSE-method}: Combines two NxtSE objects (by AS/IR events - rows)
+\item \code{rbind(NxtSE)}: Combines two NxtSE objects (by AS/IR events - rows)
+
 }}
-
 \examples{
 
 # Run the full pipeline to generate a NxtSE object:

@@ -78,19 +78,19 @@ files, for portability reasons.
 }
 \section{Functions}{
 \itemize{
-\item \code{findSamples}: Finds all files with the given suffix pattern.
+\item \code{findSamples()}: Finds all files with the given suffix pattern.
 Annotates sample names based on file or parent folder names.
 
-\item \code{findFASTQ}: Use findSamples() to return all FASTQ files
+\item \code{findFASTQ()}: Use findSamples() to return all FASTQ files
 in a given folder
 
-\item \code{findBAMS}: Use findSamples() to return all BAM files in a
+\item \code{findBAMS()}: Use findSamples() to return all BAM files in a
 given folder
 
-\item \code{findSpliceWizOutput}: Use findSamples() to return all processBAM output
+\item \code{findSpliceWizOutput()}: Use findSamples() to return all processBAM output
 files in a given folder, including COV files
-}}
 
+}}
 \examples{
 # Retrieve all BAM files in a given folder, named by sample names
 bam_path <- tempdir()

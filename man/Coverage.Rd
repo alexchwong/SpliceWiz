@@ -96,17 +96,17 @@ search for the requested data from the COV file.\cr\cr
 }
 \section{Functions}{
 \itemize{
-\item \code{getCoverage}: Retrieves alignment coverage as an RLE or RLElist
+\item \code{getCoverage()}: Retrieves alignment coverage as an RLE or RLElist
 
-\item \code{getCoverage_DF}: Retrieves alignment coverage as a data.frame
+\item \code{getCoverage_DF()}: Retrieves alignment coverage as a data.frame
 
-\item \code{getCoverageRegions}: Retrieves total and mean coverage of a GRanges object
+\item \code{getCoverageRegions()}: Retrieves total and mean coverage of a GRanges object
 from a COV file
 
-\item \code{getCoverageBins}: Retrieves coverage of a single region from a COV file,
+\item \code{getCoverageBins()}: Retrieves coverage of a single region from a COV file,
 binned by the given number of bins or bin_size
-}}
 
+}}
 \examples{
 se <- SpliceWiz_example_NxtSE()
 

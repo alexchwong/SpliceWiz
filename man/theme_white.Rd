@@ -31,8 +31,8 @@ A ggplot theme object for white background figures +/- a legend
 
 \item \code{theme_white_legend_plot_track}: White theme with figure legend but without horizontal
 grid lines. Used internally in PlotGenome
-}}
 
+}}
 \examples{
 library(ggplot2)
 df <- data.frame(

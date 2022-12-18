@@ -32,14 +32,14 @@ in the example code in \link{makeSE}
 }
 \section{Functions}{
 \itemize{
-\item \code{SpliceWiz_example_bams}: Returns a 2-column data frame, containing
+\item \code{SpliceWiz_example_bams()}: Returns a 2-column data frame, containing
 sample names and sample paths (in tempdir()) of example BAM files
 
-\item \code{SpliceWiz_example_NxtSE}: Returns a (in-memory / realized) NxtSE
+\item \code{SpliceWiz_example_NxtSE()}: Returns a (in-memory / realized) NxtSE
 object that was pre-generated using the SpliceWiz example reference and
 example BAM files
-}}
 
+}}
 \examples{
 
 # returns a data frame with the first column as sample names, and the

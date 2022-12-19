@@ -568,6 +568,20 @@ STAR_alignReads <- function(
 .validate_STAR_version <- function(type = "error") {
     if (!(Sys.info()["sysname"] %in% c("Linux", "Darwin"))) {
         .log("STAR is only supported on Linux or MacOS", type = type)
+        return(NULL)
+    }
+    # Super-safe checking if STAR is available
+    which_star <- NULL
+    tryCatch({
+        which_star <- system2("which", "STAR", stdout = TRUE)
+    }, error = function(e) {
+        which_star <- NULL
+    }, warning = function(e) {
+        which_star <- NULL
+    })
+    if (is.null(which_star)) {
+        .log("STAR is not installed", type = type)
+        return(NULL)
     }
     star_version <- NULL
     tryCatch({

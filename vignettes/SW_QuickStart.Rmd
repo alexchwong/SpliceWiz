@@ -26,6 +26,10 @@ knitr::opts_chunk$set(
 ```
 \
 
+```{r, include = FALSE}
+library(SpliceWiz)
+```
+
 # Introduction
 
 SpliceWiz is a graphical interface for differential alternative splicing and
@@ -109,6 +113,8 @@ assessed.
 `plotCoverage()`
 
 ```{r}
+library(SpliceWiz)
+
 # Retrieve example NxtSE object
 se <- SpliceWiz_example_NxtSE()
 
@@ -199,6 +205,7 @@ to re-construct the SpliceWiz reference. This reference is contained in the
 `novelSplicing = TRUE` when running `collateData()`. For example:
 
 ```{r, eval = FALSE}
+library(SpliceWiz)
 
 # Usual pipeline:
 ref_path <- file.path(tempdir(), "Reference")

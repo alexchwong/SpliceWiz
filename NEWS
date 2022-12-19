@@ -1,3 +1,6 @@
+Changes in version 1.1.4 (2022-12-19)
++ hotfix: catch error if STAR is not installed on linux
+
 Changes in version 1.1.3 (2022-12-18)
 + Improved performance of SpliceWiz processBAM() in multi-sample setting
 + Fixed memory leak in processBAM and BAM2COV functions

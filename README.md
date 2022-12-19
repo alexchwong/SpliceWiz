@@ -5,13 +5,13 @@ SpliceWiz is an R package for exploring differential alternative splicing events
 # Table of Contents
 
 1. [Documentation](#doco)
-    a. [Bioconductor Release](#docoRelease)
-    b. [Bioconductor Devel](#docoDevel)
+    1. [Bioconductor Release](#docoRelease)
+    2. [Bioconductor Devel](#docoDevel)
 2. [Installation](#inst)
-    a. [Enabling OpenMP (MacOS)](#OpenMPMac)
-    b. [Installation for Bioconductor (current release)](#instRelease)
-    c. [Installation for Bioconductor (devel)](#instDevel)
-    d. [Installation for older Bioconductor versions](#instLegacy)
+    1. [Enabling OpenMP (MacOS)](#OpenMPMac)
+    2. [Installation for Bioconductor (current release)](#instRelease)
+    3. [Installation for Bioconductor (devel)](#instDevel)
+    4. [Installation for older Bioconductor versions](#instLegacy)
 3. [Publication](#pub)
 
 ## Documentation <a name="doco"></a>

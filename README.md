@@ -5,18 +5,18 @@ SpliceWiz is an R package for exploring differential alternative splicing events
 # Table of Contents
 
 1. [Documentation](#doco)
-    1. [Bioconductor Release](#docoRelease)
-    2. [Bioconductor Devel](#docoDevel)
+    1. [Bioconductor Release](#docorelease)
+    2. [Bioconductor Devel](#docodevel)
 2. [Installation](#inst)
-    1. [Enabling OpenMP (MacOS)](#OpenMPMac)
-    2. [Installation for Bioconductor (current release)](#instRelease)
-    3. [Installation for Bioconductor (devel)](#instDevel)
-    4. [Installation for older Bioconductor versions](#instLegacy)
+    1. [Enabling OpenMP (MacOS)](#ompmac)
+    2. [Installation for Bioconductor (current release)](#instrelease)
+    3. [Installation for Bioconductor (devel)](#instdevel)
+    4. [Installation for older Bioconductor versions](#instlegacy)
 3. [Publication](#pub)
 
 # Documentation <a name="doco"></a>
 
-## Bioconductor Release (Bioc 3.16 / R 4.2) <a name="docoRelease"></a>
+## Bioconductor Release (Bioc 3.16 / R 4.2) <a name="docorelease"></a>
 
 [Bioconductor Landing Page (Release - 3.16)](https://bioconductor.org/packages/release/bioc/html/SpliceWiz.html)
 
@@ -24,7 +24,7 @@ SpliceWiz is an R package for exploring differential alternative splicing events
 
 [Reference Manual (Release - 3.16)](https://bioconductor.org/packages/release/bioc/manuals/SpliceWiz/man/SpliceWiz.pdf) 
 
-## Bioconductor Devel (Bioc 3.17 / R 4.3) <a name="docoDevel"></a>
+## Bioconductor Devel (Bioc 3.17 / R 4.3) <a name="docodevel"></a>
 
 [Bioconductor Landing Page (Devel - 3.17)](https://bioconductor.org/packages/devel/bioc/html/SpliceWiz.html)
 
@@ -34,7 +34,7 @@ SpliceWiz is an R package for exploring differential alternative splicing events
 
 # Installation (Release - Bioc 3.16 / R 4.2) <a name="inst"></a>
 
-## Enabling OpenMP multi-threading (for MacOS users) <a name="OpenMPMac"></a>
+## Enabling OpenMP multi-threading (for MacOS users) <a name="ompmac"></a>
 
 OpenMP is installed by default on Windows and Linux systems. For MacOS, OpenMP
 is not officially supported. To install SpliceWiz with OpenMP support, first
@@ -44,7 +44,7 @@ install the `libomp` libraries via brew:
 brew install libomp
 ```
 
-## On R (version >= 4.2.0) using Bioconductor version 3.16 (current release) <a name="instRelease"></a>
+## On R (version >= 4.2.0) using Bioconductor version 3.16 (current release) <a name="instrelease"></a>
 
 ```
 if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -55,7 +55,7 @@ BiocManager::valid()              # checks for out of date packages
 BiocManager::install("SpliceWiz")
 ```
 
-## On R (devel version >= 4.3) using Bioconductor version 3.17 (devel) <a name="instDevel"></a>
+## On R (devel version >= 4.3) using Bioconductor version 3.17 (devel) <a name="instdevel"></a>
 
 ```
 if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -66,7 +66,7 @@ BiocManager::valid()              # checks for out of date packages
 BiocManager::install("SpliceWiz")
 ```
 
-## On older versions of Bioconductor (3.15 or earlier) <a name="instLegacy"></a>
+## On older versions of Bioconductor (3.15 or earlier) <a name="instlegacy"></a>
 
 ```
 library("devtools")

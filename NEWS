@@ -1,3 +1,7 @@
+Changes in version 1.0.2 (2022-12-19)
++ Improved performance of SpliceWiz processBAM() in multi-sample setting
++ Fixed memory leak in processBAM and BAM2COV functions
+
 Changes in version 1.0.1 (2022-11-09)
 + Fixed merge seqnames issue
 + Fixed Depth calculation (SpliceOver+IR) which should be higher than minDepth 

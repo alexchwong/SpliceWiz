@@ -889,10 +889,17 @@ collateData <- function(Experiment, reference_path, output_path,
         message("done")
         .log("Tidying up splice junctions and intron retentions (part 2)...",
             "message")
-        use_ref_path <- file.path(norm_output_path, "Reference")
     } else {
-        use_ref_path <- reference_path
+        # No need to thread a simply file copy function
+        .collateData_assemble_reference(
+            2, reference_path, 
+            norm_output_path, lowMemoryMode, novelSplicing,
+            minSamplesWithJunc, minSamplesAboveJuncThreshold,
+            novelSplicing_requireOneAnnotatedSJ,
+            verbose = TRUE
+        )
     }  
+    use_ref_path <- file.path(norm_output_path, "Reference")
     
     message("...grouping splice junctions")
     tmp <- BiocParallel::bplapply(

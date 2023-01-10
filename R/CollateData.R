@@ -820,10 +820,9 @@ collateData <- function(Experiment, reference_path, output_path,
     
         # Assemble intron_novel_transcript reference from novel junctions and
         # novel tandem junctions
-        .log(paste("Assembling novel splicing reference:"), "message")
-        .collateData_assemble_novel_reference(
+        .collateData_assemble_reference(
             2, reference_path, 
-            norm_output_path, lowMemoryMode,
+            norm_output_path, lowMemoryMode, novelSplicing,
             minSamplesWithJunc, minSamplesAboveJuncThreshold,
             novelSplicing_requireOneAnnotatedSJ,
             verbose = TRUE
@@ -878,10 +877,11 @@ collateData <- function(Experiment, reference_path, output_path,
             "this may take up to 10 minutes..."), "message", appendLF = FALSE)
         tmp <- BiocParallel::bplapply(
             seq_len(2),
-            .collateData_assemble_novel_reference,
+            .collateData_assemble_reference,
             reference_path = reference_path, 
             norm_output_path = norm_output_path,
             lowMemoryMode = lowMemoryMode,
+            novelSplicing = novelSplicing,
             minSamplesWithJunc = minSamplesWithJunc,
             minSamplesAboveJuncThreshold = minSamplesAboveJuncThreshold,
             novelSplicing_requireOneAnnotatedSJ = novelSplicing_requireOneAnnotatedSJ,
@@ -1143,108 +1143,104 @@ collateData <- function(Experiment, reference_path, output_path,
 
 # Assemble novel transcripts and generate new reference
 
-.collateData_assemble_novel_reference <- function(
-    threadID, reference_path, norm_output_path, lowMemoryMode,
+.collateData_assemble_reference <- function(
+    threadID, reference_path, norm_output_path, lowMemoryMode, novelSplicing,
     minSamplesWithJunc, minSamplesAboveJuncThreshold,
     novelSplicing_requireOneAnnotatedSJ,
     verbose = FALSE
 ) {
     if(threadID != 2) return()
     
-    novel_ref_path <- file.path(norm_output_path, "Reference")
-    .validate_path(novel_ref_path, subdirs = "resource")
-    
-    # settings <- readRDS(file.path(reference_path, "settings.Rds"))
-    # local.nonPolyAFile <- file.path(reference_path, "resource", 
-        # "nonPolyAFile.resource")
-    # local.MappabilityFile <- file.path(reference_path, "resource", 
-        # "MappabilityFile.resource")
-    # local.BlacklistFile <- file.path(reference_path, "resource", 
-        # "BlacklistFile.resource")
-    # nonPolyARef <- settings$nonPolyARef
-    # MappabilityRef <- settings$MappabilityRef
-    # BlacklistRef <- settings$BlacklistRef
-    # if(file.exists(local.nonPolyAFile)) 
-        # nonPolyARef <- local.nonPolyAFile
-    # if(file.exists(local.MappabilityFile)) 
-        # MappabilityRef <- local.MappabilityFile
-    # if(file.exists(local.BlacklistFile)) 
-        # BlacklistRef <- local.BlacklistFile
-
-    # extra_files <- .fetch_genome_defaults(novel_ref_path,
-        # settings$genome_type, nonPolyARef, 
-        # MappabilityRef, BlacklistRef,
-        # force_download = FALSE, verbose = FALSE)
-
-    if(verbose) message("...loading reference FASTA/GTF")
-    if(file.exists(file.path(reference_path, "fst/gtf_fixed.fst"))) {
-        reference_data <- list(
-            genome = Get_Genome(reference_path, validate = FALSE,
-                as_DNAStringSet = !lowMemoryMode),
-            gtf_gr = .grDT(
-                read.fst(file.path(reference_path, "fst/gtf_fixed.fst")),
-                keep.extra.columns = TRUE
-            )
+    if(novelSplicing) {
+        .log(paste("Assembling novel splicing reference:"), "message")
+        fst2Copy <- c(
+            # "Exons.fst", "Exons.Group.fst", "Genes.fst", "gtf_fixed.fst",
+            # "junctions.fst", "Transcripts.fst",
+            # "Misc.fst", "Ontology.fst", "Proteins.fst", 
+            # "Splice.Extended.fst", "Splice.fst", "Splice.options.fst"        
+            "Introns.Dir.fst", "Introns.ND.fst", "IR.NMD.fst"
         )
     } else {
-        reference_data <- .get_reference_data(
-            reference_path = reference_path,
-            fasta = "", gtf = "", verbose = FALSE,
-            overwrite = FALSE, force_download = FALSE,
-            pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)    
-        reference_data$gtf_gr <- .validate_gtf_chromosomes(
-            reference_data$genome, reference_data$gtf_gr)
-        reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
+        .log(paste("Making a copy of splicing reference:"), "message")        
+        fst2Copy <- c(
+            "Exons.fst", "Exons.Group.fst", "Genes.fst", "gtf_fixed.fst",
+            "junctions.fst", "Transcripts.fst",
+            "Misc.fst", "Ontology.fst", "Proteins.fst", 
+            "Splice.Extended.fst", "Splice.fst", "Splice.options.fst",      
+            "Introns.Dir.fst", "Introns.ND.fst", "IR.NMD.fst"
+        )
     }
-
-    if(verbose) message("...injecting novel transcripts to GTF")
-    # Insert novel gtf here
-    # reference_data$gtf_gr is a GRanges object
-    novel_gtf <- .collateData_novel_assemble_transcripts(
-        reference_path, norm_output_path, reference_data$gtf_gr,
-        minSamplesWithJunc, minSamplesAboveJuncThreshold,
-        novelSplicing_requireOneAnnotatedSJ)
-    # Finish inserting novel gtf
-    unique_seqlevels <- unique(c(
-        seqlevels(reference_data$gtf_gr), seqlevels(novel_gtf)
-    ))
-    seqlevels(reference_data$gtf_gr) <- unique_seqlevels
-    seqlevels(novel_gtf) <- unique_seqlevels
     
-    if(verbose) message("...processing GTF")
-    .process_gtf(c(reference_data$gtf_gr, novel_gtf), 
-        novel_ref_path, verbose = FALSE)
-    # extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
-    reference_data$gtf_gr <- NULL # To save memory, remove original gtf
-    rm(novel_gtf)
-    gc()
-    
-    if(verbose) message("...processing introns from GTF")
-    reference_data$genome <- .check_2bit_performance(reference_path,
-        reference_data$genome, verbose = FALSE)
-    .process_introns(novel_ref_path, reference_data$genome, 
-        useExtendedTranscripts = TRUE, verbose = FALSE)
+    novel_ref_path <- file.path(norm_output_path, "Reference")
+    .validate_path(novel_ref_path, subdirs = "resource")
+    .validate_path(novel_ref_path, subdirs = "fst")
 
-    # No need to re-process SpliceWiz processBAM reference
-    file.copy(file.path(reference_path, "fst", "Introns.Dir.fst"),
-        file.path(novel_ref_path, "fst", "Introns.Dir.fst"))
-    file.copy(file.path(reference_path, "fst", "Introns.ND.fst"),
-        file.path(novel_ref_path, "fst", "Introns.ND.fst"))
+    # Copy over files that don't need to be generated
     file.copy(file.path(reference_path, "SpliceWiz.ref.gz"),
         file.path(novel_ref_path, "SpliceWiz.ref.gz"))       
-    file.copy(file.path(reference_path, "fst", "IR.NMD.fst"),
-        file.path(novel_ref_path, "fst", "IR.NMD.fst"))
-    if(file.exists(file.path(reference_path, "fst", "Ontology.fst"))) {
-        file.copy(file.path(reference_path, "fst", "Ontology.fst"),
-            file.path(novel_ref_path, "fst", "Ontology.fst"))    
+    for(fstFile in fst2Copy) {
+        if(file.exists(file.path(reference_path, "fst", fstFile))) {
+            file.copy(file.path(reference_path, "fst", fstFile),
+                file.path(novel_ref_path, "fst", fstFile))    
+        }        
     }
-    
-    rm(reference_data)
-    gc()
 
-    if(verbose) message("...annotating alternative splicing events")
-    .gen_splice(novel_ref_path, verbose = FALSE)
-    
+    if(novelSplicing) {
+        if(verbose) message("...loading reference FASTA/GTF")
+        if(file.exists(file.path(reference_path, "fst/gtf_fixed.fst"))) {
+            reference_data <- list(
+                genome = Get_Genome(reference_path, validate = FALSE,
+                    as_DNAStringSet = !lowMemoryMode),
+                gtf_gr = .grDT(
+                    read.fst(file.path(reference_path, "fst/gtf_fixed.fst")),
+                    keep.extra.columns = TRUE
+                )
+            )
+        } else {
+            reference_data <- .get_reference_data(
+                reference_path = reference_path,
+                fasta = "", gtf = "", verbose = FALSE,
+                overwrite = FALSE, force_download = FALSE,
+                pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
+            reference_data$gtf_gr <- .validate_gtf_chromosomes(
+                reference_data$genome, reference_data$gtf_gr)
+            reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
+        }
+
+        if(verbose) message("...injecting novel transcripts to GTF")
+        # Insert novel gtf here
+        # reference_data$gtf_gr is a GRanges object
+        novel_gtf <- .collateData_novel_assemble_transcripts(
+            reference_path, norm_output_path, reference_data$gtf_gr,
+            minSamplesWithJunc, minSamplesAboveJuncThreshold,
+            novelSplicing_requireOneAnnotatedSJ)
+        # Finish inserting novel gtf
+        unique_seqlevels <- unique(c(
+            seqlevels(reference_data$gtf_gr), seqlevels(novel_gtf)
+        ))
+        seqlevels(reference_data$gtf_gr) <- unique_seqlevels
+        seqlevels(novel_gtf) <- unique_seqlevels
+        
+        if(verbose) message("...processing GTF")
+        .process_gtf(c(reference_data$gtf_gr, novel_gtf), 
+            novel_ref_path, verbose = FALSE)
+        # extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
+        reference_data$gtf_gr <- NULL # To save memory, remove original gtf
+        rm(novel_gtf)
+        gc()
+        
+        if(verbose) message("...processing introns from GTF")
+        reference_data$genome <- .check_2bit_performance(reference_path,
+            reference_data$genome, verbose = FALSE)
+        .process_introns(novel_ref_path, reference_data$genome, 
+            useExtendedTranscripts = TRUE, verbose = FALSE)
+        rm(reference_data)
+        gc()
+
+        if(verbose) message("...annotating alternative splicing events")
+        .gen_splice(novel_ref_path, verbose = FALSE)
+    }
+
     settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
     # (TODO) - modify settings.Rds
     saveRDS(settings.list, file.path(novel_ref_path, "settings.Rds"))

@@ -1234,6 +1234,10 @@ collateData <- function(Experiment, reference_path, output_path,
         file.path(novel_ref_path, "SpliceWiz.ref.gz"))       
     file.copy(file.path(reference_path, "fst", "IR.NMD.fst"),
         file.path(novel_ref_path, "fst", "IR.NMD.fst"))
+    if(file.exists(file.path(reference_path, "fst", "Ontology.fst"))) {
+        file.copy(file.path(reference_path, "fst", "Ontology.fst"),
+            file.path(novel_ref_path, "fst", "Ontology.fst"))    
+    }
     
     rm(reference_data)
     gc()

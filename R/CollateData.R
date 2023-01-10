@@ -1162,7 +1162,8 @@ collateData <- function(Experiment, reference_path, output_path,
         fst2Copy <- c(
             # "Exons.fst", "Exons.Group.fst", "Genes.fst", "gtf_fixed.fst",
             # "junctions.fst", "Transcripts.fst",
-            # "Misc.fst", "Ontology.fst", "Proteins.fst", 
+            # "Misc.fst", "Proteins.fst", 
+            "Ontology.fst", 
             # "Splice.Extended.fst", "Splice.fst", "Splice.options.fst"        
             "Introns.Dir.fst", "Introns.ND.fst", "IR.NMD.fst"
         )

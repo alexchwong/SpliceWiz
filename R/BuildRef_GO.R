@@ -1,4 +1,3 @@
-
 .process_ontology <- function(
         reference_path, genome_type, verbose = TRUE
 ) {
@@ -23,6 +22,45 @@
     }
     ontDT <- .get_geneGO(species, verbose)
     fst::write.fst(ontDT, file.path(reference_path, "fst", "Ontology.fst"))
+}
+
+.ora_internal <- function(
+    reference_path,
+    genes, universe,
+    ontologyType = "BP",
+    ...
+) {
+    .check_package_installed("fgsea", "1.0.0", "silent")
+
+    ontFile <- file.path(reference_path, "fst/Ontology.fst")
+    if(!file.exists()) .log(paste(
+        "No gene ontology resource found in", reference_path))
+
+    ont <- as.data.table(fst::read.fst(ontFile))
+    ontUse <- ont[get("ontology") == ontologyType]
+    if(nrows(ontUse) == 0) .log(paste(
+        ontologyType, "not found as a gene ontology category"
+    ))
+
+    pathways <- split(ont$ensembl_id, ont$go_id)
+    
+    foraRes <- as.data.table(fora(
+        pathways, 
+        genes=genes, 
+        universe=universe,
+        ...
+    ))
+
+    foraHeader <- data.table(
+        go_id = foraRes$pathways,
+        go_term <- ont$go_term[match(
+            foraRes$pathways,
+            ont$go_id
+        )]
+    )
+    
+    final <- cbind(foraHeader, foraRes[, -1])
+    return(final)
 }
 
 ################################################################################

@@ -817,23 +817,22 @@ collateData <- function(Experiment, reference_path, output_path,
     if(novelSplicing) {
         message("...looking for novel exons")
         .collateData_tj_annotate(2, reference_path, norm_output_path)
+    }
     
-        # Assemble intron_novel_transcript reference from novel junctions and
-        # novel tandem junctions
-        .collateData_assemble_reference(
-            2, reference_path, 
-            norm_output_path, lowMemoryMode, novelSplicing,
-            minSamplesWithJunc, minSamplesAboveJuncThreshold,
-            novelSplicing_requireOneAnnotatedSJ,
-            verbose = TRUE
-        )
-        use_ref_path <- file.path(norm_output_path, "Reference")
-        
-        message("done")
+    # Assemble intron_novel_transcript reference from novel junctions and
+    # novel tandem junctions
+    .collateData_assemble_reference(
+        2, reference_path, 
+        norm_output_path, lowMemoryMode, novelSplicing,
+        minSamplesWithJunc, minSamplesAboveJuncThreshold,
+        novelSplicing_requireOneAnnotatedSJ,
+        verbose = TRUE
+    )
+    use_ref_path <- file.path(norm_output_path, "Reference")
+
+    if(novelSplicing) {    
         .log("Tidying up splice junctions and intron retentions (part 2)...",
             "message")
-    } else {
-        use_ref_path <- reference_path
     }
         
     message("...grouping splice junctions")
@@ -1241,6 +1240,7 @@ collateData <- function(Experiment, reference_path, output_path,
         .gen_splice(novel_ref_path, verbose = FALSE)
     }
 
+    message("done")
     settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
     # (TODO) - modify settings.Rds
     saveRDS(settings.list, file.path(novel_ref_path, "settings.Rds"))

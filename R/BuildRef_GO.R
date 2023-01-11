@@ -38,7 +38,7 @@
 
     ont <- as.data.table(fst::read.fst(ontFile))
     ontUse <- ont[get("ontology") == ontologyType]
-    if(nrows(ontUse) == 0) .log(paste(
+    if(nrow(ontUse) == 0) .log(paste(
         ontologyType, "not found as a gene ontology category"
     ))
 

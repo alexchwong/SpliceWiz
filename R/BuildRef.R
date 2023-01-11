@@ -2290,50 +2290,50 @@ Get_GTF_file <- function(reference_path) {
 # Generates SpliceWiz intron name
 .gen_irf_irfname <- function(IntronCover.summa, stranded = TRUE) {
     if (stranded) {
-        IntronCover.summa[, c("IRname") := paste("dir",
-            get("gene_name"), get("intron_id"), get("strand"),
-            get("num_blocks"), sprintf("%.f", get("intron_start") - 1),
-            sprintf("%.f", get("intron_end")), get("inclbases"),
-            get("exclbases"),
-            ifelse(get("known_exon_dir"), "known-exon", "clean"), sep = "/"
-        )]
+        IntronCover.summa[, c("intronQC") := 
+            ifelse(get("known_exon_dir"), "known-exon", "clean")
+        ]
     } else {
-        IntronCover.summa[, c("IRname") := paste("nd",
-            get("gene_name"), get("intron_id"), get("strand"),
-            get("num_blocks"), sprintf("%.f", get("intron_start") - 1),
-            sprintf("%.f", get("intron_end")), get("inclbases"),
-            get("exclbases"), sep = "/"
-        )]
-        # casewise naming of last condition
+        IntronCover.summa[, c("intronQC") := ""]
         IntronCover.summa[
             get("known_exon_nd") & get("antiover") & get("antinear"),
-            c("IRname") := paste(get("IRname"),
-                "known-exon+anti-over+anti-near", sep = "/")]
+            c("intronQC") := "known-exon+anti-over+anti-near"]
+        
         IntronCover.summa[
             get("known_exon_nd") & get("antiover") & !get("antinear"),
-            c("IRname") := paste(get("IRname"),
-                "known-exon+anti-over", sep = "/")]
+            c("intronQC") := "known-exon+anti-over"]
         IntronCover.summa[
             get("known_exon_nd") & !get("antiover") & get("antinear"),
-            c("IRname") := paste(get("IRname"),
-                "known-exon+anti-near", sep = "/")]
+            c("intronQC") := "known-exon+anti-near"]
         IntronCover.summa[
             !get("known_exon_nd") & get("antiover") & get("antinear"),
-            c("IRname") := paste(get("IRname"),
-                "anti-over+anti-near", sep = "/")]
-        IntronCover.summa[
-            !get("known_exon_nd") & !get("antiover") & get("antinear"),
-            c("IRname") := paste(get("IRname"), "anti-near", sep = "/")]
-        IntronCover.summa[
-            !get("known_exon_nd") & get("antiover") & !get("antinear"),
-            c("IRname") := paste(get("IRname"), "anti-over", sep = "/")]
+            c("intronQC") := "anti-over+anti-near"]
+
         IntronCover.summa[
             get("known_exon_nd") & !get("antiover") & !get("antinear"),
-            c("IRname") := paste(get("IRname"), "known-exon", sep = "/")]
+            c("intronQC") := "known-exon"]
+        IntronCover.summa[
+            !get("known_exon_nd") & !get("antiover") & get("antinear"),
+            c("intronQC") := "anti-near"]
+        IntronCover.summa[
+            !get("known_exon_nd") & get("antiover") & !get("antinear"),
+            c("intronQC") := "anti-over"]
+
         IntronCover.summa[
             !get("known_exon_nd") & !get("antiover") & !get("antinear"),
-            c("IRname") := paste(get("IRname"), "clean", sep = "/")]
+            c("intronQC") := "clean"]
     }
+    IntronCover.summa[, c("IRname") := paste(ifelse(stranded, "dir", "nd"),
+        get("gene_name"), get("intron_id"), get("strand"),
+        get("num_blocks"), sprintf("%.f", get("intron_start") - 1),
+        sprintf("%.f", get("intron_end")), get("inclbases"),
+        get("exclbases"),
+        get("intronQC"), sep = "/"
+    )]
+    IntronCover.summa[, c("EventName") := paste(
+        get("gene_name"), get("intron_id"), get("intronQC"), sep = "/"
+    )]
+    IntronCover.summa[, c("intronQC") := NULL]
     return(IntronCover.summa)
 }
 

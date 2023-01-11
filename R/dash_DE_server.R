@@ -13,7 +13,7 @@ server_DE <- function(
                 # "Experiment Loaded"
             # })
             req(get_se())
-            colcat <- .get_discrete_cats(get_se())
+            colcats <- .get_discrete_cats(get_se())
             .update_fields_DE(session, "variable_DE", 
                 colcats, input$variable_DE)
             .update_fields_DE(session, "batch1_DE", 

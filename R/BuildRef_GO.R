@@ -76,11 +76,11 @@ goASE <- function(
 
     spliceFile <- file.path(reference_path, "fst/Splice.fst")
     if(!file.exists(spliceFile))
-        .log(paste("Splicing reference", spliceFile, "not found")
+        .log(paste("Splicing reference", spliceFile, "not found"))
 
     ontFile <- file.path(reference_path, "fst/Ontology.fst")
     if(!file.exists(ontFile))
-        .log(paste("Gene Ontology reference", ontFile, "not found")
+        .log(paste("Gene Ontology reference", ontFile, "not found"))
 
     # EventName to gene matcher
     splice_geneid <- as.data.frame(read.fst(

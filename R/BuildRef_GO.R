@@ -77,10 +77,15 @@ goASE <- function(
     spliceFile <- file.path(reference_path, "fst/Splice.fst")
     if(!file.exists(spliceFile))
         .log(paste("Splicing reference", spliceFile, "not found"))
-
-    ontFile <- file.path(reference_path, "fst/Ontology.fst")
-    if(!file.exists(ontFile))
-        .log(paste("Gene Ontology reference", ontFile, "not found"))
+    TrFile <- file.path(reference_path, "fst/Transcripts.fst")
+    if(!file.exists(TrFile))
+        .log(paste("Transcript reference", TrFile, "not found"))
+    IRdirFile <- file.path(reference_path, "fst/Introns.Dir.fst")
+    if(!file.exists(IRdirFile))
+        .log(paste("IR reference", IRdirFile, "not found"))
+    IRnondirFile <- file.path(reference_path, "fst/Introns.ND.fst")
+    if(!file.exists(IRnondirFile))
+        .log(paste("IR reference", IRnondirFile, "not found"))
 
     # EventName to gene matcher
     splice_geneid <- read.fst(
@@ -88,27 +93,50 @@ goASE <- function(
     )
     splice_geneid$gene_id <- as.character(splice_geneid$gene_id)
     splice_geneid$gene_id_b <- as.character(splice_geneid$gene_id_b)
+
+    IR_trid <- rbind(
+        read.fst(
+            IRdirFile, columns = c("EventName", "transcript_id")
+        ),
+        read.fst(
+            IRnondirFile, columns = c("EventName", "transcript_id")
+        )
+    )
+    Tr2Gene <- read.fst(Trfile, columns = c("transcript_id", "gene_id"))
+    
+    splice_geneid$gene_id <- as.character(splice_geneid$gene_id)
+    splice_geneid$gene_id_b <- as.character(splice_geneid$gene_id_b)
+    
+    IR_trid <- as.data.table(IR_trid)
+    Tr2Gene <- as.data.table(Tr2Gene)
+    
+    IR_trid <- Tr2Gene[IR_trid, on = "transcript_id"]
+    IR_trid$gene_id_b <- IR_trid$gene_id
+    
+    allEvents <- rbind(splice_geneid,
+        IR_trid[, c("EventName", "gene_id", "gene_id_b"), with = FALSE]
+    )
     
     uniqueEventnames <- unique(c(enrichedEventNames, universeEventNames))
-    if(!all(uniqueEventnames %in% splice_geneid$EventName)) {
+    if(!all(uniqueEventnames %in% c(allEvents$EventName, )) {
         nonMatches <- uniqueEventnames[!(uniqueEventnames %in% 
-            splice_geneid$EventName)]
+            allEvents$EventName)]
         .log(paste("One or more EventName(s) not found in reference!",
             "Culprit examples:", head(nonMatches)
         ))
     }
     
     genes <- unique(c(
-        splice_geneid$gene_id[match(
-            enrichedEventNames, splice_geneid$EventName)],
-        splice_geneid$gene_id_b[match(
-            enrichedEventNames, splice_geneid$EventName)]
+        allEvents$gene_id[match(
+            enrichedEventNames, allEvents$EventName)],
+        allEvents$gene_id_b[match(
+            enrichedEventNames, allEvents$EventName)]
     ))
     universe <- unique(c(
-        splice_geneid$gene_id[match(
-            universeEventNames, splice_geneid$EventName)],
-        splice_geneid$gene_id_b[match(
-            universeEventNames, splice_geneid$EventName)]
+        allEvents$gene_id[match(
+            universeEventNames, allEvents$EventName)],
+        allEvents$gene_id_b[match(
+            universeEventNames, allEvents$EventName)]
     ))
     
     res <- .ora_internal(reference_path, genes, universe, ontologyType, ...)

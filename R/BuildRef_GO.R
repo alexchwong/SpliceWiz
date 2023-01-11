@@ -63,6 +63,57 @@
     return(final)
 }
 
+goASE <- function(
+    enrichedEventNames,
+    universeEventNames,
+    reference_path,
+    ontologyType = c("BP", "MF", "CC"),
+    ...
+) {
+    ontologyType <- match.arg(ontologyType)
+    if(ontologyType == "") 
+        .log("ontologyType must be one of `BP`, `MF` or `CC`")
+
+    spliceFile <- file.path(reference_path, "fst/Splice.fst")
+    if(!file.exists(spliceFile))
+        .log(paste("Splicing reference", spliceFile, "not found")
+
+    ontFile <- file.path(reference_path, "fst/Ontology.fst")
+    if(!file.exists(ontFile))
+        .log(paste("Gene Ontology reference", ontFile, "not found")
+
+    # EventName to gene matcher
+    splice_geneid <- as.data.frame(read.fst(
+        spliceFile, columns = c("EventName", "gene_id", "gene_id_b")
+    ))
+    
+    uniqueEventnames <- unique(c(enrichedEventNames, universeEventNames))
+    if(!all(uniqueEventnames %in% splice_geneid$EventName)) {
+        nonMatches <- uniqueEventnames[!(uniqueEventnames %in% 
+            splice_geneid$EventName)]
+        .log(paste("One or more EventName(s) not found in reference!",
+            "Culprit examples:", head(nonMatches)
+        ))
+    }
+    
+    genes <- unique(c(
+        splice_geneid$gene_id[match(
+            enrichedEventNames, splice_geneid$EventName)],
+        splice_geneid$gene_id_b[match(
+            enrichedEventNames, splice_geneid$EventName)],
+    ))
+    universe <- unique(c(
+        splice_geneid$gene_id[match(
+            universeEventNames, splice_geneid$EventName)],
+        splice_geneid$gene_id_b[match(
+            universeEventNames, splice_geneid$EventName)],
+    ))
+    
+    res <- .ora_internal(reference_path, genes, universe, ontologyType, ...)
+    
+    return(res)
+}
+
 ################################################################################
 
 # Global functions for gene ontology

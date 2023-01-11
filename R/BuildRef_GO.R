@@ -102,7 +102,7 @@ goASE <- function(
             IRnondirFile, columns = c("EventName", "transcript_id")
         )
     )
-    Tr2Gene <- read.fst(Trfile, columns = c("transcript_id", "gene_id"))
+    Tr2Gene <- read.fst(TrFile, columns = c("transcript_id", "gene_id"))
     
     splice_geneid$gene_id <- as.character(splice_geneid$gene_id)
     splice_geneid$gene_id_b <- as.character(splice_geneid$gene_id_b)

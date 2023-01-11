@@ -42,9 +42,9 @@
         ontologyType, "not found as a gene ontology category"
     ))
 
-    pathways <- split(ont$ensembl_id, ont$go_id)
+    pathways <- split(ontUse$ensembl_id, ontUse$go_id)
     
-    foraRes <- as.data.table(fora(
+    foraRes <- as.data.table(fgsea::fora(
         pathways, 
         genes=genes, 
         universe=universe,
@@ -52,10 +52,10 @@
     ))
 
     foraHeader <- data.table(
-        go_id = foraRes$pathways,
-        go_term <- ont$go_term[match(
-            foraRes$pathways,
-            ont$go_id
+        go_id = foraRes$pathway,
+        go_term <- ontUse$go_term[match(
+            foraRes$pathway,
+            ontUse$go_id
         )]
     )
     
@@ -83,9 +83,11 @@ goASE <- function(
         .log(paste("Gene Ontology reference", ontFile, "not found"))
 
     # EventName to gene matcher
-    splice_geneid <- as.data.frame(read.fst(
+    splice_geneid <- read.fst(
         spliceFile, columns = c("EventName", "gene_id", "gene_id_b")
-    ))
+    )
+    splice_geneid$gene_id <- as.character(splice_geneid$gene_id)
+    splice_geneid$gene_id_b <- as.character(splice_geneid$gene_id_b)
     
     uniqueEventnames <- unique(c(enrichedEventNames, universeEventNames))
     if(!all(uniqueEventnames %in% splice_geneid$EventName)) {

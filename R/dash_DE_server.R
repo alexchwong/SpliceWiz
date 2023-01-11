@@ -536,5 +536,5 @@ server_DE <- function(
         selected <- "(none)"
     }
     updateSelectInput(session = session, inputId = inputId, 
-        choices = c("(none)", colcat), selected = selected)
+        choices = c("(none)", colcats), selected = selected)
 }

@@ -93,7 +93,8 @@ setreactive_DE <- function() {
 
 setreactive_GO <- function() {
     reactiveValues(
-        res = NULL
+        res = NULL,
+        nxtse_path = NULL
     )
 }
 

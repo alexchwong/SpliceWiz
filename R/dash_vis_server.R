@@ -238,13 +238,26 @@ server_vis_diag <- function(
     }
 }
 
+.get_volcano_data_sigunits <- function(res) {
+    if("pvalue" %in% colnames(res)) {
+        return(c("pvalue", "padj"))       # DESeq2
+    } else if("P.Value" %in% colnames(res)) {
+        return(c("P.Value", "adj.P.Val")) # limma or DoubleExpSeq
+    } else if("PValue" %in% colnames(res)) {
+        return(c("PValue", "FDR"))        # edgeR
+    }
+}
+
 .get_unified_volcano_data <- function(res) {
-    units <- .get_volcano_data_FCunits(res)
+    xunits <- .get_volcano_data_FCunits(res)
+    yunits <- .get_volcano_data_sigunits(res)
     df.volc <- data.frame(
         EventName = res$EventName, 
         EventType = res$EventType, 
         NMD_direction = .getNMDcode(res$flags),
-        log2FoldChange = res[, get(units)]
+        logFC = res[, get(xunits)],
+        pvalue = res[, get(yunits[1])],
+        FDR = res[, get(yunits[2])]
     )
     return(df.volc)
 }
@@ -319,18 +332,7 @@ server_vis_volcano <- function(
             }
 
             df.volc <- .get_unified_volcano_data(res)
-            volc_units <- .get_volcano_data_FCunits(res)
-            
-            if("pvalue" %in% colnames(res)) {
-                df.volc$pvalue <- res$pvalue
-                df.volc$padj <- res$padj
-            } else if("regular_FDR" %in% colnames(res)) {
-                df.volc$pvalue <- res$pval
-                df.volc$padj <- res$regular_FDR
-            } else {
-                df.volc$pvalue <- res$P.Value
-                df.volc$padj <- res$adj.P.Val
-            }
+            xunits <- .get_volcano_data_FCunits(res)
 
             if(is_valid(selected)) {
                 df.volc$selected <- 
@@ -340,19 +342,18 @@ server_vis_volcano <- function(
             }
             if(input$NMD_volc) {
                 df.volc <- df.volc[df.volc$NMD_direction != 0, ]
-                df.volc$log2FoldChange <- 
-                    df.volc$log2FoldChange * df.volc$NMD_direction
+                df.volc$logFC <- df.volc$logFC * df.volc$NMD_direction
             }
 
             settings_Volc$plot_ini <- TRUE
             if(input$adjP_volc) {
                 p <- ggplot(df.volc, aes(
-                        x = get("log2FoldChange"), y = -log10(get("padj")),
+                        x = get("logFC"), y = -log10(get("FDR")),
                         key = get("EventName"), text = get("EventName"), 
                         colour = get("selected")))           
             } else {
                 p <- ggplot(df.volc, aes(
-                        x = get("log2FoldChange"), y = -log10(get("pvalue")),
+                        x = get("logFC"), y = -log10(get("pvalue")),
                         key = get("EventName"), text = get("EventName"), 
                         colour = get("selected")))               
             }
@@ -363,8 +364,10 @@ server_vis_volcano <- function(
             if(input$facet_volc) {
                 p <- p + facet_wrap(vars(get("EventType")))
             }
-            if(volc_units %in% c("log2FoldChange", "logFC")) {
+            if(xunits %in% c("log2FoldChange")) {
                 formatted_units <- "Log2 Fold Change"
+            } else if(xunits %in% c("logFC")) {
+                formatted_units <- "Log Fold Change"
             } else {
                 formatted_units <- "MLE Log2 Fold Change"
             }

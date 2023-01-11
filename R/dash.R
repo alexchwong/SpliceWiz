@@ -65,6 +65,7 @@ spliceWiz <- function(
                 ui_tab_qc(),        # "navQC"
                 ui_tab_filter(),    # "navFilter"
                 ui_tab_analyse(),   # "navAnalyse"
+                ui_tab_GO(),        # "navGO"
 
                 ui_tab_volcano(),   # "navVolcano"
                 ui_tab_diag(),      # "navDiag"

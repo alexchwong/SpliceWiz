@@ -65,7 +65,7 @@
 
 goASE <- function(
     enrichedEventNames,
-    universeEventNames,
+    universeEventNames = NULL,
     reference_path,
     ontologyType = c("BP", "MF", "CC"),
     ...
@@ -132,12 +132,22 @@ goASE <- function(
         allEvents$gene_id_b[match(
             enrichedEventNames, allEvents$EventName)]
     ))
-    universe <- unique(c(
-        allEvents$gene_id[match(
-            universeEventNames, allEvents$EventName)],
-        allEvents$gene_id_b[match(
-            universeEventNames, allEvents$EventName)]
-    ))
+    
+    if(!is.null(universeEventNames)) {
+        universe <- unique(c(
+            allEvents$gene_id[match(
+                universeEventNames, allEvents$EventName)],
+            allEvents$gene_id_b[match(
+                universeEventNames, allEvents$EventName)]
+        ))    
+    } else {
+        GeneFile <- file.path(reference_path, "fst/Genes.fst")
+        if(!file.exists(GeneFile))
+            .log(paste("Gene reference", GeneFile, "not found"))
+
+        Genes <- read.fst(GeneFile, columns = "gene_id")
+        universe <- Genes$gene_id
+    }
     
     res <- .ora_internal(reference_path, genes, universe, ontologyType, ...)
     

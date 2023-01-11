@@ -91,6 +91,12 @@ setreactive_DE <- function() {
     )
 }
 
+setreactive_GO <- function() {
+    reactiveValues(
+        res = NULL
+    )
+}
+
 # Settings for Diag and Volcano
 setreactive_Diag <- function() {
     # NB same code as Volcano

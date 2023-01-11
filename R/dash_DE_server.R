@@ -129,9 +129,9 @@ server_DE <- function(
                 validate(need(is_valid(input$denom_DE), 
                     "Denominator for DE Variable needs to be defined"))
                 validate(need(input$nom_DE != "(time series)" ||
-                        input$method_DE %in% c("limma", "DESeq2"), 
+                        input$method_DE %in% c("limma", "DESeq2", "edgeR"), 
                     paste("Time series analysis can only be performed",
-                    "using limma or DESeq2")))
+                    "using limma, edgeR or DESeq2")))
                 validate(need(input$denom_DE != input$nom_DE, 
                     "Denominator and Nominator must be different"))
                 "Ready to run differential analysis"
@@ -148,9 +148,9 @@ server_DE <- function(
                 validate(need(is_valid(input$denom_DE), 
                     "Denominator for DE Variable needs to be defined"))
                 validate(need(input$nom_DE != "(time series)" ||
-                        input$method_DE %in% c("limma", "DESeq2"), 
+                        input$method_DE %in% c("limma", "DESeq2", "edgeR"), 
                     paste("Time series analysis can only be performed",
-                    "using limma or DESeq2")))
+                    "using limma, edgeR or DESeq2")))
                 validate(need(input$denom_DE != input$nom_DE, 
                     "Denominator and Nominator must be different"))
                 "Running differential analysis"
@@ -160,7 +160,7 @@ server_DE <- function(
             req(is_valid(input$denom_DE))
             req(input$denom_DE != input$nom_DE)
             req(input$nom_DE != "(time series)" ||
-                input$method_DE %in% c("limma", "DESeq2"))
+                input$method_DE %in% c("limma", "DESeq2", "edgeR"))
 
             rowData <- as.data.frame(rowData(get_se()))
             colData <- as.data.frame(colData(get_se()))
@@ -253,6 +253,34 @@ server_DE <- function(
                         setorderv(res.ASE, "P.Value")
                     } else {
                         setorderv(res.ASE, "adj.P.Val")
+                    }
+                })
+            } else if(settings_DE$method == "edgeR") {
+                withProgress(message = 'Running edgeR...', value = 0, {
+                    if(settings_DE$nom_DE != "(time series)") {
+                        res.ASE <- ASE_edgeR(
+                            se = get_se(), 
+                            test_factor = settings_DE$DE_Var, 
+                            test_nom = settings_DE$nom_DE, 
+                            test_denom = settings_DE$denom_DE,
+                            batch1 = settings_DE$batchVar1, 
+                            batch2 = settings_DE$batchVar2,
+                            IRmode = settings_DE$IRmode_DE
+                        )                
+                    } else {
+                        res.ASE <- ASE_edgeR_timeseries(
+                            se = get_se(), 
+                            test_factor = settings_DE$DE_Var, 
+                            batch1 = settings_DE$batchVar1, 
+                            batch2 = settings_DE$batchVar2,
+                            IRmode = settings_DE$IRmode_DE,
+                            degrees_of_freedom = settings_DE$dof
+                        )    
+                    }
+                    if(!input$adjP_DE) {
+                        setorderv(res.ASE, "PValue")
+                    } else {
+                        setorderv(res.ASE, "FDR")
                     }
                 })
             } else if(settings_DE$method == "DoubleExpSeq") {

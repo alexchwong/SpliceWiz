@@ -13,7 +13,7 @@ dash_server <- function(input, output, session) {
     settings_refresh <- reactiveValues(
         new_ref = c(), 
         expr = c(), 
-        expr_load = c(), qc = c(), filters = c(), DE = c(),
+        expr_load = c(), qc = c(), filters = c(), DE = c(), GO = c(),
         diag = c(), volc = c(), heat = c(), cov = c()
     )
     
@@ -25,6 +25,7 @@ dash_server <- function(input, output, session) {
     refresh_QC          <- reactive(settings_refresh$qc)
     refresh_filters     <- reactive(settings_refresh$filters)
     refresh_DE          <- reactive(settings_refresh$DE)
+    refresh_GO          <- reactive(settings_refresh$GO)
     
     refresh_diag        <- reactive(settings_refresh$diag)
     refresh_volc        <- reactive(settings_refresh$volc)
@@ -84,6 +85,9 @@ dash_server <- function(input, output, session) {
     settings_DE <- server_DE("DE", refresh_DE, volumes, get_threads_reactive,
         get_filtered_se_reactive, get_filters_reactive,
         get_rows_selected_diag, get_rows_selected_volc)
+    settings_GO <- server_GO("GO", refresh_GO, get_se_path_reactive, 
+        get_filtered_se_reactive, get_de_reactive,
+        get_rows_all, get_rows_selected)
     settings_Diag <- server_vis_diag("diag", refresh_diag, volumes, 
         get_filtered_se_reactive, get_de_reactive,
         get_rows_all, get_rows_selected)
@@ -115,6 +119,8 @@ dash_server <- function(input, output, session) {
             settings_refresh$filters <- runif(1)
         } else if(input$navSelection == "navAnalyse") {
             settings_refresh$DE <- runif(1)
+        } else if(input$navSelection == "navGO") {
+            settings_refresh$GO <- runif(1)
         } else if(input$navSelection == "navDiag") {
             settings_refresh$diag <- runif(1)
         } else if(input$navSelection == "navDiag") {

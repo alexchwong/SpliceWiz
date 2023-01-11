@@ -14,12 +14,12 @@ server_DE <- function(
             # })
             req(get_se())
             colcat <- .get_discrete_cats(get_se())
-            updateSelectInput(session = session, inputId = "variable_DE", 
-                choices = c("(none)", colcat), selected = "(none)")
-            updateSelectInput(session = session, inputId = "batch1_DE", 
-                choices = c("(none)", colcat), selected = "(none)")
-            updateSelectInput(session = session, inputId = "batch2_DE", 
-                choices = c("(none)", colcat), selected = "(none)")
+            .update_fields_DE(session, "variable_DE", 
+                colcats, input$variable_DE)
+            .update_fields_DE(session, "batch1_DE", 
+                colcats, input$batch1_DE)
+            .update_fields_DE(session, "batch2_DE", 
+                colcats, input$batch2_DE)
         })
         
         observeEvent(input$DT_DE_rows_all, {
@@ -507,6 +507,8 @@ server_DE <- function(
     })
 }
 
+################################################################################
+
 .get_discrete_cats <- function(se) {
     if(!is(se, "NxtSE")) return(NULL)
     colData <- colData(se)
@@ -521,4 +523,18 @@ server_DE <- function(
         }
     }
     return(ret)
+}
+
+.update_fields_DE <- function(
+    session, inputId, colcats, selected
+) {
+    if(is_valid(selected)) {
+        if(!(selected %in% colcats)) {
+            selected <- "(none)"
+        }
+    } else {
+        selected <- "(none)"
+    }
+    updateSelectInput(session = session, inputId = inputId, 
+        choices = c("(none)", colcat), selected = selected)
 }

@@ -9,7 +9,12 @@ server_GO <- function(
         observeEvent(refresh_tab(), {
             req(refresh_tab())
         })
-    
+
+        observeEvent(nxtse_path(), {
+            req(nxtse_path())
+            settings_GO$nxtse_path <- nxtse_path()
+        })
+       
         # Plot GO
         observeEvent(input$plot_GO, {
             
@@ -17,7 +22,7 @@ server_GO <- function(
                 validate(need(get_se(), "Load Experiment first"))
                 validate(need(get_de(), "Load DE Analysis first"))
 
-                ref_path <- file.path(nxtse_path(), "Reference")
+                ref_path <- file.path(settings_GO$nxtse_path, "Reference")
                 ontFile <- file.path(ref_path, "fst/Ontology.fst")
                 validate(need(file.exists(ontFile),
                     paste(ontFile, "GO reference does not exist")

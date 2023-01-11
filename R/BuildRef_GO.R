@@ -33,7 +33,7 @@
     .check_package_installed("fgsea", "1.0.0", "silent")
 
     ontFile <- file.path(reference_path, "fst/Ontology.fst")
-    if(!file.exists()) .log(paste(
+    if(!file.exists(ontFile)) .log(paste(
         "No gene ontology resource found in", reference_path))
 
     ont <- as.data.table(fst::read.fst(ontFile))

@@ -100,13 +100,13 @@ goASE <- function(
         splice_geneid$gene_id[match(
             enrichedEventNames, splice_geneid$EventName)],
         splice_geneid$gene_id_b[match(
-            enrichedEventNames, splice_geneid$EventName)],
+            enrichedEventNames, splice_geneid$EventName)]
     ))
     universe <- unique(c(
         splice_geneid$gene_id[match(
             universeEventNames, splice_geneid$EventName)],
         splice_geneid$gene_id_b[match(
-            universeEventNames, splice_geneid$EventName)],
+            universeEventNames, splice_geneid$EventName)]
     ))
     
     res <- .ora_internal(reference_path, genes, universe, ontologyType, ...)

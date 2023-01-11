@@ -118,7 +118,7 @@ goASE <- function(
     )
     
     uniqueEventnames <- unique(c(enrichedEventNames, universeEventNames))
-    if(!all(uniqueEventnames %in% allEvents$EventName) {
+    if(!all(uniqueEventnames %in% allEvents$EventName)) {
         nonMatches <- uniqueEventnames[!(uniqueEventnames %in% 
             allEvents$EventName)]
         .log(paste("One or more EventName(s) not found in reference!",

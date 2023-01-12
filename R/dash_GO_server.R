@@ -43,10 +43,14 @@ server_GO <- function(
 
         observeEvent(input$perform_GO, {
             output$warning_GO <- renderText(isolate({
-                validate(need(get_se(), "Load Experiment first"))
+                validate(need(settings_GO$nxtse_path, "Load NxtSE first"))
                 validate(need(get_de(), "Load DE Analysis first"))
 
                 ref_path <- file.path(settings_GO$nxtse_path, "Reference")
+                validate(need(dir.exists(ref_path),
+                    "NxtSE directory does not contain reference"
+                )
+                
                 ontFile <- file.path(ref_path, "fst/Ontology.fst")
                 validate(need(file.exists(ontFile),
                     paste(ontFile, "GO reference does not exist")

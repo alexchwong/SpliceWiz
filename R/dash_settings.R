@@ -94,7 +94,8 @@ setreactive_DE <- function() {
 setreactive_GO <- function() {
     reactiveValues(
         res = NULL,
-        nxtse_path = NULL
+        nxtse_path = NULL,
+        final_plot = NULL
     )
 }
 

@@ -14,11 +14,9 @@ server_GO <- function(
             req(nxtse_path())
             settings_GO$nxtse_path <- nxtse_path()
         })
-       
-        # Plot GO
-        observeEvent(input$plot_GO, {
-            
-            output$plot_GO <- renderPlotly({
+        
+        observe({
+            output$warning_GO <- renderText({
                 validate(need(get_se(), "Load Experiment first"))
                 validate(need(get_de(), "Load DE Analysis first"))
 
@@ -58,7 +56,7 @@ server_GO <- function(
                 }
                 
                 validate(need(nrow(res) > 0, "Zero differential events"))
-                selectedEvents <- res$EventType
+                selectedEvents <- res$EventName
                 
                 # Get Universe
                 universeEvents <- res_all$EventName
@@ -75,14 +73,22 @@ server_GO <- function(
                 } else if(input$category_GO == "Cellular Compartment") {
                     ontologyType <- "CC"
                 }
-               
-                res <- goASE(
-                    selectedEvents, universeEvents,
-                    ref_path, ontologyType
-                )
                 
-                print(.generate_plotly_GO(res))
+                withProgress(message = 'Performing GO analysis...', value = 0, {
+                    resGO <- goASE(
+                        selectedEvents, universeEvents,
+                        ref_path, ontologyType
+                    )
+                })
+                
+                settings_GO$final_plot <- .generate_plotly_GO(resGO)
+                
+                "GO analysis complete"
             })
+        })
+
+        output$plot_GO <- renderPlotly({
+            print(settings_GO$final_plot)
         })
         
     })

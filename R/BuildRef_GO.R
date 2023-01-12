@@ -170,6 +170,10 @@ goASE <- function(
     ontologyType <- match.arg(ontologyType)
     if(ontologyType == "") 
         .log("ontologyType must be one of `BP`, `MF` or `CC`")
+    pAdjustMethod <- match.arg(pAdjustMethod)
+    if(pAdjustMethod == "") 
+        .log(paste("pAdjustMethod must a valid option.",
+            "See details section in ?p.adjust"))
 
     geneIds <- .extract_gene_ids_for_GO(
         enrichedEventNames,

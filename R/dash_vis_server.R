@@ -117,11 +117,17 @@ server_vis_diag <- function(
             settings_Diag$ggplot <- p
             settings_Diag$final_plot <- ggplotly(
                 p, tooltip = "text",
-                source = "plotly_diagonal") %>% 
-                layout(
-                    dragmode = "lasso",
-                    yaxis = list(scaleanchor="x", scaleratio=1)
-                )
+                source = "plotly_diagonal"
+            ) %>% layout(
+                dragmode = "lasso",
+                yaxis = list(scaleanchor="x", scaleratio=1)
+            )
+            if(packageVersion("plotly") >= "4.9.0") {
+                settings_Diag$final_plot <- settings_Diag$final_plot %>%
+                    event_register("plotly_click") %>%
+                    event_register("plotly_selected")
+            }
+
             print(settings_Diag$final_plot)
         })
 
@@ -388,7 +394,11 @@ server_vis_volcano <- function(
                 p, tooltip = "text",
                 source = "plotly_volcano"
             ) %>% layout(dragmode = "select")
-            
+            if(packageVersion("plotly") >= "4.9.0") {
+                settings_Volc$final_plot <- settings_Volc$final_plot %>%
+                    event_register("plotly_click") %>%
+                    event_register("plotly_selected")
+            }
             print(settings_Volc$final_plot)
         })
 

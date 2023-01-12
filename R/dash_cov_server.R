@@ -96,23 +96,19 @@ server_cov <- function(
                     settings_Cov$final_plot$x$source <- "plotly_ViewRef"
                     output$plot_cov <- renderPlotly({
                         settings_Cov$plot_ini <- TRUE
+                        p <- settings_Cov$final_plot
                         if(input$graph_mode_cov == "Pan") {
-                            print(
-                                settings_Cov$final_plot %>%
-                                    layout(dragmode = "pan")
-                            )                    
+                            p <- p %>% layout(dragmode = "pan")           
                         } else if(input$graph_mode_cov == "Zoom") {
-                            print(
-                                settings_Cov$final_plot %>%
-                                    layout(dragmode = "zoom")
-                            )  
+                            p <- p %>% layout(dragmode = "zoom")
                         } else if(input$graph_mode_cov == "Movable Labels") {
-                            print(
-                                settings_Cov$final_plot %>%
-                                    layout(dragmode = FALSE) %>%
-                                    config(editable = TRUE)
-                            )  
+                            p <- p %>% layout(dragmode = FALSE) %>%
+                                config(editable = TRUE)
                         }
+                        if(packageVersion("plotly") >= "4.9.0") {
+                            p <- p %>% event_register("plotly_relayout")
+                        }
+                        print(p)
                     })
                 })
             }

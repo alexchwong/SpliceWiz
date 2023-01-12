@@ -42,6 +42,13 @@ ui_GO <- function(id) {
             selectInput(ns('universe_GO'), 'Background Genes based on', 
                 c("All ASE events", "Selected ASE Modality", "All Genes")),
             actionButton(ns("perform_GO"), "Perform Gene Ontology Analysis"),
+            br(), br(),
+            shinySaveButton(ns("GO_export_geneId"), 
+                "Save Gene ID's to file", 
+                filetype = list(txt = "txt")),
+            shinySaveButton(ns("GO_export_univId"), 
+                "Save Background Gene ID's to file", 
+                filetype = list(txt = "txt")),
         ),
         column(9,
             plotlyOutput(ns("plot_GO"), height = "800px")

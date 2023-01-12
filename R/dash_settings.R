@@ -95,6 +95,11 @@ setreactive_GO <- function() {
     reactiveValues(
         res = NULL,
         nxtse_path = NULL,
+
+        # Settings don't need to be saved
+        gene_ids = NULL,
+        univ_ids = NULL,
+
         final_plot = NULL
     )
 }

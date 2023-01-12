@@ -1,5 +1,5 @@
 server_GO <- function(
-        id, refresh_tab, nxtse_path, get_se, get_de,
+        id, refresh_tab, nxtse_path, get_de, volumes,
         rows_all, rows_selected
 ) {
 
@@ -14,9 +14,35 @@ server_GO <- function(
             req(nxtse_path())
             settings_GO$nxtse_path <- nxtse_path()
         })
-        
+
+        observe({
+            shinyFileSave(input, "GO_export_geneId", 
+                roots = volumes(), session = session, filetypes = c("txt"))    
+        })
+        observeEvent(input$GO_export_geneId, {
+            selectedfile <- parseSavePath(volumes(), input$GO_export_geneId)
+            req(selectedfile$datapath)
+            
+            # Save gene id's to file
+            req(settings_GO$gene_ids)
+            fwrite(list(settings_GO$gene_ids), selectedfile$datapath)
+        })
+
+        observe({
+            shinyFileSave(input, "GO_export_univId", 
+                roots = volumes(), session = session, filetypes = c("txt"))    
+        })
+        observeEvent(input$GO_export_univId, {
+            selectedfile <- parseSavePath(volumes(), input$GO_export_univId)
+            req(selectedfile$datapath)
+            
+            # Save (bkgd) gene id's to file
+            req(settings_GO$univ_ids)
+            fwrite(list(settings_GO$univ_ids), selectedfile$datapath)
+        })
+
         observeEvent(input$perform_GO, {
-            output$warning_GO <- renderText({
+            output$warning_GO <- renderText(isolate({
                 validate(need(get_se(), "Load Experiment first"))
                 validate(need(get_de(), "Load DE Analysis first"))
 
@@ -75,16 +101,24 @@ server_GO <- function(
                 }
                 
                 withProgress(message = 'Performing GO analysis...', value = 0, {
-                    resGO <- goASE(
-                        selectedEvents, universeEvents,
-                        ref_path, ontologyType
+                    geneIds <- .extract_gene_ids_for_GO(
+                        selectedEvents,
+                        universeEvents,
+                        reference_path
+                    )
+                    settings_GO$gene_ids <- geneIds$genes
+                    settings_GO$univ_ids <- geneIds$universe
+                    
+                    resGO <- .ora_internal(
+                        reference_path, geneIds$genes, geneIds$universe,
+                        ontologyType, pAdjustMethod = "BH"
                     )
                 })
                 
                 settings_GO$final_plot <- .generate_plotly_GO(resGO)
                 
                 "GO analysis complete"
-            })
+            }))
         })
 
         output$plot_GO <- renderPlotly({

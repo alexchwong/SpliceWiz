@@ -86,8 +86,7 @@ dash_server <- function(input, output, session) {
         get_filtered_se_reactive, get_filters_reactive,
         get_rows_selected_diag, get_rows_selected_volc)
     settings_GO <- server_GO("GO", refresh_GO, get_se_path_reactive, 
-        get_filtered_se_reactive, get_de_reactive,
-        get_rows_all, get_rows_selected)
+        get_de_reactive, volumes, get_rows_all, get_rows_selected)
     settings_Diag <- server_vis_diag("diag", refresh_diag, volumes, 
         get_filtered_se_reactive, get_de_reactive,
         get_rows_all, get_rows_selected)

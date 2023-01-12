@@ -28,6 +28,7 @@
     reference_path,
     genes, universe,
     ontologyType = "BP",
+    pAdjustMethod="BH",
     ...
 ) {
     .check_package_installed("fgsea", "1.0.0", "silent")
@@ -66,20 +67,15 @@
         length(unique(universe)))
     final$foldEnrichment <- final$overlap / (final$expected + 0.001)
     final$foldEnrichment <- round(final$foldEnrichment, 2)
+    final$padj <- p.adjust(final$pval, pAdjustMethod)
     return(final)
 }
 
-goASE <- function(
+.extract_gene_ids_for_GO <- function(
     enrichedEventNames,
     universeEventNames = NULL,
-    reference_path,
-    ontologyType = c("BP", "MF", "CC"),
-    ...
+    reference_path
 ) {
-    ontologyType <- match.arg(ontologyType)
-    if(ontologyType == "") 
-        .log("ontologyType must be one of `BP`, `MF` or `CC`")
-
     spliceFile <- file.path(reference_path, "fst/Splice.fst")
     if(!file.exists(spliceFile))
         .log(paste("Splicing reference", spliceFile, "not found"))
@@ -155,7 +151,34 @@ goASE <- function(
         universe <- Genes$gene_id
     }
     
-    res <- .ora_internal(reference_path, genes, universe, ontologyType, ...)
+    final <- list(
+        genes = genes,
+        universe = universe
+    )
+    return(final)
+}
+
+goASE <- function(
+    enrichedEventNames,
+    universeEventNames = NULL,
+    reference_path,
+    ontologyType = c("BP", "MF", "CC"),
+    pAdjustMethod = c("BH", "holm", "hochberg", "hommel", 
+        "bonferroni", "BY", "fdr", "none"),
+    ...
+) {
+    ontologyType <- match.arg(ontologyType)
+    if(ontologyType == "") 
+        .log("ontologyType must be one of `BP`, `MF` or `CC`")
+
+    geneIds <- .extract_gene_ids_for_GO(
+        enrichedEventNames,
+        universeEventNames,
+        reference_path
+    )
+    
+    res <- .ora_internal(reference_path, geneIds$genes, geneIds$universe, 
+        ontologyType, pAdjustMethod, ...)
     
     return(res)
 }

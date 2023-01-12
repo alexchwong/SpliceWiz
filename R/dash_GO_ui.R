@@ -10,7 +10,7 @@ ui_GO <- function(id) {
             selectInput(ns('threshType_GO'), 'Threshold based on', 
                 c("Nominal P value", "Adjusted P value", "Top N results")),
             conditionalPanel(ns = ns,
-                condition = "['Top N results'].indexOf(input.threshType_GO) == 0",
+                condition = "['Top N results'].indexOf(input.threshType_GO) != 0",
                 shinyWidgets::sliderTextInput(
                     inputId = ns("pvalT_GO"), 
                     label = "P-value/FDR threshold",
@@ -20,7 +20,7 @@ ui_GO <- function(id) {
                 )
             ),
             conditionalPanel(ns = ns,
-                condition = "['Top N results'].indexOf(input.threshType_GO) >= 0",
+                condition = "['Top N results'].indexOf(input.threshType_GO) == 0",
                 shinyWidgets::sliderTextInput(
                     inputId = ns("topN_GO"), 
                     label = "Top N results",

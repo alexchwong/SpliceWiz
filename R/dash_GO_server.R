@@ -50,9 +50,9 @@ server_GO <- function(
 
                 validate(need(nrow(res) > 0, "Zero differential events"))
                 if(input$direction_GO == "Up") {
-                    res <- res[get("logFC") > 0]
+                    res <- res[get(xunits) > 0]
                 } else if(input$direction_GO == "Down") {
-                    res <- res[get("logFC") < 0]
+                    res <- res[get(xunits) < 0]
                 }
                 
                 validate(need(nrow(res) > 0, "Zero differential events"))
@@ -131,14 +131,14 @@ server_GO <- function(
     res_use$nGenes = res_use$overlap
     
     p <- ggplot(res_use, aes(text = get("Term"))) + 
-        geom_segment(aes(
+        geom_segment(data = res_use, mapping = aes(
             x = 0, xend = get(plot_x), 
             y = get("Term"), yend = get("Term"), 
             color = get(plot_color)
         )) +
-        geom_point(aes(
+        geom_point(data = res_use, mapping = aes(
             x = get(plot_x), y = get("Term"), 
-            size = get(plot_size), get(plot_color)
+            size = get(plot_size), color = get(plot_color)
         )) +
         scale_colour_gradient(low = "blue", high = "red") +
         scale_y_discrete(limits=rev) +

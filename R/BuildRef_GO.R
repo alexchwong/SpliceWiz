@@ -53,7 +53,7 @@
 
     foraHeader <- data.table(
         go_id = foraRes$pathway,
-        go_term <- ontUse$go_term[match(
+        go_term = ontUse$go_term[match(
             foraRes$pathway,
             ontUse$go_id
         )]

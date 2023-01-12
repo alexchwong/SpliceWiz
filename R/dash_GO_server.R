@@ -50,9 +50,9 @@ server_GO <- function(
 
                 validate(need(nrow(res) > 0, "Zero differential events"))
                 if(input$direction_GO == "Up") {
-                    res <- res[get("LogFC") > 0]
+                    res <- res[get("logFC") > 0]
                 } else if(input$direction_GO == "Down") {
-                    res <- res[get("LogFC") < 0]
+                    res <- res[get("logFC") < 0]
                 }
                 
                 validate(need(nrow(res) > 0, "Zero differential events"))

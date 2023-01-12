@@ -60,6 +60,12 @@
     )
     
     final <- cbind(foraHeader, foraRes[, -1])
+    
+    # Fold enrichment
+    final$expected <- ceiling(length(unique(genes)) * final$size / 
+        length(unique(universe)))
+    final$foldEnrichment <- final$overlap / (final$expected + 0.001)
+    final$foldEnrichment <- round(final$foldEnrichment, 2)
     return(final)
 }
 

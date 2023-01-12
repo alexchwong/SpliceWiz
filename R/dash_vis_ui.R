@@ -112,7 +112,8 @@ ui_vis_heatmap <- function(id) {
                 ),                   
                 selectInput(ns('color_heat'), 'Palette', 
                     c("RdBu", "BrBG", "PiYG", "PRGn", "PuOr", 
-                        "RdGy", "RdYlBu", "RdYlGn", "Spectral")
+                        "RdGy", "RdYlBu", "RdYlGn", "Spectral"),
+                    selected = "RdYlBu"
                 ),
                 # shinySaveButton(ns("saveplot_heat"), 
                     # "Save Plot as PDF", "Save Plot as PDF...", 

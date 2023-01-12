@@ -81,10 +81,67 @@ server_GO <- function(
                     ref_path, ontologyType
                 )
                 
-                print(res)
+                print(.generate_plotly_GO(res))
             })
         })
         
     })
     
+}
+
+.generate_plotly_GO_labels <- function(axis_term) {
+    if(axis_term == "FDR") {
+        return("Enrichment FDR (-log10)")
+    } else if(axis_term == "nGenes") {
+        return("Number of Enriched Genes")
+    } else {
+        return("Fold Enrichment")
+    }
+}
+
+.generate_plotly_GO <- function(
+    res,
+    plot_x = c("FDR", "foldEnrichment", "nGenes"),
+    plot_size = c("nGenes", "foldEnrichment", "FDR"),
+    plot_color = c("foldEnrichment", "nGenes", "FDR"),
+    filter_n_terms = 20,
+    filter_padj = 0.05,
+    filter_pvalue = 0.05,
+    trim_go_term = 20
+) {
+    plot_x <- match.arg(plot_x)
+    plot_size <- match.arg(plot_size)
+
+    res_use <- res_use[seq_len(filter_n_terms)]
+    res_use <- res[get("pval") <= filter_pvalue]    
+    res_use <- res[get("padj") <= filter_padj]
+    
+    res_use$go_term <- substr(res_use$go_term, 1, trim_go_term)
+    res_use$Term <- paste(res_use$go_term, res_use$go_id, sep = "~")
+    res_use$Term <- factor(res_use$Term, res_use$Term, ordered = TRUE)
+    
+    res_use$FDR = -log10(res_use$padj)
+    res_use$nGenes = res_use$overlap
+    
+    p <- ggplot(res_use, aes(text = get("Term"))) + 
+        geom_segment(aes(
+            x = 0, xend = get(plot_x), 
+            y = get("Term"), yend = get("Term"), 
+            color = get(plot_color)
+        )) +
+        geom_point(aes(
+            x = get(plot_x), y = get("Term"), 
+            size = get(plot_size), get(plot_color)
+        )) +
+        scale_colour_gradient(low = "blue", high = "red") +
+        scale_y_discrete(limits=rev) +
+        labs(
+            x = .generate_plotly_GO_labels(plot_x), 
+            color = .generate_plotly_GO_labels(plot_color), 
+            size = .generate_plotly_GO_labels(plot_size)
+        )
+    
+    return(ggplotly(
+        p, tooltip = "text"
+    ))
 }

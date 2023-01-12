@@ -320,18 +320,21 @@ enter the R terminal from the command line:
 R
 ```
 
-Set up Bioconductor devel (soon to be Bioc 3.16):
+Set up Bioconductor 3.16:
 
 ```{r eval = FALSE}
-BiocManager::install(version = "devel")
+BiocManager::install(version = "3.16")
 ```
 
 Again, follow the prompts to update any necessary packages.
 
-Once this is done, install SpliceWiz as per usual.
+Once this is done, install SpliceWiz (devel) from github (as current devel
+version can only be installed with Bioconductor devel which runs R 4.3, and this
+is not readily available as a conda package)
 
 ```{r eval = FALSE}
-BiocManager::install("SpliceWiz")
+# BiocManager::install("SpliceWiz")
+devtools::install_github("alexchwong/SpliceWiz", "1.1.6-release")
 ```
 
 The last step will install any remaining dependencies, taking approximately

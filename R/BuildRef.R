@@ -337,8 +337,8 @@ buildRef <- function(
         reference_data$genome, reference_data$gtf_gr)
     reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
     
-    .process_ontology(reference_path, genome_type, verbose)
     .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
+    .process_ontology(reference_path, genome_type, verbose)
     extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
     reference_data$gtf_gr <- NULL # To save memory, remove original gtf
     gc()

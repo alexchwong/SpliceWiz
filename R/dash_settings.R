@@ -96,9 +96,14 @@ setreactive_GO <- function() {
         res = NULL,
         nxtse_path = NULL,
 
-        # Settings don't need to be saved
+        # gene_ids that can optionally be saved to file by user
         gene_ids = NULL,
         univ_ids = NULL,
+
+        # Save GO results
+        filteredVolc = NULL,
+        
+        resGO = NULL,
 
         final_plot = NULL
     )

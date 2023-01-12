@@ -105,6 +105,10 @@ server_GO <- function(
                 }
                 
                 withProgress(message = 'Performing GO analysis...', value = 0, {
+                    # Store filtered volcano-data
+                    settings_GO$filteredVolc <- res
+                    
+                    # Get gene_ids for ASEs (for optional save to file)
                     geneIds <- .extract_gene_ids_for_GO(
                         selectedEvents,
                         universeEvents,
@@ -113,13 +117,14 @@ server_GO <- function(
                     settings_GO$gene_ids <- geneIds$genes
                     settings_GO$univ_ids <- geneIds$universe
                     
-                    resGO <- .ora_internal(
+                    # Generate GO
+                    settings_GO$resGO <- .ora_internal(
                         reference_path, geneIds$genes, geneIds$universe,
                         ontologyType, pAdjustMethod = "BH"
                     )
                 })
                 
-                settings_GO$final_plot <- .generate_plotly_GO(resGO)
+                settings_GO$final_plot <- .generate_plotly_GO(settings_GO$resGO)
                 
                 "GO analysis complete"
             }))

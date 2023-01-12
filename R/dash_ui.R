@@ -14,10 +14,9 @@ ui_sidebar <- function() {
                     tabName = "navAnalyse")
             ),
             menuItem("Display",
-                menuSubItem("Gene Ontology Analysis", 
-                    tabName = "navGO"),
                 menuSubItem("Volcano Plot", tabName = "navVolcano"),
                 menuSubItem("Scatter Plot", tabName = "navDiag"),
+                menuSubItem("Gene Ontology Analysis", tabName = "navGO"),
                 menuSubItem("Heatmap", tabName = "navHeatmap"),
                 menuSubItem("Coverage Plot", tabName = "navCoverage")
             )

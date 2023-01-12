@@ -15,7 +15,7 @@ server_GO <- function(
             settings_GO$nxtse_path <- nxtse_path()
         })
         
-        observe({
+        observeEvent(input$perform_GO, {
             output$warning_GO <- renderText({
                 validate(need(get_se(), "Load Experiment first"))
                 validate(need(get_de(), "Load DE Analysis first"))
@@ -113,7 +113,7 @@ server_GO <- function(
     filter_n_terms = 20,
     filter_padj = 0.05,
     filter_pvalue = 0.05,
-    trim_go_term = 20
+    trim_go_term = 50
 ) {
     plot_x <- match.arg(plot_x)
     plot_size <- match.arg(plot_size)
@@ -123,7 +123,9 @@ server_GO <- function(
     res_use <- res_use[get("pval") <= filter_pvalue]    
     res_use <- res_use[get("padj") <= filter_padj]
     
-    res_use$go_term <- substr(res_use$go_term, 1, trim_go_term)
+    res_use$go_term <- substr(res_use$go_term, 1, trim_go_term + 1)
+    res_use[nchar(get("go_term")) > 50, c("go_term") :=
+        paste0(substr(get("go_term"), 1, trim_go_term-3), "...")]
     res_use$Term <- paste(res_use$go_term, res_use$go_id, sep = "~")
     res_use$Term <- factor(res_use$Term, res_use$Term, ordered = TRUE)
     
@@ -143,7 +145,8 @@ server_GO <- function(
         scale_colour_gradient(low = "blue", high = "red") +
         scale_y_discrete(limits=rev) +
         labs(
-            x = .generate_plotly_GO_labels(plot_x), 
+            x = .generate_plotly_GO_labels(plot_x),
+            y = "Gene Ontology Term",
             color = .generate_plotly_GO_labels(plot_color), 
             size = .generate_plotly_GO_labels(plot_size)
         )

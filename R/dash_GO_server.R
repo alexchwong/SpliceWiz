@@ -117,6 +117,7 @@ server_GO <- function(
 ) {
     plot_x <- match.arg(plot_x)
     plot_size <- match.arg(plot_size)
+    plot_color <- match.arg(plot_color)
 
     res_use <- res[seq_len(filter_n_terms)]
     res_use <- res_use[get("pval") <= filter_pvalue]    

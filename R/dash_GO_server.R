@@ -46,12 +46,12 @@ server_GO <- function(
                 validate(need(settings_GO$nxtse_path, "Load NxtSE first"))
                 validate(need(get_de(), "Load DE Analysis first"))
 
-                ref_path <- file.path(settings_GO$nxtse_path, "Reference")
-                validate(need(dir.exists(ref_path),
+                reference_path <- file.path(settings_GO$nxtse_path, "Reference")
+                validate(need(dir.exists(reference_path),
                     "NxtSE directory does not contain reference"
                 ))
                 
-                ontFile <- file.path(ref_path, "fst/Ontology.fst")
+                ontFile <- file.path(reference_path, "fst/Ontology.fst")
                 validate(need(file.exists(ontFile),
                     paste(ontFile, "GO reference does not exist")
                 ))

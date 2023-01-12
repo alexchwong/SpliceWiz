@@ -118,9 +118,9 @@ server_GO <- function(
     plot_x <- match.arg(plot_x)
     plot_size <- match.arg(plot_size)
 
-    res_use <- res_use[seq_len(filter_n_terms)]
-    res_use <- res[get("pval") <= filter_pvalue]    
-    res_use <- res[get("padj") <= filter_padj]
+    res_use <- res[seq_len(filter_n_terms)]
+    res_use <- res_use[get("pval") <= filter_pvalue]    
+    res_use <- res_use[get("padj") <= filter_padj]
     
     res_use$go_term <- substr(res_use$go_term, 1, trim_go_term)
     res_use$Term <- paste(res_use$go_term, res_use$go_id, sep = "~")

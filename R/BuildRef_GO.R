@@ -151,6 +151,10 @@
         universe <- Genes$gene_id
     }
     
+    # Remove novelGene ID's (they don't exist in ontologies)
+    genes <- genes[!grepl("novelGene", genes)]
+    universe <- universe[!grepl("novelGene", universe)]
+    
     final <- list(
         genes = genes,
         universe = universe

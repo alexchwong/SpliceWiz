@@ -106,7 +106,7 @@ server_cov <- function(
                                 config(editable = TRUE)
                         }
                         if(packageVersion("plotly") >= "4.9.0") {
-                            p <- p %>% plotly::event_register("plotly_relayout")
+                            plotly::event_register(p, "plotly_relayout")
                         }
                         print(p)
                     })

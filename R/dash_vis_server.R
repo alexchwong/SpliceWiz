@@ -124,8 +124,8 @@ server_vis_diag <- function(
             )
             if(packageVersion("plotly") >= "4.9.0") {
                 settings_Diag$final_plot <- settings_Diag$final_plot %>%
-                    event_register("plotly_click") %>%
-                    event_register("plotly_selected")
+                    plotly::event_register("plotly_click") %>%
+                    plotly::event_register("plotly_selected")
             }
 
             print(settings_Diag$final_plot)
@@ -396,8 +396,8 @@ server_vis_volcano <- function(
             ) %>% layout(dragmode = "select")
             if(packageVersion("plotly") >= "4.9.0") {
                 settings_Volc$final_plot <- settings_Volc$final_plot %>%
-                    event_register("plotly_click") %>%
-                    event_register("plotly_selected")
+                    plotly::event_register("plotly_click") %>%
+                    plotly::event_register("plotly_selected")
             }
             print(settings_Volc$final_plot)
         })

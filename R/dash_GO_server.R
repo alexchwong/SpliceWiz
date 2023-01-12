@@ -32,7 +32,7 @@ server_GO <- function(
                 } else {
                     res_ET <- res_all
                 }
-                res <- .get_unified_volcano_data(res_ET)
+                res <- as.data.table(.get_unified_volcano_data(res_ET))
                 xunits <- .get_volcano_data_FCunits(res)
 
                 validate(need(nrow(res) > 0, "Zero differential events"))

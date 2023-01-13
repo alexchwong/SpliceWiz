@@ -49,6 +49,11 @@ server_GO <- function(
                 validate(need(dir.exists(settings_GO$nxtse_path),
                     "NxtSE directory does not exist"
                 ))
+                reference_path <- file.path(settings_GO$nxtse_path, "Reference")
+                
+                validate(need(dir.exists(reference_path),
+                    "NxtSE directory does not contain a valid reference"
+                ))                
                 
                 ontFile <- file.path(reference_path, "fst/Ontology.fst")
                 validate(need(file.exists(ontFile),

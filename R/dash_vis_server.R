@@ -611,6 +611,8 @@ server_vis_heatmap <- function(
                 "Top Gene Ontology Categories")
             {
                 # filter by selected GO category
+                validate(need(get_go(), 
+                    "Run Gene Ontology analysis first"))
                 goInfo <- get_go()[get("Term") == input$GO_heat]
                 go_id <- goInfo$go_id
                 events <- .subset_EventNames_by_GO(res$EventName, go_id,

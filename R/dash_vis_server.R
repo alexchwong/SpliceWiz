@@ -290,6 +290,7 @@ server_vis_diag <- function(
 }
 
 .get_unified_volcano_data <- function(res) {
+    res <- as.data.table(res)
     xunits <- .get_volcano_data_FCunits(res)
     yunits <- .get_volcano_data_sigunits(res)
     df.volc <- data.frame(

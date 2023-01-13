@@ -4,12 +4,40 @@ ui_vis_diag <- function(id) {
         .ui_notice(),
         fluidRow(
             column(3,
-                shinyWidgets::sliderTextInput(
-                    inputId = ns("number_events_diag"), 
-                    label = "Number of Top Events",
-                    choices = c(100, 200, 500, 1000, 2000 , 5000,
-                        10000, 20000, 50000, 100000, 200000, 500000), 
-                    selected = 1000),
+                # shinyWidgets::sliderTextInput(
+                    # inputId = ns("number_events_diag"), 
+                    # label = "Number of Top Events",
+                    # choices = c(100, 200, 500, 1000, 2000 , 5000,
+                        # 10000, 20000, 50000, 100000, 200000, 500000), 
+                    # selected = 1000),
+                selectInput(ns('filterType_diag'), 'Filter by', 
+                    c("Adjusted P value", "Nominal P value", "Top N results")),
+                conditionalPanel(ns = ns,
+                    condition = paste0(
+                        "['Top N results'].",
+                        "indexOf(input.filterType_diag) != 0"
+                    ),
+                    shinyWidgets::sliderTextInput(
+                        inputId = ns("pvalT_diag"), 
+                        label = "P-value/FDR threshold",
+                        choices = c(0.000001, 0.0001, 0.001, 
+                            0.01, 0.05, 0.1, 0.2), 
+                        selected = 0.05
+                    )
+                ),
+                conditionalPanel(ns = ns,
+                    condition = paste0(
+                        "['Top N results'].",
+                        "indexOf(input.filterType_diag) == 0"
+                    ),
+                    shinyWidgets::sliderTextInput(
+                        inputId = ns("topN_diag"), 
+                        label = "Top N results",
+                        choices = c(10, 20, 50, 100, 200, 300, 
+                            500, 1000, 2000, 5000, 10000), 
+                        selected = 500
+                    )
+                ),
                 selectInput(ns("EventType_diag"), "Splice Type", 
                     width = '100%', multiple = TRUE,
                     choices = c("IR", "MXE", "SE", "AFE", "ALE", 

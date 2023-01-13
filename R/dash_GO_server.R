@@ -134,6 +134,7 @@ server_GO <- function(
             print(settings_GO$final_plot)
         })
         
+        return(settings_GO)
     })
     
 }

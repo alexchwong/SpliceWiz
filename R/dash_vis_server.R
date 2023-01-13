@@ -1,3 +1,13 @@
+# Order of DE filtration
+# get_de()
+# - get_de()[rows_all]
+# - get_de()[rows_all][seq_len(Top N rows)]
+
+# New filtration approach
+# get_de()
+# - get_de()[rows_all]
+#   - {option to filter by padj, pvalue, or top n rows}
+
 server_vis_diag <- function(
         id, refresh_tab, volumes, get_se, get_de,
         rows_all, rows_selected
@@ -8,22 +18,24 @@ server_vis_diag <- function(
         observeEvent(refresh_tab(), {
             req(refresh_tab())
             output$warning_diag <- renderText({
-                validate(need(get_se(), 
-                "Please load Differential Expression via 'Analysis' tab"))
+                validate(need(is(get_se(), "NxtSE"), 
+                "Please load NxtSE object"))
                 
-                "Differential Expression Loaded"
+                "NxtSE Loaded"
             })
-            req(get_se())
+
+            # Update annotation column names in selection
+            req(is(get_se(), "NxtSE"))
             colData <- colData(get_se())
             if(
                     is_valid(input$variable_diag) && 
                     input$variable_diag %in% colnames(colData)
             ) {
-                selected <- isolate(input$variable_diag)
+                selectedOption <- isolate(input$variable_diag)
                 updateSelectInput(
                     session = session, inputId = "variable_diag", 
                     choices = c("(none)", colnames(colData)), 
-                    selected = selected
+                    selected = selectedOption
                 )
             } else {
                 updateSelectInput(
@@ -32,16 +44,30 @@ server_vis_diag <- function(
                     selected = "(none)"
                 )
             }
-
         })
+
+        # Reactive to generate filtered DE object
+        observe({
+            req(get_de())
+            tmpres <- as.data.table(
+                .get_unified_volcano_data(get_de()[rows_all]))
+            if(input$filterType_diag == "Adjusted P value") {
+                settings_Diag$useDE <- tmpres[get("FDR") <= input$pvalT_diag]
+            } else if(input$filterType_diag == "Nominal P value") {
+                settings_Diag$useDE <- tmpres[get("pvalue") <= input$pvalT_diag]
+            } else if(input$filterType_diag == "Top N results") {
+                settings_Diag$useDE <- tmpres[seq_len(input$topN_diag)]
+            }
+        })
+
+        # Update local rows_selected with that of global
         observeEvent(rows_selected(), {
             settings_Diag$selected <- rows_selected()
         }, ignoreNULL = FALSE)
     
         output$plot_diag <- renderPlotly({
-            # settings_Diag$plot_ini = FALSE
-            validate(need(get_se(), "Load Experiment first"))
-            validate(need(get_de(), "Load DE Analysis first"))
+            validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
+            validate(need(settings_Diag$useDE, "Load DE Analysis first"))
             validate(need(input$variable_diag, 
                 "Select conditions and contrasts"))
             validate(need(input$nom_diag, 
@@ -55,22 +81,20 @@ server_vis_diag <- function(
             validate(need(input$denom_diag != "(none)", 
                 "Select conditions and contrasts"))
 
-            selected <- settings_Diag$selected      
-
-            num_events <- input$number_events_diag
-            res <- as.data.table(get_de()[rows_all(),])
+            # Filter DE by EventType; fetch diag object
+            res <- settings_Diag$useDE
             if(is_valid(input$EventType_diag)) {
                 res <- res[get("EventType") %in% input$EventType_diag]
-            }
-            if(num_events < nrow(res)) {
-                res <- res[seq_len(num_events)]
             }
             df.diag <- makeMeanPSI(
                 get_se(), res$EventName, input$variable_diag, 
                 list(input$nom_diag, input$denom_diag)
             )
             colnames(df.diag)[seq(2,3)] <- c("nom", "denom")
-            if(is_valid(settings_Diag$selected)) {
+
+            # Annotate which rows are selected; NMD direction
+            selected <- settings_Diag$selected      
+            if(is_valid(selected)) {
                 df.diag$selected <- 
                     (df.diag$EventName %in% get_de()$EventName[selected])
             } else {
@@ -79,6 +103,7 @@ server_vis_diag <- function(
             df.diag$NMD_direction <- .getNMDcode(get_de()$flags[
                 match(df.diag$EventName, get_de()$EventName)])
             
+            # Generate ggplot object
             settings_Diag$plot_ini <- TRUE
             if(input$NMD_diag == TRUE) {
                 df.diag             <- df.diag[df.diag$NMD_direction != 0, ]
@@ -113,7 +138,11 @@ server_vis_diag <- function(
                         y = paste(input$denom_diag)
                     )         
             }
+            
+            # Annotate colors, etc
             p <- p + labs(color = "Selected")
+            
+            # Record ggplot / plotly objects into settings_Diag
             settings_Diag$ggplot <- p
             settings_Diag$final_plot <- ggplotly(
                 p, tooltip = "text",
@@ -131,16 +160,18 @@ server_vis_diag <- function(
             print(settings_Diag$final_plot)
         })
 
+        # Output ggplot to RStudio plot window
         observeEvent(input$output_plot_diag, {
             req(settings_Diag$ggplot)
-            print(settings_Diag$ggplot)
+            print(isolate(settings_Diag$ggplot))
         })
+        
+        # Reactive click
         settings_Diag$plotly_click <- reactive({
             plot_exist <- settings_Diag$plot_ini
             if(plot_exist) 
                 event_data("plotly_click", source = "plotly_diagonal")
         })
-    
         observeEvent(settings_Diag$plotly_click(), {
             req(settings_Diag$plotly_click())
             click <- settings_Diag$plotly_click()
@@ -155,15 +186,14 @@ server_vis_diag <- function(
                 selected <- c(selected, click.id)
             }
             settings_Diag$selected <- selected
-            # DT::dataTableProxy("DT_DE") %>% DT::selectRows(selected)
         })
 
+        # Reactive brush
         settings_Diag$plotly_brush <- reactive({
             plot_exist <- settings_Diag$plot_ini
             if(plot_exist)
                 event_data("plotly_selected", source = "plotly_diagonal")
         })
-    
         observeEvent(settings_Diag$plotly_brush(), {
             req(settings_Diag$plotly_brush())
             brush <- settings_Diag$plotly_brush()
@@ -173,9 +203,9 @@ server_vis_diag <- function(
             selected <- settings_Diag$selected
             selected <- unique(c(selected, brush.id))
             settings_Diag$selected <- selected
-            # DT::dataTableProxy("DT_DE") %>% DT::selectRows(selected)
         })
     
+        # Update nominator / denominator conditions based on anno column name
         observeEvent(input$variable_diag, {
             req(get_se())
             req(input$variable_diag != "(none)")
@@ -206,13 +236,18 @@ server_vis_diag <- function(
             }
         })
 
+        # Reset to default
         observeEvent(input$clear_diag, {
             updateSelectInput(session = session, 
                 "EventType_diag", selected = NULL)
+            updateSelectInput(session = session, 
+                "filterType_diag", selected = "Adjusted P value")
             shinyWidgets::updateSliderTextInput(session = session, 
-                "number_events_diag", selected = 1000)
+                "topN_diag", selected = 500)
+            shinyWidgets::updateSliderTextInput(session = session, 
+                "pvalT_diag", selected = 0.05)
             
-            if(is_valid(get_se())) {
+            if(is_valid(is(get_se(), "NxtSE"))) {
                 colData <- colData(get_se())
                 updateSelectInput(
                     session = session, inputId = "variable_diag", 

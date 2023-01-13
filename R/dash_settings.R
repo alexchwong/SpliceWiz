@@ -113,6 +113,8 @@ setreactive_GO <- function() {
 setreactive_Diag <- function() {
     # NB same code as Volcano
     reactiveValues(
+        useDE = NULL,
+
         plot_ini = FALSE,
         plotly_click = NULL,
         final_plot = NULL,

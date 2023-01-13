@@ -56,7 +56,11 @@ server_vis_diag <- function(
             } else if(input$filterType_diag == "Nominal P value") {
                 settings_Diag$useDE <- tmpres[get("pvalue") <= input$pvalT_diag]
             } else if(input$filterType_diag == "Top N results") {
-                settings_Diag$useDE <- tmpres[seq_len(input$topN_diag)]
+                if(input$topN_diag < nrow(settings_Diag$useDE)) {
+                    settings_Diag$useDE <- tmpres[seq_len(input$topN_diag)]
+                } else {
+                    settings_Diag$useDE <- tmpres
+                }
             }
         })
 
@@ -157,7 +161,10 @@ server_vis_diag <- function(
                 plotly::event_register(
                     settings_Diag$final_plot, "plotly_selected")
             }
-            print(settings_Diag$final_plot)
+            
+            withProgress(message = 'Rendering plot...', value = 0, {
+                print(settings_Diag$final_plot)
+            })
         })
 
         # Output ggplot to RStudio plot window
@@ -314,68 +321,43 @@ server_vis_volcano <- function(
         observeEvent(refresh_tab(), {
             req(refresh_tab())
         })
+
+        # Reactive to generate filtered DE object
+        observe({
+            req(get_de())
+            tmpres <- as.data.table(
+                .get_unified_volcano_data(get_de()[rows_all(),]))
+            if(input$filterType_volc == "Adjusted P value") {
+                settings_Volc$useDE <- tmpres[get("FDR") <= input$pvalT_volc]
+            } else if(input$filterType_volc == "Nominal P value") {
+                settings_Volc$useDE <- tmpres[get("pvalue") <= input$pvalT_volc]
+            } else if(input$filterType_volc == "Top N results") {
+                if(input$topN_volc < nrow(settings_Volc$useDE)) {
+                    settings_Volc$useDE <- tmpres[seq_len(input$topN_volc)]
+                } else {
+                    settings_Volc$useDE <- tmpres
+                }
+            }
+        })
+
         observeEvent(rows_selected(), {
             settings_Volc$selected <- rows_selected()
         }, ignoreNULL = FALSE)
 
-        settings_Volc$plotly_click <- reactive({
-            plot_exist <- settings_Volc$plot_ini
-            if(plot_exist) 
-                event_data("plotly_click", source = "plotly_volcano")
-        })
-    
-        observeEvent(settings_Volc$plotly_click(), {
-            req(settings_Volc$plotly_click())
-            click <- settings_Volc$plotly_click()
-            click.id <- which(get_de()$EventName == click$key)
-            req(click.id)
-
-            selected <- settings_Volc$selected
-
-            if(click.id %in% selected) {
-                selected <- selected[-which(selected == click.id)]
-            } else {
-                selected <- c(selected, click.id)
-            }
-            settings_Volc$selected <- selected
-        })
-
-        settings_Volc$plotly_brush <- reactive({
-            plot_exist <- settings_Volc$plot_ini
-            if(plot_exist)
-                event_data("plotly_selected", source = "plotly_volcano")
-        })
-
-        observeEvent(settings_Volc$plotly_brush(), {
-            req(settings_Volc$plotly_brush())
-            brush <- settings_Volc$plotly_brush()
-            brush.id <- which(get_de()$EventName %in% brush$key)
-            req(brush.id)
-
-            selected <- settings_Volc$selected
-            selected <- unique(c(selected, brush.id))
-            settings_Volc$selected <- selected
-        })
-
-
         output$plot_volc <- renderPlotly({
-            validate(need(get_se(), "Load Experiment first"))
-            validate(need(get_de(), "Load DE Analysis first"))
+            validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
+            validate(need(settings_Volc$useDE, "Load DE Analysis first"))
 
             selected <- settings_Volc$selected
 
-            num_events <- input$number_events_volc
-            res <- as.data.table(get_de()[rows_all(),])
+            res <- settings_Diag$useDE
             if(is_valid(input$EventType_volc)) {
                 res <- res[get("EventType") %in% input$EventType_volc]
             }
-            if(num_events < nrow(res)) {
-                res <- res[seq_len(num_events)]
-            }
 
-            df.volc <- .get_unified_volcano_data(res)
-            xunits <- .get_volcano_data_FCunits(res)
-
+            xunits <- .get_volcano_data_FCunits(get_de())
+            df.volc <- as.data.frame(res)
+            
             if(is_valid(selected)) {
                 df.volc$selected <- 
                     (df.volc$EventName %in% get_de()$EventName[selected])
@@ -436,13 +418,55 @@ server_vis_volcano <- function(
                 plotly::event_register(
                     settings_Volc$final_plot, "plotly_selected")
             }
-            print(settings_Volc$final_plot)
+            withProgress(message = 'Rendering plot...', value = 0, {
+                print(settings_Volc$final_plot)
+            })
         })
 
         observeEvent(input$output_plot_volc, {
             req(settings_Volc$ggplot)
-            print(settings_Volc$ggplot)
+            print(isolate(settings_Volc$ggplot))
         })
+
+        # Reactive click
+        settings_Volc$plotly_click <- reactive({
+            plot_exist <- settings_Volc$plot_ini
+            if(plot_exist) 
+                event_data("plotly_click", source = "plotly_volcano")
+        })
+        observeEvent(settings_Volc$plotly_click(), {
+            req(settings_Volc$plotly_click())
+            click <- settings_Volc$plotly_click()
+            click.id <- which(get_de()$EventName == click$key)
+            req(click.id)
+
+            selected <- settings_Volc$selected
+
+            if(click.id %in% selected) {
+                selected <- selected[-which(selected == click.id)]
+            } else {
+                selected <- c(selected, click.id)
+            }
+            settings_Volc$selected <- selected
+        })
+
+        # Reactive brush
+        settings_Volc$plotly_brush <- reactive({
+            plot_exist <- settings_Volc$plot_ini
+            if(plot_exist)
+                event_data("plotly_selected", source = "plotly_volcano")
+        })
+        observeEvent(settings_Volc$plotly_brush(), {
+            req(settings_Volc$plotly_brush())
+            brush <- settings_Volc$plotly_brush()
+            brush.id <- which(get_de()$EventName %in% brush$key)
+            req(brush.id)
+
+            selected <- settings_Volc$selected
+            selected <- unique(c(selected, brush.id))
+            settings_Volc$selected <- selected
+        })
+
         observeEvent(input$clear_volc, {
             updateSelectInput(session = session, "EventType_volc", 
                 selected = NULL)

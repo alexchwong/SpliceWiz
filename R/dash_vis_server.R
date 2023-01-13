@@ -616,7 +616,7 @@ server_vis_heatmap <- function(
                 validate(need(get_go(), 
                     "Run Gene Ontology analysis first"))
                 goInfo <- get_go()
-                go_id <- goInfo$go_id[match(goInfo$Term, input$GO_heat)]
+                go_id <- goInfo$go_id[match(input$GO_heat, goInfo$Term)]
                 events <- .subset_EventNames_by_GO(res$EventName, go_id,
                     nxtse_path())
                 res <- res[get("EventName") %in% events]

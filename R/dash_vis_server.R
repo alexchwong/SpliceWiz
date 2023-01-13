@@ -481,7 +481,7 @@ server_vis_volcano <- function(
 }
 
 server_vis_heatmap <- function(
-        id, refresh_tab, volumes, get_se, get_de, get_go,
+        id, refresh_tab, volumes, get_se, get_de, get_go, nxtse_path,
         rows_all, rows_selected
 ) {
     moduleServer(id, function(input, output, session) {
@@ -603,7 +603,7 @@ server_vis_heatmap <- function(
 
             res <- settings_Heat$useDE
             
-            # Filter by highlighted events
+            # Filter by highlighted events or GO category
             if(input$secondFilter_heat == "Highlighted (selected) events") {
                 selected <- rows_selected()
                 res <- res[get("EventName") %in% get_de()$EventName[selected]]
@@ -612,9 +612,16 @@ server_vis_heatmap <- function(
             {
                 # filter by selected GO category
                 goInfo <- get_go()[get("Term") == input$GO_heat]
-                goGenes <- unlist(goInfo$overlapGenes)
+                go_id <- goInfo$go_id
+                events <- .subset_EventNames_by_GO(res$EventName, go_id,
+                    nxtse_path())
+                res <- res[get("EventName") %in% events]
             } else {
                 # do nothing
+            }
+            
+            if(nrow(res) > input$slider_num_events_heat) {
+                res <- res[seq_len(input$slider_num_events_heat)]
             }
             
             validate(need(nrow(res) > 0, "No events to plot"))

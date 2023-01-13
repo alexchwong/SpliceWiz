@@ -185,7 +185,7 @@ ui_vis_heatmap <- function(id) {
                     checkIcon = list(yes = icon("ok", lib = "glyphicon"))
                 ),
                 shinyWidgets::sliderTextInput(ns("slider_num_events_heat"), 
-                    "Number of Top Events", 
+                    "Maximum number of rows", 
                     choices = c(5, 10,25,50,100,200,500), 
                     selected = 25),
                 shinyWidgets::radioGroupButtons(ns("mode_heat"), 

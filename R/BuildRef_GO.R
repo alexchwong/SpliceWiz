@@ -73,11 +73,34 @@
 }
 
 .subset_EventNames_by_GO <- function(
-    EventName,
-    GO_category,
+    EventNames,
+    go_id,
     collate_path
 ) {
-
+    reference_path <- file.path(collate_path, "Reference")
+    ontFile <- file.path(reference_path, "fst/Ontology.fst")
+    if(!file.exists(ontFile)) .log(paste(
+        "No gene ontology resource found in", reference_path))
+    
+    mapperFile <- file.path(collate_path, "rowEvent.mapGenes.fst")
+    if(!file.exists(mapperFile)) .log(paste(
+        "Required file", mapperFile, "not found."
+    ))
+    
+    allEvents <- read.fst(mapperFile)
+    allEvents <- allEvents[allEvents$EventName %in% EventNames]
+    
+    ont <- as.data.table(fst::read.fst(ontFile), 
+        columns = c("go_id", "ensembl_id"))
+    
+    GO_gene_id <- ont$ensembl_id[ont$go_id == go_id]
+    
+    allEvents <- allEvents[
+        allEvents$gene_id %in% GO_gene_id |
+        allEvents$gene_id %in% GO_gene_id_b,]
+    
+    if(nrow(allEvents) == 0) return(NULL)
+    return(allEvents$EventName)
 }
 
 .extract_gene_ids_for_GO <- function(

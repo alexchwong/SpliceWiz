@@ -593,7 +593,8 @@ server_vis_heatmap <- function(
                     tmpres2 <- tmpres
                 }
             }
-            settings_Heat$useDE <- tmpres2[, c("EventType"), with = FALSE]
+            settings_Heat$useDE <- tmpres2[, 
+                c("EventName", "EventType"), with = FALSE]
         })
 
         output$plot_heat <- renderPlotly({

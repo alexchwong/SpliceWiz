@@ -74,7 +74,7 @@ ui_vis_volcano <- function(id) {
                         "indexOf(input.filterType_diag) != 0"
                     ),
                     shinyWidgets::sliderTextInput(
-                        inputId = ns("pvalT_diag"), 
+                        inputId = ns("pvalT_volc"), 
                         label = "P-value/FDR threshold",
                         choices = c(0.000001, 0.0001, 0.001, 
                             0.01, 0.05, 0.1, 0.2), 

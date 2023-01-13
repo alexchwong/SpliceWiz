@@ -50,7 +50,7 @@ server_vis_diag <- function(
         observe({
             req(get_de())
             tmpres <- as.data.table(
-                .get_unified_volcano_data(get_de()[rows_all]))
+                .get_unified_volcano_data(get_de()[rows_all(),]))
             if(input$filterType_diag == "Adjusted P value") {
                 settings_Diag$useDE <- tmpres[get("FDR") <= input$pvalT_diag]
             } else if(input$filterType_diag == "Nominal P value") {

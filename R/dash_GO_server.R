@@ -46,9 +46,8 @@ server_GO <- function(
                 validate(need(settings_GO$nxtse_path, "Load NxtSE first"))
                 validate(need(get_de(), "Load DE Analysis first"))
 
-                reference_path <- file.path(settings_GO$nxtse_path, "Reference")
-                validate(need(dir.exists(reference_path),
-                    "NxtSE directory does not contain reference"
+                validate(need(dir.exists(settings_GO$nxtse_path),
+                    "NxtSE directory does not exist"
                 ))
                 
                 ontFile <- file.path(reference_path, "fst/Ontology.fst")
@@ -112,7 +111,7 @@ server_GO <- function(
                     geneIds <- .extract_gene_ids_for_GO(
                         selectedEvents,
                         universeEvents,
-                        reference_path
+                        settings_GO$nxtse_path
                     )
                     settings_GO$gene_ids <- geneIds$genes
                     settings_GO$univ_ids <- geneIds$universe
@@ -120,7 +119,8 @@ server_GO <- function(
                     # Generate GO
                     settings_GO$resGO <- .format_GO_result(
                         .ora_internal(
-                            reference_path, geneIds$genes, geneIds$universe,
+                            settings_GO$nxtse_path, 
+                            geneIds$genes, geneIds$universe,
                             ontologyType, pAdjustMethod = "BH"
                         )
                     )

@@ -25,7 +25,7 @@
 }
 
 .ora_internal <- function(
-    reference_path,
+    collate_path,
     genes, universe,
     ontologyType = "BP",
     pAdjustMethod="BH",
@@ -33,6 +33,7 @@
 ) {
     .check_package_installed("fgsea", "1.0.0", "silent")
 
+    reference_path <- file.path(collate_path, "Reference")
     ontFile <- file.path(reference_path, "fst/Ontology.fst")
     if(!file.exists(ontFile)) .log(paste(
         "No gene ontology resource found in", reference_path))
@@ -74,7 +75,7 @@
 .subset_EventNames_by_GO <- function(
     EventName,
     GO_category,
-    reference_path
+    collate_path
 ) {
 
 }
@@ -82,50 +83,14 @@
 .extract_gene_ids_for_GO <- function(
     enrichedEventNames,
     universeEventNames = NULL,
-    reference_path
+    collate_path
 ) {
-    spliceFile <- file.path(reference_path, "fst/Splice.fst")
-    if(!file.exists(spliceFile))
-        .log(paste("Splicing reference", spliceFile, "not found"))
-    TrFile <- file.path(reference_path, "fst/Transcripts.fst")
-    if(!file.exists(TrFile))
-        .log(paste("Transcript reference", TrFile, "not found"))
-    IRdirFile <- file.path(reference_path, "fst/Introns.Dir.fst")
-    if(!file.exists(IRdirFile))
-        .log(paste("IR reference", IRdirFile, "not found"))
-    IRnondirFile <- file.path(reference_path, "fst/Introns.ND.fst")
-    if(!file.exists(IRnondirFile))
-        .log(paste("IR reference", IRnondirFile, "not found"))
-
-    # EventName to gene matcher
-    splice_geneid <- read.fst(
-        spliceFile, columns = c("EventName", "gene_id", "gene_id_b")
-    )
-    splice_geneid$gene_id <- as.character(splice_geneid$gene_id)
-    splice_geneid$gene_id_b <- as.character(splice_geneid$gene_id_b)
-
-    IR_trid <- rbind(
-        read.fst(
-            IRdirFile, columns = c("EventName", "transcript_id")
-        ),
-        read.fst(
-            IRnondirFile, columns = c("EventName", "transcript_id")
-        )
-    )
-    Tr2Gene <- read.fst(TrFile, columns = c("transcript_id", "gene_id"))
+    mapperFile <- file.path(collate_path, "rowEvent.mapGenes.fst")
+    if(!file.exists(mapperFile)) .log(paste(
+        "Required file", mapperFile, "not found."
+    ))
     
-    splice_geneid$gene_id <- as.character(splice_geneid$gene_id)
-    splice_geneid$gene_id_b <- as.character(splice_geneid$gene_id_b)
-    
-    IR_trid <- as.data.table(IR_trid)
-    Tr2Gene <- as.data.table(Tr2Gene)
-    
-    IR_trid <- Tr2Gene[IR_trid, on = "transcript_id"]
-    IR_trid$gene_id_b <- IR_trid$gene_id
-    
-    allEvents <- rbind(splice_geneid,
-        IR_trid[, c("EventName", "gene_id", "gene_id_b"), with = FALSE]
-    )
+    allEvents <- read.fst(mapperFile)
     
     uniqueEventnames <- unique(c(enrichedEventNames, universeEventNames))
     if(!all(uniqueEventnames %in% allEvents$EventName)) {
@@ -151,7 +116,7 @@
                 universeEventNames, allEvents$EventName)]
         ))    
     } else {
-        GeneFile <- file.path(reference_path, "fst/Genes.fst")
+        GeneFile <- file.path(collate_path, "Reference/fst/Genes.fst")
         if(!file.exists(GeneFile))
             .log(paste("Gene reference", GeneFile, "not found"))
 
@@ -173,7 +138,7 @@
 goASE <- function(
     enrichedEventNames,
     universeEventNames = NULL,
-    reference_path,
+    collate_path,
     ontologyType = c("BP", "MF", "CC"),
     pAdjustMethod = c("BH", "holm", "hochberg", "hommel", 
         "bonferroni", "BY", "fdr", "none"),
@@ -190,10 +155,10 @@ goASE <- function(
     geneIds <- .extract_gene_ids_for_GO(
         enrichedEventNames,
         universeEventNames,
-        reference_path
+        collate_path
     )
     
-    res <- .ora_internal(reference_path, geneIds$genes, geneIds$universe, 
+    res <- .ora_internal(collate_path, geneIds$genes, geneIds$universe, 
         ontologyType, pAdjustMethod, ...)
     
     return(res)

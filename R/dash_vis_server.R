@@ -529,6 +529,7 @@ server_vis_heatmap <- function(
             # Update annotation column names in selection
             req(get_go())
             goTerms <- get_go()$Term
+            if(length(goTerms) > 50) goTerms <- goTerms[seq_len(50)]
             if(
                     is_valid(input$GO_heat) && 
                     input$GO_heat %in% goTerms
@@ -614,8 +615,8 @@ server_vis_heatmap <- function(
                 # filter by selected GO category
                 validate(need(get_go(), 
                     "Run Gene Ontology analysis first"))
-                goInfo <- get_go()[get("Term") == input$GO_heat]
-                go_id <- goInfo$go_id
+                goInfo <- get_go()
+                go_id <- goInfo$go_id[match(goInfo$Term, input$GO_heat)]
                 events <- .subset_EventNames_by_GO(res$EventName, go_id,
                     nxtse_path())
                 res <- res[get("EventName") %in% events]

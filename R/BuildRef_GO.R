@@ -88,7 +88,7 @@
     ))
     
     allEvents <- read.fst(mapperFile)
-    allEvents <- allEvents[allEvents$EventName %in% EventNames]
+    allEvents <- allEvents[allEvents$EventName %in% EventNames,]
     
     ont <- as.data.table(fst::read.fst(ontFile), 
         columns = c("go_id", "ensembl_id"))
@@ -97,7 +97,7 @@
     
     allEvents <- allEvents[
         allEvents$gene_id %in% GO_gene_id |
-        allEvents$gene_id %in% GO_gene_id_b,]
+        allEvents$gene_id_b %in% GO_gene_id,]
     
     if(nrow(allEvents) == 0) return(NULL)
     return(allEvents$EventName)

@@ -156,7 +156,7 @@ server_GO <- function(
     }
 }
 
-.format_GO_result <- function(res) {
+.format_GO_result <- function(res, trim_go_term = 50) {
     res$go_term <- substr(res$go_term, 1, trim_go_term + 1)
     res[nchar(get("go_term")) > 50, c("go_term") :=
         paste0(substr(get("go_term"), 1, trim_go_term-3), "...")]

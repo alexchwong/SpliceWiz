@@ -126,6 +126,8 @@ setreactive_Diag <- function() {
 # Settings for Heatmap
 setreactive_Heat <- function() {
     reactiveValues(
+        useDE = NULL,
+        
         ggplot = NULL,
         final_plot = NULL
     )

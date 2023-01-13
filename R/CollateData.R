@@ -1814,6 +1814,7 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_rowEvent <- function(threadID, reference_path, norm_output_path) {
     if(threadID != 2) return()
     .collateData_rowEvent_brief(norm_output_path)
+    .collateData_rowEvent_mapGenes(norm_output_path)
     .collateData_rowEvent_splice_option(reference_path, norm_output_path)
     .collateData_rowEvent_full(reference_path, norm_output_path)
 }
@@ -1840,6 +1841,59 @@ collateData <- function(Experiment, reference_path, output_path,
         file.path(norm_output_path, "rowEvent.brief.fst"))
     
     rm(sw.common, Splice.Anno, sw.anno.brief, splice.anno.brief)
+    gc()
+}
+
+# Create mapping of EventNames to Genes (for Gene Ontology)
+.collateData_rowEvent_mapGenes <- function(norm_output_path) {
+    rowEvent <- read.fst(file.path(norm_output_path, "rowEvent.brief.fst"),
+        columns = "EventName")
+    reference_path <- file.path(norm_output_path, "Reference")
+    spliceFile <- file.path(reference_path, "fst/Splice.fst")
+    TrFile <- file.path(reference_path, "fst/Transcripts.fst")
+    IRdirFile <- file.path(reference_path, "fst/Introns.Dir.fst")
+    IRnondirFile <- file.path(reference_path, "fst/Introns.ND.fst")
+    
+    # Create mappers
+    splice_geneid <- read.fst(
+        spliceFile, columns = c("EventName", "gene_id", "gene_id_b")
+    )
+    splice_geneid$gene_id <- as.character(splice_geneid$gene_id)
+    splice_geneid$gene_id_b <- as.character(splice_geneid$gene_id_b)
+
+    IR_trid <- rbind(
+        read.fst(
+            IRdirFile, columns = c("EventName", "transcript_id")
+        ),
+        read.fst(
+            IRnondirFile, columns = c("EventName", "transcript_id")
+        )
+    )
+    Tr2Gene <- read.fst(TrFile, columns = c("transcript_id", "gene_id"))
+    
+    splice_geneid$gene_id <- as.character(splice_geneid$gene_id)
+    splice_geneid$gene_id_b <- as.character(splice_geneid$gene_id_b)
+    
+    IR_trid <- as.data.table(IR_trid)
+    Tr2Gene <- as.data.table(Tr2Gene)
+    
+    IR_trid <- Tr2Gene[IR_trid, on = "transcript_id"]
+    IR_trid$gene_id_b <- IR_trid$gene_id
+
+    allEvents <- rbind(splice_geneid,
+        IR_trid[, c("EventName", "gene_id", "gene_id_b"), with = FALSE]
+    )
+
+    rowEvent_mapped <- allEvents[rowEvent, on = "EventName"]
+    final <- cbind(
+        rowEvent[, c("EventName"), with = FALSE],
+        rowEvent_mapped[, c("gene_id", "gene_id_b"), with = FALSE]
+    )
+    
+    write.fst(as.data.frame(final), 
+        file.path(norm_output_path, "rowEvent.mapGenes.fst"))
+    
+    rm(rowEvent, splice_geneid, IR_trid, Tr2Gene, rowEvent_mapped)
     gc()
 }
 

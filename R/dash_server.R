@@ -32,43 +32,45 @@ dash_server <- function(input, output, session) {
     refresh_heat        <- reactive(settings_refresh$heat)
     refresh_cov         <- reactive(settings_refresh$cov)
     
-        # Reactives for shared objects
+    # Reactives for shared objects
     
     # NxtSE object
-    get_se_reactive <- reactive(settings_expr_load$se)
+        get_se_reactive <- reactive(settings_expr_load$se)
     # Current differential ASE results
-    get_de_reactive <- reactive(settings_DE$res)  
+        get_de_reactive <- reactive(settings_DE$res)  
+    # Current GO analysis
+        get_go_reactive <- reactive(settings_GO$resGO)  
     # Filtered NxtSE object
-    get_filtered_se_reactive <- reactive({
-        req(settings_expr_load$se)
-        if(is_valid(settings_filtered_SE$filterSummary)) {
-            settings_expr_load$se[settings_filtered_SE$filterSummary,]
-        } else {
-            settings_expr_load$se
-        }
-    })  
+        get_filtered_se_reactive <- reactive({
+            req(settings_expr_load$se)
+            if(is_valid(settings_filtered_SE$filterSummary)) {
+                settings_expr_load$se[settings_filtered_SE$filterSummary,]
+            } else {
+                settings_expr_load$se
+            }
+        })
     # Collate path
-    get_se_path_reactive <- reactive(settings_expr_load$collate_path) 
+        get_se_path_reactive <- reactive(settings_expr_load$collate_path) 
     # Annotation object
-    get_df_anno_reactive <- reactive(settings_expr_load$df.anno) 
+        get_df_anno_reactive <- reactive(settings_expr_load$df.anno) 
     # Filters from Filter tab
-    get_filters_reactive <- reactive(settings_filtered_SE$filters)
+        get_filters_reactive <- reactive(settings_filtered_SE$filters)
     # Filters from DE tab (loading saved DE)    
-    get_filters_DE_reactive <- reactive(settings_DE$filters) 
+        get_filters_DE_reactive <- reactive(settings_DE$filters) 
     # Filtered DE rows
-    get_rows_all <- reactive(settings_DE$DT_DE_rows_all)    
+        get_rows_all <- reactive(settings_DE$DT_DE_rows_all)    
     
     # Two-way talk between selected rows 
-    get_rows_selected <- reactive(settings_DE$DT_DE_rows_selected)
-    get_rows_selected_diag <- reactive(settings_Diag$selected)
-    get_rows_selected_volc <- reactive(settings_Volc$selected)
+        get_rows_selected <- reactive(settings_DE$DT_DE_rows_selected)
+        get_rows_selected_diag <- reactive(settings_Diag$selected)
+        get_rows_selected_volc <- reactive(settings_Volc$selected)
         
-    # Reactive that returns the number of threads to use
-    get_threads_reactive <- reactive(.dash_get_threads(
-        input$thread_number, input$cores_numeric))
-    get_memmode_reactive <- reactive(.dash_get_memmode(
-        input$memory_option))
-    get_omp_reactive <- reactive(.dash_get_openmp())
+    # Reactives that returns the number of threads to use
+        get_threads_reactive <- reactive(.dash_get_threads(
+            input$thread_number, input$cores_numeric))
+        get_memmode_reactive <- reactive(.dash_get_memmode(
+            input$memory_option))
+        get_omp_reactive <- reactive(.dash_get_openmp())
 
     # Tie module data to their server objects
     settings_system <- setreactive_system()
@@ -85,16 +87,16 @@ dash_server <- function(input, output, session) {
     settings_DE <- server_DE("DE", refresh_DE, volumes, get_threads_reactive,
         get_filtered_se_reactive, get_filters_reactive,
         get_rows_selected_diag, get_rows_selected_volc)
-    settings_GO <- server_GO("GO", refresh_GO, get_se_path_reactive, 
-        get_de_reactive, volumes, get_rows_all, get_rows_selected)
-    settings_Diag <- server_vis_diag("diag", refresh_diag, volumes, 
-        get_filtered_se_reactive, get_de_reactive,
-        get_rows_all, get_rows_selected)
     settings_Volc <- server_vis_volcano("volcano", refresh_volc, volumes, 
         get_filtered_se_reactive, get_de_reactive,
         get_rows_all, get_rows_selected)
-    settings_Heat <- server_vis_heatmap("heatmap", refresh_heat, volumes, 
+    settings_Diag <- server_vis_diag("diag", refresh_diag, volumes, 
         get_filtered_se_reactive, get_de_reactive,
+        get_rows_all, get_rows_selected)
+    settings_GO <- server_GO("GO", refresh_GO, get_se_path_reactive, 
+        get_de_reactive, volumes, get_rows_all, get_rows_selected)
+    settings_Heat <- server_vis_heatmap("heatmap", refresh_heat, volumes, 
+        get_filtered_se_reactive, get_de_reactive, get_go_reactive,
         get_rows_all, get_rows_selected)
     settings_Cov <- server_cov("cov", refresh_cov, volumes, 
         get_filtered_se_reactive, get_de_reactive,

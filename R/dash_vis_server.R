@@ -71,7 +71,7 @@ server_vis_diag <- function(
     
         output$plot_diag <- renderPlotly({
             validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
-            validate(need(settings_Diag$useDE, "Load DE Analysis first"))
+            validate(need(settings_Diag$useDE, "Perform DE Analysis first"))
             validate(need(input$variable_diag, 
                 "Select conditions and contrasts"))
             validate(need(input$nom_diag, 
@@ -90,12 +90,14 @@ server_vis_diag <- function(
             if(is_valid(input$EventType_diag)) {
                 res <- res[get("EventType") %in% input$EventType_diag]
             }
-            df.diag <- makeMeanPSI(
-                get_se(), res$EventName, input$variable_diag, 
-                list(input$nom_diag, input$denom_diag)
-            )
-            colnames(df.diag)[seq(2,3)] <- c("nom", "denom")
-
+            withProgress(message = 'Calculating mean PSIs...', value = 0, {
+                df.diag <- makeMeanPSI(
+                    get_se(), res$EventName, input$variable_diag, 
+                    list(input$nom_diag, input$denom_diag)
+                )
+                colnames(df.diag)[seq(2,3)] <- c("nom", "denom")
+            })
+            
             # Annotate which rows are selected; NMD direction
             selected <- settings_Diag$selected      
             if(is_valid(selected)) {
@@ -346,7 +348,7 @@ server_vis_volcano <- function(
 
         output$plot_volc <- renderPlotly({
             validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
-            validate(need(settings_Volc$useDE, "Load DE Analysis first"))
+            validate(need(settings_Volc$useDE, "Perform DE Analysis first"))
 
             selected <- settings_Volc$selected
 
@@ -479,7 +481,7 @@ server_vis_volcano <- function(
 }
 
 server_vis_heatmap <- function(
-        id, refresh_tab, volumes, get_se, get_de,
+        id, refresh_tab, volumes, get_se, get_de, get_go,
         rows_all, rows_selected
 ) {
     moduleServer(id, function(input, output, session) {
@@ -523,6 +525,26 @@ server_vis_heatmap <- function(
                     choices = c("(none)"), 
                     selected = "(none)")
             }
+
+            # Update annotation column names in selection
+            req(get_go())
+            goTerms <- get_go()$Term
+            if(
+                    is_valid(input$GO_heat) && 
+                    input$GO_heat %in% goTerms
+            ) {
+                selectedOption <- isolate(input$GO_heat)
+                updateSelectInput(
+                    session = session, inputId = "GO_heat", 
+                    choices = goTerms, 
+                    selected = selectedOption
+                )
+            } else {
+                updateSelectInput(
+                    session = session, inputId = "GO_heat", 
+                    choices = goTerms
+                )
+            }
         })
         observeEvent(input$anno_col_heat, {
             req(get_se())
@@ -555,40 +577,63 @@ server_vis_heatmap <- function(
             }
         })
         
+        # Reactive to generate filtered DE object
+        observe({
+            req(get_de())
+            tmpres <- as.data.table(
+                .get_unified_volcano_data(get_de()[rows_all(),]))
+            if(input$filterType_heat == "Adjusted P value") {
+                tmpres2 <- tmpres[get("FDR") <= input$pvalT_heat]
+            } else if(input$filterType_heat == "Nominal P value") {
+                tmpres2 <- tmpres[get("pvalue") <= input$pvalT_heat]
+            } else if(input$filterType_heat == "Top N results") {
+                if(input$topN_heat < nrow(settings_Heat$useDE)) {
+                    tmpres2 <- tmpres[seq_len(input$topN_heat)]
+                } else {
+                    tmpres2 <- tmpres
+                }
+            }
+            settings_Heat$useDE <- tmpres2[, c("EventType"), with = FALSE]
+        })
+
         output$plot_heat <- renderPlotly({
             
-            validate(need(get_se(), "Load Experiment first"))
-            validate(need(get_de(), "Load DE Analysis first"))
+            validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
+            validate(need(settings_Heat$useDE, "Perform DE Analysis first"))
 
-            if(input$select_events_heat == "Selected") {
+            res <- settings_Heat$useDE
+            
+            # Filter by highlighted events
+            if(input$secondFilter_heat == "Highlighted (selected) events") {
                 selected <- rows_selected()
-            } else if(input$select_events_heat == "Filtered") {
-                selected <- rows_all()
-                if(length(selected) > input$slider_num_events_heat) {
-                    selected <- selected[seq_len(input$slider_num_events_heat)]
-                }
+                res <- res[get("EventName") %in% get_de()$EventName[selected]]
+            } else if(input$secondFilter_heat == 
+                "Top Gene Ontology Categories")
+            {
+                # filter by selected GO category
+                goInfo <- get_go()[get("Term") == input$GO_heat]
+                goGenes <- unlist(goInfo$overlapGenes)
             } else {
-                selected <- seq_len(min(input$slider_num_events_heat, 
-                    nrow(get_de())))
+                # do nothing
             }
-
-            validate(need(length(selected) > 0, "Select some Events first"))
+            
+            validate(need(nrow(res) > 0, "No events to plot"))
 
             colData <- as.data.frame(colData(get_se()))
 
             if(input$mode_heat == "PSI") {
-                mat <- makeMatrix(get_se(), get_de()$EventName[selected],
-                rownames(colData), "PSI")
+                mat <- makeMatrix(get_se(), res$EventName,
+                    rownames(colData), "PSI")
             } else if(input$mode_heat == "Logit") {
-                mat <- makeMatrix(get_se(), get_de()$EventName[selected],
-                rownames(colData), "logit")
+                mat <- makeMatrix(get_se(), res$EventName,
+                    rownames(colData), "logit")
             } else {
-                mat <- makeMatrix(get_se(), get_de()$EventName[selected],
-                rownames(colData), "Z-score")
+                mat <- makeMatrix(get_se(), res$EventName,
+                    rownames(colData), "Z-score")
             }
 
             validate(need(nrow(mat) > 0 & ncol(mat) > 0, 
-                "No data after filtering results"))
+                "No Events with sufficient finite PSI values to draw heatmap"))
 
             colors.df <- RColorBrewer::brewer.pal.info
             color.index <- which(rownames(colors.df) == input$color_heat)

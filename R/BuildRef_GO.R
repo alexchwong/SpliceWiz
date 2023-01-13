@@ -71,6 +71,14 @@
     return(final)
 }
 
+.subset_EventNames_by_GO <- function(
+    EventName,
+    GO_category,
+    reference_path
+) {
+
+}
+
 .extract_gene_ids_for_GO <- function(
     enrichedEventNames,
     universeEventNames = NULL,

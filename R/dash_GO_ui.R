@@ -7,7 +7,7 @@ ui_GO <- function(id) {
             selectInput(ns('category_GO'), 'GO Category', 
                 c("Biological Pathway", "Molecular Function", 
                     "Cellular Compartment")),
-            selectInput(ns('threshType_GO'), 'Threshold based on', 
+            selectInput(ns('threshType_GO'), 'Filter Events by', 
                 c("Nominal P value", "Adjusted P value", "Top N results")),
             conditionalPanel(ns = ns,
                 condition = "['Top N results'].indexOf(input.threshType_GO) != 0",
@@ -29,7 +29,7 @@ ui_GO <- function(id) {
                     selected = 500
                 )
             ),
-            selectInput(ns("EventType_GO"), "ASE Modality", 
+            selectInput(ns("EventType_GO"), "Filter Events by ASE Modality", 
                 width = '100%', multiple = TRUE,
                 choices = c("IR", "MXE", "SE", "AFE", "ALE", 
                     "A5SS", "A3SS")

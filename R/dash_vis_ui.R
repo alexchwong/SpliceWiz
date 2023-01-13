@@ -4,7 +4,7 @@ ui_vis_diag <- function(id) {
         .ui_notice(),
         fluidRow(
             column(3,
-                selectInput(ns('filterType_diag'), 'Filter by', 
+                selectInput(ns('filterType_diag'), 'Filter Events by', 
                     c("Adjusted P value", "Nominal P value", "Top N results")),
                 conditionalPanel(ns = ns,
                     condition = paste0(
@@ -33,7 +33,7 @@ ui_vis_diag <- function(id) {
                     )
                 ),
                 selectInput(ns("EventType_diag"), 
-                    "Filter by EventType (ASE Modality)", 
+                    "Filter Events by ASE Modality", 
                     width = '100%', multiple = TRUE,
                     choices = c("IR", "MXE", "SE", "AFE", "ALE", 
                         "A5SS", "A3SS")),
@@ -66,12 +66,12 @@ ui_vis_volcano <- function(id) {
         .ui_notice(),
         fluidRow(
             column(3,    
-                selectInput(ns('filterType_volc'), 'Filter by', 
+                selectInput(ns('filterType_volc'), 'Filter Events by', 
                     c("Adjusted P value", "Nominal P value", "Top N results")),
                 conditionalPanel(ns = ns,
                     condition = paste0(
                         "['Top N results'].",
-                        "indexOf(input.filterType_diag) != 0"
+                        "indexOf(input.filterType_volc) != 0"
                     ),
                     shinyWidgets::sliderTextInput(
                         inputId = ns("pvalT_volc"), 
@@ -95,14 +95,15 @@ ui_vis_volcano <- function(id) {
                     )
                 ),
                 selectInput(ns("EventType_volc"), 
-                    "Filter by EventType (ASE Modality)", 
+                    "Filter Events by ASE Modality", 
                     width = '100%', multiple = TRUE,
                     choices = c("IR", "MXE", "SE", "AFE", "ALE", 
                         "A5SS", "A3SS")),
                 shinyWidgets::switchInput(ns("facet_volc"), 
-                    label = "Facet by Type", labelWidth = "150px"),
+                    label = "Facet by ASE Modality", 
+                    labelWidth = "150px"),
                 shinyWidgets::switchInput(ns("adjP_volc"), 
-                    label = "Multiple Testing", 
+                    label = "Use Adjusted P values", 
                     value = TRUE, labelWidth = "100px"),
                 shinyWidgets::switchInput(ns("NMD_volc"), 
                     label = "NMD Mode", labelWidth = "100px"),
@@ -127,16 +128,52 @@ ui_vis_heatmap <- function(id) {
         .ui_notice(),
         fluidRow(
             column(3, 
-                shinyWidgets::radioGroupButtons(ns("select_events_heat"), 
-                    label = 
-                        "Select Events from Differential Expression Results",
-                    justified = FALSE,
-                    choiceNames = c("Top All Results", "Top Filtered Results", 
-                        "Top Selected Results"), 
-                    choiceValues = c("All", "Filtered", "Selected"),
-                    checkIcon = list(yes = icon("ok", lib = "glyphicon"))
+                selectInput(ns('filterType_heat'), 'Filter Events by', 
+                    c("Adjusted P value", "Nominal P value", "Top N results")),
+                conditionalPanel(ns = ns,
+                    condition = paste0(
+                        "['Top N results'].",
+                        "indexOf(input.filterType_heat) != 0"
+                    ),
+                    shinyWidgets::sliderTextInput(
+                        inputId = ns("pvalT_heat"), 
+                        label = "P-value/FDR threshold",
+                        choices = c(0.000001, 0.0001, 0.001, 
+                            0.01, 0.05, 0.1, 0.2), 
+                        selected = 0.05
+                    )
                 ),
-                selectInput(ns("anno_col_heat"), "Annotation Categories", 
+                conditionalPanel(ns = ns,
+                    condition = paste0(
+                        "['Top N results'].",
+                        "indexOf(input.filterType_heat) == 0"
+                    ),
+                    shinyWidgets::sliderTextInput(
+                        inputId = ns("topN_heat"), 
+                        label = "Top N results",
+                        choices = c(10, 20, 50, 100, 200, 300, 
+                            500, 1000, 2000, 5000, 10000), 
+                        selected = 500
+                    )
+                ),
+                selectInput(ns('secondFilter_heat'), 
+                    'Display events from:', 
+                    c(
+                        "All filtered events", 
+                        "Highlighted (selected) events", 
+                        "Top Gene Ontology Categories"
+                    )
+                ),
+                conditionalPanel(ns = ns,
+                    condition = paste0(
+                        "['Top Gene Ontology Categories'].",
+                        "indexOf(input.secondFilter_heat) == 0"
+                    ),
+                    selectInput(ns('GO_heat'), 'Filter by GO category', 
+                        c("(none)")),
+                ),
+                selectInput(ns("anno_col_heat"), 
+                    "Display Annotation Categories", 
                     width = '100%', multiple = TRUE,
                     choices = c()),
                 selectInput(ns("anno_col_heat_sort"), "Sort by Category", 

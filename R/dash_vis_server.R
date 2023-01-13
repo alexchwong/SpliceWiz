@@ -350,7 +350,7 @@ server_vis_volcano <- function(
 
             selected <- settings_Volc$selected
 
-            res <- settings_Diag$useDE
+            res <- settings_Volc$useDE
             if(is_valid(input$EventType_volc)) {
                 res <- res[get("EventType") %in% input$EventType_volc]
             }

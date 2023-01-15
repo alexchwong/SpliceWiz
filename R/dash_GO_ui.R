@@ -8,7 +8,7 @@ ui_GO <- function(id) {
                 c("Biological Pathway", "Molecular Function", 
                     "Cellular Compartment")),
             selectInput(ns('threshType_GO'), 'Filter Events by', 
-                c("Nominal P value", "Adjusted P value", "Top N results")),
+                c("Adjusted P value", "Nominal P value", "Top N results")),
             conditionalPanel(ns = ns,
                 condition = "['Top N results'].indexOf(input.threshType_GO) != 0",
                 shinyWidgets::sliderTextInput(

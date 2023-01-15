@@ -481,7 +481,7 @@ server_vis_volcano <- function(
 }
 
 server_vis_heatmap <- function(
-        id, refresh_tab, volumes, get_se, get_de, get_go, nxtse_path,
+        id, refresh_tab, volumes, get_se, get_de, get_go, 
         rows_all, rows_selected
 ) {
     moduleServer(id, function(input, output, session) {
@@ -618,7 +618,7 @@ server_vis_heatmap <- function(
                 goInfo <- get_go()
                 go_id <- goInfo$go_id[match(input$GO_heat, goInfo$Term)]
                 events <- .subset_EventNames_by_GO(res$EventName, go_id,
-                    nxtse_path())
+                    get_se())
                 res <- res[get("EventName") %in% events]
             } else {
                 # do nothing

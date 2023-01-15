@@ -45,13 +45,18 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
         return(se)
     }
     out <- new("NxtSE", se)
+
     up_inc(out) <- se@metadata[["Up_Inc"]]
     down_inc(out) <- se@metadata[["Down_Inc"]]
     up_exc(out) <- se@metadata[["Up_Exc"]]
     down_exc(out) <- se@metadata[["Down_Exc"]]
-    covfile(out) <- se@metadata[["cov_file"]]
-    sampleQC(out) <- se@metadata[["sampleQC"]]
+
+    sourcePath(out) <- se@metadata[["sourcePath"]]
     ref(out) <- se@metadata[["ref"]]
+
+    out@metadata[["cov_file"]] <- se@metadata[["cov_file"]]
+    sampleQC(out) <- se@metadata[["sampleQC"]]
+
     junc_PSI(out) <- se@metadata[["junc_PSI"]]
     junc_counts(out) <- se@metadata[["junc_counts"]]
     junc_gr(out) <- se@metadata[["junc_gr"]]
@@ -123,23 +128,37 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
 # Check validity of metadata "COV". Invalidates if some files are not COV
 # Will validate if all files are COV, or if all are empty
 .valid.NxtSE.meta_cov <- function(x) {
-    cov_files <- metadata(x)[["cov_file"]]
-    if (!all(file.exists(cov_files) | all(cov_files == ""))) {
+    cov_files <- file.path(metadata(x)[["sourcePath"]], 
+        metadata(x)[["cov_file"]])
+    valid_cov_files <- rep("", ncol(x))
+    for(i in seq_len(ncol(x))) {
+        tryCatch({
+            if(cov_files[i] != "") 
+                valid_cov_files[i] <- normalizePath(cov_files[i])
+        }, error = function(e) {
+            valid_cov_files[i] <- ""
+        })    
+    }
+    if(all(valid_cov_files == "")) {
+        # NxtSE object with zero cov files
+    } else if (
+        any(valid_cov_files == "")
+    ) {
+        examples <- head(which(valid_cov_files == ""), 3)
         txt <- paste(
-            "Some coverage files are not found:",
-            paste(cov_files[!file.exists(cov_files)], collapse = " ")
+            "Some coverage files are not found, for example:",
+            paste(cov_files[examples], collapse = " ")
         )
         return(txt)
-    }
-    if (!(isCOV(cov_files) | all(cov_files == ""))) {
+    } else if (!(isCOV(valid_cov_files))) {
         txt <- "Some coverage files are not validated"
         return(txt)
     }
-    if (length(cov_files) != ncol(x)) {
+    if (length(metadata(x)[["cov_file"]]) != ncol(x)) {
         txt <- "cov_files must be of same length as number of samples"
         return(txt)
     }
-    if (!identical(names(cov_files), colnames(x))) {
+    if (!identical(names(metadata(x)[["cov_file"]]), colnames(x))) {
         txt <- paste("names of cov_files vector must be identical to",
             "colnames of NxtSE object")
         return(txt)
@@ -302,9 +321,11 @@ setMethod("down_exc", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
 #' @export
 setMethod("covfile", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     if (withDimnames) {
-        vector_withDimnames(x, x@metadata[["cov_file"]])
+        vector_withDimnames(x, 
+            normalizePath(file.path(sourcePath(x), x@metadata[["cov_file"]]))
+        )
     } else {
-        x@metadata[["cov_file"]]
+        normalizePath(file.path(sourcePath(x), x@metadata[["cov_file"]]))
     }
 })
 
@@ -317,6 +338,13 @@ setMethod("sampleQC", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     } else {
         x@metadata[["sampleQC"]]
     }
+})
+
+#' @describeIn NxtSE-class Retrieves the directory path containing the source
+#'   data for this NxtSE object.
+#' @export
+setMethod("sourcePath", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
+    x@metadata[["sourcePath"]]
 })
 
 #' @describeIn NxtSE-class Retrieves a list of annotation data associated
@@ -436,7 +464,7 @@ setReplaceMethod("down_exc", c("NxtSE"), function(x, withDimnames = TRUE, value)
 setReplaceMethod("covfile", c("NxtSE"), function(x, withDimnames = TRUE, value)
 {
     if (withDimnames) {
-        value <- vector_withDimnames(x, value)
+        value <- vector_withDimnames(x, .make_path_relative(value, sourcePath(x)))
     }
     x@metadata[["cov_file"]] <- value
     x
@@ -451,6 +479,12 @@ setReplaceMethod("sampleQC", c("NxtSE"), function(x, withDimnames = TRUE, value)
         value <- sampleQC_withDimnames(x, value)
     }
     x@metadata[["sampleQC"]] <- value
+    x
+})
+
+setReplaceMethod("sourcePath", c("NxtSE"), function(x, value)
+{
+    x@metadata[["sourcePath"]] <- value
     x
 })
 
@@ -688,7 +722,15 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
         metadata$ref <- ref(args[[1]])
     }, error = function(err) {
         stop(
-            "failed to combine 'cov_file' in 'cbind(<",
+            "failed to combine 'ref' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$sourcePath <- ref(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'sourcePath' in 'cbind(<",
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
@@ -788,6 +830,14 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
     }, error = function(err) {
         stop(
             "failed to combine 'ref' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$sourcePath <- ref(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'sourcePath' in 'rbind(<",
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })

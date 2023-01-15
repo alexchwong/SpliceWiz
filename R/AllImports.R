@@ -31,8 +31,8 @@
 #' @importFrom GenomeInfoDb genomeStyles
 #' @importFrom GenomicRanges GRanges reduce findOverlaps 
 #' @importFrom GenomicRanges makeGRangesFromDataFrame 
-#' @importFrom GenomicRanges makeGRangesListFromDataFrame mcols split strand 
-#' @importFrom GenomicRanges flank setdiff seqnames psetdiff disjoin mcols<- 
+#' @importFrom GenomicRanges makeGRangesListFromDataFrame split strand 
+#' @importFrom GenomicRanges flank setdiff seqnames psetdiff disjoin
 #' @importFrom GenomicRanges strand<- seqnames<-
 #' @importFrom HDF5Array HDF5Array writeHDF5Array h5writeDimnames 
 #' @importFrom IRanges IRanges Views RleList
@@ -43,7 +43,7 @@
 #' @importFrom plotly highlight orca
 #' @importFrom rhdf5 h5createFile h5createDataset h5delete h5write h5createGroup
 #' @importFrom rtracklayer import export TwoBitFile track
-#' @importFrom S4Vectors mcols metadata Rle metadata<- SimpleList 
+#' @importFrom S4Vectors mcols mcols<- metadata Rle metadata<- SimpleList 
 #' @importFrom S4Vectors from to setValidity2 DataFrame
 #' @importFrom S4Vectors bindCOLS bindROWS getListElement setListElement
 #' @importFrom SummarizedExperiment SummarizedExperiment 

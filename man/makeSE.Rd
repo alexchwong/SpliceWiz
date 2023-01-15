@@ -4,7 +4,13 @@
 \alias{makeSE}
 \title{Imports a collated dataset into the R session as an NxtSE object}
 \usage{
-makeSE(collate_path, colData, RemoveOverlapping = TRUE, realize = FALSE)
+makeSE(
+  collate_path,
+  colData,
+  RemoveOverlapping = TRUE,
+  realize = FALSE,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{collate_path}{(Required) The output path of \link{collateData} pointing
@@ -23,6 +29,8 @@ novel IR events belonging to minor isoforms. See details.}
 
 \item{realize}{(default = \code{FALSE}) Whether to load all assay data into
 memory. See details}
+
+\item{verbose}{(default = \code{TRUE}) Whether loading messages are displayed}
 }
 \value{
 A \linkS4class{NxtSE} object containing the compiled data in

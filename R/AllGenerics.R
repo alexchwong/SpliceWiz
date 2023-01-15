@@ -63,6 +63,9 @@ setGeneric("covfile",
 setGeneric("sampleQC", 
     function(x, withDimnames=TRUE, ...) standardGeneric("sampleQC"))
 
+setGeneric("sourcePath", 
+    function(x, withDimnames=TRUE, ...) standardGeneric("sourcePath"))
+
 setGeneric("ref", 
     function(x, withDimnames=TRUE, ...) standardGeneric("ref"))
 
@@ -95,6 +98,9 @@ setGeneric("sampleQC<-",
     
 setGeneric("ref<-",
     function(x, withDimnames=TRUE, ..., value) standardGeneric("ref<-"))
+
+setGeneric("sourcePath<-",
+    function(x, withDimnames=TRUE, ..., value) standardGeneric("sourcePath<-"))
     
 setGeneric("junc_PSI<-",
     function(x, withDimnames=TRUE, ..., value) standardGeneric("junc_PSI<-"))

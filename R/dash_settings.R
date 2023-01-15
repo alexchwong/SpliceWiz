@@ -94,7 +94,6 @@ setreactive_DE <- function() {
 setreactive_GO <- function() {
     reactiveValues(
         res = NULL,
-        nxtse_path = NULL,
 
         # gene_ids that can optionally be saved to file by user
         gene_ids = NULL,

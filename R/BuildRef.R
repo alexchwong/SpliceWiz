@@ -361,23 +361,29 @@ buildRef <- function(
         verbose = verbose)
     gc()
 
-    dash_progress("Annotating IR-NMD", N_steps)
-    if(!is.null(session)) {
-        shiny::withProgress(message = "Determining NMD Transcripts", {
-            .gen_nmd(reference_path, reference_data$genome,
+    if(file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
+        dash_progress("Annotating IR-NMD", N_steps)
+        if(!is.null(session)) {
+            shiny::withProgress(message = "Determining NMD Transcripts", {
+                .gen_nmd(reference_path, reference_data$genome,
+                    verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
+            })
+        } else {
+            .gen_nmd(reference_path, reference_data$genome, 
                 verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
-        })
+        }
+        gc()
     } else {
-        .gen_nmd(reference_path, reference_data$genome, 
-            verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
+        dash_progress("NMD annotation skipped", N_steps)
     }
-    gc()
 
     dash_progress("Annotating Splice Events", N_steps)
     .gen_splice(reference_path, verbose = verbose)
     gc()
-    if (file.exists(file.path(reference_path, "fst", "Splice.fst")) &
-        file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
+    if (
+        file.exists(file.path(reference_path, "fst", "Splice.fst")) &
+        file.exists(file.path(reference_path, "fst", "Proteins.fst"))
+    ) {
         dash_progress("Translating AS Peptides", N_steps)
         .gen_splice_proteins(reference_path, reference_data$genome, 
             verbose = verbose)
@@ -1223,6 +1229,39 @@ Get_GTF_file <- function(reference_path) {
 # - also fix missing gene_name and transcript_names in newer Ensembl refs
 .fix_gtf <- function(gtf_gr) {
 
+    # Guarantee type == "exon" is annotated in gtf
+    Exons <- gtf_gr[gtf_gr$type == "exon"]
+    if (length(Exons) == 0) .log(paste(
+        "No exons detected in reference!",
+        "Ensure there are entries in the gtf file with type == `exon`"
+    ))
+    rm(Exons)
+
+    # Ensure the following columns are found in the fixed gtf:
+    # - transcript_name,
+    # - transcript_biotype, transcript_support_level
+    if ("transcript_name" %in% names(mcols(gtf_gr))) {
+        gtf_gr$transcript_name[is.na(gtf_gr$transcript_name)] <-
+            gtf_gr$transcript_id[is.na(gtf_gr$transcript_name)]
+        gtf_gr$transcript_name <- gsub("/", "_", gtf_gr$transcript_name)
+    } else {
+        gtf_gr$transcript_name <- gtf_gr$transcript_id
+    }
+    if (!("transcript_biotype" %in% names(mcols(gtf_gr)))) {
+        if("transcript_type" %in% names(mcols(gtf_gr))) {
+            colnames(mcols(gtf_gr))[
+                which(colnames(mcols(gtf_gr))) == "transcript_type"
+            ] <- "transcript_biotype"
+        } else {
+            gtf_gr$transcript_biotype <- "protein_coding"        
+        }
+    }
+    if (!("transcript_support_level" %in% names(mcols(gtf_gr)))) {
+        gtf_gr$transcript_support_level <- 1
+    }
+
+    # Ensure the following columns are found in the fixed gtf:
+    # - gene_name, gene_biotype, \
     if ("gene_name" %in% names(mcols(gtf_gr))) {
         gtf_gr$gene_name[is.na(gtf_gr$gene_name)] <-
             gtf_gr$gene_id[is.na(gtf_gr$gene_name)]
@@ -1237,11 +1276,9 @@ Get_GTF_file <- function(reference_path) {
         dup_gene_names <- unique(unique_gene_name[
             duplicated(unique_gene_name)])
         if(length(dup_gene_names) > 0) {
-            if ("transcript_name" %in% names(mcols(gtf_gr))) {
-                gtf_gr$transcript_name[gtf_gr$gene_name %in% dup_gene_names] <-
-                    gtf_gr$transcript_id[gtf_gr$gene_name %in% dup_gene_names]
-            }
-            
+            gtf_gr$transcript_name[gtf_gr$gene_name %in% dup_gene_names] <-
+                gtf_gr$transcript_id[gtf_gr$gene_name %in% dup_gene_names]
+                
             # Replace {gene_name} with {gene_name}_{gene_id}
             gtf_gr$gene_name[gtf_gr$gene_name %in% dup_gene_names] <-
                 paste(
@@ -1253,38 +1290,56 @@ Get_GTF_file <- function(reference_path) {
     } else {
         gtf_gr$gene_name <- gtf_gr$gene_id
     }
-
-    # Ensure the following columns are found in the fixed gtf:
-    # - transcript_name, gene_biotype, transcript_biotype,
-    # - transcript_support_level
-    if ("transcript_name" %in% names(mcols(gtf_gr))) {
-        gtf_gr$transcript_name[is.na(gtf_gr$transcript_name)] <-
-            gtf_gr$transcript_id[is.na(gtf_gr$transcript_name)]
-        gtf_gr$transcript_name <- gsub("/", "_", gtf_gr$transcript_name)
+    # Fix gene_biotype
+    if ("gene_biotype" %in% names(mcols(gtf_gr))) {
+        # do nothing
+    } else if ("gene_type" %in% names(mcols(gtf_gr))) {
+        colnames(mcols(gtf_gr))[which(colnames(mcols(gtf_gr)) ==
+            "gene_type")] <- "gene_biotype"
     } else {
-        gtf_gr$transcript_name <- gtf_gr$transcript_id
+        mcols(gtf_gr)$gene_biotype <- "protein_coding"
     }
-    if (!("gene_biotype" %in% names(mcols(gtf_gr)))) {
-        if("gene_type" %in% names(mcols(gtf_gr))) {
-            colnames(mcols(gtf_gr))[
-                which(colnames(mcols(gtf_gr))) == "gene_type"
-            ] <- "gene_biotype"
-        } else {
-            gtf_gr$gene_biotype <- "protein_coding"     
-        }
+    
+    Transcripts <- gtf_gr[gtf_gr$type == "transcript"]
+    # If transcript are not annotated by "type" column, then do manually
+    if (length(Transcripts) == 0) {
+        tx_cols <- c("seqnames", "strand",
+            "gene_id", "gene_name", "gene_biotype",
+            "transcript_id", "transcript_name", "transcript_biotype")
+        Transcripts <- as.data.table(gtf_gr[gtf_gr$type == "exon"])
+        Transcripts <- Transcripts[, c("start", "end", "width") := list(
+            min(get("start")), max(get("end")),
+            max(get("end")) - min(get("start")) + 1
+        ), by = tx_cols]
+        Transcripts <- unique(Transcripts, by = tx_cols)
+        Transcripts$type <- "transcript"
+        Transcripts <- .grDT(Transcripts, keep.extra.columns = TRUE)
+        if (length(Transcripts) == 0) 
+            .log("No transcripts detected in reference!")
+
+        # Add annotated genes into gtf
+        gtf_gr <- c(gtf_gr, Transcripts)
     }
-    if (!("transcript_biotype" %in% names(mcols(gtf_gr)))) {
-        if("transcript_type" %in% names(mcols(gtf_gr))) {
-            colnames(mcols(gtf_gr))[
-                which(colnames(mcols(gtf_gr))) == "transcript_type"
-            ] <- "transcript_biotype"
-        } else {
-            gtf_gr$transcript_biotype <- "protein_coding"        
-        }
+    rm(Transcripts)
+
+    Genes <- gtf_gr[gtf_gr$type == "gene"]
+    if (length(Genes) == 0) {
+        gene_cols <- c("seqnames", "strand",
+            "gene_id", "gene_name", "gene_biotype")
+        Genes <- as.data.table(gtf_gr[gtf_gr$type == "transcript"])
+        Genes <- Genes[, c("start", "end", "width") := list(
+            min(get("start")), max(get("end")),
+            max(get("end")) - min(get("start")) + 1
+        ), by = gene_cols]
+        Genes <- unique(Genes, by = gene_cols)
+        Genes$type <- "gene"
+        Genes <- .grDT(Genes, keep.extra.columns = TRUE)
+        if (length(Genes) == 0) .log("No genes detected in reference!")
+        
+        # Add annotated genes into gtf
+        gtf_gr <- c(gtf_gr, Genes)
     }
-    if (!("transcript_support_level" %in% names(mcols(gtf_gr)))) {
-        gtf_gr$transcript_support_level <- 1
-    }
+    rm(Genes)
 
     return(gtf_gr)
 }
@@ -1330,35 +1385,13 @@ Get_GTF_file <- function(reference_path) {
 .process_gtf_genes <- function(gtf_gr, reference_path, verbose = TRUE) {
     Genes <- gtf_gr[gtf_gr$type == "gene"]
 
-    # If genes are not annotated by "type" column, then have to do it manually
-    if (length(Genes) == 0) {
-        gene_cols <- c("seqnames", "strand",
-            "gene_id", "gene_name", "gene_biotype")
-        Genes <- as.data.table(gtf_gr)
-        Genes <- Genes[, c("start", "end", "width") := list(
-            min(get("start")), max(get("end")),
-            max(get("end")) - min(get("start")) + 1
-        ), by = gene_cols]
-        Genes <- unique(Genes, by = gene_cols)
-        Genes$type <- "gene"
-        Genes <- .grDT(Genes, keep.extra.columns = TRUE)
-        if (length(Genes) == 0) .log("No genes detected in reference!")
-    }
-
     Genes <- GenomeInfoDb::sortSeqlevels(Genes)
     Genes <- sort(Genes)
     
-    # Fix gene_biotype and transcript_biotype tags
-    if ("gene_biotype" %in% names(mcols(Genes))) {
-        # do nothing
-    } else if ("gene_type" %in% names(mcols(Genes))) {
-        colnames(mcols(Genes))[which(colnames(mcols(Genes)) ==
-            "gene_type")] <- "gene_biotype"
-    } else {
-        mcols(Genes)$gene_biotype <- "protein_coding"
-    }
-
-    Genes$gene_display_name <- paste0(Genes$gene_name, " (", Genes$gene_id, ")")
+    mcols(Genes) <- mcols(Genes)[, c(
+        "type",
+        "gene_id", "gene_name", "gene_biotype"
+    )]
 
     # Annotate gene_groups_stranded
     Genes_group.stranded <- as.data.table(reduce(Genes))
@@ -1382,7 +1415,9 @@ Get_GTF_file <- function(reference_path) {
     Genes$gene_group_unstranded[from(OL)] <-
         Genes_group.unstranded$gene_group[to(OL)]
 
-    write.fst(as.data.frame(Genes),
+    df_out <- as.data.frame(Genes)
+    
+    write.fst(df_out,
         file.path(reference_path, "fst", "Genes.fst")
     )
     final <- list(
@@ -1395,25 +1430,15 @@ Get_GTF_file <- function(reference_path) {
 .process_gtf_transcripts <- function(gtf_gr, reference_path, verbose = TRUE) {
     Transcripts <- gtf_gr[gtf_gr$type == "transcript"]
 
-    # If transcript are not annotated by "type" column, then do manually
-    if (length(Transcripts) == 0) {
-        tx_cols <- c("seqnames", "strand",
-            "gene_id", "gene_name", "gene_biotype",
-            "transcript_id", "transcript_name", "transcript_biotype")
-        Transcripts <- as.data.table(gtf_gr)
-        Transcripts <- Transcripts[, c("start", "end", "width") := list(
-            min(get("start")), max(get("end")),
-            max(get("end")) - min(get("start")) + 1
-        ), by = tx_cols]
-        Transcripts <- unique(Transcripts, by = tx_cols)
-        Transcripts$type <- "transcript"
-        Transcripts <- .grDT(Transcripts, keep.extra.columns = TRUE)
-        if (length(Transcripts) == 0) 
-            .log("No transcripts detected in reference!")
-    }
-
     Transcripts <- GenomeInfoDb::sortSeqlevels(Transcripts)
     Transcripts <- sort(Transcripts)
+
+    mcols(Transcripts) <- mcols(Transcripts)[, c(
+        "type",
+        "gene_id", "gene_name", "gene_biotype",
+        "transcript_id", "transcript_name", 
+        "transcript_biotype", "transcript_support_level"
+    )]
 
     write.fst(as.data.frame(Transcripts),
         file.path(reference_path, "fst", "Transcripts.fst")
@@ -1421,14 +1446,34 @@ Get_GTF_file <- function(reference_path) {
 }
 
 .process_gtf_misc <- function(gtf_gr, reference_path, verbose = TRUE) {
+    # If the requisite elements are not found, skip this entire step
+    if(sum(gtf_gr$type == "CDS") + sum(gtf_gr$type == "start_codon") == 0) {
+        .log(paste(
+            "No protein information detected in reference!",
+            "Ensure there are valid entries with type == `CDS`",
+            "and type == `start_codon` in the gtf file.",
+            "Protein reference and NMD annotation is skipped.",
+        ), "message")
+        return(0)
+    }
+    
     # Proteins
     Proteins <- gtf_gr[gtf_gr$type == "CDS"]
-    if (length(Proteins) == 0) {
-        .log("No CDS (proteins) detected in reference!")
-    } # Is this critical to SpliceWiz function?
 
     Proteins <- GenomeInfoDb::sortSeqlevels(Proteins)
     Proteins <- sort(Proteins)
+
+    protCols <- c(
+        "type",
+        "gene_id", "gene_name", "gene_biotype",
+        "transcript_id", "transcript_name", 
+        "transcript_biotype", "transcript_support_level",
+        "exon_number", "exon_id", "ccds_id",
+        "protein_id", "phase"
+    )
+    protCols <- intersect(protCols, colnames(mcols(Proteins)))
+    mcols(Proteins) <- mcols(Proteins)[, protCols]
+    
     write.fst(
         as.data.frame(Proteins),
         file.path(reference_path, "fst", "Proteins.fst")
@@ -1440,6 +1485,8 @@ Get_GTF_file <- function(reference_path) {
     }
     gtf.misc <- GenomeInfoDb::sortSeqlevels(gtf.misc)
     gtf.misc <- sort(gtf.misc)
+    mcols(gtf.misc) <- mcols(gtf.misc)[, protCols]
+
     write.fst(
         as.data.frame(gtf.misc),
         file.path(reference_path, "fst", "Misc.fst")
@@ -1450,10 +1497,19 @@ Get_GTF_file <- function(reference_path) {
     gtf_gr, reference_path, Genes_group, verbose = TRUE
 ) {
     Exons <- gtf_gr[gtf_gr$type == "exon"]
-    if (length(Exons) == 0) .log("No exons detected in reference!")
 
     Exons <- GenomeInfoDb::sortSeqlevels(Exons)
     Exons <- sort(Exons)
+
+    exonCols <- c(
+        "type",
+        "gene_id", "gene_name", "gene_biotype",
+        "transcript_id", "transcript_name", 
+        "transcript_biotype", "transcript_support_level",
+        "exon_number", "exon_id", "ccds_id"
+    )
+    exonCols <- intersect(exonCols, colnames(mcols(Exons)))
+    mcols(Exons) <- mcols(Exons)[, exonCols]
 
     # Assign gene groups then bake exon-groups into Exons
     tmp.Exons_group.stranded <- .process_exon_groups(
@@ -3147,8 +3203,8 @@ Get_GTF_file <- function(reference_path) {
     tmp_AS <- base::Filter(is_valid_splice_type, tmp_AS)
     AS_Table <- rbindlist(tmp_AS)
 
-    if (nrow(AS_Table) > 0) {
-        .gen_splice_save(AS_Table, candidate.introns, reference_path)
+    .gen_splice_save(AS_Table, candidate.introns, reference_path)
+    if (nrow(AS_Table) > 0) {        
         if(verbose) .log("Splice Annotations Filtered", "message")
     } else {
         if(verbose) message("No splice events found\n")
@@ -4382,3 +4438,8 @@ Get_GTF_file <- function(reference_path) {
     }
     return(AS_Table.Extended)
 }
+
+################################################################################
+
+# Getter functions
+

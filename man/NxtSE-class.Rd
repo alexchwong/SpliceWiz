@@ -40,6 +40,7 @@
 \alias{realize_NxtSE,NxtSE-method}
 \alias{coerce,SummarizedExperiment,NxtSE-method}
 \alias{NxtSE}
+\alias{sourcePath,NxtSE-method}
 \alias{[,NxtSE,ANY,ANY,ANY-method}
 \alias{[<-,NxtSE,ANY,ANY,NxtSE-method}
 \alias{cbind,NxtSE-method}
@@ -59,6 +60,8 @@ NxtSE(...)
 \S4method{covfile}{NxtSE}(x, withDimnames = TRUE, ...)
 
 \S4method{sampleQC}{NxtSE}(x, withDimnames = TRUE, ...)
+
+\S4method{sourcePath}{NxtSE}(x, withDimnames = TRUE, ...)
 
 \S4method{ref}{NxtSE}(x, withDimnames = TRUE, ...)
 
@@ -142,6 +145,9 @@ the paths to the corresponding COV files
 
 \item \code{sampleQC(NxtSE)}: Gets a data frame with the QC parameters
 of the samples
+
+\item \code{sourcePath(NxtSE)}: Retrieves the directory path containing the source
+data for this NxtSE object.
 
 \item \code{ref(NxtSE)}: Retrieves a list of annotation data associated
 with this NxtSE object; primarily used in plotCoverage()

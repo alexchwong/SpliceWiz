@@ -25,20 +25,14 @@
 }
 
 .ora_internal <- function(
-    collate_path,
-    genes, universe,
-    ontologyType = "BP",
-    pAdjustMethod="BH",
-    ...
+    se, genes, universe, ontologyType = "BP", pAdjustMethod="BH", ...
 ) {
     .check_package_installed("fgsea", "1.0.0", "silent")
 
-    reference_path <- file.path(collate_path, "Reference")
-    ontFile <- file.path(reference_path, "fst/Ontology.fst")
-    if(!file.exists(ontFile)) .log(paste(
-        "No gene ontology resource found in", reference_path))
-
-    ont <- as.data.table(fst::read.fst(ontFile))
+    ont <- ref(se)$ontology
+    if(is.null(ont)) 
+        .log("No gene ontology reference found for this NxtSE object")
+    
     ontUse <- ont[get("ontology") == ontologyType]
     if(nrow(ontUse) == 0) .log(paste(
         ontologyType, "not found as a gene ontology category"
@@ -73,21 +67,14 @@
 }
 
 .subset_EventNames_by_GO <- function(
-    EventNames,
-    go_id,
-    collate_path
+    EventNames, go_id, se
 ) {
-    reference_path <- file.path(collate_path, "Reference")
-    ontFile <- file.path(reference_path, "fst/Ontology.fst")
-    if(!file.exists(ontFile)) .log(paste(
-        "No gene ontology resource found in", reference_path))
+    ont <- ref(se)$ontology
+    if(is.null(ont)) 
+        .log("No gene ontology reference found for this NxtSE object")
     
-    mapperFile <- file.path(collate_path, "rowEvent.mapGenes.fst")
-    if(!file.exists(mapperFile)) .log(paste(
-        "Required file", mapperFile, "not found."
-    ))
-    
-    allEvents <- read.fst(mapperFile)
+    allEvents <- as.data.frame(rowData(se))
+    allEvents <- allEvents[, c("EventName", "gene_id", "gene_id_b")]
     allEvents <- allEvents[allEvents$EventName %in% EventNames,]
     
     ont <- as.data.table(fst::read.fst(ontFile), 
@@ -106,14 +93,15 @@
 .extract_gene_ids_for_GO <- function(
     enrichedEventNames,
     universeEventNames = NULL,
-    collate_path
+    se
 ) {
-    mapperFile <- file.path(collate_path, "rowEvent.mapGenes.fst")
-    if(!file.exists(mapperFile)) .log(paste(
-        "Required file", mapperFile, "not found."
-    ))
+    ont <- ref(se)$ontology
+    if(is.null(ont)) 
+        .log("No gene ontology reference found for this NxtSE object")
     
-    allEvents <- read.fst(mapperFile)
+    allEvents <- as.data.frame(rowData(se))
+    allEvents <- allEvents[, c("EventName", "gene_id", "gene_id_b")]
+    allEvents <- allEvents[allEvents$EventName %in% EventNames,]
     
     uniqueEventnames <- unique(c(enrichedEventNames, universeEventNames))
     if(!all(uniqueEventnames %in% allEvents$EventName)) {
@@ -139,11 +127,7 @@
                 universeEventNames, allEvents$EventName)]
         ))    
     } else {
-        GeneFile <- file.path(collate_path, "Reference/fst/Genes.fst")
-        if(!file.exists(GeneFile))
-            .log(paste("Gene reference", GeneFile, "not found"))
-
-        Genes <- read.fst(GeneFile, columns = "gene_id")
+        Genes <- ref(se)$gene_list
         universe <- Genes$gene_id
     }
     
@@ -161,7 +145,7 @@
 goASE <- function(
     enrichedEventNames,
     universeEventNames = NULL,
-    collate_path,
+    se,
     ontologyType = c("BP", "MF", "CC"),
     pAdjustMethod = c("BH", "holm", "hochberg", "hommel", 
         "bonferroni", "BY", "fdr", "none"),
@@ -178,10 +162,10 @@ goASE <- function(
     geneIds <- .extract_gene_ids_for_GO(
         enrichedEventNames,
         universeEventNames,
-        collate_path
+        se
     )
     
-    res <- .ora_internal(collate_path, geneIds$genes, geneIds$universe, 
+    res <- .ora_internal(se, geneIds$genes, geneIds$universe, 
         ontologyType, pAdjustMethod, ...)
     
     return(res)

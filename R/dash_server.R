@@ -93,11 +93,10 @@ dash_server <- function(input, output, session) {
     settings_Diag <- server_vis_diag("diag", refresh_diag, volumes, 
         get_filtered_se_reactive, get_de_reactive,
         get_rows_all, get_rows_selected)
-    settings_GO <- server_GO("GO", refresh_GO, get_se_path_reactive, 
+    settings_GO <- server_GO("GO", refresh_GO, get_filtered_se_reactive, 
         get_de_reactive, volumes, get_rows_all, get_rows_selected)
     settings_Heat <- server_vis_heatmap("heatmap", refresh_heat, volumes, 
         get_filtered_se_reactive, get_de_reactive, get_go_reactive,
-        get_se_path_reactive,
         get_rows_all, get_rows_selected)
     settings_Cov <- server_cov("cov", refresh_cov, volumes, 
         get_filtered_se_reactive, get_de_reactive,

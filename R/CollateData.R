@@ -165,7 +165,7 @@ collateData <- function(Experiment, reference_path, output_path,
         .collateData_COV(Experiment), output_path)
     df.internal <- .collateData_expr(Experiment)
     if (!overwrite && file.exists(file.path(output_path, "NxtSE.rds"))) {
-        se <- .makeSE_load_NxtSE(file.path(output_path, "NxtSE.rds"))
+        se <- .makeSE_load_NxtSE(output_path)
         if (all(colnames(se) %in% df.internal$sample) &
             all(df.internal$sample %in% colnames(se))
         ) {
@@ -273,7 +273,7 @@ collateData <- function(Experiment, reference_path, output_path,
         cov_data <- .prepare_covplot_data(reference_path)
     }
     
-    saveRDS(cov_data, file.path(norm_output_path, "annotation", "cov_data.Rds"))
+    saveRDS(cov_data, file.path(norm_output_path, "cov_data.Rds"))
 
     .log("Assembling final NxtSE object", "message")
     # NEW compile NxtSE:
@@ -283,9 +283,21 @@ collateData <- function(Experiment, reference_path, output_path,
 
     .log("Saving final NxtSE object", "message")
     .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.rds"))
-    if (dir.exists(file.path(norm_output_path, "temp"))) {
-        unlink(file.path(norm_output_path, "temp"), recursive = TRUE)
-    }
+    .collateData_cleanup(norm_output_path)
+    
+    # Test run of loading NxtSE
+    .log("Calculating overlapping IR-events", "message")
+    tryCatch({
+        tmpse <- makeSE(norm_output_path, verbose = FALSE)
+        tmpRowData <- as.data.frame(rowData(tmpse))
+        tmpRowData <- tmpRowData[, c("EventName"), drop = FALSE]
+        filtered_rowData_file <- file.path(norm_output_path, 
+            "filteredIntrons.fst")
+        write.fst(tmpRowData, filtered_rowData_file)
+    }, error = function(err) {
+        .log("Test loading of NxtSE object failed.")
+    })
+    
     dash_progress("SpliceWiz (NxtSE) Collation Finished", N_steps)
     .log("SpliceWiz (NxtSE) Collation Finished", "message")
     .restore_threads(originalSWthreads)
@@ -1741,6 +1753,8 @@ collateData <- function(Experiment, reference_path, output_path,
         reference_path, norm_output_path
 ) {
     if(threadID != 2) return()
+    if(!file.exists(file.path(reference_path, "fst", "Splice.fst"))) return()
+
     candidate.introns <- as.data.table(
         read.fst(file.path(reference_path, "fst", "junctions.fst")))
 
@@ -1824,8 +1838,6 @@ collateData <- function(Experiment, reference_path, output_path,
     # make rowEvent brief here
     sw.common <- as.data.table(read.fst(
         file.path(norm_output_path, "annotation", "IR.fst")))
-    Splice.Anno <- as.data.table(read.fst(
-        file.path(norm_output_path, "annotation", "Splice.fst")))
     sw.common[, c("seqnames") := as.character(get("seqnames"))]
     
     sw.anno.brief <- sw.common[, c("Name", "EventRegion")]
@@ -1833,10 +1845,16 @@ collateData <- function(Experiment, reference_path, output_path,
     sw.anno.brief[, c("EventType") := "IR"]
     sw.anno.brief <- sw.anno.brief[,
         c("EventName", "EventType", "EventRegion")]
-    splice.anno.brief <- Splice.Anno[,
-        c("EventName", "EventType", "EventRegion")]
 
-    rowEvent <- rbind(sw.anno.brief, splice.anno.brief)
+    rowEvent <- sw.anno.brief
+    spliceFile <- file.path(norm_output_path, "annotation", "Splice.fst")
+    if(file.exists(spliceFile)) {
+        Splice.Anno <- as.data.table(read.fst(spliceFile))
+        splice.anno.brief <- Splice.Anno[,
+            c("EventName", "EventType", "EventRegion")]
+        rowEvent <- rbind(rowEvent, splice.anno.brief)    
+    }    
+    
     write.fst(as.data.frame(rowEvent), 
         file.path(norm_output_path, "rowEvent.brief.fst"))
     
@@ -1886,8 +1904,7 @@ collateData <- function(Experiment, reference_path, output_path,
     
     # Order by events in rowEvent
     rowEvent <- read.fst(
-        file.path(norm_output_path, "rowEvent.brief.fst"),
-        columns = "EventName"
+        file.path(norm_output_path, "rowEvent.brief.fst")
     )
     rowEvent$gene_id <- allEvents$gene_id[match(
         rowEvent$EventName, allEvents$EventName)]
@@ -1895,7 +1912,7 @@ collateData <- function(Experiment, reference_path, output_path,
         rowEvent$EventName, allEvents$EventName)]
     
     write.fst(as.data.frame(rowEvent), 
-        file.path(norm_output_path, "rowEvent.mapGenes.fst"))
+        file.path(norm_output_path, "rowEvent.brief.fst"))
     
     rm(rowEvent, splice_geneid, IR_trid, Tr2Gene, allEvents)
     gc()
@@ -1905,6 +1922,9 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_rowEvent_splice_option <- function(
         reference_path, norm_output_path
 ) {
+    if(!file.exists(file.path(reference_path, "fst", "Splice.options.fst"))) 
+        return()
+    
     Splice.Options <- as.data.table(read.fst(
         file.path(reference_path, "fst", "Splice.options.fst")))
     Transcripts <- as.data.table(read.fst(
@@ -1959,8 +1979,14 @@ collateData <- function(Experiment, reference_path, output_path,
     rowEvent.Extended <- read.fst(
         file.path(norm_output_path, "rowEvent.brief.fst"),
         as.data.table = TRUE)
-    IR_NMD <- read.fst(file.path(reference_path, "fst", "IR.NMD.fst"),
-        as.data.table = TRUE)
+    
+    # IR-NMD: not guaranteed to exist:
+    IRNMDfile <- file.path(reference_path, "fst", "IR.NMD.fst")
+    IR_NMD <- NULL
+    if(file.exists(IRNMDfile)) {
+        IR_NMD <- read.fst(IRNMDfile, as.data.table = TRUE)
+    }
+
     candidate.introns <- as.data.table(
         read.fst(file.path(reference_path, "fst", "junctions.fst")))   
 
@@ -1978,15 +2004,13 @@ collateData <- function(Experiment, reference_path, output_path,
         c("Inc_Is_Protein_Coding", "Exc_Is_Protein_Coding") := 
         list(FALSE,FALSE)
     ]
-    
-    # rowEvent.Extended[IR_NMD, on = "intron_id",
-        # c("Exc_Is_Protein_Coding") := TRUE]
-    # rowEvent.Extended[IR_NMD, on = "intron_id",
-        # c("Inc_Is_Protein_Coding") := (get("i.intron_type") == "CDS")]
-    rowEvent.Extended.IR[
-        get("intron_id") %in% IR_NMD$intron_id[IR_NMD$intron_type == "CDS"],
-        c("Inc_Is_Protein_Coding", "Exc_Is_Protein_Coding") := TRUE
-    ]
+
+    if(!is.null(IR_NMD)) {
+        rowEvent.Extended.IR[
+            get("intron_id") %in% IR_NMD$intron_id[IR_NMD$intron_type == "CDS"],
+            c("Inc_Is_Protein_Coding", "Exc_Is_Protein_Coding") := TRUE
+        ]    
+    }
 
     rowEvent.Extended.splice[
         get("EventName") %in% Splice.Options.Summary$EventName[
@@ -2021,37 +2045,39 @@ collateData <- function(Experiment, reference_path, output_path,
     ##   - only true for spliced transcripts if true for all transcripts
     ##     containing the same intron
 
-    # rowEvent.Extended[IR_NMD[!is.na(get("splice_is_NMD"))], on = "intron_id",
-        # c("Exc_Is_NMD") := get("i.splice_is_NMD")]
-    # rowEvent.Extended[IR_NMD, on = "intron_id",
-        # c("Inc_Is_NMD") := get("i.IRT_is_NMD")]
-    rowEvent.Extended.IR$Inc_Is_NMD <- IR_NMD$IRT_is_NMD[match(
-        rowEvent.Extended.IR$intron_id, IR_NMD$intron_id)]
-    rowEvent.Extended.IR$tmpExc_Is_NMD <- IR_NMD$splice_is_NMD[match(
-        rowEvent.Extended.IR$intron_id, IR_NMD$intron_id)]
-    rowEvent.Extended.IR[, 
-        c("sumExc_Is_NMD") := sum(get("tmpExc_Is_NMD") == TRUE, na.rm = TRUE),
-        by = "EventRegion"
-    ]
-    rowEvent.Extended.IR[, c("Exc_Is_NMD") := get("sumExc_Is_NMD") > 0]
-    rowEvent.Extended.IR$sumExc_Is_NMD <- NULL   
-    rowEvent.Extended.IR$tmpExc_Is_NMD <- NULL
+    if(!is.null(IR_NMD)) {
+        # rowEvent.Extended[IR_NMD[!is.na(get("splice_is_NMD"))], on = "intron_id",
+            # c("Exc_Is_NMD") := get("i.splice_is_NMD")]
+        # rowEvent.Extended[IR_NMD, on = "intron_id",
+            # c("Inc_Is_NMD") := get("i.IRT_is_NMD")]
+        rowEvent.Extended.IR$Inc_Is_NMD <- IR_NMD$IRT_is_NMD[match(
+            rowEvent.Extended.IR$intron_id, IR_NMD$intron_id)]
+        rowEvent.Extended.IR$tmpExc_Is_NMD <- IR_NMD$splice_is_NMD[match(
+            rowEvent.Extended.IR$intron_id, IR_NMD$intron_id)]
+        rowEvent.Extended.IR[, 
+            c("sumExc_Is_NMD") := sum(get("tmpExc_Is_NMD") == TRUE, na.rm = TRUE),
+            by = "EventRegion"
+        ]
+        rowEvent.Extended.IR[, c("Exc_Is_NMD") := get("sumExc_Is_NMD") > 0]
+        rowEvent.Extended.IR$sumExc_Is_NMD <- NULL   
+        rowEvent.Extended.IR$tmpExc_Is_NMD <- NULL
 
-    rowEvent.Extended.IR[!(get("intron_id") %in% IR_NMD$intron_id),
-        c("Exc_Is_NMD", "Inc_Is_NMD") := list(NA, NA)]    
+        rowEvent.Extended.IR[!(get("intron_id") %in% IR_NMD$intron_id),
+            c("Exc_Is_NMD", "Inc_Is_NMD") := list(NA, NA)]    
+        
+        # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
+            # on = "EventName", c("Inc_Is_NMD") := get("i.all_is_NMD")]
+        # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
+            # on = "EventName", c("Exc_Is_NMD") := get("i.all_is_NMD")]
+        tmpA <- Splice.Options.Summary[get("isoform") == "A"]
+        tmpB <- Splice.Options.Summary[get("isoform") == "B"]
+
+        rowEvent.Extended.splice$Inc_Is_NMD <- tmpA$all_is_NMD[match(
+            rowEvent.Extended.splice$EventName, tmpA$EventName)]
+        rowEvent.Extended.splice$Exc_Is_NMD <- tmpB$all_is_NMD[match(
+            rowEvent.Extended.splice$EventName, tmpB$EventName)]
+    }
     
-    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "A"],
-        # on = "EventName", c("Inc_Is_NMD") := get("i.all_is_NMD")]
-    # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
-        # on = "EventName", c("Exc_Is_NMD") := get("i.all_is_NMD")]
-    tmpA <- Splice.Options.Summary[get("isoform") == "A"]
-    tmpB <- Splice.Options.Summary[get("isoform") == "B"]
-
-    rowEvent.Extended.splice$Inc_Is_NMD <- tmpA$all_is_NMD[match(
-        rowEvent.Extended.splice$EventName, tmpA$EventName)]
-    rowEvent.Extended.splice$Exc_Is_NMD <- tmpB$all_is_NMD[match(
-        rowEvent.Extended.splice$EventName, tmpB$EventName)]
-
     rowEvent.Extended.IR[, c("Inc_TSL", "Exc_TSL") := list(NA, NA)]
     rowEvent.Extended.splice[, c("Inc_TSL", "Exc_TSL") := list(NA, NA)]
 
@@ -2150,6 +2176,15 @@ collateData <- function(Experiment, reference_path, output_path,
     )
     rowEvent.Extended[unique(OL@from), c("is_annotated_IR") := TRUE]
 
+    # Annotate NMD direction
+    rowEvent.Extended[, c("NMD_direction") := 0]
+    if(!is.null(IR_NMD)) {
+        rowEvent.Extended[get("Inc_Is_NMD") & !get("Exc_Is_NMD"), 
+            c("NMD_direction") := 1]
+        rowEvent.Extended[!get("Inc_Is_NMD") & get("Exc_Is_NMD"), 
+            c("NMD_direction") := -1]
+    }
+    
     write.fst(as.data.frame(rowEvent.Extended), 
         file.path(norm_output_path, "rowEvent.fst"))
 
@@ -2933,12 +2968,12 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_write_colData <- function(df.internal, coverage_files,
         norm_output_path) {
     if(!is.null(coverage_files)) {
-        covfiles_full <- normalizePath(
-            file.path(norm_output_path, coverage_files))
+        covfiles_full <- normalizePath(file.path(
+            norm_output_path, coverage_files))
         # Create barebones colData.Rds - save coverage files as well
         if (
-            length(coverage_files) == 
-            nrow(df.internal) & isCOV(covfiles_full)
+            length(coverage_files) == nrow(df.internal) & 
+            isCOV(covfiles_full)
         ) {
             df.files <- data.table(
                 sample = df.internal$sample,
@@ -2979,10 +3014,10 @@ collateData <- function(Experiment, reference_path, output_path,
 
     # Annotate NMD direction
     rowData <- as.data.table(read.fst(file.path(collate_path, "rowEvent.fst")))
-    rowData[, c("NMD_direction") := 0]
-    rowData[get("Inc_Is_NMD") & !get("Exc_Is_NMD"), c("NMD_direction") := 1]
-    rowData[!get("Inc_Is_NMD") & get("Exc_Is_NMD"), c("NMD_direction") := -1]
     rowData <- as.data.frame(rowData)
+
+    # To save space, only use EventName and EventType for now
+    rowData <- rowData[, c("EventName", "EventType")]
 
     colData <- as.data.frame(colData)
     colData_use <- colData[, -1, drop = FALSE]
@@ -3039,7 +3074,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
     # Add reference last
     metadata(se)$ref <- readRDS(file.path(
-        collate_path, "annotation", "cov_data.Rds"
+        collate_path, "cov_data.Rds"
     ))
 
     metadata(se)$BuildVersion <- collateData_version
@@ -3093,25 +3128,25 @@ collateData <- function(Experiment, reference_path, output_path,
 # Loading a NxtSE object
 
 # Fix a single assay
-.collateData_expand_assay_path <- function(assay, path) {
-    DelayedArray::modify_seeds(assay,
-        function(x) {
-            x@filepath <- file.path(path, x@filepath)
-            x
-        }
-    )
-}
+# .collateData_expand_assay_path <- function(assay, path) {
+    # DelayedArray::modify_seeds(assay,
+        # function(x) {
+            # x@filepath <- file.path(path, x@filepath)
+            # x
+        # }
+    # )
+# }
 
 # Fix a list of assays
-.collateData_expand_assay_paths <- function(assays, path) {
+# .collateData_expand_assay_paths <- function(assays, path) {
 
-    nassay <- length(assays)
-    for (i in seq_len(nassay)) {
-        a <- .collateData_expand_assay_path(getListElement(assays, i), path)
-        assays <- setListElement(assays, i, a)
-    }
-    return(assays)
-}
+    # nassay <- length(assays)
+    # for (i in seq_len(nassay)) {
+        # a <- .collateData_expand_assay_path(getListElement(assays, i), path)
+        # assays <- setListElement(assays, i, a)
+    # }
+    # return(assays)
+# }
 
 # Internals - compile reference data from genome, for quick access
 
@@ -3123,7 +3158,8 @@ collateData <- function(Experiment, reference_path, output_path,
         seqInfo = seqinfo(genome),
         gene_list = .getGeneList(use_ref_path),
         elem.DT = .loadViewRef(use_ref_path),
-        transcripts.DT = .loadTranscripts(use_ref_path)
+        transcripts.DT = .loadTranscripts(use_ref_path),
+        ontology = .loadOntology(reference_path)
     )
     return(data)
 }
@@ -3135,7 +3171,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
     exons.DT <- as.data.table(read.fst(file.path(dir_path, "Exons.fst"),
         c("seqnames", "start", "end", "strand", "type", "transcript_id")))
-    exons.DT <- exons.DT[get("transcript_id") != "protein_coding"]
+    # exons.DT <- exons.DT[get("transcript_biotype") != "protein_coding"]
 
     if(file.exists(file.path(dir_path, "Proteins.fst"))) {
         protein.DT <- as.data.table(
@@ -3162,11 +3198,11 @@ collateData <- function(Experiment, reference_path, output_path,
     .validate_reference(reference_path)
 
     file_path <- file.path(reference_path, "fst", "Genes.fst")
-    if (!file.exists(file_path)) {
-return(NULL)
-}
+    if (!file.exists(file_path)) return(NULL)
 
     df <- as.data.table(read.fst(file_path))
+    df$gene_display_name <- paste0(df$gene_name, " (", df$gene_id, ")")
+
     return(df)
 }
 
@@ -3187,4 +3223,30 @@ return(NULL)
     }
 
     return(Transcripts.DT)
+}
+
+.loadOntology <- function(reference_path) {
+    .validate_reference(reference_path)
+
+    file_path <- file.path(reference_path, "fst", "Ontology.fst")
+    if(!file.exists(file_path)) return(NULL)
+    
+    return(as.data.table(read.fst(file_path)))
+}
+
+################################################################################
+
+.collateData_cleanup <- function(collate_data) {
+    if (dir.exists(file.path(collate_data, "temp")))
+        unlink(file.path(collate_data, "temp"), recursive = TRUE)
+
+    if (dir.exists(file.path(collate_data, "annotation")))
+        unlink(file.path(collate_data, "annotation"), recursive = TRUE)
+    
+    if (dir.exists(file.path(collate_data, "Reference")))
+        unlink(file.path(collate_data, "Reference"), recursive = TRUE)
+    
+    unlink(file.path(collate_data, "junc_PSI_index.fst"))
+    unlink(file.path(collate_data, "rowEvent.brief.fst"))
+    unlink(file.path(collate_data, "stats.fst"))
 }

@@ -1,5 +1,5 @@
 server_GO <- function(
-        id, refresh_tab, nxtse_path, get_de, volumes,
+        id, refresh_tab, get_se, get_de, volumes,
         rows_all, rows_selected
 ) {
 
@@ -8,11 +8,6 @@ server_GO <- function(
 
         observeEvent(refresh_tab(), {
             req(refresh_tab())
-        })
-
-        observeEvent(nxtse_path(), {
-            req(nxtse_path())
-            settings_GO$nxtse_path <- nxtse_path()
         })
 
         observe({
@@ -43,22 +38,12 @@ server_GO <- function(
 
         observeEvent(input$perform_GO, {
             output$warning_GO <- renderText(isolate({
-                validate(need(settings_GO$nxtse_path, "Load NxtSE first"))
+                validate(need(is(get_se(), "NxtSE"), "Load NxtSE first"))
                 validate(need(get_de(), "Load DE Analysis first"))
 
-                validate(need(dir.exists(settings_GO$nxtse_path),
-                    "NxtSE directory does not exist"
-                ))
-                reference_path <- file.path(settings_GO$nxtse_path, "Reference")
+                validate(need(ref(get_se())$ontology != NULL,
+                    "No gene ontology found for this NxtSE object"))
                 
-                validate(need(dir.exists(reference_path),
-                    "NxtSE directory does not contain a valid reference"
-                ))                
-                
-                ontFile <- file.path(reference_path, "fst/Ontology.fst")
-                validate(need(file.exists(ontFile),
-                    paste(ontFile, "GO reference does not exist")
-                ))
                 # Get volcano data
                 res_all <- as.data.table(get_de()[rows_all(),])
                 if(is_valid(input$EventType_GO)) {
@@ -116,7 +101,7 @@ server_GO <- function(
                     geneIds <- .extract_gene_ids_for_GO(
                         selectedEvents,
                         universeEvents,
-                        settings_GO$nxtse_path
+                        get_se()
                     )
                     settings_GO$gene_ids <- geneIds$genes
                     settings_GO$univ_ids <- geneIds$universe
@@ -124,7 +109,7 @@ server_GO <- function(
                     # Generate GO
                     settings_GO$resGO <- .format_GO_result(
                         .ora_internal(
-                            settings_GO$nxtse_path, 
+                            get_se(), 
                             geneIds$genes, geneIds$universe,
                             ontologyType, pAdjustMethod = "BH"
                         )

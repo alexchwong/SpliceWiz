@@ -5,7 +5,7 @@
 #' @importFrom parallel detectCores
 #' @importFrom stats as.formula model.matrix qt runif na.omit prcomp aggregate
 #' @importFrom utils download.file packageVersion getFromNamespace
-#' @importFrom utils setTxtProgressBar txtProgressBar
+#' @importFrom utils setTxtProgressBar txtProgressBar head
 #' @importFrom tools R_user_dir
 #' @importFrom magrittr %>%
 #' @importFrom R.utils gzip
@@ -63,7 +63,7 @@
 #' @importFrom shinyWidgets sendSweetAlert ask_confirmation
 #' @importFrom rhandsontable rhandsontable hot_to_r hot_col
 #' @importFrom rhandsontable renderRHandsontable rHandsontableOutput
-#' @importFrom stats runif na.omit prcomp
+#' @importFrom stats runif na.omit prcomp complete.cases p.adjust
 #' @importFrom DT datatable selectRows dataTableProxy  
 #' @importFrom grDevices colorRampPalette
 #' @importFrom heatmaply heatmaply

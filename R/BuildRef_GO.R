@@ -77,9 +77,6 @@
     allEvents <- allEvents[, c("EventName", "gene_id", "gene_id_b")]
     allEvents <- allEvents[allEvents$EventName %in% EventNames,]
     
-    ont <- as.data.table(fst::read.fst(ontFile), 
-        columns = c("go_id", "ensembl_id"))
-    
     GO_gene_id <- ont$ensembl_id[ont$go_id == go_id]
     
     allEvents <- allEvents[
@@ -101,7 +98,7 @@
     
     allEvents <- as.data.frame(rowData(se))
     allEvents <- allEvents[, c("EventName", "gene_id", "gene_id_b")]
-    allEvents <- allEvents[allEvents$EventName %in% EventNames,]
+    allEvents <- allEvents[allEvents$EventName %in% get("EventNames"),]
     
     uniqueEventnames <- unique(c(enrichedEventNames, universeEventNames))
     if(!all(uniqueEventnames %in% allEvents$EventName)) {

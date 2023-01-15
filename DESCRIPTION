@@ -62,7 +62,7 @@ Imports:
 Suggests: 
     knitr, rmarkdown, openssl, crayon, egg,
     DESeq2, limma, DoubleExpSeq, satuRn, splines, edgeR,
-    DBI, GO.db,
+    DBI, GO.db, fgsea,
     Rsubread, testthat (>= 3.0.0)
 LinkingTo: 
     ompBAM,

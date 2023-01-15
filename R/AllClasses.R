@@ -52,6 +52,9 @@
 #' se_NxtSE <- as(se_raw, "NxtSE")
 #' identical(se, se_NxtSE) # Returns TRUE
 #' 
+#' # Get directory path of NxtSE (i.e., collate_path)
+#' sourcePath(se)
+#'
 #' # Get Junction reads of SE / MXE and spans-reads of IR events
 #' up_inc(se)
 #' down_inc(se)
@@ -114,6 +117,7 @@
 #' sampleQC sampleQC,NxtSE-method
 #' sampleQC<- sampleQC<-,NxtSE-method
 #' ref ref,NxtSE-method
+#' sourcePath sourcePath,NxtSE-method
 #' junc_PSI junc_PSI,NxtSE-method
 #' junc_counts junc_counts,NxtSE-method
 #' junc_gr junc_gr,NxtSE-method

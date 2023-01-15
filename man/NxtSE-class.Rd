@@ -30,6 +30,8 @@
 \alias{sampleQC<-,NxtSE-method}
 \alias{ref}
 \alias{ref,NxtSE-method}
+\alias{sourcePath}
+\alias{sourcePath,NxtSE-method}
 \alias{junc_PSI}
 \alias{junc_PSI,NxtSE-method}
 \alias{junc_counts}
@@ -40,7 +42,6 @@
 \alias{realize_NxtSE,NxtSE-method}
 \alias{coerce,SummarizedExperiment,NxtSE-method}
 \alias{NxtSE}
-\alias{sourcePath,NxtSE-method}
 \alias{[,NxtSE,ANY,ANY,ANY-method}
 \alias{[<-,NxtSE,ANY,ANY,NxtSE-method}
 \alias{cbind,NxtSE-method}
@@ -219,6 +220,9 @@ se_raw <- as(se, "SummarizedExperiment")
 # Coerce SummarizedExperiment -> NxtSE
 se_NxtSE <- as(se_raw, "NxtSE")
 identical(se, se_NxtSE) # Returns TRUE
+
+# Get directory path of NxtSE (i.e., collate_path)
+sourcePath(se)
 
 # Get Junction reads of SE / MXE and spans-reads of IR events
 up_inc(se)

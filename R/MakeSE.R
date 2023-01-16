@@ -161,7 +161,7 @@ makeSE <- function(
     se <- as(se, "NxtSE")
 
     # Subset, if required
-    if(all(colData$sample %in% colnames(se))) {
+    if(all(colnames(se) %in% colData$sample)) {
         fullExperiment <- TRUE
     } else {
         se <- se[, colData$sample]
@@ -230,9 +230,19 @@ makeSE <- function(
         colData <- colData.Rds$df.anno
     } else {
         colData <- as.data.frame(colData)
-        if (!("sample" %in% colnames(colData))) {
+        if (!("sample" %in% colnames(colData)))
             colnames(colData)[1] <- "sample"
-        }
+
+        # Check all names unique
+        if(!identical(colData$sample, unique(colData$sample)))
+            .log("All sample names in colData must be unique.")
+
+        # Make sample the 1st column if it is not
+        colData <- cbind(
+            colData[, "sample", drop = FALSE],
+            colData[, -c("sample"), drop = FALSE],
+        )
+
         if (!all(colData$sample %in% colData.Rds$df.anno$sample)) {
             .log(paste("In makeSE():",
                 "some samples in colData were not found in given path"),

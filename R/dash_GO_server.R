@@ -41,7 +41,7 @@ server_GO <- function(
                 validate(need(is(get_se(), "NxtSE"), "Load NxtSE first"))
                 validate(need(get_de(), "Load DE Analysis first"))
 
-                validate(need(ref(get_se())$ontology != NULL,
+                validate(need(ref(get_se())$ontology,
                     "No gene ontology found for this NxtSE object"))
                 
                 # Get volcano data

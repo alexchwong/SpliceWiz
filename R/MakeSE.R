@@ -113,9 +113,9 @@ makeSE <- function(
 
     collate_path <- normalizePath(collate_path)
 
-    N <- 3
+    N <- 4
     dash_progress("Loading NxtSE object from file...", N)
-    if(verbose) .log("Loading NxtSE object from file...", "message", appendLF = FALSE)
+    if(verbose) .log("Loading NxtSE object from file...", "message")
 
     se <- .makeSE_load_NxtSE(collate_path)
 
@@ -140,21 +140,22 @@ makeSE <- function(
     }
     names(se@metadata[["cov_file"]]) <- colnames(se)
     
-    # Compatibility with SpliceWiz version < 0.99.4
-    if(!("junc_PSI" %in% names(se@metadata))) {
-        se@metadata[["junc_PSI"]] <- HDF5Array(
-            file.path(normalizePath(collate_path),
-            "data.h5"), "junc_PSI")[, colnames(se), drop = FALSE]
-        se@metadata[["junc_counts"]] <- HDF5Array(
-            file.path(normalizePath(collate_path),
-            "data.h5"), "junc_counts")[, colnames(se), drop = FALSE]
-        se@metadata[["junc_gr"]] <- 
-            coord2GR(rownames(se@metadata[["junc_PSI"]]))
-    }
-    
+    # Compatibility with SpliceWiz version < 0.99.4 - now removed
+    # if(!("junc_PSI" %in% names(se@metadata))) {
+        # se@metadata[["junc_PSI"]] <- HDF5Array(
+            # file.path(normalizePath(collate_path),
+            # "data.h5"), "junc_PSI")[, colnames(se), drop = FALSE]
+        # se@metadata[["junc_counts"]] <- HDF5Array(
+            # file.path(normalizePath(collate_path),
+            # "data.h5"), "junc_counts")[, colnames(se), drop = FALSE]
+        # se@metadata[["junc_gr"]] <- 
+            # coord2GR(rownames(se@metadata[["junc_PSI"]]))
+    # }
+
     # Import rowData
-    rowData <- as.data.table(read.fst(file.path(collate_path, "rowEvent.fst")))
-    rowData <- as.data.frame(rowData)
+    dash_progress("Loading rowData...", N)
+    if(verbose) message("...rowData")   
+    rowData <- readRDS(file.path(collate_path, "rowEvent.Rds"))
     rowData(se) <- rowData
     
     # Encapsulate as NxtSE object
@@ -180,22 +181,22 @@ makeSE <- function(
 
     if (realize == TRUE) {
         dash_progress("Realizing NxtSE object...", N)
-        if(verbose) .log("Realizing NxtSE object...", "message")
+        if(verbose) .log("...realizing NxtSE object", "message")
         se <- realize_NxtSE(se)
     }
     
-    filtered_rowData_file <- file.path(collate_path, "filteredIntrons.fst")
+    filtered_rowData_file <- file.path(collate_path, "filteredIntrons.Rds")
     if (RemoveOverlapping == TRUE) {
         dash_progress("Removing overlapping introns...", N)
 
         if(fullExperiment & file.exists(filtered_rowData_file)) {
             # Take a shortcut
-            if(verbose) .log("Removing overlapping introns...", "message", 
+            if(verbose) .log("...removing overlapping introns", "message", 
                 appendLF = FALSE)
-            tmp <- read.fst(filtered_rowData_file)
-            se <- se[rowData(se)$EventName %in% tmp$EventName,]
+            tmpFiltered <- readRDS(filtered_rowData_file)
+            se <- se[tmpFiltered,]
         } else {
-            if(verbose) .log("Removing overlapping introns...", "message")
+            if(verbose) .log("...removing overlapping introns", "message")
             se <- .makeSE_iterate_IR(se, verbose)
         } 
         if(verbose) message("done\n")
@@ -276,9 +277,12 @@ makeSE <- function(
 
 # Loads a NxtSE RDS
 .makeSE_load_NxtSE <- function(collate_path) {
-    filepath <- file.path(collate_path, "NxtSE.rds")
+    filepath <- file.path(collate_path, "NxtSE.Rds")
     se <- readRDS(filepath)
     se@metadata[["sourcePath"]] <- collate_path
+
+    # Add reference
+    metadata(se)$ref <- readRDS(file.path(collate_path, "cov_data.Rds"))
 
     se@assays <- .makeSE_adjust_paths(se)
     se@metadata[["Up_Inc"]] <- .makeSE_expand_assay_path(

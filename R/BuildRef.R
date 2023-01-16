@@ -128,6 +128,9 @@
 #'   `genome_type`. When set to false, the MappabilityExclusion default file
 #'   corresponding to `genome_type` will automatically be used.
 #' @param verbose (default `TRUE`) If `FALSE`, will silence progress messages
+#' @param ontologySpecies (default `""`) The species for which gene ontology 
+#'   classifications should be fetched from AnnotationHub. Ignored if
+#'   `genome_type` is set (as human or mouse GO will be used instead).
 #' @param ... For STAR_buildRef, additional parameters to be parsed into
 #'   `STAR_buildRef` which it runs internally. See [STAR_buildRef]
 #' @return
@@ -309,6 +312,7 @@ buildRef <- function(
         overwrite = FALSE, force_download = FALSE,
         chromosome_aliases = NULL, genome_type = "",
         nonPolyARef = "", MappabilityRef = "", BlacklistRef = "",
+        ontologySpecies = "",
         useExtendedTranscripts = TRUE, lowMemoryMode = TRUE,
         verbose = TRUE
 ) {
@@ -343,7 +347,7 @@ buildRef <- function(
         reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
         
         .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
-        .process_ontology(reference_path, genome_type, verbose)
+        .process_ontology(reference_path, genome_type, ontologySpecies, verbose)
         extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
         reference_data$gtf_gr <- NULL # To save memory, remove original gtf
         gc()

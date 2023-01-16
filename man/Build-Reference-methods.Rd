@@ -28,6 +28,7 @@ buildRef(
   nonPolyARef = "",
   MappabilityRef = "",
   BlacklistRef = "",
+  ontologySpecies = "",
   useExtendedTranscripts = TRUE,
   lowMemoryMode = TRUE,
   verbose = TRUE
@@ -112,6 +113,10 @@ See details.}
 \item{BlacklistRef}{A BED file of regions to be otherwise excluded from IR
 analysis. If omitted, a blacklist is not used (this is the default).
 An RDS file (openable using \code{readRDS()}) of a GRanges object is acceptable.}
+
+\item{ontologySpecies}{(default \code{""}) The species for which gene ontology
+classifications should be fetched from AnnotationHub. Ignored if
+\code{genome_type} is set (as human or mouse GO will be used instead).}
 
 \item{useExtendedTranscripts}{(default \code{TRUE}) Should non-protein-coding
 transcripts such as anti-sense and lincRNA transcripts be included in

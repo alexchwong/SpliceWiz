@@ -1,5 +1,5 @@
 .process_ontology <- function(
-        reference_path, genome_type, verbose = TRUE
+        reference_path, genome_type, species, verbose = TRUE
 ) {
     hasPackage <- 
         .check_package_installed("DBI", "1.0.0", "silent") && 
@@ -15,10 +15,12 @@
         species <- "Homo sapiens"
     } else if(genome_type %in% c("mm10", "mm9")) {
         species <- "Mus musculus"
-    } else {
+    } else if(species == "") {
         if(verbose) 
             .log("Gene ontology not prepared for this reference", "message")
         return()
+    } else {
+        # Do nothing, presume user has specified correct species
     }
     ontDT <- .get_geneGO(species, verbose)
     fst::write.fst(ontDT, file.path(reference_path, "fst", "Ontology.fst"))
@@ -172,18 +174,21 @@ goASE <- function(
 # Global functions for gene ontology
 
 .fetch_orgDB <- function(
-    species = c("Homo sapiens", "Mus musculus"),
+    species = "",
     localHub = FALSE, ah = AnnotationHub(localHub = localHub)
 ) {
-    species <- match.arg(species)
-    if(species == "") 
-        .log("Species for orgDB must be Homo sapiens or Mus musculus")
-
     ah_orgList <- subset(ah, ah$rdataclass == "OrgDb")
-    ah_orgDb <- subset(ah_orgList, ah_orgList$species == species)
-
+    ah_orgListEns <- query(ah_orgList, "Ensembl")
+    
+    supportedSpecies <- unique(ah_orgListEns$species)
+    if(!(species %in% supportedSpecies))
+        .log(paste(species, 
+        "not supported in AnnotationHub. Supported species:",
+        supportedSpecies
+        ))
+        
+    ah_orgDb <- subset(ah_orgListEns, ah_orgList$species == species)
     cache_loc <- AnnotationHub::cache(ah_orgDb[1])
-
     return(cache_loc)
 }
 

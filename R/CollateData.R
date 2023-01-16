@@ -162,7 +162,7 @@ collateData <- function(Experiment, reference_path, output_path,
     coverage_files <- .make_path_relative(
         .collateData_COV(Experiment), output_path)
     df.internal <- .collateData_expr(Experiment)
-    if (!overwrite && file.exists(file.path(output_path, "NxtSE.rds"))) {
+    if (!overwrite && file.exists(file.path(output_path, "NxtSE.Rds"))) {
         se <- .makeSE_load_NxtSE(output_path)
         if (all(colnames(se) %in% df.internal$sample) &
             all(df.internal$sample %in% colnames(se))
@@ -290,18 +290,23 @@ collateData <- function(Experiment, reference_path, output_path,
         se <- .collateData_initialise_HDF5(norm_output_path, colData, assays)
 
         .log("Saving final NxtSE object", "message")
-        .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.rds"))
+        .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.Rds"))
         .collateData_cleanup(norm_output_path)
         
         # Test run of loading NxtSE
-        .log("Calculating overlapping IR-events", "message")
+        .log("Calculating overlapping IR-events for whole dataset", "message")
         tryCatch({
-            tmpse <- makeSE(norm_output_path, verbose = FALSE)
-            tmpRowData <- as.data.frame(rowData(tmpse))
-            tmpRowData <- tmpRowData[, c("EventName"), drop = FALSE]
-            filtered_rowData_file <- file.path(norm_output_path, 
-                "filteredIntrons.fst")
-            write.fst(tmpRowData, filtered_rowData_file)
+            tmpse <- makeSE(norm_output_path, verbose = FALSE,
+                RemoveOverlapping = FALSE)
+            tmpse2 <- .makeSE_iterate_IR(tmpse, verbose = FALSE)
+            tmpFiltered <- (
+                rowData(tmpse)$EventName %in% 
+                rowData(tmpse2)$EventName
+            )
+            saveRDS(tmpFiltered, 
+                file.path(norm_output_path, "filteredIntrons.Rds"))
+            rm(tmpse, tmpse2)
+            gc()
         }, error = function(err) {
             .log("Test loading of NxtSE object failed.")
         })
@@ -1193,7 +1198,7 @@ collateData <- function(Experiment, reference_path, output_path,
             "Introns.Dir.fst", "Introns.ND.fst", "IR.NMD.fst"
         )
     } else {
-        .log(paste("Making a copy of splicing reference:"), "message")        
+        message("...copying splicing reference")    
         fst2Copy <- c(
             "Exons.fst", "Exons.Group.fst", "Genes.fst", "gtf_fixed.fst",
             "junctions.fst", "Transcripts.fst",
@@ -1258,6 +1263,9 @@ collateData <- function(Experiment, reference_path, output_path,
             novel_ref_path, verbose = FALSE)
         # extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
         reference_data$gtf_gr <- NULL # To save memory, remove original gtf
+        
+        rtracklayer::export(novel_gtf, 
+            file.path(norm_output_path, "novelTranscripts.gtf"), "gtf")
         rm(novel_gtf)
         gc()
         
@@ -1271,9 +1279,10 @@ collateData <- function(Experiment, reference_path, output_path,
 
         if(verbose) message("...annotating alternative splicing events")
         .gen_splice(novel_ref_path, verbose = FALSE)
+        
+        message("done")
     }
 
-    message("done")
     settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
     # (TODO) - modify settings.Rds
     saveRDS(settings.list, file.path(novel_ref_path, "settings.Rds"))
@@ -3025,9 +3034,10 @@ collateData <- function(Experiment, reference_path, output_path,
     item.todo <- c("rowEvent", "Included", "Excluded", "Depth", "Coverage",
         "minDepth", "Up_Inc", "Down_Inc", "Up_Exc", "Down_Exc")
 
-    # Annotate NMD direction
-    rowData <- as.data.table(read.fst(file.path(collate_path, "rowEvent.fst")))
-    rowData <- as.data.frame(rowData)
+    rowData <- read.fst(file.path(collate_path, "rowEvent.fst"))
+    
+    # Convert to rds to save file space at small expense of increased load time
+    saveRDS(rowData, file.path(collate_path, "rowEvent.Rds"))
 
     # To save space, only use EventName and EventType for now
     rowData <- rowData[, c("EventName", "EventType")]
@@ -3085,12 +3095,11 @@ collateData <- function(Experiment, reference_path, output_path,
     metadata(se)$sampleQC <- stats.df[, -1, drop = FALSE]
     rownames(metadata(se)$sampleQC) <- colnames(se)
 
-    # Add reference last
-    metadata(se)$ref <- readRDS(file.path(
-        collate_path, "cov_data.Rds"
-    ))
-
     metadata(se)$BuildVersion <- collateData_version
+
+    # Remove remaining columns to save more space in Rds
+    rowData(se)$EventType <- NULL
+    rowData(se)$EventName <- NULL
 
     return(se)
 }

@@ -318,99 +318,111 @@ buildRef <- function(
         .log("SpliceWiz reference already exists in given directory", "message")
         return()
     }
-    extra_files <- .fetch_genome_defaults(reference_path,
-        genome_type, nonPolyARef, MappabilityRef, BlacklistRef,
-        force_download = force_download, verbose = verbose)
-    
-    session <- shiny::getDefaultReactiveDomain()
 
-    N_steps <- 8
-    dash_progress("Reading Reference Files", N_steps)
-    reference_data <- .get_reference_data(
-        reference_path = reference_path,
-        fasta = fasta, gtf = gtf, verbose = verbose,
-        overwrite = overwrite, force_download = force_download,
-        pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
+    originalSWthreads <- .getSWthreads()
+    tryCatch({
+        setSWthreads(1) # try this to prevent memory leak
 
-    dash_progress("Processing gtf file", N_steps)
-    reference_data$gtf_gr <- .validate_gtf_chromosomes(
-        reference_data$genome, reference_data$gtf_gr)
-    reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
-    
-    .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
-    .process_ontology(reference_path, genome_type, verbose)
-    extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
-    reference_data$gtf_gr <- NULL # To save memory, remove original gtf
-    gc()
+        extra_files <- .fetch_genome_defaults(reference_path,
+            genome_type, nonPolyARef, MappabilityRef, BlacklistRef,
+            force_download = force_download, verbose = verbose)
+        
+        session <- shiny::getDefaultReactiveDomain()
 
-    # Check here whether fetching from TwoBitFile is problematic
-    reference_data$genome <- .check_2bit_performance(reference_path,
-        reference_data$genome, verbose = verbose)
-    gc()
+        N_steps <- 8
+        dash_progress("Reading Reference Files", N_steps)
+        reference_data <- .get_reference_data(
+            reference_path = reference_path,
+            fasta = fasta, gtf = gtf, verbose = verbose,
+            overwrite = overwrite, force_download = force_download,
+            pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
 
-    dash_progress("Processing introns", N_steps)
-    chromosomes <- .convert_chromosomes(chromosome_aliases)
-    # save chromosomes for later
-    saveRDS(chromosomes, file.path(reference_path, "chromosomes.Rds"))
-    
-    .process_introns(reference_path, reference_data$genome,
-        useExtendedTranscripts, verbose = verbose)
-
-    dash_progress("Generating SpliceWiz Reference", N_steps)
-    .gen_irf(reference_path, extra_files, reference_data$genome, chromosomes,
-        verbose = verbose)
-    gc()
-
-    if(file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
-        dash_progress("Annotating IR-NMD", N_steps)
-        if(!is.null(session)) {
-            shiny::withProgress(message = "Determining NMD Transcripts", {
-                .gen_nmd(reference_path, reference_data$genome,
-                    verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
-            })
-        } else {
-            .gen_nmd(reference_path, reference_data$genome, 
-                verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
-        }
+        dash_progress("Processing gtf file", N_steps)
+        reference_data$gtf_gr <- .validate_gtf_chromosomes(
+            reference_data$genome, reference_data$gtf_gr)
+        reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
+        
+        .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
+        .process_ontology(reference_path, genome_type, verbose)
+        extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
+        reference_data$gtf_gr <- NULL # To save memory, remove original gtf
         gc()
-    } else {
-        dash_progress("NMD annotation skipped", N_steps)
-    }
 
-    dash_progress("Annotating Splice Events", N_steps)
-    .gen_splice(reference_path, verbose = verbose)
-    gc()
-    if (
-        file.exists(file.path(reference_path, "fst", "Splice.fst")) &
-        file.exists(file.path(reference_path, "fst", "Proteins.fst"))
-    ) {
-        dash_progress("Translating AS Peptides", N_steps)
-        .gen_splice_proteins(reference_path, reference_data$genome, 
+        # Check here whether fetching from TwoBitFile is problematic
+        reference_data$genome <- .check_2bit_performance(reference_path,
+            reference_data$genome, verbose = verbose)
+        gc()
+
+        dash_progress("Processing introns", N_steps)
+        chromosomes <- .convert_chromosomes(chromosome_aliases)
+        # save chromosomes for later
+        saveRDS(chromosomes, file.path(reference_path, "chromosomes.Rds"))
+        
+        .process_introns(reference_path, reference_data$genome,
+            useExtendedTranscripts, verbose = verbose)
+
+        dash_progress("Generating SpliceWiz Reference", N_steps)
+        .gen_irf(reference_path, extra_files, reference_data$genome, chromosomes,
             verbose = verbose)
-        if(verbose) .log("Splice Annotations finished\n", "message")
-    } else {
-        dash_progress("No protein-coding splicing events detected", N_steps)
-    }
-   
-    # Prepare a reference-specific cov_data for reference-only plots:
-    cov_data <- .prepare_covplot_data(reference_path)
-    saveRDS(cov_data, file.path(reference_path, "cov_data.Rds"))
-    rm(cov_data, reference_data)
-    
-    # Update settings.Rds only after everything is finalised
-    settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
-    settings.list$genome_type <- genome_type
-    settings.list$nonPolyARef <- nonPolyARef
-    settings.list$MappabilityRef <- MappabilityRef
-    settings.list$BlacklistRef <- BlacklistRef
-    settings.list$useExtendedTranscripts <- useExtendedTranscripts
-    settings.list$BuildVersion <- buildRef_version
+        gc()
 
-    saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
+        if(file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
+            dash_progress("Annotating IR-NMD", N_steps)
+            if(!is.null(session)) {
+                shiny::withProgress(message = "Determining NMD Transcripts", {
+                    .gen_nmd(reference_path, reference_data$genome,
+                        verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
+                })
+            } else {
+                .gen_nmd(reference_path, reference_data$genome, 
+                    verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
+            }
+            gc()
+        } else {
+            dash_progress("NMD annotation skipped", N_steps)
+        }
 
-    if(verbose) message("Reference build finished")
-    dash_progress("Reference build finished", N_steps)
-    gc()
+        dash_progress("Annotating Splice Events", N_steps)
+        .gen_splice(reference_path, verbose = verbose)
+        gc()
+        if (
+            file.exists(file.path(reference_path, "fst", "Splice.fst")) &
+            file.exists(file.path(reference_path, "fst", "Proteins.fst"))
+        ) {
+            dash_progress("Translating AS Peptides", N_steps)
+            .gen_splice_proteins(reference_path, reference_data$genome, 
+                verbose = verbose)
+            if(verbose) .log("Splice Annotations finished\n", "message")
+        } else {
+            dash_progress("No protein-coding splicing events detected", N_steps)
+        }
+       
+        # Prepare a reference-specific cov_data for reference-only plots:
+        cov_data <- .prepare_covplot_data(reference_path)
+        saveRDS(cov_data, file.path(reference_path, "cov_data.Rds"))
+        rm(cov_data, reference_data)
+        
+        # Update settings.Rds only after everything is finalised
+        settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
+        settings.list$genome_type <- genome_type
+        settings.list$nonPolyARef <- nonPolyARef
+        settings.list$MappabilityRef <- MappabilityRef
+        settings.list$BlacklistRef <- BlacklistRef
+        settings.list$useExtendedTranscripts <- useExtendedTranscripts
+        settings.list$BuildVersion <- buildRef_version
+
+        saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
+
+        if(verbose) message("Reference build finished")
+        dash_progress("Reference build finished", N_steps)
+        gc()
+
+    }, error = function(e) {
+        stop("In buildRef(...): ", e, call. = FALSE)
+    }, finally = {
+        .restore_threads(originalSWthreads)
+    })
+
     invisible()
 }
 

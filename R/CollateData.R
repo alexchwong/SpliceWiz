@@ -143,8 +143,6 @@ collateData <- function(Experiment, reference_path, output_path,
         .log(paste("In collateData(),",
             "IRMode must be either 'SpliceOver' (default) or 'SpliceMax'"))
 
-    originalSWthreads <- .getSWthreads()
-    setSWthreads(1) # try this to prevent memory leak
     BPPARAM_mod <- .validate_threads(n_threads)
     if(!is.numeric(novelSplicing_minSamples)) 
         novelSplicing_minSamples <- 0
@@ -171,136 +169,151 @@ collateData <- function(Experiment, reference_path, output_path,
         ) {
             .log(paste("SpliceWiz already collated this experiment",
                 "in given directory"), "message")
-            .restore_threads(originalSWthreads)
             return()
         }
     }
-    # samples_per_block <- 4
-    # if(lowMemoryMode) samples_per_block <- 16
-    # jobs <- .collateData_jobs(
-    #     nrow(df.internal), BPPARAM_mod, samples_per_block)
-    jobs <- .split_vector(seq_len(nrow(df.internal)), BPPARAM_mod$workers)
-    
-    dash_progress("Compiling Sample Stats", N_steps)
-    .log("Compiling Sample Stats", "message")
-    df.internal <- .collateData_stats(df.internal, jobs, BPPARAM_mod)
-    stranded <- !any(df.internal$strand == 0) & !forceStrandAgnostic
 
-    dash_progress("Compiling Junction List", N_steps)
-    .collateData_junc_merge(df.internal, jobs, BPPARAM_mod, norm_output_path)
-    .collateData_junc_stats(df.internal, jobs, BPPARAM_mod, norm_output_path,
-        juncThreshold = novelSplicing_countThreshold)
-
-    dash_progress("Compiling Intron Retention List", N_steps)
-    .collateData_sw_merge(df.internal, jobs, BPPARAM_mod, 
-        norm_output_path, stranded)
-
-    # Tandem junction compilation
-    if(novelSplicing) {
-        dash_progress("Compiling Intron Retention List", N_steps)
-        .collateData_tj_merge(df.internal, jobs, BPPARAM_mod, norm_output_path)
-    }
-    
-# Reassign +/- based on junctions.fst annotation
-    # Annotate junctions
-    dash_progress("Tidying up splice junctions and intron retentions", N_steps)
-    .log("Tidying up splice junctions and intron retentions...", "message")
-    
-    if(BPPARAM_mod$workers == 1) {
-        .collateData_annotate(reference_path, norm_output_path, 
-            stranded, novelSplicing, lowMemoryMode,
-            minSamplesWithJunc = novelSplicing_minSamples, 
-            minSamplesAboveJuncThreshold = 
-                novelSplicing_minSamplesAboveThreshold,
-            novelSplicing_requireOneAnnotatedSJ =
-                novelSplicing_requireOneAnnotatedSJ
-        )
-    } else {
-        # perform task inside child thread, so we can dump the memory later
-        .collateData_annotate_BPPARAM(reference_path, norm_output_path, 
-            stranded, novelSplicing, lowMemoryMode,
-            minSamplesWithJunc = novelSplicing_minSamples, 
-            minSamplesAboveJuncThreshold = 
-                novelSplicing_minSamplesAboveThreshold,
-            novelSplicing_requireOneAnnotatedSJ =
-                novelSplicing_requireOneAnnotatedSJ
-        )
-    }
-    message("done\n")
-
-    dash_progress("Generating NxtSE assays", N_steps)
-    .log("Generating NxtSE assays", "message")
-
-    # Re-define threads
-    n_threads_collate_assays <- n_threads
-    
-    # One job per chunk - more memory efficient
-    jobs_2 <- .split_vector(
-        seq_len(nrow(df.internal)),
-        nrow(df.internal)
-    )
-    BPPARAM_mod_progress <- .validate_threads(
-        n_threads_collate_assays,
-        progressbar = TRUE,
-        tasks = nrow(df.internal)
-    )
-    agg.list <- BiocParallel::bplapply(
-        seq_len(nrow(df.internal)),
-        .collateData_compile_agglist,
-        jobs = jobs_2, df.internal = df.internal,
-        norm_output_path = norm_output_path, IRMode = IRMode,
-        useProgressBar = FALSE,
-        BPPARAM = BPPARAM_mod_progress
-    )
-    gc()
-
-    dash_progress("Building Final NxtSE Object", N_steps)
-    .log("Saving assays into H5 file", "message")
-    samples_per_block <- 16
-    # if(lowMemoryMode) samples_per_block <- 4
-    assays <- .collateData_compile_assays_from_fst(df.internal,
-        norm_output_path, samples_per_block)
-
-    .log("Saving auxiliary data", "message")
-
-    .collateData_write_stats(df.internal, norm_output_path)
-    .collateData_write_colData(df.internal, coverage_files, norm_output_path)
-    
-    if(novelSplicing) {
-        cov_data <- .prepare_covplot_data(reference_path,
-            file.path(norm_output_path, "Reference"))
-    } else {
-        cov_data <- .prepare_covplot_data(reference_path)
-    }
-    
-    saveRDS(cov_data, file.path(norm_output_path, "cov_data.Rds"))
-
-    .log("Assembling final NxtSE object", "message")
-    # NEW compile NxtSE:
-    colData.Rds <- readRDS(file.path(norm_output_path, "colData.Rds"))
-    colData <- .makeSE_colData_clean(colData.Rds$df.anno)
-    se <- .collateData_initialise_HDF5(norm_output_path, colData, assays)
-
-    .log("Saving final NxtSE object", "message")
-    .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.rds"))
-    .collateData_cleanup(norm_output_path)
-    
-    # Test run of loading NxtSE
-    .log("Calculating overlapping IR-events", "message")
+    originalSWthreads <- .getSWthreads()
     tryCatch({
-        tmpse <- makeSE(norm_output_path, verbose = FALSE)
-        tmpRowData <- as.data.frame(rowData(tmpse))
-        tmpRowData <- tmpRowData[, c("EventName"), drop = FALSE]
-        filtered_rowData_file <- file.path(norm_output_path, 
-            "filteredIntrons.fst")
-        write.fst(tmpRowData, filtered_rowData_file)
-    }, error = function(err) {
-        .log("Test loading of NxtSE object failed.")
+        setSWthreads(1) # try this to prevent memory leak
+
+
+        # samples_per_block <- 4
+        # if(lowMemoryMode) samples_per_block <- 16
+        # jobs <- .collateData_jobs(
+        #     nrow(df.internal), BPPARAM_mod, samples_per_block)
+        jobs <- .split_vector(seq_len(nrow(df.internal)), BPPARAM_mod$workers)
+        
+        dash_progress("Compiling Sample Stats", N_steps)
+        .log("Compiling Sample Stats", "message")
+        df.internal <- .collateData_stats(df.internal, jobs, BPPARAM_mod)
+        stranded <- !any(df.internal$strand == 0) & !forceStrandAgnostic
+
+        dash_progress("Compiling Junction List", N_steps)
+        .collateData_junc_merge(df.internal, 
+            jobs, BPPARAM_mod, norm_output_path)
+        .collateData_junc_stats(df.internal, jobs, 
+            BPPARAM_mod, norm_output_path,
+            juncThreshold = novelSplicing_countThreshold)
+
+        dash_progress("Compiling Intron Retention List", N_steps)
+        .collateData_sw_merge(df.internal, jobs, BPPARAM_mod, 
+            norm_output_path, stranded)
+
+        # Tandem junction compilation
+        if(novelSplicing) {
+            dash_progress("Compiling Intron Retention List", N_steps)
+            .collateData_tj_merge(df.internal, jobs, 
+                BPPARAM_mod, norm_output_path)
+        }
+        
+    # Reassign +/- based on junctions.fst annotation
+        # Annotate junctions
+        dash_progress("Tidying up splice junctions and intron retentions", 
+            N_steps)
+        .log("Tidying up splice junctions and intron retentions...", "message")
+        
+        if(BPPARAM_mod$workers == 1) {
+            .collateData_annotate(reference_path, norm_output_path, 
+                stranded, novelSplicing, lowMemoryMode,
+                minSamplesWithJunc = novelSplicing_minSamples, 
+                minSamplesAboveJuncThreshold = 
+                    novelSplicing_minSamplesAboveThreshold,
+                novelSplicing_requireOneAnnotatedSJ =
+                    novelSplicing_requireOneAnnotatedSJ
+            )
+        } else {
+            # perform task inside child thread, so we can dump the memory later
+            .collateData_annotate_BPPARAM(reference_path, norm_output_path, 
+                stranded, novelSplicing, lowMemoryMode,
+                minSamplesWithJunc = novelSplicing_minSamples, 
+                minSamplesAboveJuncThreshold = 
+                    novelSplicing_minSamplesAboveThreshold,
+                novelSplicing_requireOneAnnotatedSJ =
+                    novelSplicing_requireOneAnnotatedSJ
+            )
+        }
+        message("done\n")
+
+        dash_progress("Generating NxtSE assays", N_steps)
+        .log("Generating NxtSE assays", "message")
+
+        # Re-define threads
+        n_threads_collate_assays <- n_threads
+        
+        # One job per chunk - more memory efficient
+        jobs_2 <- .split_vector(
+            seq_len(nrow(df.internal)),
+            nrow(df.internal)
+        )
+        BPPARAM_mod_progress <- .validate_threads(
+            n_threads_collate_assays,
+            progressbar = TRUE,
+            tasks = nrow(df.internal)
+        )
+        agg.list <- BiocParallel::bplapply(
+            seq_len(nrow(df.internal)),
+            .collateData_compile_agglist,
+            jobs = jobs_2, df.internal = df.internal,
+            norm_output_path = norm_output_path, IRMode = IRMode,
+            useProgressBar = FALSE,
+            BPPARAM = BPPARAM_mod_progress
+        )
+        gc()
+
+        dash_progress("Building Final NxtSE Object", N_steps)
+        .log("Saving assays into H5 file", "message")
+        samples_per_block <- 16
+        # if(lowMemoryMode) samples_per_block <- 4
+        assays <- .collateData_compile_assays_from_fst(df.internal,
+            norm_output_path, samples_per_block)
+
+        .log("Saving auxiliary data", "message")
+
+        .collateData_write_stats(df.internal, norm_output_path)
+        .collateData_write_colData(df.internal, 
+            coverage_files, norm_output_path)
+        
+        if(novelSplicing) {
+            cov_data <- .prepare_covplot_data(reference_path,
+                file.path(norm_output_path, "Reference"))
+        } else {
+            cov_data <- .prepare_covplot_data(reference_path)
+        }
+        
+        saveRDS(cov_data, file.path(norm_output_path, "cov_data.Rds"))
+
+        .log("Assembling final NxtSE object", "message")
+        # NEW compile NxtSE:
+        colData.Rds <- readRDS(file.path(norm_output_path, "colData.Rds"))
+        colData <- .makeSE_colData_clean(colData.Rds$df.anno)
+        se <- .collateData_initialise_HDF5(norm_output_path, colData, assays)
+
+        .log("Saving final NxtSE object", "message")
+        .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.rds"))
+        .collateData_cleanup(norm_output_path)
+        
+        # Test run of loading NxtSE
+        .log("Calculating overlapping IR-events", "message")
+        tryCatch({
+            tmpse <- makeSE(norm_output_path, verbose = FALSE)
+            tmpRowData <- as.data.frame(rowData(tmpse))
+            tmpRowData <- tmpRowData[, c("EventName"), drop = FALSE]
+            filtered_rowData_file <- file.path(norm_output_path, 
+                "filteredIntrons.fst")
+            write.fst(tmpRowData, filtered_rowData_file)
+        }, error = function(err) {
+            .log("Test loading of NxtSE object failed.")
+        })
+        
+        dash_progress("SpliceWiz (NxtSE) Collation Finished", N_steps)
+        .log("SpliceWiz (NxtSE) Collation Finished", "message")
+
+    }, error = function(e) {
+        stop("In collateData(...)", e, call. = FALSE)
+    }, finally = {
+        .restore_threads(originalSWthreads)
     })
-    
-    dash_progress("SpliceWiz (NxtSE) Collation Finished", N_steps)
-    .log("SpliceWiz (NxtSE) Collation Finished", "message")
-    .restore_threads(originalSWthreads)
     
     # Return invisible
     invisible(NULL)
@@ -3156,9 +3169,11 @@ collateData <- function(Experiment, reference_path, output_path,
     genome <- Get_Genome(reference_path)
     data <- list(
         seqInfo = seqinfo(genome),
-        gene_list = .getGeneList(use_ref_path),
-        elem.DT = .loadViewRef(use_ref_path),
-        transcripts.DT = .loadTranscripts(use_ref_path),
+        geneList = .getGeneList(use_ref_path),
+        elements = .loadViewRef(use_ref_path),
+        transcripts = .loadTranscripts(use_ref_path),
+        spliceList = .loadSpliceEvents(use_ref_path),
+        IRList = .loadIREvents(use_ref_path),
         ontology = .loadOntology(reference_path)
     )
     return(data)
@@ -3168,30 +3183,46 @@ collateData <- function(Experiment, reference_path, output_path,
     .validate_reference(reference_path)
 
     dir_path <- file.path(reference_path, "fst")
-
+    fetchCols <- c("seqnames", "start", "end", "strand", "type", 
+        "transcript_id", "exon_id", "exon_number")
+    fetchColsProt <- c("seqnames", "start", "end", "strand", "type", 
+        "transcript_id", "ccds_id", "exon_number")
+    fetchColsIntron_A <- c("seqnames", "start", "end", "strand")
+    fetchColsIntron_B <- c("transcript_id", "intron_id", "intron_number")
+    
     exons.DT <- as.data.table(read.fst(file.path(dir_path, "Exons.fst"),
-        c("seqnames", "start", "end", "strand", "type", "transcript_id")))
+        columns = fetchCols))
     # exons.DT <- exons.DT[get("transcript_biotype") != "protein_coding"]
+
+    introns.DT <- as.data.table(read.fst(file.path(dir_path, "junctions.fst"),
+            columns = fetchColsIntron_A))
+    introns.DT$type <- "intron"
+    introns.DT <- cbind(introns.DT, 
+        as.data.table(read.fst(file.path(dir_path, "junctions.fst"),
+            columns = fetchColsIntron_B)
+        )
+    )
 
     if(file.exists(file.path(dir_path, "Proteins.fst"))) {
         protein.DT <- as.data.table(
             read.fst(file.path(dir_path, "Proteins.fst"),
-            c("seqnames", "start", "end", "strand", "type", "transcript_id")))
+            columns = fetchColsProt))
+        setnames(protein.DT, "ccds_id", "exon_id")
         misc.DT <- as.data.table(read.fst(file.path(dir_path, "Misc.fst"),
-            c("seqnames", "start", "end", "strand", "type", "transcript_id")))
+            columns = fetchCols))
 
         total.DT <- rbindlist(list(
-            exons.DT[, c("seqnames", "start", "end", "strand", "type",
-                "transcript_id")],
-            protein.DT[, c("seqnames", "start", "end", "strand", "type",
-                "transcript_id")],
-            misc.DT[, c("seqnames", "start", "end", "strand", "type",
-                "transcript_id")]
+            exons.DT[, fetchCols, with = FALSE],
+            protein.DT[, fetchCols, with = FALSE],
+            misc.DT[, fetchCols, with = FALSE]
         ))
     } else {
         total.DT <- exons.DT
     }
-    return(total.DT)
+    setnames(total.DT, c("exon_id", "exon_number"), c("feature_id", "aux_id"))
+    setnames(introns.DT, c("intron_id", "intron_number"), 
+        c("feature_id", "aux_id"))
+    return(rbind(total.DT,introns.DT))
 }
 
 .getGeneList <- function(reference_path) {
@@ -3223,6 +3254,38 @@ collateData <- function(Experiment, reference_path, output_path,
     }
 
     return(Transcripts.DT)
+}
+
+.loadSpliceEvents <- function(reference_path) {
+    .validate_reference(reference_path)
+
+    file_path <- file.path(reference_path, "fst", "Splice.fst")
+
+    splice.DT <- as.data.table(read.fst(file_path, columns = c(
+        "EventName", "EventType", "EventRegion",
+        "Event1a", "Event1b", "Event2a", "Event2b"
+    )))
+
+    return(splice.DT)
+}
+
+.loadIREvents <- function(reference_path) {
+    .validate_reference(reference_path)
+
+    Dir_path <- file.path(reference_path, "fst", "Introns.Dir.fst")
+    ND_path <- file.path(reference_path, "fst", "Introns.ND.fst")
+
+    IR.Dir.DT <- as.data.table(read.fst(Dir_path, columns = c(
+        "EventName", "intron_id", "IRname"
+    )))
+    IR.ND.DT <- as.data.table(read.fst(ND_path, columns = c(
+        "EventName", "intron_id", "IRname"
+    )))
+
+    return(rbind(
+        IR.Dir.DT,
+        IR.ND.DT
+    ))
 }
 
 .loadOntology <- function(reference_path) {

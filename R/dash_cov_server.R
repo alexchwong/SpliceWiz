@@ -15,7 +15,7 @@ server_cov <- function(
             })
             req(get_se())
             .server_cov_refresh(
-                session, get_ref()$gene_list,
+                session, get_ref()$geneList,
                 get_de(), rows_all(), rows_selected(),
                 input$slider_num_events_cov, input$events_cov,
                 input$select_events_cov
@@ -197,7 +197,7 @@ server_cov <- function(
             req(input$genes_cov)
             req(input$genes_cov != "(none)")
             
-            gene_id_view <- get_ref()$gene_list[
+            gene_id_view <- get_ref()$geneList[
                 get("gene_display_name") == input$genes_cov]
             .server_cov_locate_genes(input, session, gene_id_view)
         })
@@ -263,18 +263,18 @@ server_cov_get_all_tracks <- function(input) {
 
 # Updates drop-downs
 .server_cov_refresh <- function(
-        session, gene_list, DE,
+        session, geneList, DE,
         rows_all, rows_selected, num_events, selected_event, mode
 ) {
-    if(!is.null(gene_list)) {
+    if(!is.null(geneList)) {
         message("Populating drop-down box with ", 
-            length(unique(gene_list$gene_display_name)), " genes")
+            length(unique(geneList$gene_display_name)), " genes")
         updateSelectInput(session = session, inputId = "chr_cov", 
             choices = c("(none)", 
-                as.character(sort(unique(gene_list$seqnames)))),
+                as.character(sort(unique(geneList$seqnames)))),
             selected = "(none)")
         updateSelectizeInput(session = session, inputId = "genes_cov",
-            server = TRUE, choices = c("(none)", gene_list$gene_display_name), 
+            server = TRUE, choices = c("(none)", geneList$gene_display_name), 
             selected = "(none)")
     } else {
         updateSelectInput(session = session, inputId = "chr_cov", 

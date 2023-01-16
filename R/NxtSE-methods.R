@@ -463,11 +463,21 @@ setReplaceMethod("down_exc", c("NxtSE"), function(x, withDimnames = TRUE, value)
 #' @export
 setReplaceMethod("covfile", c("NxtSE"), function(x, withDimnames = TRUE, value)
 {
-    if (withDimnames) {
-        value <- vector_withDimnames(x, .make_path_relative(value, sourcePath(x)))
+    # Presume given files are all "", or all exist
+    if(all(value == "")) {
+        x@metadata[["cov_file"]] <- vector_withDimnames(x, value)
+        return(x)
+    } else if(any(!file.exists(value))) {
+        .log("Some files do not exist, unable to set COV files")
+        return(x)
+    } else {
+        if (withDimnames) {
+            value <- vector_withDimnames(x, .make_path_relative(value, sourcePath(x)))
+        }
+        x@metadata[["cov_file"]] <- value
+        x
     }
-    x@metadata[["cov_file"]] <- value
-    x
+
 })
 
 #' @describeIn NxtSE-class Sets the values in the data frame containing

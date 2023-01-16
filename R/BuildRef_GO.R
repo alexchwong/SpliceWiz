@@ -124,7 +124,7 @@
                 universeEventNames, allEvents$EventName)]
         ))    
     } else {
-        Genes <- ref(se)$gene_list
+        Genes <- ref(se)$geneList
         universe <- Genes$gene_id
     }
     

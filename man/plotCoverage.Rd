@@ -243,6 +243,15 @@ p <- plotCoverage(
 )
 as_ggplot_cov(p)
 
+# As above, but stack all traces into the same track
+# - NB: plotJunctions is disabled when `stack_tracks = TRUE`
+p <- plotCoverage(
+    se = se,
+    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+    tracks = c("A", "B"), condition = "treatment", stack_tracks = TRUE
+)
+as_ggplot_cov(p)
+
 # Select only transcripts involved in the selected alternative splicing event
 p <- plotCoverage(
     se = se,

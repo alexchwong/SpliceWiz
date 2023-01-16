@@ -562,7 +562,9 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
             up_exc(x, FALSE)[events_Exc, samples, drop = dontDrop]
         down_exc(x, FALSE) <-
             down_exc(x, FALSE)[events_Exc, samples, drop = dontDrop]
-        covfile(x, FALSE) <- covfile(x, FALSE)[samples]
+        # covfile(x, FALSE) <- covfile(x, FALSE)[samples]
+        metadata(x)[["cov_file"]] <- 
+            metadata(x)[["cov_file"]][samples]
         sampleQC(x, FALSE) <- sampleQC(x, FALSE)[samples, , drop = FALSE]
         junc_PSI(x, FALSE) <- junc_PSI(x, FALSE)[, samples, drop = FALSE]
         junc_counts(x, FALSE) <- junc_counts(x, FALSE)[, samples, drop = FALSE]
@@ -589,7 +591,9 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
         down_inc(x, FALSE) <- down_inc(x, FALSE)[, samples, drop = dontDrop]
         up_exc(x, FALSE) <- up_exc(x, FALSE)[, samples, drop = dontDrop]
         down_exc(x, FALSE) <- down_exc(x, FALSE)[, samples, drop = dontDrop]
-        covfile(x, FALSE) <- covfile(x, FALSE)[samples]
+        # covfile(x, FALSE) <- covfile(x, FALSE)[samples]
+        metadata(x)[["cov_file"]] <- 
+            metadata(x)[["cov_file"]][samples]
         sampleQC(x, FALSE) <- sampleQC(x, FALSE)[samples, , drop = FALSE]
         junc_PSI(x, FALSE) <- junc_PSI(x, FALSE)[, samples, drop = FALSE]
         junc_counts(x, FALSE) <- junc_counts(x, FALSE)[, samples, drop = FALSE]
@@ -616,6 +620,8 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         up_exc(x, FALSE)[events_Exc, samples] <- up_exc(value, FALSE)
         down_exc(x, FALSE)[events_Exc, samples] <- down_exc(value, FALSE)
         covfile(x)[samples] <- covfile(value)
+        metadata(x)[["cov_file"]] <- 
+            metadata(x)[["cov_file"]][samples]
         sampleQC(x)[samples, ] <- sampleQC(value)
         junc_PSI(x, FALSE)[, samples] <- junc_PSI(value)
         junc_counts(x, FALSE)[, samples] <- junc_counts(value)
@@ -634,7 +640,8 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         down_inc(x, FALSE)[, samples] <- down_inc(value, FALSE)
         up_exc(x, FALSE)[, samples] <- up_exc(value, FALSE)
         down_exc(x, FALSE)[, samples] <- down_exc(value, FALSE)
-        covfile(x)[samples] <- covfile(value)
+        metadata(x)[["cov_file"]] <- 
+            metadata(x)[["cov_file"]][samples]
         sampleQC(x)[samples, ] <- sampleQC(value)
         junc_PSI(x, FALSE)[, samples] <- junc_PSI(value)
         junc_counts(x, FALSE)[, samples] <- junc_counts(value)

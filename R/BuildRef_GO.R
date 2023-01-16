@@ -98,7 +98,6 @@
     
     allEvents <- as.data.frame(rowData(se))
     allEvents <- allEvents[, c("EventName", "gene_id", "gene_id_b")]
-    allEvents <- allEvents[allEvents$EventName %in% get("EventNames"),]
     
     uniqueEventnames <- unique(c(enrichedEventNames, universeEventNames))
     if(!all(uniqueEventnames %in% allEvents$EventName)) {

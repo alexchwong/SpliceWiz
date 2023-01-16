@@ -165,12 +165,12 @@ makeSE <- function(
         fullExperiment <- TRUE
     } else {
         se <- se[, colData$sample]
-        if (ncol(colData) > 1) {
-            colData_use <- colData[, -1, drop = FALSE]
-            rownames(colData_use) <- colData$sample
-            colData(se) <- as(colData_use, "DataFrame")
-        }    
     }
+    if (ncol(colData) > 1) {
+        colData_use <- colData[, -1, drop = FALSE]
+        rownames(colData_use) <- colData$sample
+        colData(se) <- as(colData_use, "DataFrame")
+    }    
 
     if(verbose) message("done\n")
     if(display_cov_missing_message)

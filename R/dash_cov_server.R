@@ -47,7 +47,7 @@ server_cov <- function(
                 tmpres <- as.data.table(
                     .get_unified_volcano_data(get_de()[rows_all(),]))
                     
-                if(input$modeFilter_COV == "Highlighted (selected) events") {
+                if(input$modeFilter_COV == "Top Gene Ontology Categories") {
                     req(get_go())
                     req(input$GOterm_COV)
                     

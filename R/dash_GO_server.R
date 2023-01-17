@@ -123,6 +123,7 @@ server_GO <- function(
         })
 
         output$plot_GO <- renderPlotly({
+            validate(need(nrow(settings_GO$resGO) > 0, "Zero results"))
             print(settings_GO$final_plot)
         })
         
@@ -165,6 +166,8 @@ server_GO <- function(
     filter_pvalue = 0.05,
     trim_go_term = 50
 ) {
+    if(nrow(res) == 0) return(NULL)
+    
     plot_x <- match.arg(plot_x)
     plot_size <- match.arg(plot_size)
     plot_color <- match.arg(plot_color)

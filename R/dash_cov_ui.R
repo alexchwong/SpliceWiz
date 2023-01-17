@@ -2,7 +2,7 @@ ui_cov <- function(id) {
     ns <- NS(id)
     wellPanel(
         .ui_notice(),
-        fluidRow(style='height:20vh',
+        fluidRow(style='height:25vh',
             column(4, 
                 textOutput(ns("warning_cov")),
                 div(style=.cov_ui_inline(250), 
@@ -12,7 +12,8 @@ ui_cov <- function(id) {
                 div(style=.cov_ui_inline(350), 
                     selectizeInput(ns('events_cov'), 'Events', 
                         choices = "(none)")
-                )
+                ), br(),
+                actionButton(ns("refresh_coverage"), "Refresh Plot")
             ),
             column(4,
                 div(style=.cov_ui_inline(80),
@@ -35,11 +36,11 @@ ui_cov <- function(id) {
                     color = "danger", icon = icon("plus")),
                 div(style=.cov_ui_inline(alignment = "center", padding = 15),
                     shinyWidgets::radioGroupButtons(ns("strand_cov"), 
-                        label = "Strand", justified = FALSE,
+                        label = "RNA-seq Strand Coverage", justified = FALSE,
                         choices = c("*", "+", "-"), 
                         checkIcon = list(yes = icon("ok", lib = "glyphicon"))
                     )
-                ),
+                ), br(),
                 shinyWidgets::radioGroupButtons(ns("graph_mode_cov"), 
                     label = "Graph Mode", justified = FALSE,
                     choices = c("Pan", "Zoom", "Movable Labels"), 
@@ -79,7 +80,6 @@ ui_cov <- function(id) {
         ),
         fluidRow(
             column(3, 
-                actionButton(ns("refresh_coverage"), "Refresh Plot"),
                 selectInput(ns('mode_cov'), 'View', width = '100%',
                     choices = c("Individual", "By Condition")),
                 selectInput(ns('event_norm_cov'), 'Normalize Event', 

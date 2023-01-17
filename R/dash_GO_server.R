@@ -167,8 +167,8 @@ server_GO <- function(
     plot_size = c("nGenes", "foldEnrichment", "log10FDR"),
     plot_color = c("foldEnrichment", "nGenes", "log10FDR"),
     filter_n_terms = 20,
-    filter_padj = 0.05,
-    filter_pvalue = 0.05,
+    filter_padj = 1, # don't filter by default
+    filter_pvalue = 1, # don't filter by default
     trim_go_term = 50
 ) {
     if(nrow(res) == 0) return(NULL)

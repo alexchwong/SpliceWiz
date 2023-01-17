@@ -3013,19 +3013,26 @@ collateData <- function(Experiment, reference_path, output_path,
             all(file.exists(covfiles_full)) &&
             isCOV(covfiles_full)
         ) {
+            if(copyCOV) {
+                dirCOV <- file.path(norm_output_path, "COV")
+                if(!dir.exists(dirCOV)) dir.create(dirCOV)
+                for(i in seq_len(length(covfiles_full))) {
+                    file.copy(covfiles_full[i], dirCOV, overwrite = TRUE)
+                    covfiles_full[i] <- file.path(dirCOV, 
+                        basename(covfiles_full[i]))
+                }
+            }
+            if(!all(file.exists(covfiles_full)))
+                .log(paste("Some files failed to copy over to", dirCOV))
+            coverage_files <- .make_path_relative(
+                covfiles_full, norm_output_path)
             df.files <- data.table(
                 sample = df.internal$sample,
                 bam_file = "",
                 sw_file = df.internal$path,
                 cov_file = coverage_files
             )
-            if(copyCOV) {
-                dirCOV <- file.path(norm_output_path, "COV")
-                if(!dir.exists(dirCOV)) dir.create(dirCOV)
-                for(i in seq_len(length(covfiles_full))) {
-                    file.copy(covfiles_full, dirCOV, overwrite = TRUE)
-                }
-            }
+
         } else {
             df.files <- data.table(
                 sample = df.internal$sample,

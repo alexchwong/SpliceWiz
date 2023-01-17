@@ -240,9 +240,10 @@ makeSE <- function(
             .log("All sample names in colData must be unique.")
 
         # Make sample the 1st column if it is not
+        whichColIsSample <- which(colnames(colData) == "sample")
         colData <- cbind(
-            colData[, "sample", drop = FALSE],
-            colData[, -c("sample"), drop = FALSE],
+            colData[, whichColIsSample, drop = FALSE],
+            colData[, -whichColIsSample, drop = FALSE]
         )
 
         if (!all(colData$sample %in% colData.Rds$df.anno$sample)) {

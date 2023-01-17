@@ -373,7 +373,7 @@ ui_ddb_save_NxtSE <- function(id, color = "danger") {
     ui_toggle_wellPanel_modular(
         inputId = "expr_ddb_save_NxtSE",
         id = id,
-        title = "Save NxtSE to/from RDS file",
+        title = "Save / Load Pre-made NxtSE (Rds file)",
         color = color,
         icon = icon("file", lib = "font-awesome"),
 
@@ -394,7 +394,7 @@ ui_ddb_load_expr <- function(id, color = "danger") {
     ui_toggle_wellPanel_modular(
         inputId = "expr_ddb_expr_build",
         id = id,
-        title = "Load NxtSE object",
+        title = "Load NxtSE object from folder",
         color = color,
         icon = icon("flask", lib = "font-awesome"),
 

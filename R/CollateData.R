@@ -1264,8 +1264,14 @@ collateData <- function(Experiment, reference_path, output_path,
         # extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
         reference_data$gtf_gr <- NULL # To save memory, remove original gtf
         
-        rtracklayer::export(novel_gtf, 
-            file.path(norm_output_path, "novelTranscripts.gtf"), "gtf")
+        novelGTFfile <- file.path(norm_output_path, "novelTranscripts.gtf")
+        rtracklayer::export(novel_gtf, novelGTFfile, "gtf")
+        gzip(filename = novelGTFfile, destname = paste0(novelGTFfile, ".gz"),
+            overwrite = TRUE)
+        if (file.exists(novelGTFfile) & file.exists(paste0(novelGTFfile, ".gz"))
+        ) {
+            file.remove(novelGTFfile)
+        }
         rm(novel_gtf)
         gc()
         

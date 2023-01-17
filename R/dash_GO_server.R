@@ -45,7 +45,12 @@ server_GO <- function(
                     "No gene ontology found for this NxtSE object"))
                 
                 # Get volcano data
-                res_all <- as.data.table(get_de()[rows_all(),])
+                if(input$threshType_GO == "Highlighted events") {
+                    res_all <- as.data.table(get_de()[rows_selected(),])
+                } else {
+                    res_all <- as.data.table(get_de()[rows_all(),])
+                }
+                
                 if(is_valid(input$EventType_GO)) {
                     res_ET <- res_all[get("EventType") %in% input$EventType_GO]
                 } else {
@@ -56,7 +61,7 @@ server_GO <- function(
 
                 validate(need(nrow(res) > 0, "Zero differential events"))
                 # Filter for Top N events or significant events
-                if(input$threshType_GO == "Top N results") {
+                if(input$threshType_GO == "Top events by p-value") {
                     req(input$topN_GO)
                     res <- res[seq_len(input$topN_GO)]
                 } else if(input$threshType_GO == "Nominal P value") {

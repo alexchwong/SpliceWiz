@@ -8,9 +8,11 @@ ui_GO <- function(id) {
                 c("Biological Pathway", "Molecular Function", 
                     "Cellular Compartment")),
             selectInput(ns('threshType_GO'), 'Filter Events by', 
-                c("Adjusted P value", "Nominal P value", "Top N results")),
+                c("Adjusted P value", "Nominal P value", 
+                    "Highlighted events", "Top events by p-value"
+                )),
             conditionalPanel(ns = ns,
-                condition = "['Top N results'].indexOf(input.threshType_GO) != 0",
+                condition = "['Top events by p-value'].indexOf(input.threshType_GO) != 0",
                 shinyWidgets::sliderTextInput(
                     inputId = ns("pvalT_GO"), 
                     label = "P-value/FDR threshold",
@@ -20,10 +22,10 @@ ui_GO <- function(id) {
                 )
             ),
             conditionalPanel(ns = ns,
-                condition = "['Top N results'].indexOf(input.threshType_GO) == 0",
+                condition = "['Top events by p-value'].indexOf(input.threshType_GO) == 0",
                 shinyWidgets::sliderTextInput(
                     inputId = ns("topN_GO"), 
-                    label = "Top N results",
+                    label = "Number of top events",
                     choices = c(10, 20, 50, 100, 200, 300, 
                         500, 1000, 2000, 5000, 10000), 
                     selected = 500

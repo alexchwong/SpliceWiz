@@ -5,10 +5,10 @@ ui_vis_diag <- function(id) {
         fluidRow(
             column(3,
                 selectInput(ns('filterType_diag'), 'Filter Events by', 
-                    c("Adjusted P value", "Nominal P value", "Top N results")),
+                    c("Adjusted P value", "Nominal P value", "Top events by p-value")),
                 conditionalPanel(ns = ns,
                     condition = paste0(
-                        "['Top N results'].",
+                        "['Top events by p-value'].",
                         "indexOf(input.filterType_diag) != 0"
                     ),
                     shinyWidgets::sliderTextInput(
@@ -21,12 +21,12 @@ ui_vis_diag <- function(id) {
                 ),
                 conditionalPanel(ns = ns,
                     condition = paste0(
-                        "['Top N results'].",
+                        "['Top events by p-value'].",
                         "indexOf(input.filterType_diag) == 0"
                     ),
                     shinyWidgets::sliderTextInput(
                         inputId = ns("topN_diag"), 
-                        label = "Top N results",
+                        label = "Number of top events",
                         choices = c(10, 20, 50, 100, 200, 300, 
                             500, 1000, 2000, 5000, 10000), 
                         selected = 500
@@ -67,10 +67,10 @@ ui_vis_volcano <- function(id) {
         fluidRow(
             column(3,    
                 selectInput(ns('filterType_volc'), 'Filter Events by', 
-                    c("Adjusted P value", "Nominal P value", "Top N results")),
+                    c("Adjusted P value", "Nominal P value", "Top events by p-value")),
                 conditionalPanel(ns = ns,
                     condition = paste0(
-                        "['Top N results'].",
+                        "['Top events by p-value'].",
                         "indexOf(input.filterType_volc) != 0"
                     ),
                     shinyWidgets::sliderTextInput(
@@ -83,12 +83,12 @@ ui_vis_volcano <- function(id) {
                 ),
                 conditionalPanel(ns = ns,
                     condition = paste0(
-                        "['Top N results'].",
+                        "['Top events by p-value'].",
                         "indexOf(input.filterType_volc) == 0"
                     ),
                     shinyWidgets::sliderTextInput(
                         inputId = ns("topN_volc"), 
-                        label = "Top N results",
+                        label = "Number of top events",
                         choices = c(10, 20, 50, 100, 200, 300, 
                             500, 1000, 2000, 5000, 10000), 
                         selected = 500
@@ -129,10 +129,10 @@ ui_vis_heatmap <- function(id) {
         fluidRow(
             column(3, 
                 selectInput(ns('filterType_heat'), 'Filter Events by', 
-                    c("Adjusted P value", "Nominal P value", "Top N results")),
+                    c("Adjusted P value", "Nominal P value", "Top events by p-value")),
                 conditionalPanel(ns = ns,
                     condition = paste0(
-                        "['Top N results'].",
+                        "['Top events by p-value'].",
                         "indexOf(input.filterType_heat) != 0"
                     ),
                     shinyWidgets::sliderTextInput(
@@ -145,12 +145,12 @@ ui_vis_heatmap <- function(id) {
                 ),
                 conditionalPanel(ns = ns,
                     condition = paste0(
-                        "['Top N results'].",
+                        "['Top events by p-value'].",
                         "indexOf(input.filterType_heat) == 0"
                     ),
                     shinyWidgets::sliderTextInput(
                         inputId = ns("topN_heat"), 
-                        label = "Top N results",
+                        label = "Number of top events",
                         choices = c(10, 20, 50, 100, 200, 300, 
                             500, 1000, 2000, 5000, 10000), 
                         selected = 500

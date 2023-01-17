@@ -55,7 +55,7 @@ server_vis_diag <- function(
                 settings_Diag$useDE <- tmpres[get("FDR") <= input$pvalT_diag]
             } else if(input$filterType_diag == "Nominal P value") {
                 settings_Diag$useDE <- tmpres[get("pvalue") <= input$pvalT_diag]
-            } else if(input$filterType_diag == "Top N results") {
+            } else if(input$filterType_diag == "Top events by p-value") {
                 if(input$topN_diag < nrow(settings_Diag$useDE)) {
                     settings_Diag$useDE <- tmpres[seq_len(input$topN_diag)]
                 } else {
@@ -333,7 +333,7 @@ server_vis_volcano <- function(
                 settings_Volc$useDE <- tmpres[get("FDR") <= input$pvalT_volc]
             } else if(input$filterType_volc == "Nominal P value") {
                 settings_Volc$useDE <- tmpres[get("pvalue") <= input$pvalT_volc]
-            } else if(input$filterType_volc == "Top N results") {
+            } else if(input$filterType_volc == "Top events by p-value") {
                 if(input$topN_volc < nrow(settings_Volc$useDE)) {
                     settings_Volc$useDE <- tmpres[seq_len(input$topN_volc)]
                 } else {
@@ -587,7 +587,7 @@ server_vis_heatmap <- function(
                 tmpres2 <- tmpres[get("FDR") <= input$pvalT_heat]
             } else if(input$filterType_heat == "Nominal P value") {
                 tmpres2 <- tmpres[get("pvalue") <= input$pvalT_heat]
-            } else if(input$filterType_heat == "Top N results") {
+            } else if(input$filterType_heat == "Top events by p-value") {
                 if(input$topN_heat < nrow(settings_Heat$useDE)) {
                     tmpres2 <- tmpres[seq_len(input$topN_heat)]
                 } else {

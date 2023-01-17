@@ -1033,38 +1033,41 @@ collateData <- function(Experiment, reference_path, output_path,
         junc.common.unanno <- junc.common.unanno[
             unique(from(OL)), which = FALSE]
 
-        # Create left and right motif GRanges
-        left.gr <- with(junc.common.unanno,
-            GRanges(seqnames = as.character(seqnames),
-            ranges = IRanges(start = start, end = start + 1),
-            strand = "+"))
-        right.gr <- with(junc.common.unanno,
-            GRanges(seqnames = as.character(seqnames),
-            ranges = IRanges(start = end - 1, end = end),
-            strand = "+"))
-        
-        junc.common.unanno[, c("splice_motif") := paste0(
-            as.character(getSeq(genome, left.gr)),
-            as.character(getSeq(genome, right.gr))
-        )]
-        
-        splice_motifs <- data.frame(
-            seqs = c("GTAG", "GCAG", "ATAC", "ATAG"),
-            seqs_r = c("CTAC", "CTGC", "GTAT", "CTAT")
-        )
-        junc.common.unanno[get("splice_motif") %in% splice_motifs$seqs,
-            c("strand") := "+"]
-        junc.common.unanno[get("splice_motif") %in% splice_motifs$seqs_r,
-            c("strand") := "-"]
-        # Do not accept un-annotated GTACs - too confusing
-        # Exclude unannotated non-splice motifs
-        junc.common.unanno <- junc.common.unanno[
-            get("strand") != "*"]
-        junc.common.unanno[get("strand") == "-",
-            c("splice_motif") := splice_motifs$seqs[match(
-                get("splice_motif"), splice_motifs$seqs_r)]]
-        junc.final <- rbindlist(list(junc.common.anno, junc.common.unanno))
-        
+        if (nrow(junc.common.unanno) != 0) {
+            # Create left and right motif GRanges
+            left.gr <- with(junc.common.unanno,
+                GRanges(seqnames = as.character(seqnames),
+                ranges = IRanges(start = start, end = start + 1),
+                strand = "+"))
+            right.gr <- with(junc.common.unanno,
+                GRanges(seqnames = as.character(seqnames),
+                ranges = IRanges(start = end - 1, end = end),
+                strand = "+"))
+            
+            junc.common.unanno[, c("splice_motif") := paste0(
+                as.character(getSeq(genome, left.gr)),
+                as.character(getSeq(genome, right.gr))
+            )]
+            
+            splice_motifs <- data.frame(
+                seqs = c("GTAG", "GCAG", "ATAC", "ATAG"),
+                seqs_r = c("CTAC", "CTGC", "GTAT", "CTAT")
+            )
+            junc.common.unanno[get("splice_motif") %in% splice_motifs$seqs,
+                c("strand") := "+"]
+            junc.common.unanno[get("splice_motif") %in% splice_motifs$seqs_r,
+                c("strand") := "-"]
+            # Do not accept un-annotated GTACs - too confusing
+            # Exclude unannotated non-splice motifs
+            junc.common.unanno <- junc.common.unanno[
+                get("strand") != "*"]
+            junc.common.unanno[get("strand") == "-",
+                c("splice_motif") := splice_motifs$seqs[match(
+                    get("splice_motif"), splice_motifs$seqs_r)]]
+            junc.final <- rbindlist(list(junc.common.anno, junc.common.unanno))
+        } else {
+            junc.final <- junc.common.anno
+        }
         # Cleanup memory:
         rm(genome)
         gc()

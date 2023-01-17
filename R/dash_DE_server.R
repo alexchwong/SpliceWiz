@@ -346,14 +346,16 @@ server_DE <- function(
 
         observeEvent(settings_DE$res, {
             req(settings_DE$res)
-            output$DT_DE <- DT::renderDataTable(
-                DT::datatable(
-                    settings_DE$res,
-                    class = 'cell-border stripe',
-                    rownames = FALSE,
-                    filter = 'top'
+            withProgress(message = 'Rendering DE results table...', value = 0, {
+                output$DT_DE <- DT::renderDataTable(
+                    DT::datatable(
+                        settings_DE$res,
+                        class = 'cell-border stripe',
+                        rownames = FALSE,
+                        filter = 'top'
+                    )
                 )
-            )
+            }
         })
         
         observe({

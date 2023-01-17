@@ -498,6 +498,11 @@ int swEngine::SpliceWizMultiCore(
       return(-1);
     }
 
+    // final increment of pbar
+  #ifdef SPLICEWIZ
+    pbar.increment(inbam.IncProgress()/divFactor);
+  #endif
+
     if(n_threads_to_use > 1) {
       if(verbose) cout << "Compiling data from threads\n";
     // Combine objects (multi-threaded):
@@ -708,6 +713,11 @@ int swEngine::doStatsCore(
     return(-2);
   }
 
+    // final increment of pbar
+  #ifdef SPLICEWIZ
+    pbar.increment(inbam.IncProgress()/divFactor);
+  #endif
+
   if(n_threads_to_use > 1) {
     if(verbose) cout << "Compiling data from threads\n";
   // Combine BB's and process spares
@@ -849,6 +859,11 @@ int swEngine::MappabilityRegionsCore(
 	// Process aborted; stop processBAM for all requests
     return(-2);
   }
+
+    // final increment of pbar
+  #ifdef SPLICEWIZ
+    pbar.increment(inbam.IncProgress()/divFactor);
+  #endif
 
   if(n_threads_to_use > 1) {
     if(verbose) cout << "Compiling data from threads\n";
@@ -992,6 +1007,11 @@ int swEngine::BAM2COVcore(
 	// Process aborted; stop processBAM for all requests
     return(-2);
   }
+
+    // final increment of pbar
+  #ifdef SPLICEWIZ
+    pbar.increment(inbam.IncProgress()/divFactor);
+  #endif
 
   if(n_threads_to_use > 1) {
     if(verbose) cout << "Compiling data from threads\n";

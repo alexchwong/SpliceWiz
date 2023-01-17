@@ -441,7 +441,7 @@ server_DE <- function(
             req(any(unlist(colData[,load_DE$settings$DE_Var]) == 
                 load_DE$settings$denom_DE))
             req(load_DE$settings$method %in% 
-                c("DESeq2", "limma", "DoubleExpSeq", "satuRn"))
+                c("DESeq2", "limma", "DoubleExpSeq", "edgeR", "satuRn"))
             req(load_DE$settings$IRmode_DE %in% 
                 c("all", "annotated", "annotated_binary"))
             req("dof" %in% names(load_DE$settings))

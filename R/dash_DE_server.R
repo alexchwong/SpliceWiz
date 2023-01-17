@@ -12,7 +12,7 @@ server_DE <- function(
                 
                 # "Experiment Loaded"
             # })
-            req(get_se())
+            req(is(get_se(), "NxtSE"))
             colcats <- .get_discrete_cats(get_se())
             .update_fields_DE(session, "variable_DE", 
                 colcats, input$variable_DE)
@@ -120,7 +120,7 @@ server_DE <- function(
 
         observe({
             output$warning_DE <- renderText({
-                validate(need(get_se(), 
+                validate(need(is(get_se(), "NxtSE"), 
                     "Please load experiment via 'Experiment' tab"))
                 validate(need(is_valid(input$variable_DE),
                     "Variable for DE needs to be defined"))
@@ -139,7 +139,7 @@ server_DE <- function(
         })
 
         observeEvent(input$perform_DE, {
-            req(get_se())
+            req(is(get_se(), "NxtSE"))
             output$warning_DE <- renderText({
                 validate(need(is_valid(input$variable_DE),
                     "Variable for DE needs to be defined"))
@@ -413,19 +413,19 @@ server_DE <- function(
             req(all(c("res", "settings") %in% names(load_DE)))
             # check all parameters exist in colData(se)
             output$warning_DE <- renderText({
-                validate(need(get_se(), 
+                validate(need(is(get_se(), "NxtSE"), 
                     "Please load experiment via 'Experiment' tab"))
                 validate(need(
                         "BuildVersion" %in% names(load_DE$settings) &&
                         load_DE$settings$BuildVersion >= ASE_version, 
                     paste(
                         "This differential expression Rds was produced with",
-                        "SpliceWiz version 0.99.4 or below."
+                        "SpliceWiz version 1.1.5 or below"
                     )))
                 
                 "Experiment Loaded"
             })
-            req(get_se())
+            req(is(get_se(), "NxtSE"))
             colData <- colData(get_se())
             req(load_DE$settings$DE_Var %in% colnames(colData))
             req(!is_valid(load_DE$settings$batchVar1) || 

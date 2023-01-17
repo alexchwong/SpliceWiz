@@ -39,24 +39,41 @@ ui_cov <- function(id) {
                         choices = c("*", "+", "-"), 
                         checkIcon = list(yes = icon("ok", lib = "glyphicon"))
                     )
-                )
-            ),
-            column(4,
-                shinyWidgets::radioGroupButtons(ns("select_events_cov"), 
-                    label = 
-                        "Select Events from Differential Expression Results",
-                        justified = FALSE,
-                    choiceNames = c("Top All Results", "Top Filtered Results", 
-                        "Top Selected Results"), 
-                    choiceValues = c("All", "Filtered", "Selected"),
-                    checkIcon = list(yes = icon("ok", lib = "glyphicon"))
                 ),
                 shinyWidgets::radioGroupButtons(ns("graph_mode_cov"), 
                     label = "Graph Mode", justified = FALSE,
                     choices = c("Pan", "Zoom", "Movable Labels"), 
                     checkIcon = list(yes = icon("ok", lib = "glyphicon"))),
+            ),
+            column(4,
+                # shinyWidgets::radioGroupButtons(ns("select_events_cov"), 
+                    # label = 
+                        # "Select Events from Differential Expression Results",
+                        # justified = FALSE,
+                    # choiceNames = c("Top All Results", "Top Filtered Results", 
+                        # "Top Selected Results"), 
+                    # choiceValues = c("All", "Filtered", "Selected"),
+                    # checkIcon = list(yes = icon("ok", lib = "glyphicon"))
+                # ),
+                selectInput(ns('modeFilter_COV'), 
+                    'Display events from:', 
+                    c(
+                        "All filtered events", 
+                        "Highlighted (selected) events", 
+                        "Top Gene Ontology Categories"
+                    )
+                ),
+                conditionalPanel(ns = ns,
+                    condition = paste0(
+                        "['Top Gene Ontology Categories'].",
+                        "indexOf(input.modeFilter_COV) == 0"
+                    ),
+                    selectInput(ns('GOterm_COV'), 'Filter by GO category', 
+                        c("(none)")),
+                ),
                 shinyWidgets::sliderTextInput(ns("slider_num_events_cov"), 
-                    "Num Events", choices = c(5, 10, 25, 50, 100, 200, 500),
+                    "Number of Top Events", 
+                    choices = c(5, 10, 25, 50, 100, 200, 500),
                     selected = 25) 
             )
         ),

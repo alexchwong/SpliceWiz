@@ -135,6 +135,8 @@ setreactive_Heat <- function() {
 # Settings for Coverage plots
 setreactive_Cov <- function() {
     reactiveValues(
+        useDE = NULL,
+        
         view_chr = "",
         view_start = "",
         view_end = "",

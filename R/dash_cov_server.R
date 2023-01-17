@@ -1,5 +1,5 @@
 server_cov <- function(
-        id, refresh_tab, volumes, get_se, get_de,
+        id, refresh_tab, volumes, get_se, get_de, get_go,
         rows_all, rows_selected
 ) {
     moduleServer(id, function(input, output, session) {
@@ -11,14 +11,19 @@ server_cov <- function(
         observeEvent(refresh_tab(), {
             req(refresh_tab())
             output$warning_cov <- renderText({
-                validate(need(get_se(), "Please build experiment first"))
+                validate(need(is(get_se(), "NxtSE"), 
+                    "Please build experiment first"))
             })
-            req(get_se())
+
+        # session, geneList, DE, GO,
+        # rows_all, rows_selected, num_events, selected_event, mode           
+            req(is(get_se(), "NxtSE"))
             .server_cov_refresh(
                 session, get_ref()$geneList,
-                get_de(), rows_all(), rows_selected(),
+                get_de(), get_go(),
+                rows_all(), rows_selected(),
                 input$slider_num_events_cov, input$events_cov,
-                input$select_events_cov
+                input$modeFilter_COV
             )
             
             se <- get_se()
@@ -28,8 +33,72 @@ server_cov <- function(
             
             .server_cov_refresh_tracks_cov(session, input$mode_cov, 
                 input$condition_cov, se)
+
         })
-        
+
+        # Reactive to generate filtered DE object
+        observe({
+            req(get_de())
+
+            if(input$modeFilter_COV == "Highlighted (selected) events") {
+                tmpres <- as.data.table(
+                    .get_unified_volcano_data(get_de()[rows_selected(),]))
+            } else {
+                tmpres <- as.data.table(
+                    .get_unified_volcano_data(get_de()[rows_all(),]))
+                    
+                if(input$modeFilter_COV == "Highlighted (selected) events") {
+                    req(get_go())
+                    req(input$GOterm_COV)
+                    
+                    goInfo <- get_go()
+                    selGOterm <- isolate(input$GOterm_COV)
+                    
+                    go_id <- goInfo$go_id[match(selGOterm, goInfo$Term)]
+                    events <- .subset_EventNames_by_GO(res$EventName, go_id,
+                        isolate(get_se()))
+                    
+                    tmpres <- tmpres[get("EventName") %in% events]
+                }
+            }
+            settings_Cov$useDE <- tmpres[, 
+                c("EventName", "EventType"), with = FALSE]
+        })
+
+        # Reactive to Populate events
+        observeEvent(settings_Cov$useDE, {
+            req(settings_Cov$useDE)
+            res <- isolate(settings_Cov$useDE)
+            
+            .server_cov_update_events_list(session, res$EventName,
+                isolate(input$events_cov))
+        })
+
+        # Reactive to generate GO conditional ddb with GO terms
+        observeEvent(get_go(), {
+            # Update GO terms (if GO is available)
+            req(get_go())
+            goTerms <- isolate(get_go()$Term)
+            selGOterm <- isolate(input$GOterm_COV)
+            
+            if(length(goTerms) > 50) goTerms <- goTerms[seq_len(50)]
+            if(
+                is_valid(selGOterm) && 
+                selGOterm %in% goTerms
+            ) {
+                updateSelectInput(
+                    session = session, inputId = "GOterm_COV", 
+                    choices = goTerms, 
+                    selected = selGOterm
+                )
+            } else {
+                updateSelectInput(
+                    session = session, inputId = "GOterm_COV", 
+                    choices = goTerms
+                )
+            }
+        })
+    
         # Delayed (debounced) reactives
         chr_r <- reactive({
             req(is_valid(input$chr_cov))
@@ -219,17 +288,6 @@ server_cov <- function(
             # settings_Cov$trigger <- runif(1)
         })
         
-        # Populate events
-        observeEvent(input$select_events_cov, {
-            req(rows_all())
-            req(get_de())
-            
-            .server_cov_change_event_list(
-                session, input$select_events_cov, 
-                input$slider_num_events_cov,
-                get_de(), rows_all(), rows_selected()
-            )
-        })
         observe({
             shinyFileSave(input, "saveplot_cov", roots = volumes(), 
                 session = session, filetypes = c("pdf"))    
@@ -263,9 +321,11 @@ server_cov_get_all_tracks <- function(input) {
 
 # Updates drop-downs
 .server_cov_refresh <- function(
-        session, geneList, DE,
-        rows_all, rows_selected, num_events, selected_event, mode
+        session, geneList, DE, GO,
+        rows_all, rows_selected, num_events,
+        selected_event, mode
 ) {
+    # Gene list drop-down refresh
     if(!is.null(geneList)) {
         message("Populating drop-down box with ", 
             length(unique(geneList$gene_display_name)), " genes")
@@ -282,13 +342,18 @@ server_cov_get_all_tracks <- function(input) {
         updateSelectizeInput(session = session, inputId = "genes_cov", 
             server = TRUE, choices = c("(none)"), selected = "(none)") 
     }
+
+    # Event list drop-down refresh
     if(is_valid(DE)) {
-        if(mode == "Highlighted") {
+        if(mode == "Highlighted (selected) events") {
             selected <- rows_selected
-        } else if(mode == "Top N Filtered Results") {
+        } else if(mode == "All filtered events") {
             selected <- rows_all
         } else {
-            selected <- seq_len(nrow(DE))
+            # Filter by GO category, if possible
+            if(is_valid(GO)) {
+                
+            }
         }
         if(length(selected) > num_events) {
             selected <- selected[seq_len(num_events)]
@@ -311,6 +376,24 @@ server_cov_get_all_tracks <- function(input) {
                 inputId = "events_cov", server = TRUE,
                 choices = c("(none)"), selected = "(none)")
         }
+    }
+}
+
+.server_cov_update_events_list <- function(
+    session, EventNames, selectedEvent
+) {
+    if(selectedEvent %in% EventNames) {
+        updateSelectizeInput(session = session, 
+            inputId = "events_cov", server = TRUE,
+            choices = c("(none)", EventNames), 
+            selected = selectedEvent
+        )
+    } else {
+        updateSelectizeInput(session = session, 
+            inputId = "events_cov", server = TRUE,
+            choices = c("(none)", EventNames),
+            selected = "(none)"
+        )
     }
 }
 

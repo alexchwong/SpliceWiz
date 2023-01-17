@@ -216,7 +216,7 @@ server_vis_diag <- function(
     
         # Update nominator / denominator conditions based on anno column name
         observeEvent(input$variable_diag, {
-            req(get_se())
+            req(is(get_se(), "NxtSE"))
             req(input$variable_diag != "(none)")
             colData <- colData(get_se())
             req(input$variable_diag %in% colnames(colData))
@@ -489,7 +489,7 @@ server_vis_heatmap <- function(
 
         observeEvent(refresh_tab(), {
             req(refresh_tab())
-            req(get_se())
+            req(is(get_se(), "NxtSE"))
             colData <- colData(get_se())
             if(
                     is_valid(input$anno_col_heat) && 
@@ -548,7 +548,7 @@ server_vis_heatmap <- function(
             }
         })
         observeEvent(input$anno_col_heat, {
-            req(get_se())
+            req(is(get_se(), "NxtSE"))
             colData <- colData(get_se())
             if(
                     is_valid(input$anno_col_heat) && 

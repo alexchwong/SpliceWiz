@@ -1,29 +1,36 @@
 .process_ontology <- function(
-        reference_path, genome_type, species, verbose = TRUE
+        reference_path, species, verbose = TRUE
 ) {
     hasPackage <- 
         .check_package_installed("DBI", "1.0.0", "silent") && 
         .check_package_installed("GO.db", "3.12.0", "silent")
 
-    if(!hasPackage & genome_type %in% c("hg38", "hg19", "mm10", "mm9")) {
+    if(!hasPackage) {
         .log(paste("Packages DBI and GO.db are required",
             "for gene ontology annotations, skipping..."
         ), "message")
         return()
     }
-    if(genome_type %in% c("hg38", "hg19")) {
-        species <- "Homo sapiens"
-    } else if(genome_type %in% c("mm10", "mm9")) {
-        species <- "Mus musculus"
-    } else if(species == "") {
+    if(!is_valid(species)) {
         if(verbose) 
             .log("Gene ontology not prepared for this reference", "message")
         return()
     } else {
-        # Do nothing, presume user has specified correct species
+        ontDT <- .get_geneGO(species, verbose)
     }
-    ontDT <- .get_geneGO(species, verbose)
-    fst::write.fst(ontDT, file.path(reference_path, "fst", "Ontology.fst"))
+    
+    if(!is.null(ontDT))
+        fst::write.fst(ontDT, file.path(reference_path, "fst", "Ontology.fst"))
+}
+
+.getOntologySpecies <- function(genome_type) {
+    if(genome_type %in% c("mm10", "mm9")) {
+        return("Mus musculus")
+    } else if(genome_type %in% c("hg38", "hg19")) {
+        return("Homo sapiens")
+    } else {
+        return("")
+    }
 }
 
 .ora_internal <- function(
@@ -173,6 +180,26 @@ goASE <- function(
 
 # Global functions for gene ontology
 
+.check_GO_species <- function(
+    species = "",
+    localHub = FALSE, ah = AnnotationHub(localHub = localHub)
+) {
+    ah_orgList <- subset(ah, ah$rdataclass == "OrgDb")
+    ah_orgListEns <- query(ah_orgList, "Ensembl")
+    
+    supportedSpecies <- unique(ah_orgListEns$species)
+    if(!(species %in% supportedSpecies)) {
+        .log(paste(
+            species, 
+            "not supported in AnnotationHub. Supported species:",
+            supportedSpecies
+        ), message)
+        return("")
+    } else {
+        return(species)
+    }
+}
+
 .fetch_orgDB <- function(
     species = "",
     localHub = FALSE, ah = AnnotationHub(localHub = localHub)
@@ -182,9 +209,10 @@ goASE <- function(
     
     supportedSpecies <- unique(ah_orgListEns$species)
     if(!(species %in% supportedSpecies))
-        .log(paste(species, 
-        "not supported in AnnotationHub. Supported species:",
-        supportedSpecies
+        .log(paste(
+            species, 
+            "not supported in AnnotationHub. Supported species:",
+            supportedSpecies
         ))
         
     ah_orgDb <- subset(ah_orgListEns, ah_orgList$species == species)
@@ -209,6 +237,8 @@ goASE <- function(
     localHub = FALSE, ah = AnnotationHub(localHub = localHub)
 ) {
     .check_package_installed("DBI", "1.0.0")
+    species <- .check_GO_species(species, localHub, ah)
+    if(species == "") return(NULL)
 
     if(verbose) .log("Retrieving gene GO-term pairings", "message")
     cache_loc <- .fetch_orgDB(species, localHub, ah)

@@ -4,6 +4,7 @@
 #' These function builds the reference required by the SpliceWiz engine, as well
 #' as alternative splicing annotation data for SpliceWiz. See examples
 #' below for guides to making the SpliceWiz reference.
+#'
 #' @details
 #' `getResources()` processes the files, downloads resources from
 #' web links or from `AnnotationHub()`, and saves a local copy in the "resource"
@@ -55,6 +56,20 @@
 #' file, open the file specified in the path returned by
 #' `getNonPolyARef("hg38")`
 #'
+#' If `MappabilityRef`, `nonPolyARef` and `BlacklistRef` are left blank, the
+#' following will be used (by priority):
+#' 
+#' 1) The previously used Mappability, non-polyA and/or Blacklist file resource
+#' from a previous run, if available,
+#' 2) The resource implied by the `genome_type` parameter, if specified,
+#' 3) No resource is used.
+#'
+#' **To rebuild a SpliceWiz reference using existing resources**
+#' This is typically run when updating an old resource to a new SpliceWiz 
+#' version. Simply run buildRef(), specifying the existing reference directory,
+#' leave the `fasta` and `gtf` parameters blank, and set `overwrite = TRUE`. 
+#' SpliceWiz will use the previously-used resources to re-create the reference.
+#' 
 #' See examples below for common use cases.
 #'
 #' @param reference_path (REQUIRED) The directory path to store the generated
@@ -327,14 +342,15 @@ buildRef <- function(
     tryCatch({
         setSWthreads(1) # try this to prevent memory leak
 
+        session <- shiny::getDefaultReactiveDomain()
+        N_steps <- 8
+
+        dash_progress("Reading Reference Files", N_steps)
+        
         extra_files <- .fetch_genome_defaults(reference_path,
             genome_type, nonPolyARef, MappabilityRef, BlacklistRef,
-            force_download = force_download, verbose = verbose)
-        
-        session <- shiny::getDefaultReactiveDomain()
+            force_download = force_download, verbose = verbose)        
 
-        N_steps <- 8
-        dash_progress("Reading Reference Files", N_steps)
         reference_data <- .get_reference_data(
             reference_path = reference_path,
             fasta = fasta, gtf = gtf, verbose = verbose,
@@ -347,7 +363,11 @@ buildRef <- function(
         reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
         
         .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
-        .process_ontology(reference_path, genome_type, ontologySpecies, verbose)
+        
+        if(ontologySpecies == "" & genome_type != "") {
+            ontologySpecies <- .getOntologySpecies(genome_type)
+        }
+        .process_ontology(reference_path, ontologySpecies, verbose)
         extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
         reference_data$gtf_gr <- NULL # To save memory, remove original gtf
         gc()
@@ -584,30 +604,25 @@ Get_GTF_file <- function(reference_path) {
     return(file.path(base, basename(reference_path)))
 }
 
+# Only used for STAR
+# - hence, only check if genome.2bit and transcripts.gtf.gz exist
 .validate_reference_resource <- function(reference_path, from = "") {
-    ref <- normalizePath(reference_path)
-    from_str <- ifelse(from == "", "",
-        paste("In function", from, ":"))
-    if (!dir.exists(ref)) {
-        .log(paste(from_str,
-            "in reference_path =", reference_path,
-            ": this path does not exist"))
-    }
-    if (!file.exists(file.path(ref, "settings.Rds"))) {
-        .log(paste(from_str,
-            "in reference_path =", reference_path,
-            ": settings.Rds not found"))
-    }
-    settings.list <- readRDS(file.path(ref, "settings.Rds"))
-    if (!("BuildVersion" %in% names(settings.list)) ||
-            settings.list[["BuildVersion"]] < buildRef_version) {
-        .log(paste(from_str,
-            "in reference_path =", reference_path,
-            "SpliceWiz reference is earlier than current version",
-            buildRef_version))
-    }
+    resourceDir <- normalizePath(file.path(reference_path, "resource"))
+
+    if(!dir.exists(resourceDir))
+        .log(paste(resourceDir, "does not exist"))
+
+    genomeFile <- file.path(resourceDir, "genome.2bit")
+    gtfFile <- file.path(resourceDir, "transcripts.gtf.gz")
+    if(!file.exists(genomeFile))
+        .log(paste(genomeFile, "not found.",
+            "Please use getResources() or buildRef() first."))
+    if(!file.exists(gtfFile))
+        .log(paste(gtfFile, "not found.",
+            "Please use getResources() or buildRef() first."))
 }
 
+# Validates this as a complete SpliceWiz reference
 .validate_reference <- function(reference_path, from = "") {
     ref <- normalizePath(reference_path)
     from_str <- ifelse(from == "", "",
@@ -622,11 +637,6 @@ Get_GTF_file <- function(reference_path) {
             "in reference_path =", reference_path,
             ": settings.Rds not found"))
     }
-    if (!file.exists(file.path(ref, "SpliceWiz.ref.gz"))) {
-        .log(paste(from_str,
-            "in reference_path =", reference_path,
-            ": SpliceWiz.ref.gz not found"))
-    }
     settings.list <- readRDS(file.path(ref, "settings.Rds"))
     if (!("BuildVersion" %in% names(settings.list)) ||
             settings.list[["BuildVersion"]] < buildRef_version) {
@@ -634,10 +644,10 @@ Get_GTF_file <- function(reference_path) {
             "in reference_path =", reference_path,
             "reference was built using an earlier version of SpliceWiz (",
             settings.list[["BuildVersion"]], 
-            "). SpliceWiz may encounter errors with this reference.",
-            "Please re-build your reference using the current version."
-            ), "warning"
-        )
+            "). Please re-build your reference using the current version,",
+            "by calling buildRef() with `overwrite = TRUE` and",
+            "leaving the `fasta` and `gtf` arguments blank."
+        ), "error")
     }
 }
 
@@ -646,7 +656,30 @@ Get_GTF_file <- function(reference_path) {
         force_download = FALSE, verbose = TRUE
 ) {
     if(!is_valid(genome_type)) genome_type = ""
-    if (!is_valid(nonPolyARef)) {
+    
+    prev_NPA_file <- file.path(reference_path, "resource", 
+        "nonPolyAFile.resource")
+    map_path <- file.path(normalizePath(reference_path), "Mappability")
+    map_file <- file.path(map_path, "MappabilityExclusion.bed.gz")
+    prev_map_file <- file.path(normalizePath(reference_path),
+        "resource/MappabilityFile.resource")
+    prev_BL_file <- file.path(reference_path, "resource", 
+        "BlacklistFile.resource")
+
+    # Order of operations:
+    # 1) Use specified file
+    # 2a) (Mappability) - use generated file
+    # 2b) Use previously used file (.resource files)
+    # 3) Use file implied by genome_type
+    # 4) Don't use any
+
+    if (is_valid(nonPolyARef)) {
+        nonPolyAFile <- .parse_valid_file(nonPolyARef,
+            "Reference generated without non-polyA reference",
+            force_download = force_download, verbose = verbose)
+    } else if(file.exists(prev_NPA_file)) {
+        nonPolyAFile <- .parse_valid_file(prev_NPA_file, verbose = verbose)
+    } else if (genome_type %in% c("hg38", "hg19", "mm9", "mm10")) {
         nonPolyAFile <- getNonPolyARef(genome_type)
         nonPolyAFile <- .parse_valid_file(nonPolyAFile,
             "Reference generated without non-polyA reference", 
@@ -656,13 +689,14 @@ Get_GTF_file <- function(reference_path) {
             "Reference generated without non-polyA reference",
             force_download = force_download, verbose = verbose)
     }
-    map_path <- file.path(normalizePath(reference_path), "Mappability")
-    map_file <- file.path(map_path, "MappabilityExclusion.bed.gz")
+    
     if (is_valid(MappabilityRef)) {
         MappabilityFile <- .parse_valid_file(MappabilityRef,
             force_download = force_download, verbose = verbose)
     } else if (file.exists(map_file)) {
         MappabilityFile <- .parse_valid_file(map_file, verbose = verbose)
+    } else if(file.exists(prev_map_file)) {
+        MappabilityFile <- .parse_valid_file(prev_map_file, verbose = verbose)
     } else if (genome_type %in% c("hg38", "hg19", "mm9", "mm10")) {
         # Attempt to fetch resource from ExperimentHub
         map.gz <- NULL
@@ -686,10 +720,20 @@ Get_GTF_file <- function(reference_path) {
             "Reference generated without Mappability reference", 
             verbose = verbose)
     }
-    BlacklistFile <-
-        .parse_valid_file(BlacklistRef,
-            "Reference generated without Blacklist exclusion",
-            force_download = force_download, verbose = verbose)
+
+    if (is_valid(BlacklistRef)) {
+        BlacklistFile <-
+            .parse_valid_file(BlacklistRef,
+                "Reference generated without Blacklist exclusion",
+                force_download = force_download, verbose = verbose)
+    } else if (file.exists(prev_BL_file)) {
+        BlacklistFile <- .parse_valid_file(prev_BL_file, verbose = verbose)
+    } else {
+        BlacklistFile <-
+            .parse_valid_file(BlacklistRef,
+                "Reference generated without Blacklist exclusion",
+                force_download = force_download, verbose = verbose)
+    }
 
     # Check files are valid BED files; fail early if not
     .check_is_BED_or_RDS(nonPolyAFile)
@@ -784,7 +828,9 @@ Get_GTF_file <- function(reference_path) {
         verbose = TRUE, overwrite = FALSE, force_download = FALSE,
         pseudo_fetch_fasta = FALSE, pseudo_fetch_gtf = FALSE
 ) {
-
+    fastaArg <- fasta
+    gtfArg <- gtf
+    
     # Checks fasta or gtf files exist if omitted, or are valid URLs
     .validate_path(reference_path, subdirs = "resource")
     if (!is_valid(fasta)) {
@@ -843,10 +889,40 @@ Get_GTF_file <- function(reference_path) {
     }
 
     # Save Resource details to settings.Rds:
-    settings.list <- list(fasta_file = fasta_use, gtf_file = gtf_use,
-        ah_genome = ah_genome_use, ah_transcriptome = ah_gtf_use,
-        reference_path = reference_path
-    )
+    settingsFile <- file.path(reference_path, "settings.Rds")
+    if(file.exists(settingsFile)) {
+        settings.list <- readRDS(settingsFile)
+        # Update as required
+        if(is_valid(fastaArg) && fastaArg != settings.list$fasta_file)
+            settings.list$fasta_file <- fastaArg
+        if(is_valid(gtfArg) && gtfArg != settings.list$gtf_file)
+            settings.list$gtf_file <- gtfArg
+        if(
+                is_valid(ah_genome_use) && 
+                ah_genome_use != settings.list$ah_genome &&
+                is_valid(fastaArg)
+                # given fastaArg is a valid AH-object and
+                #   is different to previous
+        ) {
+            settings.list$ah_genome <- ah_genome_use
+        }
+        if(
+                is_valid(ah_gtf_use) && 
+                ah_gtf_use != settings.list$ah_transcriptome &&
+                is_valid(gtfArg)
+                # given gtfArg is a valid AH-object and
+                #   is different to previous
+        ) {
+            settings.list$ah_transcriptome <- ah_gtf_use
+        }
+    } else {
+        settings.list <- list(
+            fasta_file = fastaArg, gtf_file = gtfArg,
+            ah_genome = ah_genome_use, ah_transcriptome = ah_gtf_use,
+            reference_path = reference_path
+        )    
+    }
+    
     settings.list$BuildVersion <- buildRef_version
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
 

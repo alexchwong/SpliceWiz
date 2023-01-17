@@ -13,7 +13,7 @@
 #' @import data.table
 #' @importFrom fst read.fst write.fst threads_fst
 #' @import ggplot2
-#' @importFrom AnnotationHub AnnotationHub cache
+#' @importFrom AnnotationHub AnnotationHub cache query
 #' @importFrom BiocFileCache BiocFileCache bfcrpath bfcquery
 #' @importFrom BiocGenerics start end width
 #' @importFrom BiocGenerics nrow ncol rbind cbind

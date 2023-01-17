@@ -235,6 +235,21 @@ specifying chromosome, start and end coordinates. To view an example BED
 file, open the file specified in the path returned by
 \code{getNonPolyARef("hg38")}
 
+If \code{MappabilityRef}, \code{nonPolyARef} and \code{BlacklistRef} are left blank, the
+following will be used (by priority):
+\enumerate{
+\item The previously used Mappability, non-polyA and/or Blacklist file resource
+from a previous run, if available,
+\item The resource implied by the \code{genome_type} parameter, if specified,
+\item No resource is used.
+}
+
+\strong{To rebuild a SpliceWiz reference using existing resources}
+This is typically run when updating an old resource to a new SpliceWiz
+version. Simply run buildRef(), specifying the existing reference directory,
+leave the \code{fasta} and \code{gtf} parameters blank, and set \code{overwrite = TRUE}.
+SpliceWiz will use the previously-used resources to re-create the reference.
+
 See examples below for common use cases.
 }
 \section{Functions}{

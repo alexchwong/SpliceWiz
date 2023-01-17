@@ -191,12 +191,13 @@ makeSE <- function(
 
         if(fullExperiment & file.exists(filtered_rowData_file)) {
             # Take a shortcut
-            if(verbose) .log("...removing overlapping introns", "message", 
+            if(verbose) .log("...removing overlapping introns...", "message", 
                 appendLF = FALSE)
             tmpFiltered <- readRDS(filtered_rowData_file)
             se <- se[tmpFiltered,]
         } else {
-            if(verbose) .log("...removing overlapping introns", "message")
+            if(verbose) .log("...removing overlapping introns...", "message", 
+                appendLF = FALSE)
             se <- .makeSE_iterate_IR(se, verbose)
         } 
         if(verbose) message("done\n")
@@ -316,7 +317,7 @@ makeSE <- function(
                 metadata(se)$BuildVersion,
                 "< 0.99.4"
             ), ")"
-        ), "warning")
+        ), "error")
     }
     return(se)
 }

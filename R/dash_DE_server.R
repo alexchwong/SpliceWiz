@@ -122,6 +122,8 @@ server_DE <- function(
             output$warning_DE <- renderText({
                 validate(need(is(get_se(), "NxtSE"), 
                     "Please load experiment via 'Experiment' tab"))
+                validate(need(is_valid(input$method_DE),
+                    "Choose a statistical method for differential ASE analysis"))
                 validate(need(is_valid(input$variable_DE),
                     "Variable for DE needs to be defined"))
                 validate(need(is_valid(input$nom_DE), 

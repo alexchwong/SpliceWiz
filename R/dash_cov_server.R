@@ -17,23 +17,30 @@ server_cov <- function(
 
         # session, geneList, DE, GO,
         # rows_all, rows_selected, num_events, selected_event, mode           
-            req(is(get_se(), "NxtSE"))
-            .server_cov_refresh(
-                session, get_ref()$geneList,
-                get_de(), get_go(),
-                rows_all(), rows_selected(),
-                input$slider_num_events_cov, input$events_cov,
-                input$modeFilter_COV
-            )
+            # .server_cov_refresh(
+                # session, get_ref()$geneList,
+                # get_de(), get_go(),
+                # rows_all(), rows_selected(),
+                # input$slider_num_events_cov, input$events_cov,
+                # input$modeFilter_COV
+            # )
             
-            se <- get_se()
+            req(is(get_se(), "NxtSE"))
+            se <- isolate(get_se())
             settings_Cov$event.ranges <- as.data.table(
                 coord2GR(rowData(se)$EventRegion))
             settings_Cov$event.ranges$EventName <- rowData(se)$EventName
             
-            .server_cov_refresh_tracks_cov(session, input$mode_cov, 
-                input$condition_cov, se)
+            .server_cov_refresh_tracks_cov(session, isolate(input$mode_cov), 
+                isolate(input$condition_cov), se)
 
+        })
+
+        # Reactive to generate gene list
+        observeEvent(get_ref(), {
+            req(get_ref())
+            ref <- isolate(get_ref())
+            .server_cov_update_genes(session, ref$geneList)
         })
 
         # Reactive to generate filtered DE object
@@ -317,6 +324,28 @@ server_cov_get_all_tracks <- function(input) {
     }
     tracks <- Filter(is_valid, tracks)
     return(tracks)
+}
+
+# Update gene drop-down
+.server_cov_update_genes <- function(
+    session, geneList
+) {
+    if(!is.null(geneList)) {
+        message("Populating drop-down box with ", 
+            length(unique(geneList$gene_display_name)), " genes")
+        updateSelectInput(session = session, inputId = "chr_cov", 
+            choices = c("(none)", 
+                as.character(sort(unique(geneList$seqnames)))),
+            selected = "(none)")
+        updateSelectizeInput(session = session, inputId = "genes_cov",
+            server = TRUE, choices = c("(none)", geneList$gene_display_name), 
+            selected = "(none)")
+    } else {
+        updateSelectInput(session = session, inputId = "chr_cov", 
+            choices = c("(none)"), selected = "(none)")
+        updateSelectizeInput(session = session, inputId = "genes_cov", 
+            server = TRUE, choices = c("(none)"), selected = "(none)") 
+    }
 }
 
 # Updates drop-downs

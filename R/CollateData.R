@@ -3350,5 +3350,6 @@ collateData <- function(Experiment, reference_path, output_path,
     
     unlink(file.path(collate_data, "junc_PSI_index.fst"))
     unlink(file.path(collate_data, "rowEvent.brief.fst"))
+    unlink(file.path(collate_data, "rowEvent.fst"))
     unlink(file.path(collate_data, "stats.fst"))
 }

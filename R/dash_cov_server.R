@@ -62,14 +62,19 @@ server_cov <- function(
                     selGOterm <- isolate(input$GOterm_COV)
                     
                     go_id <- goInfo$go_id[match(selGOterm, goInfo$Term)]
-                    events <- .subset_EventNames_by_GO(res$EventName, go_id,
+                    events <- .subset_EventNames_by_GO(tmpres$EventName, go_id,
                         isolate(get_se()))
                     
                     tmpres <- tmpres[get("EventName") %in% events]
                 }
             }
-            settings_Cov$useDE <- tmpres[, 
-                c("EventName", "EventType"), with = FALSE]
+            
+            tmpres <- tmpres[, c("EventName", "EventType"), with = FALSE]
+            if(nrow(tmpres) > input$slider_num_events_cov) {
+                tmpres <- tmpres[seq_len(input$slider_num_events_cov)]
+            }
+            
+            settings_Cov$useDE <- tmpres
         })
 
         # Reactive to Populate events

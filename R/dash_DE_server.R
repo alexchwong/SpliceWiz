@@ -355,7 +355,7 @@ server_DE <- function(
                         filter = 'top'
                     )
                 )
-            }
+            })
         })
         
         observe({

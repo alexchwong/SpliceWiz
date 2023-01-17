@@ -169,10 +169,10 @@ makeSE <- function(
     if(verbose) message("done\n")
     if(display_cov_missing_message)
         .log(paste(
-            "Some coverage files were not set or not found.",
+            "Note: Some coverage files were not set or not found.\n\n",
             "To set coverage files, use `covfile(se) <- filenames`.",
-            "Setting COV files is only supported if valid COV files",
-            "exist for every sample in the NxtSE object."
+            "Setting COV files is only supported if every COV file for",
+            "every sample in the NxtSE object is valid.\n"
         ), "message")
 
     if (realize == TRUE) {

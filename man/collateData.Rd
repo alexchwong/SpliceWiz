@@ -9,6 +9,7 @@ collateData(
   reference_path,
   output_path,
   IRMode = c("SpliceOver", "SpliceMax"),
+  packageCOVfiles = FALSE,
   novelSplicing = FALSE,
   forceStrandAgnostic = FALSE,
   novelSplicing_minSamples = 3,
@@ -40,6 +41,11 @@ collated dataset}
 'splice abundance' in IR quantification.
 Valid options are \code{SpliceOver} and \code{SpliceMax}.
 See details}
+
+\item{packageCOVfiles}{(default \code{FALSE}) Whether COV files should be copied
+over to the NxtSE object. This is useful if one wishes to transfer the
+NxtSE folder to a collaborator, who can then open the NxtSE object with
+valid COV file paths.}
 
 \item{novelSplicing}{(default FALSE) Whether collateData will use
 novel junction reads detected in samples to infer novel splice variants.

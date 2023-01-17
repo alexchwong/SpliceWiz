@@ -96,6 +96,10 @@
 #' @param forceStrandAgnostic (default `FALSE`) In poorly-prepared stranded
 #'   libraries, it may be better to quantify in unstranded mode. Set this to
 #'   `TRUE` if your stranded libraries may be contaminated with unstranded reads
+#' @param packageCOVfiles (default `FALSE`) Whether COV files should be copied
+#'   over to the NxtSE object. This is useful if one wishes to transfer the
+#'   NxtSE folder to a collaborator, who can then open the NxtSE object with
+#'   valid COV file paths.
 #' @return `collateData()` writes to the directory given by `output_path`.
 #'   This output directory is portable (i.e. it can be moved to a different
 #'   location after running `collateData()` before running [makeSE]), but
@@ -127,6 +131,7 @@
 #' @export
 collateData <- function(Experiment, reference_path, output_path,
         IRMode = c("SpliceOver", "SpliceMax"),
+        packageCOVfiles = FALSE,
         novelSplicing = FALSE, forceStrandAgnostic = FALSE,
         novelSplicing_minSamples = 3, novelSplicing_countThreshold = 10,
         novelSplicing_minSamplesAboveThreshold = 1,
@@ -272,7 +277,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
         .collateData_write_stats(df.internal, norm_output_path)
         .collateData_write_colData(df.internal, 
-            coverage_files, norm_output_path)
+            coverage_files, norm_output_path, packageCOVfiles)
         
         if(novelSplicing) {
             cov_data <- .prepare_covplot_data(reference_path,
@@ -2993,14 +2998,19 @@ collateData <- function(Experiment, reference_path, output_path,
 }
 
 # Writes default colData to RDS
-.collateData_write_colData <- function(df.internal, coverage_files,
-        norm_output_path) {
+.collateData_write_colData <- function(
+        df.internal, coverage_files,
+        norm_output_path, copyCOV = FALSE
+) {
     if(!is.null(coverage_files)) {
-        covfiles_full <- normalizePath(file.path(
-            norm_output_path, coverage_files))
+        suppressWarnings({
+            covfiles_full <- normalizePath(file.path(
+                norm_output_path, coverage_files))        
+        })
         # Create barebones colData.Rds - save coverage files as well
         if (
             length(coverage_files) == nrow(df.internal) & 
+            all(file.exists(covfiles_full)) &&
             isCOV(covfiles_full)
         ) {
             df.files <- data.table(
@@ -3009,6 +3019,13 @@ collateData <- function(Experiment, reference_path, output_path,
                 sw_file = df.internal$path,
                 cov_file = coverage_files
             )
+            if(copyCOV) {
+                dirCOV <- file.path(norm_output_path, "COV")
+                if(!dir.exists(dirCOV)) dir.create(dirCOV)
+                for(i in seq_len(length(covfiles_full))) {
+                    file.copy(covfiles_full, dirCOV, overwrite = TRUE)
+                }
+            }
         } else {
             df.files <- data.table(
                 sample = df.internal$sample,

@@ -128,29 +128,23 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
 # Check validity of metadata "COV". Invalidates if some files are not COV
 # Will validate if all files are COV, or if all are empty
 .valid.NxtSE.meta_cov <- function(x) {
-    cov_files <- file.path(metadata(x)[["sourcePath"]], 
-        metadata(x)[["cov_file"]])
-    valid_cov_files <- rep("", ncol(x))
-    for(i in seq_len(ncol(x))) {
-        tryCatch({
-            if(cov_files[i] != "") 
-                valid_cov_files[i] <- normalizePath(cov_files[i])
-        }, error = function(e) {
-            valid_cov_files[i] <- ""
-        })    
-    }
-    if(all(valid_cov_files == "")) {
-        # NxtSE object with zero cov files
-    } else if (
-        any(valid_cov_files == "")
-    ) {
-        examples <- head(which(valid_cov_files == ""), 3)
+    cov_files <- metadata(x)[["cov_file"]]
+    suppressWarnings({
+        normcovfiles <- normalizePath(
+            file.path(metadata(x)[["sourcePath"]], cov_files)
+        )    
+    })
+
+    if(all(cov_files == "")) {
+        # NxtSE object with zero cov files, just ignore it
+    } else if (!all(file.exists(normcovfiles))) {
+        examples <- head(normcovfiles[!file.exists(normcovfiles)], 3)
         txt <- paste(
             "Some coverage files are not found, for example:",
-            paste(cov_files[examples], collapse = " ")
+            paste(examples, collapse = " ")
         )
         return(txt)
-    } else if (!(isCOV(valid_cov_files))) {
+    } else if (!(isCOV(normcovfiles))) {
         txt <- "Some coverage files are not validated"
         return(txt)
     }

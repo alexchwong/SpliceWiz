@@ -368,7 +368,8 @@ server_expr <- function(
                         novelSplicing_minSamples = input$nsOpt_minSamples,
                         novelSplicing_minSamplesAboveThreshold = 
                             input$nsOpt_minSamplesThreshold,
-                        novelSplicing_countThreshold  = input$nsOpt_Threshold
+                        novelSplicing_countThreshold  = input$nsOpt_Threshold,
+                        packageCOVfiles = input$package_COV
                     )
                 })
                 Expr_Update_colData(

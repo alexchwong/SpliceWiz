@@ -120,21 +120,14 @@ makeSE <- function(
     se <- .makeSE_load_NxtSE(collate_path)
 
     # Locate relative paths of COV files, or have all-empty if not all are found
-    covfiles <- NULL
-    tryCatch({
+    suppressWarnings({
         covfiles <- normalizePath(
             file.path(collate_path, se@metadata[["cov_file"]])
-        )
-    }, error = function(e) {
-        covfiles <- NULL
+        )    
     })
     
     display_cov_missing_message <- FALSE
-    if (
-        is.null(covfiles) || 
-        !all(file.exists(covfiles)) ||
-        any(dir.exists(covfiles))
-    ) {
+    if (!all(file.exists(covfiles))) {
         se@metadata[["cov_file"]] <- rep("", ncol(se))
         display_cov_missing_message <- TRUE
     }
@@ -175,9 +168,12 @@ makeSE <- function(
 
     if(verbose) message("done\n")
     if(display_cov_missing_message)
-        .log(paste("Coverage files were not set or not found.",
-            "To set coverage files, use `covfile(se) <- filenames`")
-        , "message")
+        .log(paste(
+            "Some coverage files were not set or not found.",
+            "To set coverage files, use `covfile(se) <- filenames`.",
+            "Setting COV files is only supported if valid COV files",
+            "exist for every sample in the NxtSE object."
+        ), "message")
 
     if (realize == TRUE) {
         dash_progress("Realizing NxtSE object...", N)

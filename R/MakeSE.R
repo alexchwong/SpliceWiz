@@ -275,7 +275,7 @@ makeSE <- function(
 
 # Loads a NxtSE RDS
 .makeSE_load_NxtSE <- function(collate_path) {
-    filepath <- file.path(collate_path, "NxtSE.Rds")
+    filepath <- file.path(collate_path, "seed.Rds")
     se <- readRDS(filepath)
     se@metadata[["sourcePath"]] <- collate_path
 

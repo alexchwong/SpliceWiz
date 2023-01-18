@@ -167,7 +167,7 @@ collateData <- function(Experiment, reference_path, output_path,
     coverage_files <- .make_path_relative(
         .collateData_COV(Experiment), output_path)
     df.internal <- .collateData_expr(Experiment)
-    if (!overwrite && file.exists(file.path(output_path, "NxtSE.Rds"))) {
+    if (!overwrite && file.exists(file.path(output_path, "seed.Rds"))) {
         se <- .makeSE_load_NxtSE(output_path)
         if (all(colnames(se) %in% df.internal$sample) &
             all(df.internal$sample %in% colnames(se))
@@ -295,7 +295,7 @@ collateData <- function(Experiment, reference_path, output_path,
         se <- .collateData_initialise_HDF5(norm_output_path, colData, assays)
 
         .log("Saving final NxtSE object", "message")
-        .collateData_save_NxtSE(se, file.path(norm_output_path, "NxtSE.Rds"))
+        .collateData_save_NxtSE(se, file.path(norm_output_path, "seed.Rds"))
         .collateData_cleanup(norm_output_path)
         
         # Test run of loading NxtSE

@@ -1745,8 +1745,8 @@ collateData <- function(Experiment, reference_path, output_path,
         gr_novel_rightExon <- with(junc.novel, GRanges(seqnames = seqnames,
             ranges = IRanges(start = end + 1, end = end + 50),
             strand = strand))
-        mcols(gr_novel_leftExon) <- empty_mCol[seq_len(nrow(junc.novel)),]
-        mcols(gr_novel_rightExon) <- empty_mCol[seq_len(nrow(junc.novel)),]
+        mcols(gr_novel_leftExon) <- empty_mCol[seq_len(n_junc),]
+        mcols(gr_novel_rightExon) <- empty_mCol[seq_len(n_junc),]
         mcols(gr_novel_leftExon)$exon_number <- ifelse(
             strand(gr_novel_leftExon) == "+", 1, 2)
         mcols(gr_novel_rightExon)$exon_number <- ifelse(
@@ -1775,11 +1775,11 @@ collateData <- function(Experiment, reference_path, output_path,
             IRanges(tj.novel$end2 + 1, tj.novel$end2 + 50),
             tj.novel$strand)
         mcols(gr_tjnovel_leftExon) <- empty_mCol[
-            seq(nrow(junc.novel) + 1, nrow(empty_mCol)),]
+            seq(n_junc + 1, nrow(empty_mCol)),]
         mcols(gr_tjnovel_middleExon) <- empty_mCol[
-            seq(nrow(junc.novel) + 1, nrow(empty_mCol)),]
+            seq(n_junc + 1, nrow(empty_mCol)),]
         mcols(gr_tjnovel_rightExon) <- empty_mCol[
-            seq(nrow(junc.novel) + 1, nrow(empty_mCol)),]
+            seq(n_junc + 1, nrow(empty_mCol)),]
         mcols(gr_tjnovel_leftExon)$exon_number <- ifelse(
             strand(gr_tjnovel_leftExon) == "+", 1, 3)
         mcols(gr_tjnovel_middleExon)$exon_number <- 2

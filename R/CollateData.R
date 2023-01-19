@@ -1191,6 +1191,7 @@ collateData <- function(Experiment, reference_path, output_path,
     threadID, reference_path, norm_output_path, lowMemoryMode, novelSplicing,
     minSamplesWithJunc, minSamplesAboveJuncThreshold,
     novelSplicing_requireOneAnnotatedSJ,
+    novelSplicing_extrapolateTJ = FALSE,
     verbose = FALSE
 ) {
     if(threadID != 2) return()
@@ -1258,13 +1259,21 @@ collateData <- function(Experiment, reference_path, output_path,
         novel_gtf <- .collateData_novel_assemble_transcripts(
             reference_path, norm_output_path, reference_data$gtf_gr,
             minSamplesWithJunc, minSamplesAboveJuncThreshold,
-            novelSplicing_requireOneAnnotatedSJ)
+            novelSplicing_requireOneAnnotatedSJ
+        )
         # Finish inserting novel gtf
         unique_seqlevels <- unique(c(
             seqlevels(reference_data$gtf_gr), seqlevels(novel_gtf)
         ))
         seqlevels(reference_data$gtf_gr) <- unique_seqlevels
         seqlevels(novel_gtf) <- unique_seqlevels
+        
+        # Putative TJ injection
+        if(novelSplicing_extrapolateTJ) {
+            novel_gtf <- .collateData_novel_injectPutativeTJ(
+                reference_path, norm_output_path, reference_data$gtf_gr, novel_gtf
+            )
+        }
         
         if(verbose) message("...processing GTF")
         .process_gtf(c(reference_data$gtf_gr, novel_gtf), 
@@ -1305,7 +1314,8 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_novel_assemble_transcripts <- function(
     reference_path, norm_output_path, gtf,
     minSamplesWithJunc, minSamplesAboveJuncThreshold,
-    novelSplicing_requireOneAnnotatedSJ = TRUE
+    novelSplicing_requireOneAnnotatedSJ = TRUE,
+    novelSplicing_extrapolateTJ = FALSE
 ) {
     # Load junc.common
     junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
@@ -1398,6 +1408,138 @@ collateData <- function(Experiment, reference_path, output_path,
     n_trans <- nrow(junc.novel) + nrow(tj.novel)
     if(n_trans < 1) return(NULL)
 
+    new_gtf <- .collateData_construct_novelGTF(
+        gtf, junc.novel, tj.novel,
+        novelTr_source = "novel",
+        novelGeneID_header = "novelGene",
+        novelGeneBT = "novel_gene",
+        novelTrID_header = "novelTrID",
+        novelTrName_suffix = "-novelTr",
+        novelTrBT = "novel_transcript"
+    )
+
+    return(new_gtf)
+}
+
+.collateData_novel_injectPutativeTJ <- function(
+    reference_path, norm_output_path, ref_gtf, novel_gtf
+) {
+    # Generate a table of all junctions (known + novel)
+    exons <- c(
+        ref_gtf[ref_gtf$type == "exon"],
+        novel_gtf[novel_gtf$type == "exon"]
+    )
+    allJunctions <- .grlGaps(split(
+          .grDT(exons),
+          exons$transcript_id
+    ))
+    allJunctions <- as.data.table(allJunctions)
+    allJunctions[, c("group", "group_name") := list(NULL,NULL)]
+    allJunctions <- unique(as.data.table(sort(.grDT(allJunctions))))
+    
+    # Generate a table of all annotated + novel TJ's
+    
+    # Known TJ's from SpliceWiz reference
+    suppressWarnings({
+        knownTJ <- fread(file.path(reference_path, "SpliceWiz.ref.gz"), 
+            skip = "ref-tj")
+    })
+    colnames(knownTJ) <- 
+        c("seqnames", "start1", "end1", "start2", "end2", "strand")
+    knownTJ[, c("start1", "start2") := list(
+        get("start1") + 1, get("start2") + 1)]
+
+    tandem_gtf <- novel_gtf[novel_gtf$type == "exon"]
+    tandem_gtf <- tandem_gtf[tandem_gtf$exon_number == 3]
+    tandemTrID <- unique(tandem_gtf$transcript_id)
+    tandemTr <- novel_gtf[novel_gtf$transcript_id %in% tandemTrID & 
+        novel_gtf$type == "transcript"]
+    
+    # Retrieve novel TJ's
+    novelTJ <- data.table(
+        seqnames = as.character(seqnames(tandemTr)),
+        start1 = 0,
+        end1 = 0,
+        start2 = 0,
+        end2 = 0,
+        strand = as.character(strand(tandemTr))
+    )
+    novelTandemExons <- novel_gtf[novel_gtf$type == "exon" & 
+        novel_gtf$transcript_id %in% tandemTrID]
+    exon1 <- novelTandemExons[
+        (novelTandemExons$exon_number == 1 & 
+            as.character(strand(novelTandemExons)) == "+") |
+        (novelTandemExons$exon_number == 3 & 
+            as.character(strand(novelTandemExons)) == "-")
+    ]
+    exon2 <- novelTandemExons[
+        (novelTandemExons$exon_number == 2)
+    ]
+    exon3 <- novelTandemExons[
+        (novelTandemExons$exon_number == 1 & 
+            as.character(strand(novelTandemExons)) == "-") |
+        (novelTandemExons$exon_number == 3 & 
+            as.character(strand(novelTandemExons)) == "+")
+    ]
+
+    names(exon1) <- exon1$transcript_id
+    names(exon2) <- exon2$transcript_id
+    names(exon3) <- exon3$transcript_id
+
+    exon1 <- exon1[tandemTr$transcript_id]
+    exon2 <- exon2[tandemTr$transcript_id]
+    exon3 <- exon3[tandemTr$transcript_id]
+
+    novelTJ$start1 <- BiocGenerics::end(exon1) + 1
+    novelTJ$end1 <- BiocGenerics::start(exon2) - 1
+    novelTJ$start2 <- BiocGenerics::end(exon2) + 1
+    novelTJ$end2 <- BiocGenerics::start(exon3) - 1
+    
+    # Create putative novel TJ's
+    #   junction1 - exon - junction2
+
+    leftJn <- copy(allJunctions[, c("seqnames", "start", "end", "strand")])
+    rightJn <- copy(allJunctions[, c("seqnames", "start", "end", "strand")])
+    putExons <- copy(exons[, c("seqnames", "start", "end", "strand")])
+
+    leftJn <- unique(leftJn)
+    rightJn <- unique(rightJn)
+    putExons <- unique(putExons)
+
+    setnames(leftJn, c("start", "end"), c("start1", "end1"))
+    setnames(rightJn, c("start", "end"), c("start2", "end2"))
+    setnames(putExons, c("start", "end"), c("end1", "start2"))
+    putExons[, c("end1", "start2") := list(get("end1") - 1, get("start2") + 1)]
+
+    putTJ <- putExons[leftJn, on = c("seqnames", "end1", "strand")]
+    putTJ <- putTJ[rightJn, on = c("seqnames", "start2", "strand")]
+    putTJ <- putTJ[, c("seqnames", "start1", "end1", "start2", "end2", "strand")]
+    putTJ <- putTJ[!is.na(get("end2"))]
+
+    putTJ <- putTJ[complete.cases(putTJ)]
+    putTJ <- unique(putTJ)
+    # anti-join against knowns
+
+    novelPutTJ <- fsetdiff(putTJ, knownTJ)
+    
+    # Now package novelPutTJ into novel_gtf
+    if(nrow(novelPutTJ) == 0) return(novel_gtf)
+}
+
+.collateData_construct_novelGTF <- function(
+    gtf, junc.novel = NULL, tj.novel = NULL,
+    novelTr_source = "novel",
+    novelGeneID_header = "novelGene",
+    novelGeneBT = "novel_gene",
+    novelTrID_header = "novelTrID",
+    novelTrName_suffix = "-novelTr",
+    novelTrBT = "novel_transcript"
+) {
+    n_junc <- ifelse(is(junc.novel, "data.frame"), nrow(junc.novel), 0)
+    n_tj <- ifelse(is(tj.novel, "data.frame"), nrow(tj.novel), 0)
+    n_trans <- n_junc + n_tj
+    if(n_trans < 1) return(NULL)
+    
     new_gtf <- GRanges()
     
     # Initialize novel transcripts and determine genes
@@ -1415,8 +1557,30 @@ collateData <- function(Experiment, reference_path, output_path,
             )
         )
     })
-    Genes <- read.fst(file.path(reference_path, "fst/Genes.fst"))
+    Genes <- as.data.table(gtf[gtf$type == "gene"])
+    if(any(grepl(novelGeneID_header, Genes$gene_id))) {
+        .log("Issue with given gene_id header", "message")
+        novelGeneID_header <- paste0(novelGeneID_header, "2")
+    }
+    if(any(grepl(novelGeneBT, Genes$gene_biotype))) {
+        .log("Issue with given gene_id header", "message")
+        novelGeneBT <- paste0(novelGeneBT, "2")
+    }
+    Transcripts <- as.data.table(gtf[gtf$type == "transcript"])
+    if(any(grepl(novelTrID_header, Transcripts$transcript_id))) {
+        .log("Issue with given transcript_id header", "message")
+        novelTrID_header <- paste0(novelTrID_header, "2")
+    }
+    if(any(grepl(novelTrName_suffix, Transcripts$transcript_name))) {
+        .log("Issue with given transcript_name suffix", "message")
+        novelTrName_suffix <- paste0(novelTrName_suffix, "2")
+    }
+    if(any(grepl(novelTrBT, Transcripts$transcript_biotype))) {
+        .log("Issue with given transcript_biotype header", "message")
+        novelTrBT <- paste0(novelTrBT, "2")
+    }
 
+    # Annotate novel junctions as belonging to known genes if they overlap
     OL <- .findOverlaps_merge(gr_transcript, .grDT(Genes))
     OL.DT <- data.table(from = OL@from, to = OL@to)
     OL.DT <- unique(OL.DT, by = "from")
@@ -1435,13 +1599,13 @@ collateData <- function(Experiment, reference_path, output_path,
             nrow = length(tr_novelGene)))
         colnames(empty_mCol_nG) <- colnames(mcols(gtf))
 
-        empty_mCol_nG$source <- "novel"
-        empty_mCol_nG$gene_id <- paste0("novelGene", 
+        empty_mCol_nG$source <- novelTr_source
+        empty_mCol_nG$gene_id <- paste0(novelGeneID_header, 
             formatC(seq_len(length(tr_novelGene)),
                 width = 6, format = "d", flag = "0"))
         empty_mCol_nG$gene_name <- empty_mCol_nG$gene_id
 
-        empty_mCol_nG$gene_biotype <- "novel_gene"
+        empty_mCol_nG$gene_biotype <- novelGeneBT
         
         mcols(tr_novelGene) <- empty_mCol_nG
         mcols(tr_novelGene)$type = "gene"
@@ -1453,28 +1617,29 @@ collateData <- function(Experiment, reference_path, output_path,
         OL.DT <- unique(OL.DT, by = "from")
         junc_genes$gene_id[OL.DT$from] <- empty_mCol_nG$gene_id[OL.DT$to]
         junc_genes$gene_name[OL.DT$from] <- empty_mCol_nG$gene_name[OL.DT$to]
-        junc_genes$gene_biotype[OL.DT$from] <- "novel_gene"
+        junc_genes$gene_biotype[OL.DT$from] <- novelGeneBT
     }
+    
     junc_genes[, c("transcript_number") := seq_len(.N), by = "gene_id"]
     junc_genes[, c("transcript_number_str") := formatC(
         get("transcript_number"), width = 3, format = "d", flag = "0")]
     junc_genes[, c("transcript_name") := paste0(
-        get("gene_name"), "-novelTr", get("transcript_number_str"))]
-    junc_genes[, c("transcript_id") := paste0("novelTrID", formatC(
+        get("gene_name"), novelTrName_suffix, get("transcript_number_str"))]
+    junc_genes[, c("transcript_id") := paste0(novelTrID_header, formatC(
         seq_len(.N), width = 6, format = "d", flag = "0"))]
 
     # Construct a list of novel transcripts and exons
     empty_mCol <- data.frame(matrix(ncol = ncol(mcols(gtf)), 
         nrow = length(gr_transcript)))
     colnames(empty_mCol) <- colnames(mcols(gtf))
-    empty_mCol$source <- "novel"
+    empty_mCol$source <- novelTr_source
     empty_mCol$gene_id <- junc_genes$gene_id
     empty_mCol$gene_name <- junc_genes$gene_name
     empty_mCol$transcript_id <- junc_genes$transcript_id
     empty_mCol$transcript_name <- junc_genes$transcript_name
     
     empty_mCol$gene_biotype <- junc_genes$gene_biotype
-    empty_mCol$transcript_biotype <- "novel_transcript"
+    empty_mCol$transcript_biotype <- novelTrBT
     
     mcols(gr_transcript) <- empty_mCol
     mcols(gr_transcript)$type = "transcript"
@@ -1506,7 +1671,7 @@ collateData <- function(Experiment, reference_path, output_path,
         mcols(gr_novel_rightExon)$type <- "exon"
         new_gtf <- c(new_gtf, gr_novel_leftExon, gr_novel_rightExon)
     }
-    
+
     if(nrow(tj.novel) > 0) {
         gr_tjnovel_leftExon <- GRanges(tj.novel$seqnames,
             IRanges(tj.novel$start1 - 50, tj.novel$start1 - 1),
@@ -1548,106 +1713,6 @@ collateData <- function(Experiment, reference_path, output_path,
             gr_tjnovel_middleExon, gr_tjnovel_rightExon)
     }
 
-    return(new_gtf)
-}
-
-.collateData_novel_assemble_exon_transcripts <- function(
-    reference_path, norm_output_path, gtf
-) {
-    # No need to filter tandem junctions as this was done in earlier step
-    tj.novel <- as.data.table(read.fst(file.path(norm_output_path, 
-        "annotation", "tj.common.annotated.fst")))
-    
-    junc.novel <- as.data.table(read.fst(file.path(norm_output_path, 
-        "annotation", "junc.novel.filtered.fst")))
-    
-    tj.novel[, c("seqnames") := as.character(get("seqnames"))]
-    junc.novel[, c("seqnames") := as.character(get("seqnames"))]
-    
-    # Filter tj.novel by junc.novel
-    setnames(tj.novel, c("start1", "end1"), c("start", "end"))
-    tmp <- tj.novel[!junc.novel, on = c("seqnames", "start", "end", "strand")]
-    tj.novel <- tj.novel[!tmp, on = colnames(tj.novel)]
-    setnames(tj.novel, c("start", "end"), c("start1", "end1"))
-
-    setnames(tj.novel, c("start2", "end2"), c("start", "end"))
-    tmp <- tj.novel[!junc.novel, on = c("seqnames", "start", "end", "strand")]
-    tj.novel <- tj.novel[!tmp, on = colnames(tj.novel)]
-    setnames(tj.novel, c("start", "end"), c("start2", "end2"))
-    
-    rm(junc.novel, tmp)
-    gc()
-
-    # Write filtered tandem junctions as temp file
-    write.fst(tj.novel, file.path(norm_output_path, 
-        "annotation", "tj.novel.filtered.fst"))
-    
-    n_trans <- nrow(tj.novel)
-    if(n_trans < 1) return(NULL)
-    
-    gr_novel_leftExon <- GRanges(seqnames = tj.novel$seqnames,
-      ranges = IRanges(start = tj.novel$start1 - 50, end = tj.novel$start1 - 1),
-      strand = tj.novel$strand)
-    gr_novel_middleExon <- GRanges(seqnames = tj.novel$seqnames,
-      ranges = IRanges(start = tj.novel$end1 + 1, end = tj.novel$start2 - 1),
-      strand = tj.novel$strand)
-    gr_novel_rightExon <- GRanges(seqnames = tj.novel$seqnames,
-      ranges = IRanges(start = tj.novel$end2 + 1, end = tj.novel$end2 + 50),
-      strand = tj.novel$strand)
-    gr_novel_transcript <- GRanges(seqnames = tj.novel$seqnames,
-      ranges = IRanges(start = tj.novel$start1 - 50, end = tj.novel$end2 + 50),
-      strand = tj.novel$strand)
-    gr_novel_gene <- gr_novel_transcript
-
-    empty_mCol <- data.frame(matrix(ncol = ncol(mcols(gtf)), 
-        nrow = n_trans))
-    colnames(empty_mCol) <- colnames(mcols(gtf))
-
-    empty_mCol$source <- "novel"
-    empty_mCol$gene_biotype <- "intron_novel_transcript"
-    empty_mCol$transcript_biotype <- "intron_novel_transcript"
-
-    empty_mCol$gene_id <- paste0("novelExon", as.character(seq_len(n_trans)))
-    empty_mCol$gene_name <- paste0("novelExon", as.character(seq_len(n_trans)))
-
-    empty_mCol$transcript_id <- paste0("novelExon", 
-        as.character(seq_len(n_trans)))
-    empty_mCol$transcript_name <- paste0("novelExon", 
-        as.character(seq_len(n_trans)))
-
-    mcols(gr_novel_gene) <- empty_mCol
-    mcols(gr_novel_transcript) <- empty_mCol
-    mcols(gr_novel_leftExon) <- empty_mCol
-    mcols(gr_novel_middleExon) <- empty_mCol
-    mcols(gr_novel_rightExon) <- empty_mCol
-
-    mcols(gr_novel_gene)$type <- "gene"
-    mcols(gr_novel_gene)$transcript_id <- NA
-    mcols(gr_novel_gene)$transcript_name <- NA
-
-    mcols(gr_novel_transcript)$type <- "transcript"
-    mcols(gr_novel_leftExon)$type <- "exon"
-    mcols(gr_novel_middleExon)$type <- "exon"
-    mcols(gr_novel_rightExon)$type <- "exon"
-
-    mcols(gr_novel_leftExon)$exon_number <- ifelse(
-        strand(gr_novel_leftExon) == "+", 1, 3)
-    mcols(gr_novel_middleExon)$exon_number <- 2
-    mcols(gr_novel_rightExon)$exon_number <- ifelse(
-        strand(gr_novel_rightExon) == "-", 1, 3)
-
-    mcols(gr_novel_leftExon)$exon_id <- paste0("novelExon", 
-        as.character(seq_len(n_trans)))
-    mcols(gr_novel_middleExon)$exon_id <- paste0("novelExon", 
-        as.character(n_trans + seq_len(n_trans)))
-    mcols(gr_novel_rightExon)$exon_id <- paste0("novelExon", 
-        as.character(n_trans + seq_len(n_trans)))
-
-    new_gtf <- c(gr_novel_gene, gr_novel_transcript, 
-        gr_novel_leftExon, gr_novel_middleExon, gr_novel_rightExon)
-
-    rm(tj.novel)
-    gc()
     return(new_gtf)
 }
 

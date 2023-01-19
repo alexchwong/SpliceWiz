@@ -93,6 +93,10 @@
 #'   novel junctions to have one annotated splice site. If this is disabled,
 #'   collateData will include novel junctions where neither splice site is
 #'   annotated.
+#' @param novelSplicing_extrapolateTJ (default `FALSE`) Whether to allow any
+#'   pair of observed (and known) junctions and observed (and known) exons
+#'   to construct "putative" tandem junctions. Assists in identifying novel
+#'   exon skipping and MXE events at a cost of increased false positives.
 #' @param forceStrandAgnostic (default `FALSE`) In poorly-prepared stranded
 #'   libraries, it may be better to quantify in unstranded mode. Set this to
 #'   `TRUE` if your stranded libraries may be contaminated with unstranded reads
@@ -126,6 +130,15 @@
 #'   reference_path = file.path(tempdir(), "Reference"),
 #'   output_path = file.path(tempdir(), "Collated_output")
 #' )
+#'
+#' # Enable novel splicing:
+#'
+#' collateData(expr,
+#'   reference_path = file.path(tempdir(), "Reference"),
+#'   output_path = file.path(tempdir(), "Collated_output"),
+#'   novelSplicing = TRUE
+#' )
+#'
 #' @seealso [processBAM], [makeSE]
 #' @md
 #' @export
@@ -136,6 +149,7 @@ collateData <- function(Experiment, reference_path, output_path,
         novelSplicing_minSamples = 3, novelSplicing_countThreshold = 10,
         novelSplicing_minSamplesAboveThreshold = 1,
         novelSplicing_requireOneAnnotatedSJ = TRUE,
+        novelSplicing_extrapolateTJ = FALSE,
         overwrite = FALSE, n_threads = 1,
         lowMemoryMode = TRUE
 ) {
@@ -179,7 +193,7 @@ collateData <- function(Experiment, reference_path, output_path,
     }
 
     originalSWthreads <- .getSWthreads()
-    tryCatch({
+    # tryCatch({
         setSWthreads(1) # try this to prevent memory leak
 
 
@@ -225,7 +239,9 @@ collateData <- function(Experiment, reference_path, output_path,
                 minSamplesAboveJuncThreshold = 
                     novelSplicing_minSamplesAboveThreshold,
                 novelSplicing_requireOneAnnotatedSJ =
-                    novelSplicing_requireOneAnnotatedSJ
+                    novelSplicing_requireOneAnnotatedSJ,
+                novelSplicing_extrapolateTJ =
+                    novelSplicing_extrapolateTJ
             )
         } else {
             # perform task inside child thread, so we can dump the memory later
@@ -235,7 +251,9 @@ collateData <- function(Experiment, reference_path, output_path,
                 minSamplesAboveJuncThreshold = 
                     novelSplicing_minSamplesAboveThreshold,
                 novelSplicing_requireOneAnnotatedSJ =
-                    novelSplicing_requireOneAnnotatedSJ
+                    novelSplicing_requireOneAnnotatedSJ,
+                novelSplicing_extrapolateTJ =
+                    novelSplicing_extrapolateTJ
             )
         }
         message("done\n")
@@ -319,11 +337,11 @@ collateData <- function(Experiment, reference_path, output_path,
         dash_progress("SpliceWiz (NxtSE) Collation Finished", N_steps)
         .log("SpliceWiz (NxtSE) Collation Finished", "message")
 
-    }, error = function(e) {
-        stop("In collateData(...)", e, call. = FALSE)
-    }, finally = {
+    # }, error = function(e) {
+        # stop("In collateData(...)", e, call. = FALSE)
+    # }, finally = {
         .restore_threads(originalSWthreads)
-    })
+    # })
     
     # Return invisible
     invisible(NULL)
@@ -843,7 +861,8 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_annotate <- function(reference_path, norm_output_path,
         stranded, novelSplicing, lowMemoryMode = TRUE,
         minSamplesWithJunc = 3, minSamplesAboveJuncThreshold = 1,
-        novelSplicing_requireOneAnnotatedSJ = TRUE
+        novelSplicing_requireOneAnnotatedSJ = TRUE,
+        novelSplicing_extrapolateTJ = FALSE
 ) {
     message("...annotating splice junctions")
     .collateData_junc_annotate(2, reference_path, norm_output_path,
@@ -861,6 +880,7 @@ collateData <- function(Experiment, reference_path, output_path,
         norm_output_path, lowMemoryMode, novelSplicing,
         minSamplesWithJunc, minSamplesAboveJuncThreshold,
         novelSplicing_requireOneAnnotatedSJ,
+        novelSplicing_extrapolateTJ,
         verbose = TRUE
     )
     use_ref_path <- file.path(norm_output_path, "Reference")
@@ -886,7 +906,8 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_annotate_BPPARAM <- function(reference_path, norm_output_path,
         stranded, novelSplicing, lowMemoryMode = TRUE,
         minSamplesWithJunc = 3, minSamplesAboveJuncThreshold = 1,
-        novelSplicing_requireOneAnnotatedSJ = TRUE
+        novelSplicing_requireOneAnnotatedSJ = TRUE,
+        novelSplicing_extrapolateTJ = FALSE
 ) {
     BPPARAM_annotate <- .validate_threads(2)
     message("...annotating splice junctions")
@@ -919,6 +940,7 @@ collateData <- function(Experiment, reference_path, output_path,
             minSamplesWithJunc = minSamplesWithJunc,
             minSamplesAboveJuncThreshold = minSamplesAboveJuncThreshold,
             novelSplicing_requireOneAnnotatedSJ = novelSplicing_requireOneAnnotatedSJ,
+            novelSplicing_extrapolateTJ = novelSplicing_extrapolateTJ,
             BPPARAM = BPPARAM_annotate
         )
         message("done")
@@ -931,6 +953,7 @@ collateData <- function(Experiment, reference_path, output_path,
             norm_output_path, lowMemoryMode, novelSplicing,
             minSamplesWithJunc, minSamplesAboveJuncThreshold,
             novelSplicing_requireOneAnnotatedSJ,
+            novelSplicing_extrapolateTJ,
             verbose = TRUE
         )
     }  
@@ -1270,9 +1293,18 @@ collateData <- function(Experiment, reference_path, output_path,
         
         # Putative TJ injection
         if(novelSplicing_extrapolateTJ) {
-            novel_gtf <- .collateData_novel_injectPutativeTJ(
-                reference_path, norm_output_path, reference_data$gtf_gr, novel_gtf
+            putTJ_gtf <- .collateData_novel_injectPutativeTJ(
+                reference_path, norm_output_path, 
+                reference_data$gtf_gr, novel_gtf
             )
+            unique_seqlevels <- unique(c(
+                seqlevels(reference_data$gtf_gr), seqlevels(novel_gtf),
+                seqlevels(putTJ_gtf)
+            ))
+            seqlevels(reference_data$gtf_gr) <- unique_seqlevels
+            seqlevels(novel_gtf) <- unique_seqlevels
+            seqlevels(putTJ_gtf) <- unique_seqlevels
+            novel_gtf <- c(novel_gtf, putTJ_gtf)
         }
         
         if(verbose) message("...processing GTF")
@@ -1314,8 +1346,7 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_novel_assemble_transcripts <- function(
     reference_path, norm_output_path, gtf,
     minSamplesWithJunc, minSamplesAboveJuncThreshold,
-    novelSplicing_requireOneAnnotatedSJ = TRUE,
-    novelSplicing_extrapolateTJ = FALSE
+    novelSplicing_requireOneAnnotatedSJ = TRUE
 ) {
     # Load junc.common
     junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
@@ -1363,11 +1394,12 @@ collateData <- function(Experiment, reference_path, output_path,
         
         at_least_one_end <- unique(c(from(OL_left), from(OL_right)))
         junc.novel <- junc.novel[at_least_one_end]    
-    }
-    if(nrow(junc.novel) == 0) {
-        rm(junc.common, known.junctions)
-        gc()
-        return(NULL)    
+
+        if(nrow(junc.novel) == 0) {
+            rm(junc.common, known.junctions)
+            gc()
+            return(NULL)    
+        }
     }
     
     rm(junc.common, known.junctions)
@@ -1430,8 +1462,7 @@ collateData <- function(Experiment, reference_path, output_path,
         novel_gtf[novel_gtf$type == "exon"]
     )
     allJunctions <- .grlGaps(split(
-          .grDT(exons),
-          exons$transcript_id
+          exons, exons$transcript_id
     ))
     allJunctions <- as.data.table(allJunctions)
     allJunctions[, c("group", "group_name") := list(NULL,NULL)]
@@ -1500,7 +1531,8 @@ collateData <- function(Experiment, reference_path, output_path,
 
     leftJn <- copy(allJunctions[, c("seqnames", "start", "end", "strand")])
     rightJn <- copy(allJunctions[, c("seqnames", "start", "end", "strand")])
-    putExons <- copy(exons[, c("seqnames", "start", "end", "strand")])
+    putExons <- copy(as.data.table(exons)[,
+        c("seqnames", "start", "end", "strand")])
 
     leftJn <- unique(leftJn)
     rightJn <- unique(rightJn)
@@ -1521,9 +1553,51 @@ collateData <- function(Experiment, reference_path, output_path,
     # anti-join against knowns
 
     novelPutTJ <- fsetdiff(putTJ, knownTJ)
-    
+
+    nontandemTr <- novel_gtf[
+        !(novel_gtf$transcript_id %in% tandemTrID) & novel_gtf$type == "transcript"
+    ]
+    nontandemExons <- novel_gtf[
+        novel_gtf$type == "exon" & novel_gtf$transcript_id %in% nontandemTr$transcript_id
+    ]
+
+    novelJunctions <- SpliceWiz:::.grlGaps(split(
+      nontandemExons,
+      nontandemExons$transcript_id
+    ))
+
+    novelJunctions <- as.data.table(novelJunctions)
+    novelJunctions[, c("group", "group_name") := list(NULL,NULL)]
+    novelJunctions <- SpliceWiz:::.grDT(novelJunctions)
+    novelJunctions <- sort(novelJunctions)
+    novelJunctions <- as.data.table(novelJunctions)
+    novelJunctions <- unique(novelJunctions)
+    novelJunctions <- novelJunctions[, c("seqnames", "start", "end", "strand"), with = FALSE]
+
+    knownJunctions <- as.data.table(fst::read.fst(file.path(
+      reference_path, "fst/junctions.fst"
+    ), columns = c("seqnames", "start", "end", "strand")))
+    knownJunctions <- unique(knownJunctions)
+
+    novelJunctions <- fsetdiff(novelJunctions, knownJunctions)
+        
+    filterByJunctions <- rbind(knownJunctions, novelJunctions)
+
     # Now package novelPutTJ into novel_gtf
-    if(nrow(novelPutTJ) == 0) return(novel_gtf)
+    if(nrow(novelPutTJ) == 0) return(NULL)
+    
+    new_gtf <- .collateData_construct_novelGTF(
+        c(ref_gtf, novel_gtf), NULL, novelPutTJ,
+        novelTr_source = "novelPutative",
+        novelGeneID_header = "novelGenePutative",
+        novelGeneBT = "novel_genePutative",
+        novelTrID_header = "novelPutTrID",
+        novelTrName_suffix = "-novelPutTr",
+        novelTrBT = "novel_transcript_putative"
+    )
+
+    return(new_gtf)    
+    
 }
 
 .collateData_construct_novelGTF <- function(
@@ -1541,21 +1615,39 @@ collateData <- function(Experiment, reference_path, output_path,
     if(n_trans < 1) return(NULL)
     
     new_gtf <- GRanges()
-    
+    gr_transcript <- GRanges()
     # Initialize novel transcripts and determine genes
     suppressWarnings({
-        gr_transcript <- c(
-            GRanges(
-                junc.novel$seqnames,
-                IRanges(junc.novel$start - 50, junc.novel$end + 50),
-                junc.novel$strand
-            ),
-            GRanges(
-                tj.novel$seqnames,
-                IRanges(tj.novel$start1 - 50, tj.novel$end2 + 50),
-                tj.novel$strand
+        # gr_transcript <- c(
+            # GRanges(
+                # junc.novel$seqnames,
+                # IRanges(junc.novel$start - 50, junc.novel$end + 50),
+                # junc.novel$strand
+            # ),
+            # GRanges(
+                # tj.novel$seqnames,
+                # IRanges(tj.novel$start1 - 50, tj.novel$end2 + 50),
+                # tj.novel$strand
+            # )
+        # )
+        if(n_junc > 0) {
+            gr_transcript <- c(gr_transcript,
+                GRanges(
+                    junc.novel$seqnames,
+                    IRanges(junc.novel$start - 50, junc.novel$end + 50),
+                    junc.novel$strand
+                )
             )
-        )
+        }
+        if(n_tj > 0) {
+            gr_transcript <- c(gr_transcript,
+                GRanges(
+                    tj.novel$seqnames,
+                    IRanges(tj.novel$start1 - 50, tj.novel$end2 + 50),
+                    tj.novel$strand
+                )
+            )
+        }
     })
     Genes <- as.data.table(gtf[gtf$type == "gene"])
     if(any(grepl(novelGeneID_header, Genes$gene_id))) {
@@ -1646,7 +1738,7 @@ collateData <- function(Experiment, reference_path, output_path,
     new_gtf <- c(new_gtf, gr_transcript)
 
     # Construct exons and transcripts
-    if(nrow(junc.novel) > 0) {
+    if(n_junc > 0) {
         gr_novel_leftExon <- with(junc.novel, GRanges(seqnames = seqnames,
             ranges = IRanges(start = start - 50, end = start - 1),
             strand = strand))
@@ -1672,7 +1764,7 @@ collateData <- function(Experiment, reference_path, output_path,
         new_gtf <- c(new_gtf, gr_novel_leftExon, gr_novel_rightExon)
     }
 
-    if(nrow(tj.novel) > 0) {
+    if(n_tj > 0) {
         gr_tjnovel_leftExon <- GRanges(tj.novel$seqnames,
             IRanges(tj.novel$start1 - 50, tj.novel$start1 - 1),
             tj.novel$strand)

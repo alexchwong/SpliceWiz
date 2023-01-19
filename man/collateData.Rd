@@ -16,6 +16,7 @@ collateData(
   novelSplicing_countThreshold = 10,
   novelSplicing_minSamplesAboveThreshold = 1,
   novelSplicing_requireOneAnnotatedSJ = TRUE,
+  novelSplicing_extrapolateTJ = FALSE,
   overwrite = FALSE,
   n_threads = 1,
   lowMemoryMode = TRUE
@@ -75,6 +76,11 @@ above a pre-defined threshold exceeds this number}
 novel junctions to have one annotated splice site. If this is disabled,
 collateData will include novel junctions where neither splice site is
 annotated.}
+
+\item{novelSplicing_extrapolateTJ}{(default \code{FALSE}) Whether to allow any
+pair of observed (and known) junctions and observed (and known) exons
+to construct "putative" tandem junctions. Assists in identifying novel
+exon skipping and MXE events at a cost of increased false positives.}
 
 \item{overwrite}{(default \code{FALSE}) If \code{collateData()} has previously been run
 using the same set of samples, it will not be overwritten unless this is

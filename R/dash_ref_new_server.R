@@ -241,23 +241,24 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                 output$refStatus <- renderText("Gene annotations not provided")
             } else {        
                 # Copy MappabilityRef into target directory
-                if(
-                        "MappabilityRef" %in% names(args) && 
-                        file.exists(args$MappabilityRef)
-                ) {
-                    mappa_base <- basename(args$MappabilityRef)
-                    new_mappa_path <- file.path(args$reference_path, 
-                        "Mappability")
-                    new_mappa_file <- file.path(new_mappa_path, mappa_base)
+                # if(
+                        # "MappabilityRef" %in% names(args) && 
+                        # file.exists(args$MappabilityRef)
+                # ) {
+                    # mappa_base <- basename(args$MappabilityRef)
+                    # new_mappa_path <- file.path(args$reference_path, 
+                        # "Mappability")
+                    # new_mappa_file <- file.path(new_mappa_path, mappa_base)
                     
-                    if(!dir.exists(new_mappa_path)) dir.create(new_mappa_path)
+                    # if(!dir.exists(new_mappa_path)) dir.create(new_mappa_path)
                     
-                    if(dir.exists(new_mappa_path))
-                        file.copy(args$MappabilityRef, new_mappa_file)
+                    # if(dir.exists(new_mappa_path))
+                        # file.copy(args$MappabilityRef, new_mappa_file, 
+                            # overwrite = TRUE)
                     
-                    if(file.exists(new_mappa_file)) 
-                        args$MappabilityRef <- new_mappa_file
-                }
+                    # if(file.exists(new_mappa_file)) 
+                        # args$MappabilityRef <- new_mappa_file
+                # }
                 args$lowMemoryMode <- get_memmode_reactive()
                 withProgress(message = 'Building Reference', value = 0, {
                     do.call(buildRef, args)

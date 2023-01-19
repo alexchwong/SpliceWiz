@@ -339,7 +339,7 @@ buildRef <- function(
     }
 
     originalSWthreads <- .getSWthreads()
-    tryCatch({
+    # tryCatch({
         setSWthreads(1) # try this to prevent memory leak
 
         session <- shiny::getDefaultReactiveDomain()
@@ -441,11 +441,11 @@ buildRef <- function(
         dash_progress("Reference build finished", N_steps)
         gc()
 
-    }, error = function(e) {
-        stop("In buildRef(...): ", e, call. = FALSE)
-    }, finally = {
+    # }, error = function(e) {
+        # stop("In buildRef(...): ", e, call. = FALSE)
+    # }, finally = {
         .restore_threads(originalSWthreads)
-    })
+    # })
 
     invisible()
 }
@@ -747,12 +747,12 @@ Get_GTF_file <- function(reference_path) {
         "MappabilityFile.resource")
     local.BlacklistFile <- file.path(reference_path, "resource", 
         "BlacklistFile.resource")
-    if(file.exists(nonPolyAFile) && !file.exists(local.nonPolyAFile))
-        file.copy(nonPolyAFile, local.nonPolyAFile)
-    if(file.exists(MappabilityFile) && !file.exists(local.MappabilityFile))
-        file.copy(MappabilityFile, local.MappabilityFile)
-    if(file.exists(BlacklistFile) && !file.exists(local.BlacklistFile))
-        file.copy(BlacklistFile, local.BlacklistFile)
+    if(file.exists(nonPolyAFile) && nonPolyAFile != local.nonPolyAFile)
+        file.copy(nonPolyAFile, local.nonPolyAFile, overwrite = TRUE)
+    if(file.exists(MappabilityFile) && MappabilityFile != local.MappabilityFile)
+        file.copy(MappabilityFile, local.MappabilityFile, overwrite = TRUE)
+    if(file.exists(BlacklistFile) && BlacklistFile != local.BlacklistFile)
+        file.copy(BlacklistFile, local.BlacklistFile, overwrite = TRUE)
         
     final <- list(
         nonPolyAFile = nonPolyAFile, MappabilityFile = MappabilityFile,
@@ -1076,7 +1076,7 @@ Get_GTF_file <- function(reference_path) {
         }
         if (is(genome, "TwoBitFile") && 
                 file.exists(rtracklayer::path(genome))) {
-            file.copy(rtracklayer::path(genome), genome.2bit)
+            file.copy(rtracklayer::path(genome), genome.2bit, overwrite = TRUE)
         } else {
             rtracklayer::export(genome, genome.2bit, "2bit")
         }
@@ -1152,10 +1152,10 @@ Get_GTF_file <- function(reference_path) {
                 if (substr(gtf_file, nchar(gtf_file) - 2,
                         nchar(gtf_file)) == ".gz") {
                     if (file.exists(gtf_path)) file.remove(gtf_path)
-                    file.copy(gtf_file, gtf_path)
+                    file.copy(gtf_file, gtf_path, overwrite = TRUE)
                 } else {
                     gzip(filename = gtf_file, destname = gtf_path,
-                        remove = FALSE)
+                        remove = FALSE, overwrite = TRUE)
                 }
                 if(verbose) message("done")
             }

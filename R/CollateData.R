@@ -1226,7 +1226,7 @@ collateData <- function(Experiment, reference_path, output_path,
     for(fstFile in fst2Copy) {
         if(file.exists(file.path(reference_path, "fst", fstFile))) {
             file.copy(file.path(reference_path, "fst", fstFile),
-                file.path(novel_ref_path, "fst", fstFile))    
+                file.path(novel_ref_path, "fst", fstFile), overwrite = TRUE)    
         }        
     }
 

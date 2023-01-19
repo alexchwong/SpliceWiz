@@ -747,11 +747,11 @@ Get_GTF_file <- function(reference_path) {
         "MappabilityFile.resource")
     local.BlacklistFile <- file.path(reference_path, "resource", 
         "BlacklistFile.resource")
-    if(file.exists(nonPolyAFile))
+    if(file.exists(nonPolyAFile) && nonPolyAFile != local.nonPolyAFile)
         file.copy(nonPolyAFile, local.nonPolyAFile, overwrite = TRUE)
-    if(file.exists(MappabilityFile))
+    if(file.exists(MappabilityFile) && MappabilityFile != local.MappabilityFile)
         file.copy(MappabilityFile, local.MappabilityFile, overwrite = TRUE)
-    if(file.exists(BlacklistFile))
+    if(file.exists(BlacklistFile) && BlacklistFile != local.BlacklistFile)
         file.copy(BlacklistFile, local.BlacklistFile, overwrite = TRUE)
         
     final <- list(

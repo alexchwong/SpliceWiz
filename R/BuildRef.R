@@ -339,7 +339,7 @@ buildRef <- function(
     }
 
     originalSWthreads <- .getSWthreads()
-    tryCatch({
+    # tryCatch({
         setSWthreads(1) # try this to prevent memory leak
 
         session <- shiny::getDefaultReactiveDomain()
@@ -441,11 +441,11 @@ buildRef <- function(
         dash_progress("Reference build finished", N_steps)
         gc()
 
-    }, error = function(e) {
-        stop("In buildRef(...): ", e, call. = FALSE)
-    }, finally = {
+    # }, error = function(e) {
+        # stop("In buildRef(...): ", e, call. = FALSE)
+    # }, finally = {
         .restore_threads(originalSWthreads)
-    })
+    # })
 
     invisible()
 }

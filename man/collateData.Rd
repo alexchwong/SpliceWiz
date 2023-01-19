@@ -171,6 +171,15 @@ collateData(expr,
   reference_path = file.path(tempdir(), "Reference"),
   output_path = file.path(tempdir(), "Collated_output")
 )
+
+# Enable novel splicing:
+
+collateData(expr,
+  reference_path = file.path(tempdir(), "Reference"),
+  output_path = file.path(tempdir(), "Collated_output"),
+  novelSplicing = TRUE
+)
+
 }
 \seealso{
 \link{processBAM}, \link{makeSE}

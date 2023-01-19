@@ -1222,7 +1222,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
     # Copy over files that don't need to be generated
     file.copy(file.path(reference_path, "SpliceWiz.ref.gz"),
-        file.path(novel_ref_path, "SpliceWiz.ref.gz"))       
+        file.path(novel_ref_path, "SpliceWiz.ref.gz"), overwrite = TRUE)       
     for(fstFile in fst2Copy) {
         if(file.exists(file.path(reference_path, "fst", fstFile))) {
             file.copy(file.path(reference_path, "fst", fstFile),

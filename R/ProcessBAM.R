@@ -290,7 +290,7 @@ processBAM <- function(
 
     expr <- findSpliceWizOutput(output_path)
     if(nrow(expr) == 0) .log(paste(
-        "SpliceWiz output files missing from," output_path,
+        "SpliceWiz output files missing from", output_path,
         "- cannot run SpliceWiz's featureCounts wrapper"
     ))
     output_files <- expr$sw_file[match(s_names, expr$sample)]

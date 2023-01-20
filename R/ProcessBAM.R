@@ -297,8 +297,7 @@ processBAM <- function(
 
     # determine paired-ness, strandedness, assume all BAMS are the same
     data.list <- get_multi_DT_from_gz(
-        normalizePath(paste0(output_files[1], ".txt.gz")),
-        c("BAM", "Directionality")
+        output_files[1], c("BAM", "Directionality")
     )
     stats <- data.list$BAM
     direct <- data.list$Directionality

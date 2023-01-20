@@ -119,6 +119,10 @@
 #' @param p_obj In `as_ggplot_cov`, takes the output of `plotCoverage` and
 #'   plots all tracks in a static plot using `ggarrange` function of the
 #'   `egg` package. Requires `egg` package to be installed.
+#' @param includeCalculations (default `FALSE`) Whether per-coordinate coverage
+#'   data should be returned as output. If `TRUE`, the final returned list
+#'   includes a third object `"calc"` which is a data frame containing
+#'   coverage data.
 #'
 #' @return A list containing two objects (`final_plot` and `ggplot`). 
 #'   `final_plot` is the plotly object.
@@ -210,6 +214,7 @@ plotCoverage <- function(
         condense_tracks = FALSE,
         stack_tracks = FALSE,
         t_test = FALSE,
+        includeCalculations = FALSE,
         norm_event
 ) {
     if ((missing(seqname) | missing(start) | missing(end)) &
@@ -264,7 +269,8 @@ plotCoverage <- function(
         plot_key_isoforms = plot_key_isoforms,
         graph_mode = "Pan", conf.int = 0.95,
         t_test = t_test, condensed = condense_tracks,
-        plotJunctions = plotJunctions, junctionThreshold = junctionThreshold
+        plotJunctions = plotJunctions, junctionThreshold = junctionThreshold,
+        includeCalculations = includeCalculations
     )
 
     args[["highlight_events"]] <- .plotCoverage_highlight_events(se, norm_event)
@@ -993,7 +999,8 @@ getCoverageBins <- function(file, region, bins = 2000,
     plot_key_isoforms = FALSE,
     stack_tracks, graph_mode, conf.int = 0.95,
     t_test = FALSE, condensed = FALSE,
-    plotJunctions = FALSE, junctionThreshold = junctionThreshold
+    plotJunctions = FALSE, junctionThreshold = junctionThreshold,
+    includeCalculations = FALSE
 ) {
     args <- as.list(match.call())
     
@@ -1014,6 +1021,7 @@ getCoverageBins <- function(file, region, bins = 2000,
 
     data.t_test <- list()
 
+    calcs <- NULL
     if (is_valid(condition) & is_valid(norm_event)) {
         # Calculate normalized values given `condition` and `norm_event`
         calcs <- do.call(.plot_cov_fn_normalize_condition, args)
@@ -1037,7 +1045,6 @@ getCoverageBins <- function(file, region, bins = 2000,
     
     ## Work out which junctions are actually represented
     juncs <- plot_objs$juncs
-    # print(juncs)
 
     p_ref <- .plot_view_ref_fn(
         view_chr, view_start, view_end,
@@ -1071,6 +1078,13 @@ getCoverageBins <- function(file, region, bins = 2000,
             layout(legend = list(title=list(text=condition)))    
     } 
 
+    if(includeCalculations) {
+        return(list(
+            ggplot = plot_objs$gp_track, final_plot = final_plot,
+            calcs = calcs
+        ))
+        
+    }
     return(list(ggplot = plot_objs$gp_track, final_plot = final_plot))
 }
 
@@ -1704,7 +1718,7 @@ determine_compatible_events <- function(
                 ) +
                 labs(y = paste(args$condition, args$tracks[[i]])) +
                 theme_white_legend
-            if(plotJunctions) {
+            if(args$plotJunctions) {
                 gp_track[[i]] <- gp_track[[i]] +
                     geom_line(data = dfJn, 
                         aes_string(

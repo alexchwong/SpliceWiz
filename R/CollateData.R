@@ -1561,14 +1561,14 @@ collateData <- function(Experiment, reference_path, output_path,
         novel_gtf$type == "exon" & novel_gtf$transcript_id %in% nontandemTr$transcript_id
     ]
 
-    novelJunctions <- SpliceWiz:::.grlGaps(split(
+    novelJunctions <- .grlGaps(split(
       nontandemExons,
       nontandemExons$transcript_id
     ))
 
     novelJunctions <- as.data.table(novelJunctions)
     novelJunctions[, c("group", "group_name") := list(NULL,NULL)]
-    novelJunctions <- SpliceWiz:::.grDT(novelJunctions)
+    novelJunctions <- .grDT(novelJunctions)
     novelJunctions <- sort(novelJunctions)
     novelJunctions <- as.data.table(novelJunctions)
     novelJunctions <- unique(novelJunctions)

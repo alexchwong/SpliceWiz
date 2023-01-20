@@ -1597,28 +1597,12 @@ determine_compatible_events <- function(
             gp_track[[1]] <- ggplot(df, aes_string(text = "info")) +
                 geom_hline(yintercept = 0)            
         })
-        if(args$ribbon_mode == "ci") {
+        if(args$ribbon_mode %in% c("ci", "sd", "sem")) {
             gp_track[[1]] <- gp_track[[1]] +
             geom_ribbon(data = df, alpha = 0.2,
                 aes(x = get("x"), y = get("mean"),
-                ymin = get("mean") - get("ci"),
-                ymax = get("mean") + get("ci"),
-                fill = get("track"),
-                group = get("track")))
-        } else if(args$ribbon_mode == "sd") {
-            gp_track[[1]] <- gp_track[[1]] +
-            geom_ribbon(data = df, alpha = 0.2,
-                aes(x = get("x"), y = get("mean"),
-                ymin = get("mean") - get("sd"),
-                ymax = get("mean") + get("sd"),
-                fill = get("track"),
-                group = get("track")))
-        } else if(args$ribbon_mode == "sem") {
-            gp_track[[1]] <- gp_track[[1]] +
-            geom_ribbon(data = df, alpha = 0.2,
-                aes(x = get("x"), y = get("mean"),
-                ymin = get("mean") - get("sem"),
-                ymax = get("mean") + get("sem"),
+                ymin = get("mean") - get(args$ribbon_mode),
+                ymax = get("mean") + get(args$ribbon_mode),
                 fill = get("track"),
                 group = get("track")))
         }
@@ -1630,7 +1614,10 @@ determine_compatible_events <- function(
             )) +
             labs(y = "Normalized Coverage") +
             theme_white_legend +
-            theme(legend.title = element_blank())
+            theme(legend.title = element_blank()) +
+            ylim(0, 
+                1.05 * layer_scales(gp_track[[1]])$y$range$range[2]
+            )
         pl_track[[1]] <- ggplotly(gp_track[[1]],
             tooltip = "text"
         )
@@ -1697,33 +1684,13 @@ determine_compatible_events <- function(
                 gp_track[[i]] <- ggplot(df, aes_string(text = "info")) +
                     geom_hline(yintercept = 0)            
             })
-            if(args$ribbon_mode == "ci") {
+            if(args$ribbon_mode %in% c("ci", "sd", "sem")) {
                 gp_track[[i]] <- gp_track[[i]] +
                 geom_ribbon(data = df, alpha = 0.2,
                     aes(
                         x = get("x"), y = get("mean"),
-                        ymin = get("mean") - get("ci"),
-                        ymax = get("mean") + get("ci"),
-                        group = get("track")
-                    )
-                )
-            } else if(args$ribbon_mode == "sd") {
-                gp_track[[i]] <- gp_track[[i]] +
-                geom_ribbon(data = df, alpha = 0.2,
-                    aes(
-                        x = get("x"), y = get("mean"),
-                        ymin = get("mean") - get("sd"),
-                        ymax = get("mean") + get("sd"),
-                        group = get("track")
-                    )
-                )
-            } else if(args$ribbon_mode == "sem") {
-                gp_track[[i]] <- gp_track[[i]] +
-                geom_ribbon(data = df, alpha = 0.2,
-                    aes(
-                        x = get("x"), y = get("mean"),
-                        ymin = get("mean") - get("sem"),
-                        ymax = get("mean") + get("sem"),
+                        ymin = get("mean") - get(args$ribbon_mode),
+                        ymax = get("mean") + get(args$ribbon_mode),
                         group = get("track")
                     )
                 )
@@ -1737,7 +1704,7 @@ determine_compatible_events <- function(
                 ) +
                 labs(y = paste(args$condition, args$tracks[[i]])) +
                 theme_white_legend
-            if(is(dfJn, "data.frame")) {
+            if(plotJunctions) {
                 gp_track[[i]] <- gp_track[[i]] +
                     geom_line(data = dfJn, 
                         aes_string(
@@ -1747,7 +1714,14 @@ determine_compatible_events <- function(
                     ) +
                     geom_text(data = dfJnSum, 
                         aes_string(x = "xlabel", y = "ylabel",
-                            label = "value"))
+                            label = "value")) +
+                    ylim(0, 1.05 * max(
+                        c(layer_scales(gp_track[[i]])$y$range$range[2],
+                        dfJn$yarc)
+                    ))
+            } else {
+                gp_track[[i]] <- gp_track[[i]] +
+                    ylim(0, 1.05 * layer_scales(gp_track[[i]])$y$range$range[2])
             }
             pl_track[[i]] <- ggplotly(gp_track[[i]],
                 tooltip = "text"
@@ -1865,7 +1839,7 @@ determine_compatible_events <- function(
                             x = "x", y = "sample", group = "group"
                         )) +
                         theme_white_legend
-                    if(is(dfJn, "data.frame")) {
+                    if(plotJunctions) {
                         gp_track[[i]] <- gp_track[[i]] +
                             geom_line(data = dfJn, 
                                 aes_string(x = "x", y = "yarc",
@@ -1873,7 +1847,16 @@ determine_compatible_events <- function(
                                     color = "darkred") +
                             geom_text(data = dfJnSum, 
                                 aes_string(x = "xlabel", y = "ylabel",
-                                    label = "value"))
+                                    label = "value")) +
+                            ylim(0, 1.05 * max(c(
+                                layer_scales(gp_track[[i]])$y$range$range[2],
+                                dfJn$yarc
+                            )))
+                    } else {
+                        gp_track[[i]] <- gp_track[[i]] +
+                            ylim(0, 
+                            1.05 * layer_scales(gp_track[[i]])$y$range$range[2]
+                            )
                     }
                     pl_track[[i]] <- ggplotly(gp_track[[i]], tooltip = "text")
                     

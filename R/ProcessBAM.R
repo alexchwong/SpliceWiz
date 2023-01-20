@@ -353,8 +353,12 @@ processBAM <- function(
         ) {
             if(overwrite) {
                 # Remove samples in old output that have been re-run
-                # res.old$targets <- setdiff(res.old$targets, res$targets)
-                # res.old$stat <- res.old$stat[, ]
+                removeSamples <- intersect(res.old$targets, res$targets)
+                if(length(removeSamples) > 0) {
+                    res.old$targets <- setdiff(res.old$targets, res$targets)
+                    res.old$stat <- res.old$stat[, -removeSamples]
+                    res.old$counts <- res.old$counts[, -removeSamples]
+                }
             }
             # Append old sample results to existing results
             new_samples <- res$targets[!(res$targets %in% res.old$targets)]

@@ -117,7 +117,7 @@ processBAM <- function(
     # Run featureCounts
     if (run_featureCounts) {
         .processBAM_run_featureCounts(
-            reference_path, s_output,
+            reference_path, output_path,
             bamfiles, sample_names, n_threads, overwrite
         )
     }
@@ -282,11 +282,14 @@ processBAM <- function(
 # Runs featureCounts on given BAM files, intended to be run after processBAM
 # as processBAM determines the strandedness and paired-ness of the experiment
 .processBAM_run_featureCounts <- function(
-        reference_path, output_files,
+        reference_path, output_path,
         s_bam, s_names, n_threads, overwrite
 ) {
     .check_package_installed("Rsubread", "2.4.0")
     gtf_file <- Get_GTF_file(reference_path)
+
+    expr <- findSpliceWizOutput(output_path)
+    output_files <- expr$path[match(s_names, expr$sample)]
 
     # determine paired-ness, strandedness, assume all BAMS are the same
     data.list <- get_multi_DT_from_gz(
@@ -302,65 +305,82 @@ processBAM <- function(
     if (strand == -1) strand <- 2
 
     # Check which have already been run, do not run if overwrite = FALSE
-    outfile <- file.path(dirname(output_files[1]), "main.FC.Rds")
-    if (file.exists(outfile) & !overwrite) {
+    outfile <- file.path(output_path, "main.FC.Rds")
+    samples_todo <-  .processBAM_fcfile_validate(outfile)
+    if(!is.null(samples_todo) && length(samples_todo) == 0) {
+        .log(paste(
+            "featureCounts already run on all samples, output in",
+            outfile
+        ), "message")
+        return(0)
+    }
+    if(is.null(samples_todo)) samples_todo <- s_names
+    need_to_do <- s_names[s_names %in% samples_todo]
+
+    # Run FeatureCounts in bulk
+    res <- Rsubread::featureCounts(
+        s_bam[need_to_do],
+        annot.ext = gtf_file,
+        isGTFAnnotationFile = TRUE,
+        strandSpecific = strand,
+        isPairedEnd = paired,
+        requireBothEndsMapped = paired,
+        nthreads = n_threads
+    )
+    res$targets <- s_names[need_to_do]
+    colnames(res$counts) <- s_names[need_to_do]
+    colnames(res$stat)[-1] <- s_names[need_to_do]
+    columns <- c("counts", "annotation", "targets", "stat")
+    if (!all(columns %in% names(res))) 
+        .log("Error encountered when running featureCounts")
+
+    # Append to existing main.FC.Rds if exists, overwriting where necessary:
+    validFC <- .processBAM_fcfile_validate(outfile)
+    if(!is.null(validFC)) {
+        # Valid prior output that needs to be overwritten
         res.old <- readRDS(outfile)
-        need_to_do <- (!(s_names %in% res.old$targets))
-    } else {
-        need_to_do <- rep(TRUE, length(s_bam))
-    }
-
-    if (any(need_to_do)) {
-        # Run FeatureCounts in bulk
-        res <- Rsubread::featureCounts(
-            s_bam[need_to_do],
-            annot.ext = gtf_file,
-            isGTFAnnotationFile = TRUE,
-            strandSpecific = strand,
-            isPairedEnd = paired,
-            requireBothEndsMapped = paired,
-            nthreads = n_threads
-        )
-        res$targets <- s_names[need_to_do]
-        colnames(res$counts) <- s_names[need_to_do]
-        colnames(res$stat)[-1] <- s_names[need_to_do]
-        columns <- c("counts", "annotation", "targets", "stat")
-        # Append to existing main.FC.Rds if exists, overwriting where necessary:
-        if (file.exists(outfile)) {
-            res.old <- readRDS(outfile)
-            if (!all(columns %in% names(res))) {
-                .log(paste(outfile,
-                    "found but was not a valid SpliceWiz featureCounts",
-                    "output; overwriting previous output"
-                ), "warning")
-            } else if (
-                identical(res.old$annotation, res$annotation) &
-                identical(res.old$stat$Status, res$stat$Status)
-            ) {
-                new_samples <- res$targets[!(res$targets %in% res.old$targets)]
-                res$targets <- c(res.old$targets, new_samples)
-                res$stat <- cbind(res.old$stat, res$stat[, new_samples])
-                res$counts <- cbind(res.old$counts, res$counts[, new_samples])
-            } else {
-                .log(paste(
-                    "featureCounts output not compatible with previous",
-                    "output in", outfile, "; overwriting previous output"
-                ), "warning")
-            }
-        }
-        if (all(columns %in% names(res))) {
-            saveRDS(res, outfile)
+        if (
+            identical(res.old$annotation, res$annotation) &
+            identical(res.old$stat$Status, res$stat$Status)
+        ) {
+            new_samples <- res$targets[!(res$targets %in% res.old$targets)]
+            res$targets <- c(res.old$targets, new_samples)
+            res$stat <- cbind(res.old$stat, res$stat[, new_samples])
+            res$counts <- cbind(res.old$counts, res$counts[, new_samples])
         } else {
-            .log("Error encountered when running featureCounts")
+            .log(paste(
+                "featureCounts output not compatible with previous",
+                "output in", outfile, "; overwriting previous output"
+            ), "warning")
         }
-        .log(paste("featureCounts ran succesfully; saved to",
-            outfile), "message")
-    } else {
-        .log("featureCounts has already been run on given BAM files", "message")
     }
-
+    
+    if (file.exists(outfile) & is.null(validFC)) {
+        .log(paste(outfile,
+            "found but was not a valid SpliceWiz featureCounts",
+            "output; overwriting previous output"
+        ), "warning")
+    }
+    saveRDS(res, outfile)
+    .log(paste("featureCounts ran succesfully; saved to",
+        outfile), "message")
 }
 
+# Validates old fc output
+# Returns:
+# - NULL if no or invalid output file
+# - character(0) if all samples already processed
+# - vector of samples that need to be processed
+.processBAM_fcfile_validate <- function(outfile, samples) {
+    if (!file.exists(outfile)) return(NULL)
+    
+    columns <- c("counts", "annotation", "targets", "stat")
+    res <- readRDS(outfile)
+    
+    if (!all(columns %in% names(res))) return(NULL)
+    need_to_do <- samples[!(samples %in% res[["targets"]])]
+    return(need_to_do)
+}
 
 
 # Validate arguments; return error if invalid

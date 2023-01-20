@@ -40,7 +40,7 @@ is_valid <- function(x) {
         stop(msg, call. = FALSE)
     } else if (type == "warning") {
         warning(msg, call. = FALSE)
-    } else {
+    } else if (type == "message") {
         message(msg, ...)
     }
 }

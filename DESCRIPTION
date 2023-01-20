@@ -60,10 +60,8 @@ Imports:
 	RColorBrewer,
 	XML
 Suggests: 
-    knitr, rmarkdown, openssl, crayon, egg,
-    DESeq2, limma, DoubleExpSeq, satuRn, splines, edgeR,
-    DBI, GO.db, fgsea,
-    Rsubread, testthat (>= 3.0.0)
+    knitr, rmarkdown, openssl, crayon, splines, testthat (>= 3.0.0),
+    DESeq2, limma, DoubleExpSeq, satuRn, edgeR, egg, DBI, GO.db, fgsea, Rsubread 
 LinkingTo: 
     ompBAM,
     Rcpp,

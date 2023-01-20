@@ -23,6 +23,7 @@ plotCoverage(
   ribbon_mode = c("sd", "ci", "sem", "none"),
   selected_transcripts,
   plotJunctions = FALSE,
+  junctionThreshold = 0.01,
   plot_key_isoforms = FALSE,
   condense_tracks = FALSE,
   stack_tracks = FALSE,
@@ -105,6 +106,13 @@ isoforms that are not relevant to the samples being displayed.}
 
 \item{plotJunctions}{(default \code{FALSE}) If \code{TRUE}, sashimi plot junction arcs
 are plotted. Currently only implemented for plots of individual samples.}
+
+\item{junctionThreshold}{(default \code{0.01}) The threshold expression of
+junction reads below which junction arcs will be omitted. This removes
+cluttering of junction arcs from lowly-expressed (rare) junctions.
+For individual
+tracks, this is the fraction of coverage height. For by-condition
+tracks, this is a PSI threshold.}
 
 \item{plot_key_isoforms}{(default \code{FALSE}) If \code{TRUE}, only
 transcripts involved in the selected \code{Event} or pair of \code{Event}s will be
@@ -206,7 +214,7 @@ stacked ggplot, using egg::ggarrange
 
 }}
 \examples{
-se <- SpliceWiz_example_NxtSE()
+se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
 
 # Assign annotation of the experimental conditions
 colData(se)$treatment <- rep(c("A", "B"), each = 3)

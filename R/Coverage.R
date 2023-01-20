@@ -88,6 +88,12 @@
 #'   isoforms that are not relevant to the samples being displayed.
 #' @param plotJunctions (default `FALSE`) If `TRUE`, sashimi plot junction arcs
 #'   are plotted. Currently only implemented for plots of individual samples.
+#' @param junctionThreshold (default `0.01`) The threshold expression of
+#'   junction reads below which junction arcs will be omitted. This removes
+#'   cluttering of junction arcs from lowly-expressed (rare) junctions.
+#'   For individual
+#'   tracks, this is the fraction of coverage height. For by-condition
+#'   tracks, this is a PSI threshold.
 #' @param plot_key_isoforms (default `FALSE`) If `TRUE`, only 
 #'   transcripts involved in the selected `Event` or pair of `Event`s will be
 #'   displayed.
@@ -123,7 +129,7 @@
 #' * `ggplot[[6]]` always contains the genome track.
 #' A static plot can be generated using the `as_ggplot_cov` function.
 #' @examples
-#' se <- SpliceWiz_example_NxtSE()
+#' se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
 #'
 #' # Assign annotation of the experimental conditions
 #' colData(se)$treatment <- rep(c("A", "B"), each = 3)
@@ -199,18 +205,19 @@ plotCoverage <- function(
         ribbon_mode = c("sd", "ci", "sem", "none"),
         selected_transcripts,
         plotJunctions = FALSE,
+        junctionThreshold = 0.01,
         plot_key_isoforms = FALSE,
         condense_tracks = FALSE,
         stack_tracks = FALSE,
         t_test = FALSE,
         norm_event
 ) {
-
     if ((missing(seqname) | missing(start) | missing(end)) &
         !missing(coordinates)) {
         gr <- coord2GR(coordinates)
         seqname <- tstrsplit(coordinates, split = ":", fixed=TRUE)[[1]]
         rangetxt <- tstrsplit(coordinates, split = ":", fixed=TRUE)[[2]]
+        rangetxt <- tstrsplit(rangetxt, split = "/", fixed=TRUE)[[1]]
         start <- as.numeric(tstrsplit(
             rangetxt, split = "-", fixed=TRUE)[[1]])
         end <- as.numeric(tstrsplit(
@@ -243,6 +250,8 @@ plotCoverage <- function(
         ))
     }
 
+    if(!is.numeric(junctionThreshold)) junctionThreshold <- 0.01
+
     args <- list(
         view_chr = coords$view_chr, view_start = coords$view_start,
         view_end = coords$view_end, view_strand = strand,
@@ -255,11 +264,10 @@ plotCoverage <- function(
         plot_key_isoforms = plot_key_isoforms,
         graph_mode = "Pan", conf.int = 0.95,
         t_test = t_test, condensed = condense_tracks,
-        plotJunctions = plotJunctions
+        plotJunctions = plotJunctions, junctionThreshold = junctionThreshold
     )
-    if (norm_event != "")
-        args[["highlight_events"]] <- 
-            .plotCoverage_highlight_events(se, norm_event)
+
+    args[["highlight_events"]] <- .plotCoverage_highlight_events(se, norm_event)
 
     if (!missing(selected_transcripts))
         args[["selected_transcripts"]] <- selected_transcripts
@@ -303,6 +311,7 @@ plotGenome <- function(se, reference_path,
         gr <- coord2GR(coordinates)
         seqname <- tstrsplit(coordinates, split = ":", fixed=TRUE)[[1]]
         rangetxt <- tstrsplit(coordinates, split = ":", fixed=TRUE)[[2]]
+        rangetxt <- tstrsplit(rangetxt, split = "/", fixed=TRUE)[[1]]
         start <- as.numeric(tstrsplit(
             rangetxt, split = "-", fixed=TRUE)[[1]])
         end <- as.numeric(tstrsplit(
@@ -947,9 +956,11 @@ getCoverageBins <- function(file, region, bins = 2000,
 
 # Determines what events to highlight given `norm_event`
 .plotCoverage_highlight_events <- function(se, norm_event) {
+    if (norm_event == "") return(list())
+    
     events_to_highlight <- list()
     rowData <- as.data.frame(rowData(se))
-
+    
     if (rowData$EventType[match(norm_event, rowData$EventName)]
         %in% c("MXE", "SE")) {
         events_to_highlight[[1]] <- c(
@@ -978,11 +989,11 @@ getCoverageBins <- function(file, region, bins = 2000,
     norm_event, condition, tracks = list(), track_names = NULL, 
     ribbon_mode = "ci",
     se, avail_files,
-    transcripts, elems, highlight_events = "", selected_transcripts = "",
+    transcripts, elems, highlight_events = list(), selected_transcripts = "",
     plot_key_isoforms = FALSE,
     stack_tracks, graph_mode, conf.int = 0.95,
     t_test = FALSE, condensed = FALSE,
-    plotJunctions = FALSE
+    plotJunctions = FALSE, junctionThreshold = junctionThreshold
 ) {
     args <- as.list(match.call())
     
@@ -1000,15 +1011,8 @@ getCoverageBins <- function(file, region, bins = 2000,
     }
     
     if (is.null(track_names)) args$track_names <- unlist(tracks)
-    p_ref <- .plot_view_ref_fn(
-        view_chr, view_start, view_end,
-        transcripts, elems, highlight_events,
-        condensed = condensed,
-        selected_transcripts = selected_transcripts,
-        plot_key_isoforms = plot_key_isoforms
-    )
+
     data.t_test <- list()
-    cur_zoom <- floor(log((view_end - view_start) / 50) / log(3))
 
     if (is_valid(condition) & is_valid(norm_event)) {
         # Calculate normalized values given `condition` and `norm_event`
@@ -1028,6 +1032,22 @@ getCoverageBins <- function(file, region, bins = 2000,
     # Summarize non-null tracks
     plot_tracks <- plot_objs$pl_track[
         unlist(lapply(plot_objs$pl_track, function(x) !is.null(x)))]
+
+    ##### Plot reference track #####
+    
+    ## Work out which junctions are actually represented
+    juncs <- plot_objs$juncs
+    # print(juncs)
+
+    p_ref <- .plot_view_ref_fn(
+        view_chr, view_start, view_end,
+        transcripts, elems, highlight_events,
+        condensed = condensed,
+        selected_transcripts = selected_transcripts,
+        plot_key_isoforms = plot_key_isoforms,
+        filterByJunctions = juncs
+    )
+
     # Remove legend for p_ref; this causes trouble for plotly
     for (i in seq_len(length(p_ref$pl$x$data))) {
         p_ref$pl$x$data[[i]]$showlegend <- FALSE
@@ -1059,15 +1079,16 @@ getCoverageBins <- function(file, region, bins = 2000,
 # Plots the transcript track, highlighting where required
 .plot_view_ref_fn <- function(
     view_chr, view_start, view_end,
-    transcripts, elems, highlight_events = "",
+    transcripts, elems, highlight_events = list(),
     condensed = FALSE, selected_transcripts = "",
-    plot_key_isoforms = FALSE
+    plot_key_isoforms = FALSE,
+    filterByJunctions = NULL
 ) {
     DTlist <- .plot_view_ref_fn_getDTlist(
         view_chr, view_start, view_end,
         transcripts, elems, highlight_events,
         condensed, selected_transcripts,
-        plot_key_isoforms
+        plot_key_isoforms, filterByJunctions
     )
     DTplotlist <- .plot_view_ref_fn_groupDTlist(DTlist,
         view_chr, view_start, view_end, highlight_events)
@@ -1078,9 +1099,10 @@ getCoverageBins <- function(file, region, bins = 2000,
 
 .plot_view_ref_fn_getDTlist <- function(
     view_chr, view_start, view_end,
-    transcripts, elems, highlight_events = "",
+    transcripts, elems, highlight_events = list(),
     condensed = FALSE, selected_transcripts = "",
-    plot_key_isoforms = FALSE
+    plot_key_isoforms = FALSE,
+    filterByJunctions = NULL
 ) {
     transcripts.DT <- transcripts[
         get("seqnames") == view_chr &
@@ -1136,33 +1158,18 @@ getCoverageBins <- function(file, region, bins = 2000,
         
         reduced.DT <- rbind(exons.DT, CDS.DT, introns.DT)
     }
-    
-    # reduced.DT[get("type") %in% c("CDS", "start_codon", "stop_codon"),
-        # c("type") := "CDS"]
-    # reduced.DT[get("type") != "CDS", c("type") := "exon"]
-
-    # introns.DT <- as.data.table(.grlGaps(
-        # split(.grDT(reduced.DT), reduced.DT$transcript_id)))
-    # introns.DT[, c("type") := "intron"]
-    # setnames(introns.DT, "group_name", "transcript_id")
-    # introns.DT[reduced.DT, on = "transcript_id",
-        # "group_id" := get("i.group_id")]
-    
-    # filter_cols <- c("seqnames", "start", "end", "strand",
-        # "type", "group_id", "transcript_id", "feature_id")
-    # reduced.DT <- rbind(reduced.DT[, filter_cols, with = FALSE],
-        # introns.DT[, filter_cols, with = FALSE])
 
     # Highlight events here
     # highlight_events is of syntax chrX:10000-11000/-
-    if (length(highlight_events) > 1 || highlight_events != "")
-        reduced.DT <- determine_compatible_events(
-            reduced.DT, highlight_events, plot_key_isoforms)
 
-    if(plot_key_isoforms) {
-        transcripts.DT <- transcripts.DT[
-            get("transcript_id") %in% reduced.DT$transcript_id]
-    }
+    reduced.DT <- determine_compatible_events(
+        reduced.DT, highlight_events, plot_key_isoforms,
+        filtered_events = filterByJunctions
+    )
+
+    transcripts.DT <- transcripts.DT[
+        get("transcript_id") %in% reduced.DT$transcript_id]
+
     return(list(
         transcripts.DT = transcripts.DT,
         reduced.DT = reduced.DT,
@@ -1171,7 +1178,8 @@ getCoverageBins <- function(file, region, bins = 2000,
 }
 
 determine_compatible_events <- function(
-        reduced.DT, highlight_events, plot_key_isoforms
+        reduced.DT, highlight_events, plot_key_isoforms,
+        filtered_events = NULL
 ) {
     introns <- reduced.DT[get("type") == "intron"]
     introns[, c("highlight") := "0"]
@@ -1236,6 +1244,56 @@ determine_compatible_events <- function(
                 c("highlight") := highlight_id]
         }
     }
+    
+    if(!is.null(filtered_events)) {
+        # filter vectors
+        novelTrID <- preservePut <- InTrID <- c()
+        intronlessID <- exons[
+            !(get("transcript_id") %in% introns$transcript_id)
+        ]$transcript_id
+        
+        filterByDT <- as.data.table(coord2GR(filtered_events))
+        filterByDT <- filterByDT[, c("seqnames", "start", "end"),
+            with = FALSE]
+
+        # Remove novel transcripts if at least 1 junction not represented in
+        # samples, unless belonging to tr_filter
+        intronsOut <- introns[!filterByDT, on = c("seqnames", "start", "end")]
+        if(nrow(intronsOut) > 0) {
+            novelTrID <- intronsOut$transcript_id
+            novelTrID <- novelTrID[grepl("novel", novelTrID)]
+        }
+        intronsIn <- introns[filterByDT, on = c("seqnames", "start", "end")]
+        InTrID <- intronsIn$transcript_id
+        InTrID <- InTrID[!(InTrID %in% novelTrID)]
+
+        # Remove all novel putative tandem transcripts unless both introns
+        #   in viewing frame
+        intronsPut <- introns[grepl("novelPutTrID", get("transcript_id"))]
+        if(nrow(intronsPut) > 0) {
+            preservePut <- intronsPut$transcript_id[
+                duplicated(intronsPut$transcript_id)]
+        }
+
+        introns <- introns[
+            # Retain if important
+            (get("transcript_id") %in% tr_filter) |
+            (get("transcript_id") %in% InTrID) |
+            (
+                # Remove novel transcript id if 1 or more introns filtered out
+                !(get("transcript_id") %in% novelTrID) |
+                (get("transcript_id") %in% preservePut)
+            )
+        ]
+        exons <- exons[
+            get("transcript_id") %in% c(introns$transcript_id, intronlessID)
+        ]
+        misc <- misc[
+            get("transcript_id") %in% c(introns$transcript_id, intronlessID)
+        ]
+        
+    }
+    
     if(plot_key_isoforms) {
         introns <- introns[get("transcript_id") %in% tr_filter]
         exons <- exons[get("transcript_id") %in% tr_filter]
@@ -1245,7 +1303,7 @@ determine_compatible_events <- function(
 }
 
 .plot_view_ref_fn_groupDTlist <- function(DTlist,
-    view_chr, view_start, view_end, highlight_events = ""
+    view_chr, view_start, view_end, highlight_events = list()
 ) {
     transcripts.DT <- DTlist$transcripts.DT
     reduced.DT <- DTlist$reduced.DT
@@ -1303,11 +1361,11 @@ determine_compatible_events <- function(
     reduced.DT[group.DT, on = "group_id",
         c("plot_level") := get("i.plot_level")]
 
-    if (length(highlight_events) == 1 && highlight_events == "") {
-        reduced.DT[, c("highlight") := FALSE]
-    } else {
+    # if (length(highlight_events) == 1 && highlight_events == "") {
+        # reduced.DT[, c("highlight") := FALSE]
+    # } else {
         setorderv(reduced.DT, "highlight")
-    }
+    # }
     return(list(
         group.DT = group.DT,
         reduced.DT = reduced.DT,
@@ -1378,7 +1436,7 @@ determine_compatible_events <- function(
             )
         )
     }
-    if (length(highlight_events) > 1 || highlight_events != "") {
+    if (length(highlight_events) > 0) {
         p <- p + scale_color_manual(values = c("black", "blue", "red")) +
             scale_fill_manual(values = c("black", "blue", "red"))
     }
@@ -1438,7 +1496,7 @@ determine_compatible_events <- function(
     junc.list <- list()
     data.t_test <- fac <- NULL
     max_tracks <- 0
-    
+    samples_plotted <- c()
     junc_PSI <- .plot_cov_fn_retrieve_PSI(view_chr, view_start, view_end, 
         se = se, ...)
     for (i in seq_len(4)) {
@@ -1455,6 +1513,8 @@ determine_compatible_events <- function(
             
             if (length(avail_files[samples]) > 0 &&
                     all(file.exists(avail_files[samples]))) {
+                samples_plotted <- c(samples_plotted, samples)
+                
                 if(is(junc_PSI, "data.frame")) 
                     junc_PSI_track <- junc_PSI[, samples]
 
@@ -1501,7 +1561,8 @@ determine_compatible_events <- function(
     return(list(
         data.list = data.list, data.t_test = data.t_test,
         fac = fac, max_tracks = max_tracks,
-        junc.list = junc.list
+        junc.list = junc.list,
+        samples = samples_plotted
     ))
 }
 
@@ -1509,7 +1570,16 @@ determine_compatible_events <- function(
 .plot_cov_fn_plot_by_condition_stacked <- function(calcs, args) {
     max_tracks <- calcs$max_tracks
     gp_track <- pl_track <- list()
-
+    juncs_plotted <- c()
+    for (i in seq_len(4)) {
+        if (length(calcs$data.list) >= i && !is.null(calcs$data.list[[i]])) {
+            df <- as.data.frame(calcs$data.list[[i]])
+            dfJn <- .plot_cov_fn_PSI_make_jn_arcs(df, calcs$junc.list[[i]],
+                0.1 * max(df$mean), args$junctionThreshold)
+            juncs_plotted <- c(juncs_plotted, unique(dfJn$coord))
+        }
+    }
+    
     df <- as.data.frame(rbindlist(calcs$data.list))
     if (nrow(df) > 0) {
         if (length(args$track_names) == length(args$tracks))
@@ -1587,7 +1657,7 @@ determine_compatible_events <- function(
             labs(x = "", y = "Normalized Coverage")
     }
     return(list(
-        gp_track = gp_track, pl_track = pl_track
+        gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted)
     ))
 }
 
@@ -1595,6 +1665,7 @@ determine_compatible_events <- function(
 .plot_cov_fn_plot_by_condition_unstacked <- function(calcs, args) {
     max_tracks <- calcs$max_tracks
     gp_track <- pl_track <- list()
+    juncs_plotted <- c()
     for (i in seq_len(4)) {
         if (length(calcs$data.list) >= i && !is.null(calcs$data.list[[i]])) {
             df <- as.data.frame(calcs$data.list[[i]])
@@ -1607,8 +1678,9 @@ determine_compatible_events <- function(
             )
             df$track <- paste(args$condition, args$tracks[[i]])
             dfJn <- .plot_cov_fn_PSI_make_jn_arcs(df, calcs$junc.list[[i]],
-                0.1 * max(df$mean))
-            if(is(dfJn, "data.frame")) {
+                0.1 * max(df$mean), args$junctionThreshold)
+            juncs_plotted <- c(juncs_plotted, unique(dfJn$coord))
+            if(args$plotJunctions) {
                 dtJn <- as.data.table(dfJn)
                 dtJn[, c("xlabel", "ylabel") := list(
                     mean(get("x")), mean(get("y"))), 
@@ -1698,7 +1770,7 @@ determine_compatible_events <- function(
         }
     }
     return(list(
-        gp_track = gp_track, pl_track = pl_track
+        gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted)
     ))
 }
 
@@ -1741,7 +1813,8 @@ determine_compatible_events <- function(
 # Plot individual samples one in each track
 .plot_cov_fn_indiv <- function(
     view_chr, view_start, view_end, view_strand,
-    tracks = list(), track_names = NULL, avail_files, ...
+    tracks = list(), track_names = NULL, avail_files, 
+    plotJunctions, junctionThreshold, ...
 ) {
     cur_zoom <- floor(log((view_end - view_start) / 50) / log(3))
     gp_track <- pl_track <- list()
@@ -1750,6 +1823,7 @@ determine_compatible_events <- function(
         view_chr, view_start, view_end,
         unlist(tracks), ...
     )
+    juncs_plotted <- c()
     for (i in seq_len(4)) {
         if (length(tracks) >= i && is_valid(tracks[[i]])) {
             track_samples <- tracks[[i]]
@@ -1760,8 +1834,9 @@ determine_compatible_events <- function(
                     view_chr, view_start, view_end, view_strand)
                 df <- bin_df(df, max(1, 3^(cur_zoom - 4)))
                 dfJn <- .plot_cov_fn_indiv_make_jn_arcs(df, junc_df, 
-                    track_samples, 0.1 * max(df$sample))
-                if(is(dfJn, "data.frame")) {
+                    track_samples, 0.1 * max(df$sample), junctionThreshold)
+                juncs_plotted <- c(juncs_plotted, unique(dfJn$coord))
+                if(plotJunctions) {
                     dtJn <- as.data.table(dfJn)
                     dtJn[, c("xlabel", "ylabel") := list(
                         mean(get("x")), mean(get("y"))), 
@@ -1824,7 +1899,7 @@ determine_compatible_events <- function(
         }
     }
     return(list(
-        gp_track = gp_track, pl_track = pl_track
+        gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted)
     ))
 }
 
@@ -1833,10 +1908,9 @@ determine_compatible_events <- function(
         samples_to_get,
         view_strand_jn,
         se = NULL,
-        plotJunctions = FALSE,
-        ...
+        plotJunctions = FALSE, ...
 ) {
-    if(plotJunctions) {
+    # if(plotJunctions) {
         gr_select <- GRanges(view_chr, 
             IRanges(view_start, view_end), view_strand_jn)
         OL <- findOverlaps(junc_gr(se), gr_select)
@@ -1860,9 +1934,9 @@ determine_compatible_events <- function(
             with = FALSE])
         rownames(final) <- junc_counts_select$rownames
         return(final)
-    } else {
-        return(NA)
-    }
+    # } else {
+        # return(NA)
+    # }
 }
 
 .plot_cov_fn_retrieve_PSI <- function(
@@ -1872,7 +1946,7 @@ determine_compatible_events <- function(
         plotJunctions = FALSE,
         ...
 ) {
-    if(plotJunctions) {
+    # if(plotJunctions) {
         gr_select <- GRanges(view_chr, 
             IRanges(view_start, view_end), view_strand_jn)
         OL <- findOverlaps(junc_gr(se), gr_select)
@@ -1881,15 +1955,15 @@ determine_compatible_events <- function(
         final  <- as.data.frame(junc_PSI(se)[
             unique(from(OL)),])
         return(final)
-    } else {
-        return(NA)
-    }
+    # } else {
+        # return(NA)
+    # }
 }
 
 .plot_cov_fn_indiv_make_jn_arcs <- function(
         df, junc_df, sample,
         arcHeight = 0,
-        juncThreshold = 0.01
+        junctionThreshold = 0.01
 ) {
     if(!is(junc_df, "data.frame")) return(NA)
     junc_df_indiv <- junc_df[, sample, drop = FALSE]
@@ -1908,7 +1982,7 @@ determine_compatible_events <- function(
     maxY <- max(df$sample)
     final <- c()
     for(i in seq_len(nrow(junc_df_indiv))) {
-        if(junc_df_indiv$juncVal[i] > juncThreshold * maxY) {
+        if(junc_df_indiv$juncVal[i] > junctionThreshold * maxY) {
             leftY <- df$max[
                 which.min(abs(df$x - junc_df_indiv$juncStart[i]))]
             rightY <- df$max[
@@ -1924,6 +1998,7 @@ determine_compatible_events <- function(
                 paste0("Depth: ", junc_df_indiv$juncVal[i]),
                 sep = "\n"
             )
+            outdf$coord <- rownames(junc_df_indiv)[i]
             outdf$value <- junc_df_indiv$juncVal[i]
             final <- rbind(final, outdf)
         }
@@ -1934,7 +2009,7 @@ determine_compatible_events <- function(
 .plot_cov_fn_PSI_make_jn_arcs <- function(
         df, junc_df,
         arcHeight = 0,
-        juncThreshold = 0.01
+        junctionThreshold = 0.01
 ) {
     if(!is(junc_df, "data.frame")) return(NA)
     junc_df_PSI <- data.frame(
@@ -1955,7 +2030,7 @@ determine_compatible_events <- function(
 
     final <- c()
     for(i in seq_len(nrow(junc_df_PSI))) {
-        if(junc_df_PSI$PSImean[i] > juncThreshold) {
+        if(junc_df_PSI$PSImean[i] > junctionThreshold) {
             leftY <- df$max[
                 which.min(abs(df$x - junc_df_PSI$juncStart[i]))]
             rightY <- df$max[
@@ -1973,6 +2048,7 @@ determine_compatible_events <- function(
                 paste0("PSI: ", outdf$value),
                 sep = "\n"
             )
+            outdf$coord <- rownames(junc_df_PSI)[i]
             final <- rbind(final, outdf)
         }
     }

@@ -5,9 +5,9 @@
     Bioc_deps <- c("DESeq2", "limma", "satuRn", "edgeR", 
         "GO.db", "fgsea", "Rsubread")
 
-    CRAN_deps_inst <- vapply(CRAN_deps, SpliceWiz:::.check_package_installed,
+    CRAN_deps_inst <- vapply(CRAN_deps, .check_package_installed,
         FUN.VALUE = logical(1), "0.0.0", "silent")
-    Bioc_deps_inst <- vapply(Bioc_deps, SpliceWiz:::.check_package_installed,
+    Bioc_deps_inst <- vapply(Bioc_deps, .check_package_installed,
         FUN.VALUE = logical(1), "0.0.0", "silent")
     
     if(!all(CRAN_deps_inst) | !all(Bioc_deps_inst)) {

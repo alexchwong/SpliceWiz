@@ -28,6 +28,7 @@ plotCoverage(
   condense_tracks = FALSE,
   stack_tracks = FALSE,
   t_test = FALSE,
+  includeCalculations = FALSE,
   norm_event
 )
 
@@ -127,6 +128,11 @@ in a different colour on the same track. Ignored if \code{condition} is not set.
 
 \item{t_test}{(default \code{FALSE}) Whether to perform a pair-wise T-test.
 Only used if there are TWO condition tracks.}
+
+\item{includeCalculations}{(default \code{FALSE}) Whether per-coordinate coverage
+data should be returned as output. If \code{TRUE}, the final returned list
+includes a third object \code{"calc"} which is a data frame containing
+coverage data.}
 
 \item{norm_event}{Whether to normalise by an event different to that given
 in "Event". The difference between this and Event is that the genomic

@@ -318,7 +318,7 @@ processBAM <- function(
     
     strand <- c()
     for(i in seq_len(length(output_files))) {
-        strand <- c(strand, .processBAM_getStrand(output_files[i])
+        strand <- c(strand, .processBAM_getStrand(output_files[i]))
     }
     if(length(unique(strand)) > 1) {    
         .log(paste(

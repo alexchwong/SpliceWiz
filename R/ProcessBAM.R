@@ -289,7 +289,11 @@ processBAM <- function(
     gtf_file <- Get_GTF_file(reference_path)
 
     expr <- findSpliceWizOutput(output_path)
-    output_files <- expr$path[match(s_names, expr$sample)]
+    if(nrow(expr) == 0) .log(paste(
+        "SpliceWiz output files missing from," output_path,
+        "- cannot run SpliceWiz's featureCounts wrapper"
+    ))
+    output_files <- expr$sw_file[match(s_names, expr$sample)]
 
     # determine paired-ness, strandedness, assume all BAMS are the same
     data.list <- get_multi_DT_from_gz(
@@ -306,16 +310,20 @@ processBAM <- function(
 
     # Check which have already been run, do not run if overwrite = FALSE
     outfile <- file.path(output_path, "main.FC.Rds")
-    samples_todo <-  .processBAM_fcfile_validate(outfile)
-    if(!is.null(samples_todo) && length(samples_todo) == 0) {
-        .log(paste(
-            "featureCounts already run on all samples, output in",
-            outfile
-        ), "message")
-        return(0)
+    if(overwrite) {
+        need_to_do <- rep(TRUE, length(s_names))
+    } else {
+        samples_todo <-  .processBAM_fcfile_validate(outfile)
+        if(!is.null(samples_todo) && length(samples_todo) == 0) {
+            .log(paste(
+                "featureCounts already run on all samples, output in",
+                outfile
+            ), "message")
+            return(0)
+        }
+        if(is.null(samples_todo)) samples_todo <- s_names
+        need_to_do <- s_names[s_names %in% samples_todo]
     }
-    if(is.null(samples_todo)) samples_todo <- s_names
-    need_to_do <- s_names[s_names %in% samples_todo]
 
     # Run FeatureCounts in bulk
     res <- Rsubread::featureCounts(
@@ -343,6 +351,12 @@ processBAM <- function(
             identical(res.old$annotation, res$annotation) &
             identical(res.old$stat$Status, res$stat$Status)
         ) {
+            if(overwrite) {
+                # Remove samples in old output that have been re-run
+                # res.old$targets <- setdiff(res.old$targets, res$targets)
+                # res.old$stat <- res.old$stat[, ]
+            }
+            # Append old sample results to existing results
             new_samples <- res$targets[!(res$targets %in% res.old$targets)]
             res$targets <- c(res.old$targets, new_samples)
             res$stat <- cbind(res.old$stat, res$stat[, new_samples])

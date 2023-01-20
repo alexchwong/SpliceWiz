@@ -295,17 +295,6 @@ processBAM <- function(
     ))
     output_files <- expr$sw_file[match(s_names, expr$sample)]
 
-    # determine paired-ness, strandedness, assume all BAMS are the same
-    data.list <- get_multi_DT_from_gz(
-        output_files[1], c("BAM", "Directionality")
-    )
-    stats <- data.list$BAM
-    direct <- data.list$Directionality
-
-    paired <- (stats$Value[3] == 0 & stats$Value[4] > 0) ||
-        (stats$Value[3] > 0 && stats$Value[4] / stats$Value[3] / 1000)
-    strand <- direct$Value[9]
-    if (strand == -1) strand <- 2
 
     # Check which have already been run, do not run if overwrite = FALSE
     outfile <- file.path(output_path, "main.FC.Rds")
@@ -324,12 +313,30 @@ processBAM <- function(
         need_to_do <- s_names[s_names %in% samples_todo]
     }
 
+    # determine paired-ness, strandedness, assume all BAMS are the same
+    output_files <- expr$sw_file[match(samples_todo, expr$sample)]
+    
+    strand <- c()
+    for(i in seq_len(length(output_files))) {
+        strand <- c(strand, .processBAM_getStrand(output_files[i])
+    }
+    if(length(unique(strand)) > 1) {    
+        .log(paste(
+            "Samples with different stranded-ness found:",
+            paste(unique(strand), collapse = ", "),
+            ", running featureCounts using un-stranded mode."
+        ), "warning")
+        strandUse <- 0
+    } else {
+        strandUse <- unique(strand)
+    }
+
     # Run FeatureCounts in bulk
     res <- Rsubread::featureCounts(
         s_bam[need_to_do],
         annot.ext = gtf_file,
         isGTFAnnotationFile = TRUE,
-        strandSpecific = strand,
+        strandSpecific = strandUse,
         isPairedEnd = paired,
         requireBothEndsMapped = paired,
         nthreads = n_threads
@@ -399,6 +406,19 @@ processBAM <- function(
     return(need_to_do)
 }
 
+.processBAM_getStrand <- function(outfile) {
+    data.list <- get_multi_DT_from_gz(
+        outfile, c("BAM", "Directionality")
+    )
+    stats <- data.list$BAM
+    direct <- data.list$Directionality
+
+    paired <- (stats$Value[3] == 0 & stats$Value[4] > 0) ||
+        (stats$Value[3] > 0 && stats$Value[4] / stats$Value[3] / 1000)
+    strand <- direct$Value[9]
+    if (strand == -1) strand <- 2
+    return(strand)
+}
 
 # Validate arguments; return error if invalid
 .processBAM_validate_args <- function(s_bam, max_threads, output_files) {

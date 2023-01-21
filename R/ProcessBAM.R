@@ -317,8 +317,11 @@ processBAM <- function(
     output_files <- expr$sw_file[match(samples_todo, expr$sample)]
     
     strand <- c()
+    paired <- c()
     for(i in seq_len(length(output_files))) {
-        strand <- c(strand, .processBAM_getStrand(output_files[i]))
+        ret <- .processBAM_getStrand(output_files[i])
+        strand <- c(strand, ret$strand)
+        paired <- c(paired, ret$paired)
     }
     if(length(unique(strand)) > 1) {    
         .log(paste(
@@ -330,15 +333,25 @@ processBAM <- function(
     } else {
         strandUse <- unique(strand)
     }
-
+    if(length(unique(paired)) > 1) {    
+        .log(paste(
+            "Samples with both single / paired reads",
+            paste(unique(paired), collapse = ", "),
+            ", running featureCounts using single-end reads."
+        ), "warning")
+        pairedUse <- FALSE
+    } else {
+        pairedUse <- unique(paired)
+    }
+    
     # Run FeatureCounts in bulk
     res <- Rsubread::featureCounts(
         s_bam[need_to_do],
         annot.ext = gtf_file,
         isGTFAnnotationFile = TRUE,
         strandSpecific = strandUse,
-        isPairedEnd = paired,
-        requireBothEndsMapped = paired,
+        isPairedEnd = pairedUse,
+        requireBothEndsMapped = pairedUse,
         nthreads = n_threads
     )
     res$targets <- s_names[need_to_do]
@@ -417,7 +430,10 @@ processBAM <- function(
         (stats$Value[3] > 0 && stats$Value[4] / stats$Value[3] / 1000)
     strand <- direct$Value[9]
     if (strand == -1) strand <- 2
-    return(strand)
+    return(list(
+        paired = paired,
+        strand = strand
+    ))
 }
 
 # Validate arguments; return error if invalid

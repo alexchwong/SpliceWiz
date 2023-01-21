@@ -310,7 +310,7 @@ processBAM <- function(
             return(0)
         }
         if(is.null(samples_todo)) samples_todo <- s_names
-        need_to_do <- s_names[s_names %in% samples_todo]
+        need_to_do <- s_names %in% samples_todo
     }
 
     # determine paired-ness, strandedness, assume all BAMS are the same

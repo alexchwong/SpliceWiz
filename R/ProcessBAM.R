@@ -301,7 +301,7 @@ processBAM <- function(
     if(overwrite) {
         need_to_do <- rep(TRUE, length(s_names))
     } else {
-        samples_todo <-  .processBAM_fcfile_validate(outfile)
+        samples_todo <-  .processBAM_fcfile_validate(outfile, s_names)
         if(!is.null(samples_todo) && length(samples_todo) == 0) {
             .log(paste(
                 "featureCounts already run on all samples, output in",
@@ -362,7 +362,7 @@ processBAM <- function(
         .log("Error encountered when running featureCounts")
 
     # Append to existing main.FC.Rds if exists, overwriting where necessary:
-    validFC <- .processBAM_fcfile_validate(outfile)
+    validFC <- .processBAM_fcfile_validate(outfile, s_names[need_to_do])
     if(!is.null(validFC)) {
         # Valid prior output that needs to be overwritten
         res.old <- readRDS(outfile)

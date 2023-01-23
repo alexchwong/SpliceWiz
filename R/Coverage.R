@@ -1064,11 +1064,8 @@ getCoverageBins <- function(file, region, bins = 2000,
     # Put the reference track in position #6 of ggplot list
     plot_objs$gp_track[[6]] <- p_ref$gp +
         theme(legend.position = "none") +
-        labs(x = paste("Chromosome", view_chr)) +
-        coord_cartesian(                    
-            xlim = c(view_start, view_end),
-            expand = FALSE
-        )
+        labs(x = paste("Chromosome", view_chr))
+        
     # Combine multiple tracks into a plotly plot
     final_plot <- .plot_cov_fn_finalize(
         plot_tracks, view_start, view_end, graph_mode)

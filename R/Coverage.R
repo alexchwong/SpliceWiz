@@ -279,14 +279,14 @@ plotCoverage <- function(
         args[["selected_transcripts"]] <- selected_transcripts
 
     p <- do.call(.plot_cov_fn, args)
-    for(i in seq_len(length(p$ggplot) - 1)) {
-        if(!is.null(p$ggplot[[i]])) {
-            p$ggplot[[i]] <- p$ggplot[[i]] +
-                coord_cartesian(
-                    xlim = c(coords$view_start, coords$view_end),
-                    expand = FALSE)
-        }
-    }
+    # for(i in seq_len(length(p$ggplot) - 1)) {
+        # if(!is.null(p$ggplot[[i]])) {
+            # p$ggplot[[i]] <- p$ggplot[[i]] +
+                # coord_cartesian(
+                    # xlim = c(coords$view_start, coords$view_end),
+                    # expand = FALSE)
+        # }
+    # }
 
     return(p)
 }
@@ -1031,7 +1031,7 @@ getCoverageBins <- function(file, region, bins = 2000,
         } else {
             plot_objs <- .plot_cov_fn_plot_by_condition_unstacked(calcs, args)
         }
-        if (t_test) plot_objs <- .plot_cov_fn_ttest(plot_objs, calcs)
+        if (t_test) plot_objs <- .plot_cov_fn_ttest(plot_objs, calcs, args)
     } else if (!is_valid(condition)) {
         # Plot individual coverages on separate tracks
         plot_objs <- do.call(.plot_cov_fn_indiv, args)
@@ -1064,7 +1064,11 @@ getCoverageBins <- function(file, region, bins = 2000,
     # Put the reference track in position #6 of ggplot list
     plot_objs$gp_track[[6]] <- p_ref$gp +
         theme(legend.position = "none") +
-        labs(x = paste("Chromosome", view_chr))
+        labs(x = paste("Chromosome", view_chr)) +
+        coord_cartesian(                    
+            xlim = c(view_start, view_end),
+            expand = FALSE
+        )
     # Combine multiple tracks into a plotly plot
     final_plot <- .plot_cov_fn_finalize(
         plot_tracks, view_start, view_end, graph_mode)
@@ -1628,16 +1632,17 @@ determine_compatible_events <- function(
             )) +
             labs(y = "Normalized Coverage") +
             theme_white_legend +
-            theme(legend.title = element_blank()) +
-            ylim(0, 
-                1.05 * layer_scales(gp_track[[1]])$y$range$range[2]
+            theme(legend.title = element_blank()) # +
+            yrange <- c(0, 1.05 * 
+                layer_scales(gp_track[[1]])$y$range$range[2]
             )
         pl_track[[1]] <- ggplotly(gp_track[[1]],
-            tooltip = "text"
+            tooltip = c("x", "y", "ymin", "ymax")
         )
         pl_track[[1]] <- pl_track[[1]] %>% layout(
             dragmode = "zoom",
-            yaxis = list(rangemode = "tozero", fixedrange = TRUE)
+            yaxis = list(range = yrange,
+                rangemode = "tozero", fixedrange = TRUE)
         )
         for (j in seq_len(max_tracks)) {
             pl_track[[1]]$x$data[[1 + j]]$showlegend <- FALSE
@@ -1655,7 +1660,12 @@ determine_compatible_events <- function(
         }
         # remove x axis label, rename y axis
         gp_track[[1]] <- gp_track[[1]] + theme(axis.title.x = element_blank()) +
-            labs(x = "", y = "Normalized Coverage")
+            labs(x = "", y = "Normalized Coverage") +
+            coord_cartesian(                    
+                xlim = c(args$view_start, args$view_end),
+                ylim = yrange,
+                expand = FALSE
+            )
     }
     return(list(
         gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted)
@@ -1695,7 +1705,7 @@ determine_compatible_events <- function(
             }
             
             suppressWarnings({
-                gp_track[[i]] <- ggplot(df, aes_string(text = "info")) +
+                gp_track[[i]] <- ggplot(df, aes(text = get("info"))) +
                     geom_hline(yintercept = 0)            
             })
             if(args$ribbon_mode %in% c("ci", "sd", "sem")) {
@@ -1728,20 +1738,22 @@ determine_compatible_events <- function(
                     ) +
                     geom_text(data = dfJnSum, 
                         aes_string(x = "xlabel", y = "ylabel",
-                            label = "value")) +
-                    ylim(0, 1.05 * max(
+                            label = "value"))
+                    yrange <- c(0, 1.05 * max(
                         c(layer_scales(gp_track[[i]])$y$range$range[2],
                         dfJn$yarc)
                     ))
             } else {
-                gp_track[[i]] <- gp_track[[i]] +
-                    ylim(0, 1.05 * layer_scales(gp_track[[i]])$y$range$range[2])
+                yrange <- c(0, 1.05 * 
+                    layer_scales(gp_track[[i]])$y$range$range[2]
+                )
             }
             pl_track[[i]] <- ggplotly(gp_track[[i]],
                 tooltip = "text"
             )
             pl_track[[i]] <- pl_track[[i]] %>% layout(
-                yaxis = list(rangemode = "tozero", fixedrange = TRUE)
+                yaxis = list(range = yrange,
+                    rangemode = "tozero", fixedrange = TRUE)
             )
             pl_track[[i]]$x$data[[2]]$showlegend <- FALSE
             pl_track[[i]]$x$data[[3]]$showlegend <- FALSE
@@ -1754,7 +1766,12 @@ determine_compatible_events <- function(
             pl_track[[i]]$x$data[[3]]$name <- track_name
             gp_track[[i]] <- gp_track[[i]] +
                 theme(axis.title.x = element_blank()) +
-                labs(x = "", y = track_name)
+                labs(x = "", y = track_name) +
+                coord_cartesian(                    
+                    xlim = c(args$view_start, args$view_end),
+                    ylim = yrange,
+                    expand = FALSE
+                )
         }
     }
     return(list(
@@ -1764,7 +1781,7 @@ determine_compatible_events <- function(
 
 # Plot t-test track
 .plot_cov_fn_ttest <- function(
-    plot_objs, calcs
+    plot_objs, calcs, args
 ) {
     # Plot t-test track
     fac <- NULL
@@ -1793,7 +1810,11 @@ determine_compatible_events <- function(
         plot_objs$pl_track[[5]]$x$data[[2]]$showlegend <- FALSE
         plot_objs$gp_track[[5]] <- plot_objs$gp_track[[5]] +
             theme(axis.title.x = element_blank()) +
-            labs(y = "log10 t-test")
+            labs(y = "log10 t-test") +
+            coord_cartesian(                    
+                xlim = c(args$view_start, args$view_end),
+                expand = FALSE
+            )
     }
     return(plot_objs)
 }
@@ -1861,22 +1882,20 @@ determine_compatible_events <- function(
                                     color = "darkred") +
                             geom_text(data = dfJnSum, 
                                 aes_string(x = "xlabel", y = "ylabel",
-                                    label = "value")) +
-                            ylim(0, 1.05 * max(c(
-                                layer_scales(gp_track[[i]])$y$range$range[2],
-                                dfJn$yarc
-                            )))
+                                    label = "value")) # +
+                        yrange <- c(0, 1.05 * max(c(
+                            layer_scales(gp_track[[i]])$y$range$range[2],
+                            dfJn$yarc
+                        )))
                     } else {
-                        gp_track[[i]] <- gp_track[[i]] +
-                            ylim(0, 
-                            1.05 * layer_scales(gp_track[[i]])$y$range$range[2]
-                            )
+                        yrange <- c(0, 
+                            1.05 * layer_scales(gp_track[[i]])$y$range$range[2])
                     }
                     pl_track[[i]] <- ggplotly(gp_track[[i]], tooltip = "text")
                     
                     pl_track[[i]] <- pl_track[[i]] %>% layout(
                         yaxis = list(
-                            range = c(0, 1 + max(unlist(df[, "sample"]))),
+                            range = yrange,
                             fixedrange = TRUE,
                             title = paste(track_samples, "")
                         )
@@ -1890,7 +1909,12 @@ determine_compatible_events <- function(
                     pl_track[[i]]$x$data[[2]]$name <- track_name
                     gp_track[[i]] <- gp_track[[i]] +
                         theme(axis.title.x = element_blank()) +
-                        labs(x = "", y = track_name)
+                        labs(x = "", y = track_name) +
+                        coord_cartesian(                    
+                            xlim = c(view_start, view_end),
+                            ylim = yrange,
+                            expand = FALSE
+                        )
                 }
             }
         }

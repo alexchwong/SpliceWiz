@@ -1236,7 +1236,7 @@ determine_compatible_events <- function(
 
                 # Remove novel transcripts if not all introns highlighted
                 introns_novel <- introns[
-                    seq_len(nrow(introns)) %in% OL@to & 
+                    !(seq_len(nrow(introns)) %in% OL@to) & 
                     grepl("novel", get("transcript_id"))
                 ]
                 tr_final <- setdiff(tr_final, introns_novel$transcript_id)
@@ -1279,7 +1279,6 @@ determine_compatible_events <- function(
     }
     
     if(!is.null(filtered_events)) {
-        print(filtered_events)
         # filter vectors
         novelTrID <- preservePut <- InTrID <- c()
         intronlessID <- exons[

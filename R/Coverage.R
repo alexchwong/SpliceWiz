@@ -1279,6 +1279,7 @@ determine_compatible_events <- function(
     }
     
     if(!is.null(filtered_events)) {
+        print(filtered_events)
         # filter vectors
         novelTrID <- preservePut <- InTrID <- c()
         intronlessID <- exons[

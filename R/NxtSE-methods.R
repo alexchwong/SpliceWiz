@@ -845,7 +845,7 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
-        metadata$sourcePath <- ref(args[[1]])
+        metadata$sourcePath <- sourcePath(args[[1]])
     }, error = function(err) {
         stop(
             "failed to combine 'sourcePath' in 'rbind(<",

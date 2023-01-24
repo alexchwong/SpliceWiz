@@ -1203,6 +1203,7 @@ determine_compatible_events <- function(
 
     tr_filter <- c()
     if (length(highlight_events) == 1) {
+        # IR / RI only
         gr <- coord2GR(highlight_events[[1]])
         introns.gr <- .grDT(introns)
         OL <- findOverlaps(gr, introns.gr)
@@ -1214,36 +1215,55 @@ determine_compatible_events <- function(
     } else if (length(highlight_events) == 2) {
         AS_count <- 1
         for (event in highlight_events) {
-            # Highlight introns that match exact junction
-            gr <- coord2GR(event)
-            introns.gr <- .grDT(introns)
-            OL <- findOverlaps(gr, introns.gr, type = "equal")
-            introns[OL@to, c("highlight") := as.character(AS_count)]
-            tr_filter <- unique(c(tr_filter, 
-                introns[get("highlight") != "0"]$transcript_id))
-            
-            # Only highlight exons when both junctions match
-            OL_s1 <- findOverlaps(gr[1], introns.gr, type = "equal")
-            tr1 <- unique(introns$transcript_id[OL_s1@to])
-            if (length(gr) == 2) {
-                OL_s2 <- findOverlaps(gr[2], introns.gr, type = "equal")
-                tr1 <- unique(intersect(tr1, introns$transcript_id[OL_s2@to]))
+            tr <- list()
+            for(i in seq_len(length(event))) {
+                ev <- event[i]
+                OL <- findOverlaps(coord2GR(ev), .grDT(introns), type = "equal")
+                tr[[i]] <- introns[OL@to]$transcript_id
             }
-            tr_filter <- unique(c(tr_filter, tr1))
-            
-            coord_keys_start <- end(gr[1]) + 1
-            coord_keys_end <- start(gr[1]) - 1
-            if (length(gr) == 2) {
-                coord_keys_start <- c(coord_keys_start, end(gr[2]) + 1)
-                coord_keys_end <- c(coord_keys_end, start(gr[2]) - 1)
+            tr_final <- NULL
+            if(length(event) == 2) {
+                tr_final <- intersect(tr[[1]], tr[[2]])
+            } else {
+                tr_final <- tr[[1]]
             }
-            exons[get("transcript_id") %in% tr1 &
-                (get("start") %in% coord_keys_start | 
-                get("end") %in% coord_keys_end),
-                c("highlight") := as.character(AS_count)]
             
+            if(length(tr_final) > 0) {
+                # Highlight introns that match exact junction
+                gr <- coord2GR(event)
+                introns.gr <- .grDT(introns)
+                OL <- findOverlaps(gr, introns.gr, type = "equal")
+
+                # Remove novel transcripts if not all introns highlighted
+                introns_novel <- introns[
+                    seq_len(nrow(introns)) %in% OL@to & 
+                    grepl("novel", get("transcript_id"))
+                ]
+                tr_final <- setdiff(tr_final, introns_novel$transcript_id)
+
+                introns[
+                    seq_len(nrow(introns)) %in% OL@to & 
+                    get("transcript_id") %in% tr_final, 
+                    c("highlight") := as.character(AS_count)
+                ]           
+                
+                coord_keys_start <- end(gr[1]) + 1
+                coord_keys_end <- start(gr[1]) - 1
+                if (length(gr) == 2) {
+                    coord_keys_start <- c(coord_keys_start, end(gr[2]) + 1)
+                    coord_keys_end <- c(coord_keys_end, start(gr[2]) - 1)
+                }
+                exons[get("transcript_id") %in% tr_final &
+                    (get("start") %in% coord_keys_start | 
+                    get("end") %in% coord_keys_end),
+                    c("highlight") := as.character(AS_count)]
+            }
+ 
+            tr_filter <- c(tr_filter, tr_final)
             AS_count <- AS_count + 1
         }
+        
+        # transfer highlighting from exons to CDS
         for(tr in unique(exons[get("highlight") != "0"]$transcript_id)) {
             exons_selected <- exons[get("transcript_id") == tr &
                 get("highlight") != "0"]
@@ -1269,8 +1289,7 @@ determine_compatible_events <- function(
         filterByDT <- filterByDT[, c("seqnames", "start", "end"),
             with = FALSE]
 
-        # Remove novel transcripts if at least 1 junction not represented in
-        # samples, unless belonging to tr_filter
+        # Remove novel transcripts if at least 1 junction not represented
         intronsOut <- introns[!filterByDT, on = c("seqnames", "start", "end")]
         if(nrow(intronsOut) > 0) {
             novelTrID <- intronsOut$transcript_id
@@ -1290,17 +1309,18 @@ determine_compatible_events <- function(
         }
 
         introns <- introns[
-            # Retain if important
-            (get("transcript_id") %in% tr_filter) |
-            
             # Retain if not a novel junction with no in-view junctions expressed
-            !(get("transcript_id") %in% novelTrID) |
+            !(get("transcript_id") %in% novelTrID) & (
 
-            # Retain if annotated and any in-view junctions expressed
-            (get("transcript_id") %in% InTrID) |
-            
-            # Retain if both junctions of TJ-Puts are expressed
-            (get("transcript_id") %in% preservePut)
+                # Retain if important
+                (get("transcript_id") %in% tr_filter) |            
+
+                # Retain if annotated and any in-view junctions expressed
+                (get("transcript_id") %in% InTrID) |
+                
+                # Retain if both junctions of TJ-Puts are expressed
+                (get("transcript_id") %in% preservePut)
+            )
         ]
         exons <- exons[
             get("transcript_id") %in% c(introns$transcript_id, intronlessID)

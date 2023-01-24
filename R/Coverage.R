@@ -1137,16 +1137,6 @@ getCoverageBins <- function(file, region, bins = 2000,
         # get("type") %in% c("CDS", "start_codon", "stop_codon", "exon")
         get("type") %in% c("CDS", "exon", "intron")
     ]
-    if (condensed != TRUE & nrow(transcripts.DT) <= 100) {
-        condense_this <- FALSE
-        transcripts.DT[, c("group_id") := get("transcript_id")]
-        screen.DT[, c("group_id") := get("transcript_id")]
-    } else {
-        condense_this <- TRUE
-        transcripts.DT[, c("group_id") := get("gene_id")]
-        screen.DT[transcripts.DT, on = "transcript_id",
-            c("group_id") := get("gene_id")]
-    }
 
     reduced.DT <- copy(screen.DT)
     
@@ -1184,6 +1174,17 @@ getCoverageBins <- function(file, region, bins = 2000,
 
     transcripts.DT <- transcripts.DT[
         get("transcript_id") %in% reduced.DT$transcript_id]
+
+    if (condensed != TRUE & nrow(transcripts.DT) <= 100) {
+        condense_this <- FALSE
+        transcripts.DT[, c("group_id") := get("transcript_id")]
+        screen.DT[, c("group_id") := get("transcript_id")]
+    } else {
+        condense_this <- TRUE
+        transcripts.DT[, c("group_id") := get("gene_id")]
+        screen.DT[transcripts.DT, on = "transcript_id",
+            c("group_id") := get("gene_id")]
+    }
 
     return(list(
         transcripts.DT = transcripts.DT,

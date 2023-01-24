@@ -1132,13 +1132,10 @@ getCoverageBins <- function(file, region, bins = 2000,
         ]
     } # filter transcripts if applicable
 
-    screen.DT <- elems[
+    reduced.DT <- elems[
         get("transcript_id") %in% transcripts.DT$transcript_id &
-        # get("type") %in% c("CDS", "start_codon", "stop_codon", "exon")
         get("type") %in% c("CDS", "exon", "intron")
     ]
-
-    reduced.DT <- copy(screen.DT)
     
     # Transfer feature_id from exons -> CDS
     CDS.DT <- reduced.DT[get("type") == "CDS"]
@@ -1178,11 +1175,11 @@ getCoverageBins <- function(file, region, bins = 2000,
     if (condensed != TRUE & nrow(transcripts.DT) <= 100) {
         condense_this <- FALSE
         transcripts.DT[, c("group_id") := get("transcript_id")]
-        screen.DT[, c("group_id") := get("transcript_id")]
+        reduced.DT[, c("group_id") := get("transcript_id")]
     } else {
         condense_this <- TRUE
         transcripts.DT[, c("group_id") := get("gene_id")]
-        screen.DT[transcripts.DT, on = "transcript_id",
+        reduced.DT[transcripts.DT, on = "transcript_id",
             c("group_id") := get("gene_id")]
     }
 

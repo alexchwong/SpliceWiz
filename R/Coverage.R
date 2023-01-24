@@ -123,6 +123,8 @@
 #'   data should be returned as output. If `TRUE`, the final returned list
 #'   includes a third object `"calc"` which is a data frame containing
 #'   coverage data.
+#' @param reverseGenomeCoords (default `FALSE`) Whether to reverse the genomic
+#'   coordinates - helpful for intuitive plotting of negative-strand genes
 #'
 #' @return A list containing two objects (`final_plot` and `ggplot`). 
 #'   `final_plot` is the plotly object.
@@ -208,6 +210,7 @@ plotCoverage <- function(
         condition,
         ribbon_mode = c("sd", "ci", "sem", "none"),
         selected_transcripts,
+        reverseGenomeCoords = FALSE,
         plotJunctions = FALSE,
         junctionThreshold = 0.01,
         plot_key_isoforms = FALSE,
@@ -270,7 +273,8 @@ plotCoverage <- function(
         graph_mode = "Pan", conf.int = 0.95,
         t_test = t_test, condensed = condense_tracks,
         plotJunctions = plotJunctions, junctionThreshold = junctionThreshold,
-        includeCalculations = includeCalculations
+        includeCalculations = includeCalculations,
+        reverseGenomeCoords = reverseGenomeCoords
     )
 
     args[["highlight_events"]] <- .plotCoverage_highlight_events(se, norm_event)
@@ -297,7 +301,7 @@ plotCoverage <- function(
 #' @export
 plotGenome <- function(se, reference_path,
     Gene, seqname, start, end, coordinates, zoom_factor, bases_flanking = 100,
-    selected_transcripts,
+    selected_transcripts, reverseGenomeCoords = FALSE,
     condense_tracks = FALSE
 ) {
     if (missing(se) & missing(reference_path))
@@ -334,7 +338,8 @@ plotGenome <- function(se, reference_path,
         view_chr = coords$view_chr, view_start = coords$view_start,
         view_end = coords$view_end,
         transcripts = cov_data$transcripts, elems = cov_data$elements,
-        condensed = condense_tracks
+        condensed = condense_tracks,
+        reverseGenomeCoords = reverseGenomeCoords
     )
     if (!missing(selected_transcripts))
         args$selected_transcripts <- selected_transcripts
@@ -995,7 +1000,8 @@ getCoverageBins <- function(file, region, bins = 2000,
     norm_event, condition, tracks = list(), track_names = NULL, 
     ribbon_mode = "ci",
     se, avail_files,
-    transcripts, elems, highlight_events = list(), selected_transcripts = "",
+    transcripts, elems, highlight_events = list(), 
+    selected_transcripts = "", reverseGenomeCoords = FALSE,
     plot_key_isoforms = FALSE,
     stack_tracks, graph_mode, conf.int = 0.95,
     t_test = FALSE, condensed = FALSE,
@@ -1051,6 +1057,7 @@ getCoverageBins <- function(file, region, bins = 2000,
         transcripts, elems, highlight_events,
         condensed = condensed,
         selected_transcripts = selected_transcripts,
+        reverseGenomeCoords = reverseGenomeCoords,
         plot_key_isoforms = plot_key_isoforms,
         filterByJunctions = juncs
     )
@@ -1096,6 +1103,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     view_chr, view_start, view_end,
     transcripts, elems, highlight_events = list(),
     condensed = FALSE, selected_transcripts = "",
+    reverseGenomeCoords = FALSE,
     plot_key_isoforms = FALSE,
     filterByJunctions = NULL
 ) {
@@ -1106,10 +1114,15 @@ getCoverageBins <- function(file, region, bins = 2000,
         plot_key_isoforms, filterByJunctions
     )
     DTplotlist <- .plot_view_ref_fn_groupDTlist(DTlist,
-        view_chr, view_start, view_end, highlight_events)
+        view_chr, view_start, view_end, highlight_events,
+        reverseGenomeCoords
+    )
 
-    return(.plot_view_ref_fn_plotDTlist(DTplotlist,
-        view_chr, view_start, view_end, highlight_events))
+    return(.plot_view_ref_fn_plotDTlist(
+        DTplotlist,
+        view_chr, view_start, view_end, highlight_events,
+        reverseGenomeCoords
+    ))
 }
 
 .plot_view_ref_fn_getDTlist <- function(
@@ -1340,7 +1353,8 @@ determine_compatible_events <- function(
 }
 
 .plot_view_ref_fn_groupDTlist <- function(DTlist,
-    view_chr, view_start, view_end, highlight_events = list()
+    view_chr, view_start, view_end, highlight_events = list(),
+    reverseGenomeCoords = FALSE
 ) {
     transcripts.DT <- DTlist$transcripts.DT
     reduced.DT <- DTlist$reduced.DT
@@ -1381,10 +1395,24 @@ determine_compatible_events <- function(
     }
 
     group.DT <- group.DT[get("end") > view_start & get("start") < view_end]
+
     group.DT[get("strand") == "+", c("display_name") :=
-        paste(get("group_name"), "-", get("group_biotype"), " ->>")]
+        paste(get("group_name"), "(+)", get("group_biotype"))]
     group.DT[get("strand") == "-", c("display_name") :=
-        paste("<-- ", get("group_name"), "-", get("group_biotype"))]
+        paste(get("group_name"), "(-)", get("group_biotype"))]    
+
+    if(reverseGenomeCoords) {
+        group.DT[get("strand") == "-", c("display_name") :=
+            paste(get("display_name"), "->>")]
+        group.DT[get("strand") == "+", c("display_name") :=
+            paste("<--", get("display_name"))]
+    
+    } else {
+        group.DT[get("strand") == "+", c("display_name") :=
+            paste(get("display_name"), "->>")]
+        group.DT[get("strand") == "-", c("display_name") :=
+            paste("<--", get("display_name"))]  
+    }
     group.DT[, c("disp_x") := 0.5 * (get("start") + get("end"))]
     group.DT[get("start") < view_start & get("end") > view_start,
         c("disp_x") := 0.5 * (view_start + get("end"))]
@@ -1410,8 +1438,10 @@ determine_compatible_events <- function(
     ))
 }
 
-.plot_view_ref_fn_plotDTlist <- function(DTplotlist,
-    view_chr, view_start, view_end, highlight_events
+.plot_view_ref_fn_plotDTlist <- function(
+    DTplotlist,
+    view_chr, view_start, view_end, highlight_events,
+    reverseGenomeCoords = FALSE
 ) {
     group.DT <- DTplotlist$group.DT
     reduced <- DTplotlist$reduced.DT
@@ -1503,9 +1533,26 @@ determine_compatible_events <- function(
     gp <- p + geom_text(data = data.frame(x = anno[["x"]], y = anno[["y"]],
             Information = anno[["text"]]),
         aes(x = get("x"), y = get("y"), label = get("Information")))
-    gp <- gp + coord_cartesian(xlim = c(view_start, view_end),
-        ylim = c(min(reduced$plot_level) - 1.5, max(reduced$plot_level)) + 0.5,
-        expand = FALSE)
+
+    if(reverseGenomeCoords) {
+        gp <- gp + coord_cartesian(
+            xlim = c(view_end, view_start),
+            ylim = c(
+                min(reduced$plot_level) - 1,
+                max(reduced$plot_level) + 0.5
+            ),
+            expand = FALSE
+        )   
+    } else {
+        gp <- gp + coord_cartesian(
+            xlim = c(view_start, view_end),
+            ylim = c(
+                min(reduced$plot_level) - 1,
+                max(reduced$plot_level) + 0.5
+            ),
+            expand = FALSE
+        )    
+    }
         
     pl <- ggplotly(p, tooltip = "text") %>%
     layout(
@@ -1677,14 +1724,27 @@ determine_compatible_events <- function(
                     paste(args$condition, args$tracks[[j]])
             }
         }
+
         # remove x axis label, rename y axis
         gp_track[[1]] <- gp_track[[1]] + theme(axis.title.x = element_blank()) +
-            labs(x = "", y = "Normalized Coverage") +
-            coord_cartesian(                    
-                xlim = c(args$view_start, args$view_end),
-                ylim = yrange,
-                expand = FALSE
-            )
+            labs(x = "", y = "Normalized Coverage")
+        
+        if(args$reverseGenomeCoords) {
+            gp_track[[1]] <- gp_track[[1]] + 
+                coord_cartesian(                    
+                    xlim = c(args$view_end, args$view_start),
+                    ylim = yrange,
+                    expand = FALSE
+                )
+        } else {
+            gp_track[[1]] <- gp_track[[1]] + 
+                coord_cartesian(                    
+                    xlim = c(args$view_start, args$view_end),
+                    ylim = yrange,
+                    expand = FALSE
+                )
+        }
+
     }
     return(list(
         gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted)
@@ -1785,12 +1845,23 @@ determine_compatible_events <- function(
             pl_track[[i]]$x$data[[3]]$name <- track_name
             gp_track[[i]] <- gp_track[[i]] +
                 theme(axis.title.x = element_blank()) +
-                labs(x = "", y = track_name) +
-                coord_cartesian(                    
-                    xlim = c(args$view_start, args$view_end),
-                    ylim = yrange,
-                    expand = FALSE
-                )
+                labs(x = "", y = track_name)
+
+            if(args$reverseGenomeCoords) {
+                gp_track[[i]] <- gp_track[[i]] + 
+                    coord_cartesian(                    
+                        xlim = c(args$view_end, args$view_start),
+                        ylim = yrange,
+                        expand = FALSE
+                    )
+            } else {
+                gp_track[[i]] <- gp_track[[i]] + 
+                    coord_cartesian(                    
+                        xlim = c(args$view_start, args$view_end),
+                        ylim = yrange,
+                        expand = FALSE
+                    )
+            }
         }
     }
     return(list(
@@ -1842,6 +1913,7 @@ determine_compatible_events <- function(
 .plot_cov_fn_indiv <- function(
     view_chr, view_start, view_end, view_strand,
     tracks = list(), track_names = NULL, avail_files, 
+    reverseGenomeCoords,
     plotJunctions, junctionThreshold, ...
 ) {
     cur_zoom <- floor(log((view_end - view_start) / 50) / log(3))
@@ -1928,12 +2000,23 @@ determine_compatible_events <- function(
                     pl_track[[i]]$x$data[[2]]$name <- track_name
                     gp_track[[i]] <- gp_track[[i]] +
                         theme(axis.title.x = element_blank()) +
-                        labs(x = "", y = track_name) +
-                        coord_cartesian(                    
-                            xlim = c(view_start, view_end),
-                            ylim = yrange,
-                            expand = FALSE
-                        )
+                        labs(x = "", y = track_name)
+                    
+                    if(reverseGenomeCoords) {
+                        gp_track[[i]] <- gp_track[[i]] +
+                            coord_cartesian(                    
+                                xlim = c(view_end, view_start),
+                                ylim = yrange,
+                                expand = FALSE
+                            )
+                    } else {
+                        gp_track[[i]] <- gp_track[[i]] +
+                            coord_cartesian(                    
+                                xlim = c(view_start, view_end),
+                                ylim = yrange,
+                                expand = FALSE
+                            )
+                    }
                 }
             }
         }

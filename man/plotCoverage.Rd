@@ -22,6 +22,7 @@ plotCoverage(
   condition,
   ribbon_mode = c("sd", "ci", "sem", "none"),
   selected_transcripts,
+  reverseGenomeCoords = FALSE,
   plotJunctions = FALSE,
   junctionThreshold = 0.01,
   plot_key_isoforms = FALSE,
@@ -43,6 +44,7 @@ plotGenome(
   zoom_factor,
   bases_flanking = 100,
   selected_transcripts,
+  reverseGenomeCoords = FALSE,
   condense_tracks = FALSE
 )
 
@@ -104,6 +106,9 @@ or none \code{"none"}. Only applicable when \code{condition} is set.}
 or transcript names of transcripts
 to be displayed on the gene annotation track. Useful to remove minor
 isoforms that are not relevant to the samples being displayed.}
+
+\item{reverseGenomeCoords}{(default \code{FALSE}) Whether to reverse the genomic
+coordinates - helpful for intuitive plotting of negative-strand genes}
 
 \item{plotJunctions}{(default \code{FALSE}) If \code{TRUE}, sashimi plot junction arcs
 are plotted. Currently only implemented for plots of individual samples.}

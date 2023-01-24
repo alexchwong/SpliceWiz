@@ -1276,13 +1276,14 @@ determine_compatible_events <- function(
             novelTrID <- intronsOut$transcript_id
             novelTrID <- novelTrID[grepl("novel", novelTrID)]
         }
+        
         intronsIn <- introns[filterByDT, on = c("seqnames", "start", "end")]
         InTrID <- intronsIn$transcript_id
         InTrID <- InTrID[!(InTrID %in% novelTrID)]
 
         # Remove all novel putative tandem transcripts unless both introns
         #   in viewing frame
-        intronsPut <- introns[grepl("novelPutTrID", get("transcript_id"))]
+        intronsPut <- intronsIn[grepl("novelPutTrID", get("transcript_id"))]
         if(nrow(intronsPut) > 0) {
             preservePut <- intronsPut$transcript_id[
                 duplicated(intronsPut$transcript_id)]
@@ -1291,12 +1292,15 @@ determine_compatible_events <- function(
         introns <- introns[
             # Retain if important
             (get("transcript_id") %in% tr_filter) |
+            
+            # Retain if not a novel junction with no in-view junctions expressed
+            !(get("transcript_id") %in% novelTrID) |
+
+            # Retain if annotated and any in-view junctions expressed
             (get("transcript_id") %in% InTrID) |
-            (
-                # Remove novel transcript id if 1 or more introns filtered out
-                !(get("transcript_id") %in% novelTrID) |
-                (get("transcript_id") %in% preservePut)
-            )
+            
+            # Retain if both junctions of TJ-Puts are expressed
+            (get("transcript_id") %in% preservePut)
         ]
         exons <- exons[
             get("transcript_id") %in% c(introns$transcript_id, intronlessID)

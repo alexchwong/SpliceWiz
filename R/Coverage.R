@@ -1504,7 +1504,7 @@ determine_compatible_events <- function(
             Information = anno[["text"]]),
         aes(x = get("x"), y = get("y"), label = get("Information")))
     gp <- gp + coord_cartesian(xlim = c(view_start, view_end),
-        ylim = c(min(reduced$plot_level) - 2, max(reduced$plot_level)) + 0.5,
+        ylim = c(min(reduced$plot_level) - 1.5, max(reduced$plot_level)) + 0.5,
         expand = FALSE)
         
     pl <- ggplotly(p, tooltip = "text") %>%

@@ -16,6 +16,7 @@ collateData(
   novelSplicing_countThreshold = 10,
   novelSplicing_minSamplesAboveThreshold = 1,
   novelSplicing_requireOneAnnotatedSJ = TRUE,
+  novelSplicing_useTJ = TRUE,
   novelSplicing_extrapolateTJ = FALSE,
   overwrite = FALSE,
   n_threads = 1,
@@ -76,6 +77,10 @@ above a pre-defined threshold exceeds this number}
 novel junctions to have one annotated splice site. If this is disabled,
 collateData will include novel junctions where neither splice site is
 annotated.}
+
+\item{novelSplicing_useTJ}{(default \code{TRUE}) For novel splicing, should
+SpliceWiz use reads with 2 or more junctions to find novel exons? Ignored
+if novelSplicing is set to \code{FALSE}.}
 
 \item{novelSplicing_extrapolateTJ}{(default \code{FALSE}) Whether to allow any
 pair of observed (and known) junctions and observed (and known) exons

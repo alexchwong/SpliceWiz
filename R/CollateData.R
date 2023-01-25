@@ -93,6 +93,9 @@
 #'   novel junctions to have one annotated splice site. If this is disabled,
 #'   collateData will include novel junctions where neither splice site is
 #'   annotated.
+#' @param novelSplicing_useTJ (default `TRUE`) For novel splicing, should
+#'   SpliceWiz use reads with 2 or more junctions to find novel exons? Ignored
+#'   if novelSplicing is set to `FALSE`.
 #' @param novelSplicing_extrapolateTJ (default `FALSE`) Whether to allow any
 #'   pair of observed (and known) junctions and observed (and known) exons
 #'   to construct "putative" tandem junctions. Assists in identifying novel
@@ -149,6 +152,7 @@ collateData <- function(Experiment, reference_path, output_path,
         novelSplicing_minSamples = 3, novelSplicing_countThreshold = 10,
         novelSplicing_minSamplesAboveThreshold = 1,
         novelSplicing_requireOneAnnotatedSJ = TRUE,
+        novelSplicing_useTJ = TRUE,
         novelSplicing_extrapolateTJ = FALSE,
         overwrite = FALSE, n_threads = 1,
         lowMemoryMode = TRUE
@@ -196,11 +200,6 @@ collateData <- function(Experiment, reference_path, output_path,
     # tryCatch({
         setSWthreads(1) # try this to prevent memory leak
 
-
-        # samples_per_block <- 4
-        # if(lowMemoryMode) samples_per_block <- 16
-        # jobs <- .collateData_jobs(
-        #     nrow(df.internal), BPPARAM_mod, samples_per_block)
         jobs <- .split_vector(seq_len(nrow(df.internal)), BPPARAM_mod$workers)
         
         dash_progress("Compiling Sample Stats", N_steps)
@@ -220,8 +219,7 @@ collateData <- function(Experiment, reference_path, output_path,
             norm_output_path, stranded)
 
         # Tandem junction compilation
-        if(novelSplicing) {
-            dash_progress("Compiling Intron Retention List", N_steps)
+        if(novelSplicing & novelSplicing_useTJ) {
             .collateData_tj_merge(df.internal, jobs, 
                 BPPARAM_mod, norm_output_path)
         }
@@ -240,6 +238,8 @@ collateData <- function(Experiment, reference_path, output_path,
                     novelSplicing_minSamplesAboveThreshold,
                 novelSplicing_requireOneAnnotatedSJ =
                     novelSplicing_requireOneAnnotatedSJ,
+                novelSplicing_useTJ =
+                    novelSplicing_useTJ,
                 novelSplicing_extrapolateTJ =
                     novelSplicing_extrapolateTJ
             )
@@ -252,6 +252,8 @@ collateData <- function(Experiment, reference_path, output_path,
                     novelSplicing_minSamplesAboveThreshold,
                 novelSplicing_requireOneAnnotatedSJ =
                     novelSplicing_requireOneAnnotatedSJ,
+                novelSplicing_useTJ =
+                    novelSplicing_useTJ,
                 novelSplicing_extrapolateTJ =
                     novelSplicing_extrapolateTJ
             )
@@ -862,13 +864,14 @@ collateData <- function(Experiment, reference_path, output_path,
         stranded, novelSplicing, lowMemoryMode = TRUE,
         minSamplesWithJunc = 3, minSamplesAboveJuncThreshold = 1,
         novelSplicing_requireOneAnnotatedSJ = TRUE,
+        novelSplicing_useTJ = TRUE,
         novelSplicing_extrapolateTJ = FALSE
 ) {
     message("...annotating splice junctions")
     .collateData_junc_annotate(2, reference_path, norm_output_path,
         lowMemoryMode)
 
-    if(novelSplicing) {
+    if(novelSplicing & novelSplicing_useTJ) {
         message("...looking for novel exons")
         .collateData_tj_annotate(2, reference_path, norm_output_path)
     }
@@ -880,6 +883,7 @@ collateData <- function(Experiment, reference_path, output_path,
         norm_output_path, lowMemoryMode, novelSplicing,
         minSamplesWithJunc, minSamplesAboveJuncThreshold,
         novelSplicing_requireOneAnnotatedSJ,
+        novelSplicing_useTJ,
         novelSplicing_extrapolateTJ,
         verbose = TRUE
     )
@@ -907,6 +911,7 @@ collateData <- function(Experiment, reference_path, output_path,
         stranded, novelSplicing, lowMemoryMode = TRUE,
         minSamplesWithJunc = 3, minSamplesAboveJuncThreshold = 1,
         novelSplicing_requireOneAnnotatedSJ = TRUE,
+        novelSplicing_useTJ = TRUE,
         novelSplicing_extrapolateTJ = FALSE
 ) {
     BPPARAM_annotate <- .validate_threads(2)
@@ -921,13 +926,15 @@ collateData <- function(Experiment, reference_path, output_path,
     )
     if(novelSplicing) {
         message("...looking for novel exons")
-        tmp <- BiocParallel::bplapply(
-            seq_len(2),
-            .collateData_tj_annotate,
-            reference_path = reference_path, 
-            norm_output_path = norm_output_path,
-            BPPARAM = BPPARAM_annotate
-        )
+        if(novelSplicing_useTJ) {
+            tmp <- BiocParallel::bplapply(
+                seq_len(2),
+                .collateData_tj_annotate,
+                reference_path = reference_path, 
+                norm_output_path = norm_output_path,
+                BPPARAM = BPPARAM_annotate
+            )        
+        }
         .log(paste("Assembling novel splicing reference in dedicated thread,",
             "this may take up to 10 minutes..."), "message", appendLF = FALSE)
         tmp <- BiocParallel::bplapply(
@@ -940,6 +947,7 @@ collateData <- function(Experiment, reference_path, output_path,
             minSamplesWithJunc = minSamplesWithJunc,
             minSamplesAboveJuncThreshold = minSamplesAboveJuncThreshold,
             novelSplicing_requireOneAnnotatedSJ = novelSplicing_requireOneAnnotatedSJ,
+            novelSplicing_useTJ = novelSplicing_useTJ,
             novelSplicing_extrapolateTJ = novelSplicing_extrapolateTJ,
             BPPARAM = BPPARAM_annotate
         )
@@ -953,6 +961,7 @@ collateData <- function(Experiment, reference_path, output_path,
             norm_output_path, lowMemoryMode, novelSplicing,
             minSamplesWithJunc, minSamplesAboveJuncThreshold,
             novelSplicing_requireOneAnnotatedSJ,
+            novelSplicing_useTJ,
             novelSplicing_extrapolateTJ,
             verbose = TRUE
         )
@@ -1214,6 +1223,7 @@ collateData <- function(Experiment, reference_path, output_path,
     threadID, reference_path, norm_output_path, lowMemoryMode, novelSplicing,
     minSamplesWithJunc, minSamplesAboveJuncThreshold,
     novelSplicing_requireOneAnnotatedSJ,
+    novelSplicing_useTJ = TRUE,
     novelSplicing_extrapolateTJ = FALSE,
     verbose = FALSE
 ) {
@@ -1222,11 +1232,7 @@ collateData <- function(Experiment, reference_path, output_path,
     if(novelSplicing) {
         .log(paste("Assembling novel splicing reference:"), "message")
         fst2Copy <- c(
-            # "Exons.fst", "Exons.Group.fst", "Genes.fst", "gtf_fixed.fst",
-            # "junctions.fst", "Transcripts.fst",
-            # "Misc.fst", "Proteins.fst", 
             "Ontology.fst", 
-            # "Splice.Extended.fst", "Splice.fst", "Splice.options.fst"        
             "Introns.Dir.fst", "Introns.ND.fst", "IR.NMD.fst"
         )
     } else {
@@ -1282,7 +1288,8 @@ collateData <- function(Experiment, reference_path, output_path,
         novel_gtf <- .collateData_novel_assemble_transcripts(
             reference_path, norm_output_path, reference_data$gtf_gr,
             minSamplesWithJunc, minSamplesAboveJuncThreshold,
-            novelSplicing_requireOneAnnotatedSJ
+            novelSplicing_requireOneAnnotatedSJ,
+            novelSplicing_useTJ
         )
         # Finish inserting novel gtf
         unique_seqlevels <- unique(c(
@@ -1346,7 +1353,9 @@ collateData <- function(Experiment, reference_path, output_path,
 .collateData_novel_assemble_transcripts <- function(
     reference_path, norm_output_path, gtf,
     minSamplesWithJunc, minSamplesAboveJuncThreshold,
-    novelSplicing_requireOneAnnotatedSJ = TRUE
+    novelSplicing_requireOneAnnotatedSJ = TRUE,
+    novelSplicing_useTJ = TRUE
+    
 ) {
     # Load junc.common
     junc.common <- as.data.table(read.fst(file.path(norm_output_path, 
@@ -1404,37 +1413,39 @@ collateData <- function(Experiment, reference_path, output_path,
     
     rm(junc.common, known.junctions)
     gc()
-    # write.fst(junc.novel, file.path(norm_output_path, 
-        # "annotation", "junc.novel.filtered.fst"))
-        
-    # No need to filter tandem junctions as this was done in earlier step
-    tj.novel <- as.data.table(read.fst(file.path(norm_output_path, 
-        "annotation", "tj.common.annotated.fst")))
-    if(nrow(tj.novel) > 0) {
-        tj.novel[, c("seqnames") := as.character(get("seqnames"))]
-        # Filter tj.novel by junc.novel
-        setnames(tj.novel, c("start1", "end1"), c("start", "end"))
-        tmp <- tj.novel[!junc.novel, 
-            on = c("seqnames", "start", "end", "strand")]
-        tj.novel <- tj.novel[!tmp, on = colnames(tj.novel)]
-        setnames(tj.novel, c("start", "end"), c("start1", "end1"))
 
-        setnames(tj.novel, c("start2", "end2"), c("start", "end"))
-        tmp <- tj.novel[!junc.novel, 
-            on = c("seqnames", "start", "end", "strand")]
-        tj.novel <- tj.novel[!tmp, on = colnames(tj.novel)]
-        setnames(tj.novel, c("start", "end"), c("start2", "end2"))
+    if(novelSplicing_useTJ) {
+        # No need to filter tandem junctions as this was done in earlier step
+        tj.novel <- as.data.table(read.fst(file.path(norm_output_path, 
+            "annotation", "tj.common.annotated.fst")))
+        if(nrow(tj.novel) > 0) {
+            tj.novel[, c("seqnames") := as.character(get("seqnames"))]
+            # Filter tj.novel by junc.novel
+            setnames(tj.novel, c("start1", "end1"), c("start", "end"))
+            tmp <- tj.novel[!junc.novel, 
+                on = c("seqnames", "start", "end", "strand")]
+            tj.novel <- tj.novel[!tmp, on = colnames(tj.novel)]
+            setnames(tj.novel, c("start", "end"), c("start1", "end1"))
 
-        # Remove events in junc.novel that are also featured in tj.novel
-        tmp_gr <- GRanges(tj.novel$seqnames, 
-            IRanges(tj.novel$start1, tj.novel$end1), tj.novel$strand)
-        OL <- .findOverlaps_merge(.grDT(junc.novel), tmp_gr, type = "equal")
-        if(length(OL@from) > 0) junc.novel <- junc.novel[-unique(OL@from)]
+            setnames(tj.novel, c("start2", "end2"), c("start", "end"))
+            tmp <- tj.novel[!junc.novel, 
+                on = c("seqnames", "start", "end", "strand")]
+            tj.novel <- tj.novel[!tmp, on = colnames(tj.novel)]
+            setnames(tj.novel, c("start", "end"), c("start2", "end2"))
 
-        tmp_gr <- GRanges(tj.novel$seqnames, 
-            IRanges(tj.novel$start2, tj.novel$end2), tj.novel$strand)
-        OL <- .findOverlaps_merge(.grDT(junc.novel), tmp_gr, type = "equal")
-        if(length(OL@from) > 0) junc.novel <- junc.novel[-unique(OL@from)]
+            # Remove events in junc.novel that are also featured in tj.novel
+            tmp_gr <- GRanges(tj.novel$seqnames, 
+                IRanges(tj.novel$start1, tj.novel$end1), tj.novel$strand)
+            OL <- .findOverlaps_merge(.grDT(junc.novel), tmp_gr, type = "equal")
+            if(length(OL@from) > 0) junc.novel <- junc.novel[-unique(OL@from)]
+
+            tmp_gr <- GRanges(tj.novel$seqnames, 
+                IRanges(tj.novel$start2, tj.novel$end2), tj.novel$strand)
+            OL <- .findOverlaps_merge(.grDT(junc.novel), tmp_gr, type = "equal")
+            if(length(OL@from) > 0) junc.novel <- junc.novel[-unique(OL@from)]
+        }
+    } else {
+        tj.novel <- data.table()
     }
     
     n_trans <- nrow(junc.novel) + nrow(tj.novel)

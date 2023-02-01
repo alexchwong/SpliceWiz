@@ -213,16 +213,17 @@ setClass("NxtSE",
 #'       and alternative splicing.\cr\cr
 #'     For **IR**, Participation refers to the percentage of the measured intron
 #'       covered with reads. Only introns of samples with a depth of intron
-#'       coverage above 
-#'       `minDepth` are assessed, with introns with coverage percentage
+#'       coverage (intron depth) above 
+#'       `minDepth` are assessed, where introns with coverage percentage
 #'       below `minimum` are filtered out.\cr\cr
-#'     For **Alternative Splicing**, Participation refers to the percentage of 
-#'       all splicing events observed across the genomic region that is 
+#'     For **non-IR ASEs**, Participation refers to the percentage of 
+#'       all splicing events observed across the genomic region 
+#'       (SpliceOver metric) that is 
 #'       compatible with either the included or excluded event. This prevents 
 #'       SpliceWiz from doing differential analysis between two minor isoforms. 
 #'       Instead of IntronDepth, in AS events SpliceWiz considers events where 
-#'       the spliced reads from both exonic regions exceed `minDepth`.
-#'       Then, events with a splicing coverage below `minimum`
+#'       the SpliceOver metric exceed `minDepth`.
+#'       Then, events with a SpliceOver metric below `minimum`
 #'       are excluded. \cr\cr
 #'       We recommend testing IR events for > 70% coverage and AS
 #'       events for > 40% coverage as given in the default filters which can be
@@ -242,9 +243,9 @@ setClass("NxtSE",
 #'       events to represent at least 1/(2^2) = 1/4 of the sum of upstream
 #'       and downstream event. If `maximum = 3`, then each junction must be at
 #'       least 1/8 of total, etc.
-#'       This is considered for each isoform of each event, as long as the
-#'       total counts belonging to the considered isoform is above 
-#'       `minDepth`.\cr\cr
+#'       This is considered for each isoform of each event, and is NOT tested
+#'       when total (upstream+downstream) counts belonging to each isoform is
+#'       below `minDepth`.\cr\cr
 #'     IR-events are also checked. For IR events, the upstream and downstream
 #'     exon-intron spanning reads must comprise a reasonable proportion of total
 #'     exon-intron spanning reads.

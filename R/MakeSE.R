@@ -141,7 +141,11 @@ makeSE <- function(
         ), "warning")
         se@metadata[["junc_counts_uns"]] <- HDF5Array(
             file.path(normalizePath(collate_path),
-            "data.h5"), "junc_counts")[, colnames(se), drop = FALSE]
+            "data.h5"), "junc_counts")[, , drop = FALSE]
+        colnames(se@metadata[["junc_counts_uns"]]) <-
+            colnames(se)
+        rownames(se@metadata[["junc_counts_uns"]]) <-
+            rownames(se@metadata[["junc_counts"]])
     }
 
     # Import rowData

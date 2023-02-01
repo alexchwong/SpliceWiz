@@ -2042,16 +2042,15 @@ determine_compatible_events <- function(
         
         # Unstrand junction counts summation
         if(view_strand_jn == "*") {
-            junc_counts_select$rownames <- substr(rownames(junc_counts_select), 1, 
-                nchar(rownames(junc_counts_select )) - 2)
-            junc_counts_select <- as.data.table(junc_counts_select)
-            junc_counts_select <- junc_counts_select[, 
-                lapply(.SD, sum, na.rm=TRUE), by = "rownames",
-                .SDcols = samples_to_get]  
+            junc_counts_select  <- as.data.frame(junc_counts_uns(se)[
+                unique(from(OL)),samples_to_get])
         } else {
-            junc_counts_select$rownames <- rownames(junc_counts_select)
-            junc_counts_select <- as.data.table(junc_counts_select)
+            junc_counts_select  <- as.data.frame(junc_counts(se)[
+                unique(from(OL)),samples_to_get])
         }
+        junc_counts_select$rownames <- rownames(junc_counts_select)
+        junc_counts_select <- as.data.table(junc_counts_select)        
+        
         if(nrow(junc_counts_select) == 0) return(NA)
         final <- as.data.frame(junc_counts_select[, samples_to_get, 
             with = FALSE])

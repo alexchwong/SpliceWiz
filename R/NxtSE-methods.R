@@ -59,6 +59,7 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
 
     junc_PSI(out) <- se@metadata[["junc_PSI"]]
     junc_counts(out) <- se@metadata[["junc_counts"]]
+    junc_counts_uns(out) <- se@metadata[["junc_counts_uns"]] 
     junc_gr(out) <- se@metadata[["junc_gr"]]
 
     # Restore validity
@@ -362,6 +363,12 @@ setMethod("junc_counts", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     x@metadata[["junc_counts"]]
 })
 
+#' @describeIn NxtSE-class Getter for (unstranded) junction counts 
+#' DelayedMatrix; primarily used in plotCoverage()
+#' @export
+setMethod("junc_counts_uns", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
+    x@metadata[["junc_counts_uns"]]
+})
 #' @describeIn NxtSE-class Getter for junction GenomicRanges coordinates; 
 #' primarily used in plotCoverage()
 #' @export
@@ -389,6 +396,7 @@ setMethod("realize_NxtSE", c("NxtSE"), function(x, includeJunctions = FALSE,
     if(includeJunctions) {
         junc_PSI(x) <- as.matrix(x@metadata[["junc_PSI"]])
         junc_counts(x) <- as.matrix(x@metadata[["junc_counts"]])    
+        junc_counts_uns(x) <- as.matrix(x@metadata[["junc_counts_uns"]])  
     }
     return(x)
 })
@@ -510,6 +518,11 @@ setReplaceMethod("junc_counts", c("NxtSE"), function(x, value)
     x
 })
 
+setReplaceMethod("junc_counts_uns", c("NxtSE"), function(x, value)
+{
+    x@metadata[["junc_counts_uns"]] <- value
+    x
+})
 setReplaceMethod("junc_gr", c("NxtSE"), function(x, value)
 {
     x@metadata[["junc_gr"]] <- value
@@ -562,6 +575,8 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
         sampleQC(x, FALSE) <- sampleQC(x, FALSE)[samples, , drop = FALSE]
         junc_PSI(x, FALSE) <- junc_PSI(x, FALSE)[, samples, drop = FALSE]
         junc_counts(x, FALSE) <- junc_counts(x, FALSE)[, samples, drop = FALSE]
+        junc_counts_uns(x, FALSE) <- 
+            junc_counts_uns(x, FALSE)[, samples, drop = FALSE]
     } else if (!missing(i)) {
         events <- rownames(x)[ii]
         events_Inc <- events[events %in% rownames(metadata(x)[["Up_Inc"]])]
@@ -591,6 +606,8 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
         sampleQC(x, FALSE) <- sampleQC(x, FALSE)[samples, , drop = FALSE]
         junc_PSI(x, FALSE) <- junc_PSI(x, FALSE)[, samples, drop = FALSE]
         junc_counts(x, FALSE) <- junc_counts(x, FALSE)[, samples, drop = FALSE]
+        junc_counts_uns(x, FALSE) <- 
+            junc_counts_uns(x, FALSE)[, samples, drop = FALSE]
     }
     callNextMethod()
 
@@ -619,6 +636,7 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         sampleQC(x)[samples, ] <- sampleQC(value)
         junc_PSI(x, FALSE)[, samples] <- junc_PSI(value)
         junc_counts(x, FALSE)[, samples] <- junc_counts(value)
+        junc_counts_uns(x, FALSE)[, samples] <- junc_counts_uns(value)
     } else if (!missing(i)) {
         events <- rownames(x)[i]
         events_Inc <- events[events %in% rownames(metadata(x)[["Up_Inc"]])]
@@ -639,6 +657,7 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         sampleQC(x)[samples, ] <- sampleQC(value)
         junc_PSI(x, FALSE)[, samples] <- junc_PSI(value)
         junc_counts(x, FALSE)[, samples] <- junc_counts(value)
+        junc_counts_uns(x, FALSE)[, samples] <- junc_counts_uns(value)
     }
 
     callNextMethod()
@@ -659,6 +678,9 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
 
     metadata <- list()
     args <- list(...)
+
+    # Active cbinds
+    
     tryCatch({
         metadata$Up_Inc <- do.call(cbind, lapply(args, up_inc, 
             withDimnames = FALSE))
@@ -714,6 +736,18 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
+        metadata$junc_counts_uns <- do.call(cbind, lapply(args, junc_counts_uns, 
+            withDimnames = FALSE))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'junc_counts_uns' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    
+    # c() concatenates
+    
+    tryCatch({
         metadata$cov_file <- do.call(c, lapply(args, covfile))
     }, error = function(err) {
         stop(
@@ -721,6 +755,9 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+    
+    # rbinds (samples as rows)
+    
     tryCatch({
         metadata$sampleQC <- do.call(rbind, lapply(args, sampleQC))
     }, error = function(err) {
@@ -729,6 +766,9 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+    
+    # Straight up copies
+    
     tryCatch({
         metadata$ref <- ref(args[[1]])
     }, error = function(err) {
@@ -738,29 +778,15 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
-        metadata$sourcePath <- ref(args[[1]])
+        metadata$sourcePath <- sourcePath(args[[1]])
     }, error = function(err) {
         stop(
             "failed to combine 'sourcePath' in 'cbind(<",
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
-    tryCatch({
-        metadata$junc_PSI <- junc_PSI(args[[1]])
-    }, error = function(err) {
-        stop(
-            "failed to combine 'cov_file' in 'cbind(<",
-            class(args[[1]]), ">)':\n  ",
-            conditionMessage(err))
-    })
-    tryCatch({
-        metadata$junc_counts <- junc_counts(args[[1]])
-    }, error = function(err) {
-        stop(
-            "failed to combine 'cov_file' in 'cbind(<",
-            class(args[[1]]), ">)':\n  ",
-            conditionMessage(err))
-    })
+
+    # cbind does not disturb rows, so this can be just copied over
     tryCatch({
         metadata$junc_gr <- junc_gr(args[[1]])
     }, error = function(err) {
@@ -784,6 +810,9 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
 
     metadata <- list()
     args <- list(...)
+    
+    # Active rbinds
+    
     tryCatch({
         metadata$Up_Inc <- do.call(rbind, lapply(args, up_inc, 
             withDimnames = FALSE))
@@ -820,6 +849,37 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+
+    tryCatch({
+        metadata$junc_PSI <- do.call(rbind, lapply(args, junc_PSI, 
+            withDimnames = FALSE))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'junc_PSI' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_counts <- do.call(rbind, lapply(args, junc_counts, 
+            withDimnames = FALSE))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'junc_counts' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_counts_uns <- do.call(rbind, lapply(args, junc_counts_uns, 
+            withDimnames = FALSE))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'junc_counts_uns' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+
+    # Straight up copies
+
     tryCatch({
         metadata$cov_file <- covfile(args[[1]])
     }, error = function(err) {
@@ -852,27 +912,14 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+    
+    # c() concatenates
+    
     tryCatch({
-        metadata$junc_PSI <- junc_PSI(args[[1]])
+        metadata$junc_gr <- do.call(c, lapply(args, junc_gr))
     }, error = function(err) {
         stop(
-            "failed to combine 'cov_file' in 'cbind(<",
-            class(args[[1]]), ">)':\n  ",
-            conditionMessage(err))
-    })
-    tryCatch({
-        metadata$junc_counts <- junc_counts(args[[1]])
-    }, error = function(err) {
-        stop(
-            "failed to combine 'cov_file' in 'cbind(<",
-            class(args[[1]]), ">)':\n  ",
-            conditionMessage(err))
-    })
-    tryCatch({
-        metadata$junc_gr <- junc_gr(args[[1]])
-    }, error = function(err) {
-        stop(
-            "failed to combine 'cov_file' in 'cbind(<",
+            "failed to combine 'junc_gr' in 'cbind(<",
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })    

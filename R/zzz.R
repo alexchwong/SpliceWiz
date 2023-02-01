@@ -11,10 +11,13 @@
         FUN.VALUE = logical(1), "0.0.0", "silent")
     
     if(!all(CRAN_deps_inst) | !all(Bioc_deps_inst)) {
-        CRAN_deps_prompt <- CRAN_deps[!CRAN_deps_inst]
-        CRAN_deps_prompt <- paste0('"', CRAN_deps_prompt, '"')
         CRAN_deps_install <- c()
+        Bioc_deps_install <- c()
+            
+        CRAN_deps_prompt <- CRAN_deps[!CRAN_deps_inst]
         if(length(CRAN_deps_prompt) > 0) {
+            CRAN_deps_prompt <- paste0('"', CRAN_deps_prompt, '"')
+
             CRAN_deps_install <- paste0(
                 "install.packages(", 
                 ifelse(length(CRAN_deps_prompt) > 1, "c(", ""),
@@ -24,9 +27,9 @@
         }
         
         Bioc_deps_prompt <- Bioc_deps[!Bioc_deps_inst]
-        Bioc_deps_prompt <- paste0('"', Bioc_deps_prompt, '"')
-        Bioc_deps_install <- c()
         if(length(Bioc_deps_prompt) > 0) {
+            Bioc_deps_prompt <- paste0('"', Bioc_deps_prompt, '"')
+
             Bioc_deps_install <- paste0(
                 "BiocManager::install(", 
                 ifelse(length(Bioc_deps_prompt) > 1, "c(", ""),
@@ -34,12 +37,13 @@
                 ifelse(length(Bioc_deps_prompt) > 1, "))", ")")
             )
         }
+        
         .log(paste0(
             "Some optional dependencies are not installed.\n",
             "For full SpliceWiz functionally, install all dependencies",
             " by running the following:\n\n",
-            CRAN_deps_install, "\n\n",
-            Bioc_deps_install, "\n\n"
+            CRAN_deps_install, ifelse(is.null(CRAN_deps_install), "", "\n\n"),
+            Bioc_deps_install, ifelse(is.null(Bioc_deps_install), "", "\n\n")
         ), "message")
     }
     

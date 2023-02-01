@@ -75,6 +75,9 @@ setGeneric("junc_PSI",
 setGeneric("junc_counts", 
     function(x, withDimnames=TRUE, ...) standardGeneric("junc_counts"))
 
+setGeneric("junc_counts_uns", 
+    function(x, withDimnames=TRUE, ...) standardGeneric("junc_counts_uns"))
+
 setGeneric("junc_gr", 
     function(x, withDimnames=TRUE, ...) standardGeneric("junc_gr"))
 
@@ -107,6 +110,9 @@ setGeneric("junc_PSI<-",
     
 setGeneric("junc_counts<-",
     function(x, withDimnames=TRUE, ..., value) standardGeneric("junc_counts<-"))
+
+setGeneric("junc_counts_uns<-",
+    function(x, withDimnames=TRUE, ..., value) standardGeneric("junc_counts_uns<-"))
     
 setGeneric("junc_gr<-",
     function(x, withDimnames=TRUE, ..., value) standardGeneric("junc_gr<-"))

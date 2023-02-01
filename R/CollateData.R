@@ -2458,7 +2458,7 @@ collateData <- function(Experiment, reference_path, output_path,
 
         # Dump unneeded columns to preserve memory
         junc <- junc[, c("seqnames", "start", "end", "strand",
-            "count", "SO_L", "SO_R")]
+            "count", "count_unstranded", "SO_L", "SO_R")]
         sw_cols_keep <- c("EventRegion", "strand", "IntronDepth", 
                 "ExonToIntronReadsLeft", "ExonToIntronReadsRight",
                 "TotalDepth", "Coverage")
@@ -2513,6 +2513,7 @@ collateData <- function(Experiment, reference_path, output_path,
     junc$strand <- NULL # Use strand from junc.common
 
     junc <- junc[junc.common, on = colnames(junc.common)[c(1, 2, 3)]]
+    junc$count_unstranded <- junc$total
     if (strand == 0) {
         junc$count <- junc$total
     } else if (strand == -1) {
@@ -2527,7 +2528,8 @@ collateData <- function(Experiment, reference_path, output_path,
         junc[get("strand") == "*", c("count") := get("total")]
     }
     junc[is.na(get("count")), c("count") := 0]
-    junc <- junc[, c("seqnames", "start", "end", "strand", "Event", "count")]
+    junc <- junc[, c("seqnames", "start", "end", "strand", 
+        "Event", "count", "count_unstranded")]
     junc <- cbind(junc, junc.common[, c("JG_up", "JG_down")])
     junc[, c("SO_L") := 0]
     junc[, c("SO_R") := 0]
@@ -2876,7 +2878,7 @@ collateData <- function(Experiment, reference_path, output_path,
     assay.todo <- c("Included", "Excluded", "Depth", "Coverage", "minDepth")
     inc.todo <- c("Up_Inc", "Down_Inc")
     exc.todo <- c("Up_Exc", "Down_Exc")
-    junc.todo <- c("junc_PSI", "junc_counts")
+    junc.todo <- c("junc_PSI", "junc_counts", "junc_counts_uns")
     templates <- .collateData_seed_init(rowEvent, junc_PSI)
     
     # Included / Excluded counts for IR and splicing
@@ -2944,11 +2946,11 @@ collateData <- function(Experiment, reference_path, output_path,
         c("PSI") := get("count") / get("SO_L")]
     junc[get("SO_R") >= get("SO_L") & get("SO_R") > 0,
         c("PSI") := get("count") / get("SO_R")]
-    # templates$junc[junc, on = c("seqnames", "start", "end", "strand"),
-        # c("junc_PSI", "junc_counts") := list(get("i.PSI"), get("i.count"))]
+    
     templates$junc <- junc[, c("seqnames", "start", "end", "strand", 
-        "PSI", "count")]
-    colnames(templates$junc)[c(5,6)] <- c("junc_PSI", "junc_counts")
+        "PSI", "count", "count_unstranded")]
+    colnames(templates$junc)[c(5,6,7)] <- 
+        c("junc_PSI", "junc_counts", "junc_counts_uns")
 
     fst::write.fst(as.data.frame(templates$assay[, assay.todo, with = FALSE]),
         file.path(norm_output_path, "temp",
@@ -2981,7 +2983,7 @@ collateData <- function(Experiment, reference_path, output_path,
     assay.todo <- c("Included", "Excluded", "Depth", "Coverage", "minDepth")
     inc.todo <- c("Up_Inc", "Down_Inc")
     exc.todo <- c("Up_Exc", "Down_Exc")
-    junc.todo <- c("junc_PSI", "junc_counts")
+    junc.todo <- c("junc_PSI", "junc_counts", "junc_counts_uns")
     stuff.todo <- c(assay.todo, inc.todo, exc.todo, junc.todo)
 
     h5filename <- file.path(norm_output_path, "data.h5")
@@ -3022,7 +3024,7 @@ collateData <- function(Experiment, reference_path, output_path,
     assay.todo <- c("Included", "Excluded", "Depth", "Coverage", "minDepth")
     inc.todo <- c("Up_Inc", "Down_Inc")
     exc.todo <- c("Up_Exc", "Down_Exc")
-    junc.todo <- c("junc_PSI", "junc_counts")
+    junc.todo <- c("junc_PSI", "junc_counts", "junc_counts_uns")
     stuff.todo <- c(assay.todo, inc.todo, exc.todo, junc.todo)
 
     rowData <- as.data.table(
@@ -3097,7 +3099,7 @@ collateData <- function(Experiment, reference_path, output_path,
     assay.todo <- c("Included", "Excluded", "Depth", "Coverage", "minDepth")
     inc.todo <- c("Up_Inc", "Down_Inc")
     exc.todo <- c("Up_Exc", "Down_Exc")
-    junc.todo <- c("junc_PSI", "junc_counts")
+    junc.todo <- c("junc_PSI", "junc_counts", "junc_counts_uns")
     stuff.todo <- c(assay.todo, inc.todo, exc.todo, junc.todo)
 
     h5filename <- file.path(norm_output_path, "data.h5")
@@ -3274,10 +3276,12 @@ collateData <- function(Experiment, reference_path, output_path,
         
     se@metadata[["junc_PSI"]] <- assays[["junc_PSI"]]
     se@metadata[["junc_counts"]] <- assays[["junc_counts"]]
+    se@metadata[["junc_counts_uns"]] <- assays[["junc_counts_uns"]]
 
     junc_gr_df <- read.fst(file.path(collate_path, "annotation/Junc.fst"))
     rownames(se@metadata[["junc_PSI"]]) <- junc_gr_df$Event
     rownames(se@metadata[["junc_counts"]]) <- junc_gr_df$Event
+    rownames(se@metadata[["junc_counts_uns"]]) <- junc_gr_df$Event
     se@metadata[["junc_gr"]] <- .grDT(junc_gr_df)
 
     colnames(metadata(se)$Up_Inc) <- colData$sample
@@ -3286,6 +3290,7 @@ collateData <- function(Experiment, reference_path, output_path,
     colnames(metadata(se)$Down_Exc) <- colData$sample
     colnames(metadata(se)$junc_PSI) <- colData$sample
     colnames(metadata(se)$junc_counts) <- colData$sample
+    colnames(metadata(se)$junc_counts_uns) <- colData$sample
     
     colData.Rds <- readRDS(file.path(collate_path, "colData.Rds"))
     if ("df.files" %in% names(colData.Rds) &&
@@ -3319,6 +3324,8 @@ collateData <- function(Experiment, reference_path, output_path,
         se@metadata[["junc_PSI"]])
     se@metadata[["junc_counts"]] <- .collateData_simplify_assay_path(
         se@metadata[["junc_counts"]])
+    se@metadata[["junc_counts_uns"]] <- .collateData_simplify_assay_path(
+        se@metadata[["junc_counts_uns"]])
     saveRDS(se, filepath)
 }
 

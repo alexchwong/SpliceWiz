@@ -133,17 +133,16 @@ makeSE <- function(
     }
     names(se@metadata[["cov_file"]]) <- colnames(se)
     
-    # Compatibility with SpliceWiz version < 0.99.4 - now removed
-    # if(!("junc_PSI" %in% names(se@metadata))) {
-        # se@metadata[["junc_PSI"]] <- HDF5Array(
-            # file.path(normalizePath(collate_path),
-            # "data.h5"), "junc_PSI")[, colnames(se), drop = FALSE]
-        # se@metadata[["junc_counts"]] <- HDF5Array(
-            # file.path(normalizePath(collate_path),
-            # "data.h5"), "junc_counts")[, colnames(se), drop = FALSE]
-        # se@metadata[["junc_gr"]] <- 
-            # coord2GR(rownames(se@metadata[["junc_PSI"]]))
-    # }
+    # Compatibility with SpliceWiz version < 1.1.5
+    if(!("junc_counts_uns" %in% names(se@metadata))) {
+        .log(paste(
+            "This NxtSE was collated with SpliceWiz <1.1.6,",
+            "unstranded junction counts will use stranded junction count"
+        ), "warning")
+        se@metadata[["junc_counts_uns"]] <- HDF5Array(
+            file.path(normalizePath(collate_path),
+            "data.h5"), "junc_counts")[, colnames(se), drop = FALSE]
+    }
 
     # Import rowData
     dash_progress("Loading rowData...", N)
@@ -300,6 +299,14 @@ makeSE <- function(
             se@metadata[["junc_PSI"]], collate_path)
         se@metadata[["junc_counts"]] <- .makeSE_expand_assay_path(
             se@metadata[["junc_counts"]], collate_path)    
+    }
+
+    if(
+            "junc_counts_uns" %in% names(se@metadata) &&
+            is(se@metadata[["junc_counts_uns"]], "DelayedMatrix")
+    ) {
+        se@metadata[["junc_counts_uns"]] <- .makeSE_expand_assay_path(
+            se@metadata[["junc_counts_uns"]], collate_path)    
     }
     
     if(

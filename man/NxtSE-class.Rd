@@ -42,6 +42,7 @@
 \alias{realize_NxtSE,NxtSE-method}
 \alias{coerce,SummarizedExperiment,NxtSE-method}
 \alias{NxtSE}
+\alias{junc_counts_uns,NxtSE-method}
 \alias{[,NxtSE,ANY,ANY,ANY-method}
 \alias{[<-,NxtSE,ANY,ANY,NxtSE-method}
 \alias{cbind,NxtSE-method}
@@ -69,6 +70,8 @@ NxtSE(...)
 \S4method{junc_PSI}{NxtSE}(x, withDimnames = TRUE, ...)
 
 \S4method{junc_counts}{NxtSE}(x, withDimnames = TRUE, ...)
+
+\S4method{junc_counts_uns}{NxtSE}(x, withDimnames = TRUE, ...)
 
 \S4method{junc_gr}{NxtSE}(x, withDimnames = TRUE, ...)
 
@@ -158,6 +161,9 @@ primarily used in plotCoverage()
 
 \item \code{junc_counts(NxtSE)}: Getter for junction counts DelayedMatrix;
 primarily used in plotCoverage()
+
+\item \code{junc_counts_uns(NxtSE)}: Getter for (unstranded) junction counts
+DelayedMatrix; primarily used in plotCoverage()
 
 \item \code{junc_gr(NxtSE)}: Getter for junction GenomicRanges coordinates;
 primarily used in plotCoverage()

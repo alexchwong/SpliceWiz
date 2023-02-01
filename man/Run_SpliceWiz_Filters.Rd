@@ -56,9 +56,23 @@ casette exons must not overlap in their genomic regions
 In all data-based filters, we require at least 80\% samples (\code{pcTRUE = 80})
 to pass this filters from the entire dataset (\code{minCond = -1}).
 
-Events with event read depth (reads supporting either included or excluded
-isoforms) lower than 5 (\code{minDepth = 5}) are not assessed in filter #2, and
-in #3 and #4 this threshold is (\code{minDepth = 20}).
+Threshold depths for Participation filters:
+
+For IR/RI, Participation filter is only applied for IR events
+for which the intron depth is above a certain threshold (set by \code{minDepth}).
+This avoids the filters running on samples for which there is no IR.
+
+For non-IR ASEs, Participation is only run on events with
+splice depth (SpliceOver metric) higher than \code{minDepth}. This avoids filters
+running on events with low total participation (i.e., (Inc+Exc)/SpliceOver)
+
+Threshold depths for Consistency filters:
+Consistency filters are only applied for events where the sum of
+upstream and downstream junction counts surpass a given threshold \code{minDepth}.
+This is applied on both included and excluded counts (the latter only
+applies to MXE). This avoids consistency filters running on events with
+insufficient junction counts (leading to high variance between up/downstream
+values).
 
 For an explanation of the various parameters mentioned here, see \link{ASEFilter}
 }

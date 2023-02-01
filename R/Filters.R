@@ -25,9 +25,23 @@
 #' In all data-based filters, we require at least 80% samples (`pcTRUE = 80`)
 #'   to pass this filters from the entire dataset (`minCond = -1`).
 #'
-#' Events with event read depth (reads supporting either included or excluded
-#'   isoforms) lower than 5 (`minDepth = 5`) are not assessed in filter #2, and
-#'   in #3 and #4 this threshold is (`minDepth = 20`).
+#' Threshold depths for Participation filters:
+#' 
+#' For IR/RI, Participation filter is only applied for IR events
+#' for which the intron depth is above a certain threshold (set by `minDepth`).
+#' This avoids the filters running on samples for which there is no IR.
+#' 
+#' For non-IR ASEs, Participation is only run on events with
+#' splice depth (SpliceOver metric) higher than `minDepth`. This avoids filters
+#' running on events with low total participation (i.e., (Inc+Exc)/SpliceOver)
+#'
+#' Threshold depths for Consistency filters:
+#' Consistency filters are only applied for events where the sum of 
+#' upstream and downstream junction counts surpass a given threshold `minDepth`.
+#' This is applied on both included and excluded counts (the latter only
+#' applies to MXE). This avoids consistency filters running on events with
+#' insufficient junction counts (leading to high variance between up/downstream
+#' values).
 #'
 #' For an explanation of the various parameters mentioned here, see [ASEFilter]
 #'

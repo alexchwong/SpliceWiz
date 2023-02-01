@@ -55,12 +55,30 @@
 #' # Get directory path of NxtSE (i.e., collate_path)
 #' sourcePath(se)
 #'
+#' # Get Main Assay Counts
+#' assay(se, "Included") # Junction (or IR depth) counts for included isoform
+#' assay(se, "Excluded") # Junction (or IR depth) counts for excluded isoform
+#'
+#' # Get Auxiliary Counts (for filter use only)
+#' assay(se, "Coverage") # Participation ratio (intron coverage for IR/RI)
+#' assay(se, "minDepth") # SpliceOver junction counts (Intron Depths for IR/RI)
+#' assay(se, "Depth")    # Sum of intron depth and SpliceOver (used for
+#'                       # coverage normalization factor
+#'
 #' # Get Junction reads of SE / MXE and spans-reads of IR events
-#' up_inc(se)
-#' down_inc(se)
-#' up_exc(se)
-#' down_exc(se)
+#' up_inc(se)   # Upstream included junction counts (IR/MXE/SE/RI)
+#' down_inc(se) # Downstream included junction counts (IR/MXE/SE/RI)
+#' up_exc(se)   # Upstream excluded junction counts (MXE only)
+#' down_exc(se) # Downstream excluded junction counts (MXE only)
 #' 
+#' # Get Junction counts
+#' junc_counts(se) # stranded (if RNA-seq is auto-detected as stranded)
+#' junc_counts_uns(se) # unstranded (sum of junction reads from both strand)
+#' junc_PSI(se) # PSI of junction (as proportion of SpliceOver metric)
+#'
+#' # Get Junction GRanges object
+#' junc_gr(se)
+#'
 #' # Get list of available coverage files
 #' covfile(se)
 #' 
@@ -120,6 +138,7 @@
 #' sourcePath sourcePath,NxtSE-method
 #' junc_PSI junc_PSI,NxtSE-method
 #' junc_counts junc_counts,NxtSE-method
+#' junc_counts_uns junc_counts_uns,NxtSE-method
 #' junc_gr junc_gr,NxtSE-method
 #' realize_NxtSE realize_NxtSE,NxtSE-method
 #' coerce,SummarizedExperiment,NxtSE-method

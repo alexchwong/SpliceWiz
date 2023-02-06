@@ -479,6 +479,7 @@ addPSI_edgeR <- function(
 
     y <- edgeR::DGEList(counts=countData, remove.zeros = FALSE)
     y <- edgeR::estimateDisp(y, model)
+    y$offset <- 1
     
     if(useQL) {
         fit <- edgeR::glmQLFit(y, model)    

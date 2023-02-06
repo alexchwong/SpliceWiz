@@ -680,11 +680,18 @@ server_vis_heatmap <- function(
                     )
                     mat <- mat[, new_order]
                     colData_sorted <- colData[new_order, ]
-                    settings_Heat$ggplot <- pheatmap(
-                        mat, color = color_vec, 
-                        annotation_col = colData_sorted[, 
+                    
+                    # settings_Heat$ggplot <- pheatmap(
+                        # mat, color = color_vec, 
+                        # annotation_col = colData_sorted[, 
+                            # input$anno_col_heat, drop=FALSE],
+                        # cluster_cols = FALSE
+                    # )
+                    settings_Heat$ggplot <- heatmaply::ggheatmap(
+                        mat, color = color, 
+                        col_side_colors = colData_sorted[, 
                             input$anno_col_heat, drop=FALSE],
-                        cluster_cols = FALSE
+                        dendrogram = "row"
                     )
                     settings_Heat$final_plot <- heatmaply::heatmaply(
                         mat, color = color, 
@@ -693,9 +700,14 @@ server_vis_heatmap <- function(
                         dendrogram = "row"
                     )
                 } else {
-                    settings_Heat$ggplot <- pheatmap(
-                        mat, color = color_vec, 
-                        annotation_col = colData[, 
+                    # settings_Heat$ggplot <- pheatmap(
+                        # mat, color = color_vec, 
+                        # annotation_col = colData[, 
+                            # input$anno_col_heat, drop=FALSE]
+                    # )
+                    settings_Heat$ggplot <- heatmaply::ggheatmap(
+                        mat, color = color, 
+                        col_side_colors = colData[, 
                             input$anno_col_heat, drop=FALSE]
                     )
                     settings_Heat$final_plot <- heatmaply::heatmaply(
@@ -706,9 +718,11 @@ server_vis_heatmap <- function(
                 }
 
             } else {
-                settings_Heat$ggplot <- pheatmap(
-                    mat, color = color_vec
-                )
+                # settings_Heat$ggplot <- pheatmap(
+                    # mat, color = color_vec
+                # )
+                settings_Heat$ggplot <- heatmaply::ggheatmap(
+                    mat, color = color)
                 settings_Heat$final_plot <- heatmaply::heatmaply(
                     mat, color = color)
             }      

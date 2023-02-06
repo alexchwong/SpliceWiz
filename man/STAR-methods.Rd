@@ -33,7 +33,8 @@ STAR_alignExperiment(
   n_threads = 4,
   overwrite = FALSE,
   two_pass = FALSE,
-  trim_adaptor = "AGATCGGAAG"
+  trim_adaptor = "AGATCGGAAG",
+  additional_args = NULL
 )
 
 STAR_alignReads(

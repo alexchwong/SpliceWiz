@@ -910,10 +910,10 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     y <- edgeR::estimateDisp(y,in_data$design1)
     
     if(useQL) {
-        fit <- edgeR::glmQLFit(y, in_data$design1)
+        fit <- edgeR::glmQLFit(y, in_data$design1, offset = 1)
         qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)        
     } else {
-        fit <- edgeR::glmFit(y, in_data$design1)
+        fit <- edgeR::glmFit(y, in_data$design1, offset = 1)
         qlf <- edgeR::glmLRT(fit, contrast = in_data$contrast)            
     }
 

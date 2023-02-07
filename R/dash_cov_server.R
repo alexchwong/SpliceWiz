@@ -163,6 +163,7 @@ server_cov <- function(
                 input$end_cov, tracks, 
                 settings_Cov$plot_params, input
             )
+            print(settings_Cov$plot_params)
         })
         
         observeEvent(settings_Cov$plot_params, {

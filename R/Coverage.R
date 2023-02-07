@@ -2037,25 +2037,24 @@ determine_compatible_events <- function(
         gr_select <- GRanges(view_chr, 
             IRanges(view_start, view_end), view_strand_jn)
         OL <- findOverlaps(junc_gr(se), gr_select)
-        junc_counts_select  <- as.data.frame(junc_counts(se)[
-            unique(from(OL)),samples_to_get])
-        
+
         # Unstrand junction counts summation
         if(view_strand_jn == "*") {
-            junc_counts_select  <- as.data.frame(junc_counts_uns(se)[
+            junc_counts_select  <- as.matrix(junc_counts_uns(se)[
                 unique(from(OL)),samples_to_get])
         } else {
-            junc_counts_select  <- as.data.frame(junc_counts(se)[
+            junc_counts_select  <- as.matrix(junc_counts(se)[
                 unique(from(OL)),samples_to_get])
         }
-        junc_counts_select$rownames <- rownames(junc_counts_select)
-        junc_counts_select <- as.data.table(junc_counts_select)        
-        
         if(nrow(junc_counts_select) == 0) return(NA)
-        final <- as.data.frame(junc_counts_select[, samples_to_get, 
-            with = FALSE])
-        rownames(final) <- junc_counts_select$rownames
-        return(final)
+
+        # junc_counts_select$rownames <- rownames(junc_counts_select)
+        # junc_counts_select <- as.data.table(junc_counts_select)        
+        
+        # final <- as.data.frame(junc_counts_select[, samples_to_get, 
+            # with = FALSE])
+        # rownames(final) <- junc_counts_select$rownames
+        return(as.data.frame(junc_counts_select))
     # } else {
         # return(NA)
     # }
@@ -2074,9 +2073,8 @@ determine_compatible_events <- function(
         OL <- findOverlaps(junc_gr(se), gr_select)
         
         if(length(unique(from(OL))) == 0) return(NA)
-        final  <- as.data.frame(junc_PSI(se)[
-            unique(from(OL)),])
-        return(final)
+        final  <- as.matrix(junc_PSI(se)[unique(from(OL)),])
+        return(as.data.frame(final))
     # } else {
         # return(NA)
     # }

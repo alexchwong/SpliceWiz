@@ -753,7 +753,7 @@ getCoverageBins <- function(file, region, bins = 2000,
         if (!all(tracks %in% condition_options))
             .log(paste("In plotCoverage,",
                 "some tracks do not match valid condition names in",
-                args[["condition"]]))
+                condition))
 
     } else {
         if (!all(tracks %in% colnames(se)))
@@ -1247,18 +1247,29 @@ determine_compatible_events <- function(
                 introns.gr <- .grDT(introns)
                 OL <- findOverlaps(gr, introns.gr, type = "equal")
 
-                # Remove novel transcripts if not all introns highlighted
-                introns_novel <- introns[
-                    !(seq_len(nrow(introns)) %in% OL@to) & 
-                    grepl("novel", get("transcript_id"))
-                ]
-                tr_final <- setdiff(tr_final, introns_novel$transcript_id)
-
                 introns[
                     seq_len(nrow(introns)) %in% OL@to & 
                     get("transcript_id") %in% tr_final, 
                     c("highlight") := as.character(AS_count)
-                ]           
+                ]
+
+                # Remove novel transcripts if not all introns highlighted
+                introns_novel <- introns[
+                    grepl("novel", get("transcript_id")) &
+                    get("highlight") == as.character(AS_count)
+                ]
+                introns_novel_noHL <- introns[
+                    get("transcript_id") %in% introns_novel$transcript_id &
+                    get("highlight") == "0"
+                ]
+                if(nrow(introns_novel_noHL) > 0) {
+                    introns[
+                        get("transcript_id") %in% introns_novel_noHL$transcript_id,
+                        c("highlight") := "0"
+                    ]
+                    tr_final <- setdiff(tr_final, 
+                        introns_novel_noHL$transcript_id)
+                }
                 
                 coord_keys_start <- end(gr[1]) + 1
                 coord_keys_end <- start(gr[1]) - 1

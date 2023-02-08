@@ -203,6 +203,9 @@ setClass("NxtSE",
 #'   * **ExclusiveMXE**:
 #'       For MXE events, the two alternate
 #'       casette exons must not overlap in their genomic regions
+#'   * **StrictAltSS**:
+#'       For A5SS / A3SS events, the two alternate splice sites must not be
+#'       interupted by detected introns
 #'
 #'   **Data Filters**
 #'   * **Depth**: Filters IR or alternative splicing events of transcripts

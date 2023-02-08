@@ -10,7 +10,7 @@ retention events}
 ASEFilter(
   filterClass = c("Data", "Annotation"),
   filterType = c("Depth", "Participation", "Consistency", "Modality", "Protein_Coding",
-    "NMD", "TSL", "Terminus", "ExclusiveMXE"),
+    "NMD", "TSL", "Terminus", "ExclusiveMXE", "StrictAltSS"),
   pcTRUE = 100,
   minimum = 20,
   maximum = 1,
@@ -83,6 +83,9 @@ shared with another transcript for which it is not its last intron
 \item \strong{ExclusiveMXE}:
 For MXE events, the two alternate
 casette exons must not overlap in their genomic regions
+\item \strong{StrictAltSS}:
+For A5SS / A3SS events, the two alternate splice sites must not be
+interupted by detected introns
 }
 
 \strong{Data Filters}

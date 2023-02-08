@@ -51,6 +51,8 @@ intron. For alternative last exons, the splice junction must not be
 shared with another transcript for which it is not its last intron
 \item (6) ExclusiveMXE filter: For MXE events, the two alternate
 casette exons must not overlap in their genomic regions
+\item (7) StrictAltSS filter: For A5SS / A3SS events, the two alternate splice
+sites must not be interrupted by an intron
 }
 
 In all data-based filters, we require at least 80\% samples (\code{pcTRUE = 80})

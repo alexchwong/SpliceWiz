@@ -362,10 +362,10 @@ plotGenome <- function(se, reference_path,
 }
 
 #' @describeIn plotCoverage Coerce the `plotCoverage()` output as a vertically
-#'   stacked ggplot, using egg::ggarrange
+#'   stacked ggplot, using patchwork package
 #' @export
 as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
-    .check_package_installed("egg")
+    # .check_package_installed("egg")
     if (
         !is(p_obj, "list") ||
         !("ggplot" %in% names(p_obj)) ||
@@ -409,7 +409,8 @@ as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
             )
         
         tryCatch({
-            egg::ggarrange(plots = plot_tracks, ncol = 1)
+            # egg::ggarrange(plots = plot_tracks, ncol = 1)
+            patchwork::wrap_plots(plot_tracks, ncol = 1)
         }, error = function(x) {
             .log(x, "message")
             return(NULL)
@@ -441,8 +442,10 @@ as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
         )
         p_ref <- p_ref + geom_rect(
             data = gr_boxes,
-            mapping = aes(xmin=xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-            fill = NA, color = "red"
+            mapping = aes(
+                xmin = get("xmin"), xmax = get("xmax"), 
+                ymin = get("ymin"), ymax = get("ymax")
+            ), fill = NA, color = "red"
         )
         
         cc <- list()

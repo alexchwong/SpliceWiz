@@ -40,6 +40,7 @@ Imports:
 	GenomicRanges,
 	HDF5Array,
 	IRanges,
+    patchwork,
 	progress,
 	plotly,
 	R.utils,
@@ -55,13 +56,13 @@ Imports:
 	rhandsontable,
 	DT,
 	grDevices,
-	heatmaply, pheatmap,
+	heatmaply,
 	matrixStats,
 	RColorBrewer,
 	XML
 Suggests: 
-    knitr, rmarkdown, openssl, crayon, splines, testthat (>= 3.0.0),
-    DESeq2, limma, DoubleExpSeq, satuRn, edgeR, egg, DBI, GO.db, fgsea, Rsubread 
+    knitr, rmarkdown, openssl, crayon, splines, testthat (>= 3.0.0), pheatmap,
+    DESeq2, limma, DoubleExpSeq, satuRn, edgeR, DBI, GO.db, fgsea, Rsubread 
 LinkingTo: 
     ompBAM,
     Rcpp,

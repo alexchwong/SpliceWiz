@@ -225,7 +225,7 @@ intervals are shown.
 genomic region, or belonging to a specified gene
 
 \item \code{as_ggplot_cov()}: Coerce the \code{plotCoverage()} output as a vertically
-stacked ggplot, using egg::ggarrange
+stacked ggplot, using patchwork package
 
 }}
 \examples{

@@ -154,6 +154,10 @@ is required if \code{Event} is not set and \code{condition} is set.}
 \item{p_obj}{In \code{as_ggplot_cov}, takes the output of \code{plotCoverage} and
 plots all tracks in a static plot using \code{ggarrange} function of the
 \code{egg} package. Requires \code{egg} package to be installed.}
+
+\item{exonRanges}{(default \code{NULL}) A GRanges object containing one or more
+GRanges. \code{as_ggplot_cov()} will generate coverage for one or more exons
+whose genomic regions are specified by the given ranges.}
 }
 \value{
 A list containing two objects (\code{final_plot} and \code{ggplot}).

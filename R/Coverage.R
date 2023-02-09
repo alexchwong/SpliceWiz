@@ -367,7 +367,7 @@ plotGenome <- function(se, reference_path,
 as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
     .check_package_installed("egg")
     if (
-        !is(p, "list") ||
+        !is(p_obj, "list") ||
         !("ggplot" %in% names(p_obj)) ||
         !is(p_obj$ggplot[[1]], "ggplot") ||
         !is(p_obj$ggplot[[6]], "ggplot")
@@ -378,24 +378,36 @@ as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
     
     lenTracks <- length(plot_tracks)
     lenSampleTracks <- length(p_obj$yrange_list)
+
+    p_ref <- plot_tracks[[lenTracks]]
+    ref_ymin <- min(ggplot2::layer_scales(p_ref)$y$range$range)
+    ref_ymax <- max(ggplot2::layer_scales(p_ref)$y$range$range)
+
     if(is.null(exonRanges)) {
-        for(i in seq_len(lenTracks)) {
+        for(i in seq_len(lenTracks - 1)) {
             if(i <= lenSampleTracks) {
-                plot_tracks[i] <- plot_tracks[i] +
+                plot_tracks[[i]] <- plot_tracks[[i]] +
                     coord_cartesian(
                         xlim = c(p_obj$plotViewStart, p_obj$plotViewEnd),
-                        ylim = p_obj$yrange_list[i],
+                        ylim = c(0, p_obj$yrange_list[i]),
                         expand = FALSE
                     )
             } else {
-                plot_tracks[i] <- plot_tracks[i] +
+                plot_tracks[[i]] <- plot_tracks[[i]] +
                     coord_cartesian(
                         xlim = c(p_obj$plotViewStart, p_obj$plotViewEnd),
                         expand = FALSE
                     )
             }            
         }
-    
+        # Fix y axis of reference
+        plot_tracks[[lenTracks]] <- plot_tracks[[lenTracks]] +
+            coord_cartesian(
+                xlim = c(p_obj$plotViewStart, p_obj$plotViewEnd),
+                ylim = c(ref_ymin - 1, ref_ymax + 1),
+                expand = FALSE
+            )
+        
         tryCatch({
             egg::ggarrange(plots = plot_tracks, ncol = 1)
         }, error = function(x) {
@@ -403,30 +415,29 @@ as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
             return(NULL)
         })
     } else {
-        theme_mid <- theme(
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
-            axis.ticks.y = element_blank(),
+
+        theme_nonright <- theme(
             legend.position = "none"
         )
-        theme_left <- theme(
-            legend.position = "none"
-        )
-        theme_right <- theme(
+        theme_nonleft <- theme(
             axis.text.y = element_blank(),
             axis.title.y = element_blank(),
             axis.ticks.y = element_blank()
         )
+        theme_nonbottom <- theme(
+            axis.text.x = element_blank(),
+            axis.title.x = element_blank(),
+            axis.ticks.x = element_blank()
+        )
 
         gr <- sort(exonRanges)
         if(p_obj$plotViewStart > p_obj$plotViewEnd) gr <- rev(gr)
-        p_ref <- plot_tracks[[lenTracks]]
-        ymin <- min(ggplot2::layer_scales(p_ref)$y$range$range)
-        ymax <- max(ggplot2::layer_scales(p_ref)$y$range$range)
+
         gr_boxes <- data.frame(
             xmin = BiocGenerics::start(gr),
             xmax = BiocGenerics::end(gr),
-            ymin = ymin, ymax = ymax, label = as.character(seq_len(length(gr)))
+            ymin = ref_ymin - 0.5, ymax = ref_ymax + 0.5, 
+            Information = as.character(seq_len(length(gr)))
         )
         p_ref <- p_ref + geom_rect(
             data = gr_boxes,
@@ -439,17 +450,17 @@ as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
         for(i in seq_len(lenTracks - 1)) {
             for(j in seq_len(length(gr))) {
                 if(i < lenSampleTracks) {
-                    cc[[(i-1) * length(gr) + j]] <- plot_tracks[i] +
+                    cc[[(i-1) * length(gr) + j]] <- plot_tracks[[i]] +
                         coord_cartesian(
                             xlim = c(
                                 BiocGenerics::start(gr)[j],
                                 BiocGenerics::end(gr)[j]
                             ),
-                            ylim = yrange_list[i],
+                            ylim = c(0, p_obj$yrange_list[i]),
                             expand = FALSE
                         )
                 } else {
-                    cc[[(i-1) * length(gr) + j]] <- plot_tracks[i] +
+                    cc[[(i-1) * length(gr) + j]] <- plot_tracks[[i]] +
                         coord_cartesian(
                             xlim = c(
                                 BiocGenerics::start(gr)[j],
@@ -458,32 +469,42 @@ as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
                             expand = FALSE
                         )                
                 }
-                if(j == 1) {
+                if(j > 1) {
                     cc[[(i-1) * length(gr) + j]] <- 
-                        cc[[(i-1) * length(gr) + j]] + theme_left
-                } else if(j == length(gr)) {
+                        cc[[(i-1) * length(gr) + j]] + theme_nonleft
+                }
+                if(j < length(gr)) {
                     cc[[(i-1) * length(gr) + j]] <- 
-                        cc[[(i-1) * length(gr) + j]] + theme_right                
+                        cc[[(i-1) * length(gr) + j]] + theme_nonright
+                }
+                if(i < lenTracks - 1) {
+                    cc[[(i-1) * length(gr) + j]] <- 
+                        cc[[(i-1) * length(gr) + j]] + theme_nonbottom
+                }
+                
+                if(i==1 & j==1) {
+                    layout_instr <- patchwork::area(
+                        t = i, b = i, l = j, r = j
+                    )
                 } else {
-                    cc[[(i-1) * length(gr) + j]] <- 
-                        cc[[(i-1) * length(gr) + j]] + theme_mid                
+                    layout_instr <- c(layout_instr, patchwork::area(
+                        t = i, b = i, l = j, r = j
+                    ))
                 }
             }
-            layout_instr[(i-1) * length(gr) + j] <- patchwork::area(
-                t = i, b = i, l = j, r = j
-            )
         }
         cc[[(lenTracks - 1) * length(gr) + 1]] <- p_ref +
             coord_cartesian(
                 xlim = c(p_obj$plotViewStart, p_obj$plotViewEnd),
+                ylim = c(ref_ymin - 1, ref_ymax + 1),
                 expand = FALSE
             )
-        layout_instr[(lenTracks - 1) * length(gr) + 1] <- patchwork::area(
+        layout_instr <- c(layout_instr, patchwork::area(
             t = lenTracks, b = lenTracks, l = 1, r = length(gr)
-        )
+        ))
         return(
             patchwork::wrap_plots(cc) +
-                plot_layout(design = layout_instr)
+                patchwork::plot_layout(design = layout_instr)
         )
     }
 }
@@ -1652,6 +1673,7 @@ determine_compatible_events <- function(
     )]
     
     reduced <- as.data.frame(reduced)
+    # print(reduced)
     # p <- ggplot(reduced)
     p <- suppressWarnings(ggplot(reduced, aes(text = get("Information"))))
     
@@ -1931,7 +1953,7 @@ determine_compatible_events <- function(
                     # expand = FALSE
                 # )
         # }
-        yrange_list <- c(yrange_list, yrange)
+        yrange_list <- c(yrange_list, yrange[2])
     }
     return(list(
         gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted),
@@ -2051,7 +2073,7 @@ determine_compatible_events <- function(
                         # expand = FALSE
                     # )
             # }
-            yrange_list <- c(yrange_list, yrange)
+            yrange_list <- c(yrange_list, yrange[2])
         }
     }
     return(list(
@@ -2209,7 +2231,7 @@ determine_compatible_events <- function(
                                 # expand = FALSE
                             # )
                     # }
-                    yrange_list <- c(yrange_list, yrange)
+                    yrange_list <- c(yrange_list, yrange[2])
                 }
             }
         }

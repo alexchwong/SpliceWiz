@@ -48,7 +48,7 @@ plotGenome(
   condense_tracks = FALSE
 )
 
-as_ggplot_cov(p_obj)
+as_ggplot_cov(p_obj, exonRanges = NULL)
 }
 \arguments{
 \item{se}{A \linkS4class{NxtSE} object, created by \link{makeSE}.

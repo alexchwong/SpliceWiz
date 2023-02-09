@@ -125,6 +125,9 @@
 #'   coverage data.
 #' @param reverseGenomeCoords (default `FALSE`) Whether to reverse the genomic
 #'   coordinates - helpful for intuitive plotting of negative-strand genes
+#' @param exonRanges (default `NULL`) A GRanges object containing one or more
+#'   GRanges. `as_ggplot_cov()` will generate coverage for one or more exons
+#'   whose genomic regions are specified by the given ranges.
 #'
 #' @return A list containing two objects (`final_plot` and `ggplot`). 
 #'   `final_plot` is the plotly object.
@@ -361,9 +364,10 @@ plotGenome <- function(se, reference_path,
 #' @describeIn plotCoverage Coerce the `plotCoverage()` output as a vertically
 #'   stacked ggplot, using egg::ggarrange
 #' @export
-as_ggplot_cov <- function(p_obj) {
+as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
     .check_package_installed("egg")
     if (
+        !is(p, "list") ||
         !("ggplot" %in% names(p_obj)) ||
         !is(p_obj$ggplot[[1]], "ggplot") ||
         !is(p_obj$ggplot[[6]], "ggplot")
@@ -372,13 +376,116 @@ as_ggplot_cov <- function(p_obj) {
     plot_tracks <- p_obj$ggplot[
         unlist(lapply(p_obj$ggplot, function(x) !is.null(x)))]
     
-    # Catch any unexpected errors
-    tryCatch({
-        egg::ggarrange(plots = plot_tracks, ncol = 1)
-    }, error = function(x) {
-        .log(x, "message")
-        return(NULL)
-    })
+    lenTracks <- length(plot_tracks)
+    lenSampleTracks <- length(p_obj$yrange_list)
+    if(is.null(exonRanges)) {
+        for(i in seq_len(lenTracks)) {
+            if(i <= lenSampleTracks) {
+                plot_tracks[i] <- plot_tracks[i] +
+                    coord_cartesian(
+                        xlim = c(p_obj$plotViewStart, p_obj$plotViewEnd),
+                        ylim = p_obj$yrange_list[i],
+                        expand = FALSE
+                    )
+            } else {
+                plot_tracks[i] <- plot_tracks[i] +
+                    coord_cartesian(
+                        xlim = c(p_obj$plotViewStart, p_obj$plotViewEnd),
+                        expand = FALSE
+                    )
+            }            
+        }
+    
+        tryCatch({
+            egg::ggarrange(plots = plot_tracks, ncol = 1)
+        }, error = function(x) {
+            .log(x, "message")
+            return(NULL)
+        })
+    } else {
+        theme_mid <- theme(
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            legend.position = "none"
+        )
+        theme_left <- theme(
+            legend.position = "none"
+        )
+        theme_right <- theme(
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            axis.ticks.y = element_blank()
+        )
+
+        gr <- sort(exonRanges)
+        if(p_obj$plotViewStart > p_obj$plotViewEnd) gr <- rev(gr)
+        p_ref <- plot_tracks[[lenTracks]]
+        ymin <- min(ggplot2::layer_scales(p_ref)$y$range$range)
+        ymax <- max(ggplot2::layer_scales(p_ref)$y$range$range)
+        gr_boxes <- data.frame(
+            xmin = BiocGenerics::start(gr),
+            xmax = BiocGenerics::end(gr),
+            ymin = ymin, ymax = ymax, label = as.character(seq_len(length(gr)))
+        )
+        p_ref <- p_ref + geom_rect(
+            data = gr_boxes,
+            mapping = aes(xmin=xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = NA, color = "red"
+        )
+        
+        cc <- list()
+        layout_instr <- c()
+        for(i in seq_len(lenTracks - 1)) {
+            for(j in seq_len(length(gr))) {
+                if(i < lenSampleTracks) {
+                    cc[[(i-1) * length(gr) + j]] <- plot_tracks[i] +
+                        coord_cartesian(
+                            xlim = c(
+                                BiocGenerics::start(gr)[j],
+                                BiocGenerics::end(gr)[j]
+                            ),
+                            ylim = yrange_list[i],
+                            expand = FALSE
+                        )
+                } else {
+                    cc[[(i-1) * length(gr) + j]] <- plot_tracks[i] +
+                        coord_cartesian(
+                            xlim = c(
+                                BiocGenerics::start(gr)[j],
+                                BiocGenerics::end(gr)[j]
+                            ),
+                            expand = FALSE
+                        )                
+                }
+                if(j == 1) {
+                    cc[[(i-1) * length(gr) + j]] <- 
+                        cc[[(i-1) * length(gr) + j]] + theme_left
+                } else if(j == length(gr)) {
+                    cc[[(i-1) * length(gr) + j]] <- 
+                        cc[[(i-1) * length(gr) + j]] + theme_right                
+                } else {
+                    cc[[(i-1) * length(gr) + j]] <- 
+                        cc[[(i-1) * length(gr) + j]] + theme_mid                
+                }
+            }
+            layout_instr[(i-1) * length(gr) + j] <- patchwork::area(
+                t = i, b = i, l = j, r = j
+            )
+        }
+        cc[[(lenTracks - 1) * length(gr) + 1]] <- p_ref +
+            coord_cartesian(
+                xlim = c(p_obj$plotViewStart, p_obj$plotViewEnd),
+                expand = FALSE
+            )
+        layout_instr[(lenTracks - 1) * length(gr) + 1] <- patchwork::area(
+            t = lenTracks, b = lenTracks, l = 1, r = length(gr)
+        )
+        return(
+            patchwork::wrap_plots(cc) +
+                plot_layout(design = layout_instr)
+        )
+    }
 }
 
 #' Calls SpliceWiz's C++ function to retrieve coverage from a COV file
@@ -1085,19 +1192,27 @@ getCoverageBins <- function(file, region, bins = 2000,
         final_plot <- final_plot %>% 
             layout(legend = list(title=list(text=condition)))    
     } 
-
-    if(includeCalculations) {
-        return(list(
-            ggplot = plot_objs$gp_track, final_plot = final_plot,
-            calcs = calcs
-        ))
-        
+    if(!reverseGenomeCoords) {
+        plotViewStart <- view_start
+        plotViewEnd <- view_end
+    } else {
+        plotViewStart <- view_end
+        plotViewEnd <- view_start    
     }
-    return(list(
+
+    final <- list(
         ggplot = plot_objs$gp_track,
         final_plot = final_plot,
-        exonRanges = p_ref$exonRanges
-    ))
+        exonRanges = p_ref$exonRanges,
+        yrange_list = plot_objs$yrange_list,
+        plotViewStart = plotViewStart,
+        plotViewEnd = plotViewEnd
+    )
+
+    if(includeCalculations) {
+        final[["calcs"]] <- calcs
+    }
+    return(final)
 }
 
 ############################### PLOT GENOME TRACK ##############################
@@ -1460,7 +1575,6 @@ determine_compatible_events <- function(
         reduced.DT, transcripts.DT,
         view_start, view_end
 ) {
-    if(exonsMode == "off") return(NULL)
     
     Tr_DT <- copy(transcripts.DT[!grepl("intron", get("transcript_biotype"))])
     trids <- Tr_DT$transcript_id
@@ -1468,22 +1582,20 @@ determine_compatible_events <- function(
     DT <- DT[get("type") == "exon"]
     DT <- DT[get("transcript_id") %in% trids]
     
-    if(exonsMode == "keyExonsOnly") {
-        DT <- DT[get("highlight") != "0"]
-        if(nrow(DT) == 0) {
-            .log("No highlighted exons, reverting to exonsMode == 'exonsOnly'",
-                "warning")
-            DT <- copy(reduced.DT)
-        }
-    }
-    
-    if(nrow(DT) == 0) {
-        .log("No exons in range, reverting to exonsMode = 'off'", "warning")
-        return(NULL)
-    }
+    if(nrow(DT) == 0) return(NULL)
 
     gr <- .grDT(DT)
     exons_gr <- reduce(gr, ignore.strand=TRUE)
+
+    # Annotate highlight
+    mcols(exons_gr)$highlight <- "0"
+    for(high in c("1", "2")) {
+        DT_subset <- copy(DT[get("highlight") == high])
+        if(nrow(DT_subset) > 0) {        
+            OL <- findOverlaps(exons_gr, .grDT(DT_subset))
+            mcols(exons_gr)$highlight[unique(OL@from)] <- high
+        }
+    }
     
     # Expand exon windows so there is some space
     BiocGenerics::start(exons_gr) <- BiocGenerics::start(exons_gr) - 100
@@ -1609,25 +1721,25 @@ determine_compatible_events <- function(
             Information = anno[["text"]]),
         aes(x = get("x"), y = get("y"), label = get("Information")))
 
-    if(reverseGenomeCoords) {
-        gp <- gp + coord_cartesian(
-            xlim = c(view_end, view_start),
-            ylim = c(
-                min(reduced$plot_level) - 1,
-                max(reduced$plot_level) + 0.5
-            ),
-            expand = FALSE
-        )   
-    } else {
-        gp <- gp + coord_cartesian(
-            xlim = c(view_start, view_end),
-            ylim = c(
-                min(reduced$plot_level) - 1,
-                max(reduced$plot_level) + 0.5
-            ),
-            expand = FALSE
-        )    
-    }
+    # if(reverseGenomeCoords) {
+        # gp <- gp + coord_cartesian(
+            # xlim = c(view_end, view_start),
+            # ylim = c(
+                # min(reduced$plot_level) - 1,
+                # max(reduced$plot_level) + 0.5
+            # ),
+            # expand = FALSE
+        # )   
+    # } else {
+        # gp <- gp + coord_cartesian(
+            # xlim = c(view_start, view_end),
+            # ylim = c(
+                # min(reduced$plot_level) - 1,
+                # max(reduced$plot_level) + 0.5
+            # ),
+            # expand = FALSE
+        # )    
+    # }
         
     pl <- ggplotly(p, tooltip = "text") %>%
     layout(
@@ -1738,7 +1850,7 @@ determine_compatible_events <- function(
             juncs_plotted <- c(juncs_plotted, unique(dfJn$coord))
         }
     }
-    
+    yrange_list <- c()
     df <- as.data.frame(rbindlist(calcs$data.list))
     if (nrow(df) > 0) {
         if (length(args$track_names) == length(args$tracks))
@@ -1804,25 +1916,26 @@ determine_compatible_events <- function(
         gp_track[[1]] <- gp_track[[1]] + theme(axis.title.x = element_blank()) +
             labs(x = "", y = "Normalized Coverage")
         
-        if(args$reverseGenomeCoords) {
-            gp_track[[1]] <- gp_track[[1]] + 
-                coord_cartesian(                    
-                    xlim = c(args$view_end, args$view_start),
-                    ylim = yrange,
-                    expand = FALSE
-                )
-        } else {
-            gp_track[[1]] <- gp_track[[1]] + 
-                coord_cartesian(                    
-                    xlim = c(args$view_start, args$view_end),
-                    ylim = yrange,
-                    expand = FALSE
-                )
-        }
-
+        # if(args$reverseGenomeCoords) {
+            # gp_track[[1]] <- gp_track[[1]] + 
+                # coord_cartesian(                    
+                    # xlim = c(args$view_end, args$view_start),
+                    # ylim = yrange,
+                    # expand = FALSE
+                # )
+        # } else {
+            # gp_track[[1]] <- gp_track[[1]] + 
+                # coord_cartesian(                    
+                    # xlim = c(args$view_start, args$view_end),
+                    # ylim = yrange,
+                    # expand = FALSE
+                # )
+        # }
+        yrange_list <- c(yrange_list, yrange)
     }
     return(list(
-        gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted)
+        gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted),
+        yrange_list = yrange_list
     ))
 }
 
@@ -1831,6 +1944,7 @@ determine_compatible_events <- function(
     max_tracks <- calcs$max_tracks
     gp_track <- pl_track <- list()
     juncs_plotted <- c()
+    yrange_list <- c()
     for (i in seq_len(4)) {
         if (length(calcs$data.list) >= i && !is.null(calcs$data.list[[i]])) {
             df <- as.data.frame(calcs$data.list[[i]])
@@ -1922,25 +2036,27 @@ determine_compatible_events <- function(
                 theme(axis.title.x = element_blank()) +
                 labs(x = "", y = track_name)
 
-            if(args$reverseGenomeCoords) {
-                gp_track[[i]] <- gp_track[[i]] + 
-                    coord_cartesian(                    
-                        xlim = c(args$view_end, args$view_start),
-                        ylim = yrange,
-                        expand = FALSE
-                    )
-            } else {
-                gp_track[[i]] <- gp_track[[i]] + 
-                    coord_cartesian(                    
-                        xlim = c(args$view_start, args$view_end),
-                        ylim = yrange,
-                        expand = FALSE
-                    )
-            }
+            # if(args$reverseGenomeCoords) {
+                # gp_track[[i]] <- gp_track[[i]] + 
+                    # coord_cartesian(                    
+                        # xlim = c(args$view_end, args$view_start),
+                        # ylim = yrange,
+                        # expand = FALSE
+                    # )
+            # } else {
+                # gp_track[[i]] <- gp_track[[i]] + 
+                    # coord_cartesian(                    
+                        # xlim = c(args$view_start, args$view_end),
+                        # ylim = yrange,
+                        # expand = FALSE
+                    # )
+            # }
+            yrange_list <- c(yrange_list, yrange)
         }
     }
     return(list(
-        gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted)
+        gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted),
+        yrange_list = yrange_list
     ))
 }
 
@@ -1975,11 +2091,11 @@ determine_compatible_events <- function(
         plot_objs$pl_track[[5]]$x$data[[2]]$showlegend <- FALSE
         plot_objs$gp_track[[5]] <- plot_objs$gp_track[[5]] +
             theme(axis.title.x = element_blank()) +
-            labs(y = "log10 t-test") +
-            coord_cartesian(                    
-                xlim = c(args$view_start, args$view_end),
-                expand = FALSE
-            )
+            labs(y = "log10 t-test") # +
+            # coord_cartesian(                    
+                # xlim = c(args$view_start, args$view_end),
+                # expand = FALSE
+            # )
     }
     return(plot_objs)
 }
@@ -1999,6 +2115,7 @@ determine_compatible_events <- function(
         unlist(tracks), ...
     )
     juncs_plotted <- c()
+    yrange_list <- c()
     for (i in seq_len(4)) {
         if (length(tracks) >= i && is_valid(tracks[[i]])) {
             track_samples <- tracks[[i]]
@@ -2077,27 +2194,29 @@ determine_compatible_events <- function(
                         theme(axis.title.x = element_blank()) +
                         labs(x = "", y = track_name)
                     
-                    if(reverseGenomeCoords) {
-                        gp_track[[i]] <- gp_track[[i]] +
-                            coord_cartesian(                    
-                                xlim = c(view_end, view_start),
-                                ylim = yrange,
-                                expand = FALSE
-                            )
-                    } else {
-                        gp_track[[i]] <- gp_track[[i]] +
-                            coord_cartesian(                    
-                                xlim = c(view_start, view_end),
-                                ylim = yrange,
-                                expand = FALSE
-                            )
-                    }
+                    # if(reverseGenomeCoords) {
+                        # gp_track[[i]] <- gp_track[[i]] +
+                            # coord_cartesian(
+                                # xlim = c(view_end, view_start),
+                                # ylim = yrange,
+                                # expand = FALSE
+                            # )
+                    # } else {
+                        # gp_track[[i]] <- gp_track[[i]] +
+                            # coord_cartesian(                    
+                                # xlim = c(view_start, view_end),
+                                # ylim = yrange,
+                                # expand = FALSE
+                            # )
+                    # }
+                    yrange_list <- c(yrange_list, yrange)
                 }
             }
         }
     }
     return(list(
-        gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted)
+        gp_track = gp_track, pl_track = pl_track, juncs = unique(juncs_plotted),
+        yrange_list = yrange_list
     ))
 }
 

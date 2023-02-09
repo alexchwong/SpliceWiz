@@ -1093,7 +1093,11 @@ getCoverageBins <- function(file, region, bins = 2000,
         ))
         
     }
-    return(list(ggplot = plot_objs$gp_track, final_plot = final_plot))
+    return(list(
+        ggplot = plot_objs$gp_track,
+        final_plot = final_plot,
+        exonRanges = p_ref$exonRanges
+    ))
 }
 
 ############################### PLOT GENOME TRACK ##############################
@@ -1370,7 +1374,12 @@ determine_compatible_events <- function(
     transcripts.DT <- DTlist$transcripts.DT
     reduced.DT <- DTlist$reduced.DT
     condense_this <- DTlist$condense_this
-
+    
+    exonRanges <- .plot_view_ref_fn_getExonRanges(
+        reduced.DT, transcripts.DT,
+        view_start, view_end
+    )
+    
     group.grl <- split(.grDT(transcripts.DT), transcripts.DT$group_id)
     group.DT <- as.data.table(range(group.grl))
     group.DT$group <- NULL
@@ -1437,16 +1446,70 @@ determine_compatible_events <- function(
     reduced.DT[group.DT, on = "group_id",
         c("plot_level") := get("i.plot_level")]
 
-    # if (length(highlight_events) == 1 && highlight_events == "") {
-        # reduced.DT[, c("highlight") := FALSE]
-    # } else {
-        setorderv(reduced.DT, "highlight")
-    # }
+    setorderv(reduced.DT, "highlight")
+
     return(list(
         group.DT = group.DT,
         reduced.DT = reduced.DT,
-        condense_this = condense_this
+        condense_this = condense_this,
+        exonRanges = exonRanges
     ))
+}
+
+.plot_view_ref_fn_getExonRanges <- function(
+        reduced.DT, transcripts.DT,
+        view_start, view_end
+) {
+    if(exonsMode == "off") return(NULL)
+    
+    Tr_DT <- copy(transcripts.DT[!grepl("intron", get("transcript_biotype"))])
+    trids <- Tr_DT$transcript_id
+    DT <- copy(reduced.DT)
+    DT <- DT[get("type") == "exon"]
+    DT <- DT[get("transcript_id") %in% trids]
+    
+    if(exonsMode == "keyExonsOnly") {
+        DT <- DT[get("highlight") != "0"]
+        if(nrow(DT) == 0) {
+            .log("No highlighted exons, reverting to exonsMode == 'exonsOnly'",
+                "warning")
+            DT <- copy(reduced.DT)
+        }
+    }
+    
+    if(nrow(DT) == 0) {
+        .log("No exons in range, reverting to exonsMode = 'off'", "warning")
+        return(NULL)
+    }
+
+    gr <- .grDT(DT)
+    exons_gr <- reduce(gr, ignore.strand=TRUE)
+    
+    # Expand exon windows so there is some space
+    BiocGenerics::start(exons_gr) <- BiocGenerics::start(exons_gr) - 100
+    BiocGenerics::end(exons_gr) <- BiocGenerics::end(exons_gr) + 100
+    
+    # Reduce overlapping ranges
+    if(length(exons_gr) > 1) {
+        for(i in seq_len(length(exons_gr) - 1)) {
+            if(
+                BiocGenerics::end(exons_gr[i]) >
+                BiocGenerics::start(exons_gr[i+1])
+            ) {
+                midpt <- 0.5 * (
+                    BiocGenerics::start(exons_gr[i+1]) +
+                    BiocGenerics::end(exons_gr[i])
+                )
+                BiocGenerics::end(exons_gr[i]) <- max(
+                    midpt - 10, BiocGenerics::start(exons_gr[i]) + 1
+                )
+                BiocGenerics::start(exons_gr[i+1]) <- min(
+                    midpt + 10, BiocGenerics::end(exons_gr[i+1]) - 1
+                )
+            }
+        }
+    }
+    return(exons_gr)
 }
 
 .plot_view_ref_fn_plotDTlist <- function(
@@ -1458,6 +1521,7 @@ determine_compatible_events <- function(
     reduced <- DTplotlist$reduced.DT
     reduced <- reduced[!is.na(reduced$plot_level)]
     condense_this <- DTplotlist$condense_this
+    exonRanges <- DTplotlist$exonRanges
 
     # Hover Text annotation
     reduced[, c("Information") := ""]
@@ -1573,7 +1637,7 @@ determine_compatible_events <- function(
         yaxis = list(range = c(0, 1 + max_plot_level),
             fixedrange = TRUE)
     )
-    return(list(gp = gp, pl = pl))
+    return(list(gp = gp, pl = pl, exonRanges = exonRanges))
 }
 
 ################################# PLOT TRACKS ##################################

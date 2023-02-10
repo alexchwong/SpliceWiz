@@ -127,7 +127,9 @@
 #'   coordinates - helpful for intuitive plotting of negative-strand genes
 #' @param exonRanges (default `NULL`) A GRanges object containing one or more
 #'   GRanges. `as_ggplot_cov()` will generate coverage for one or more exons
-#'   whose genomic regions are specified by the given ranges.
+#'   whose genomic regions are specified by the given ranges. When set in
+#'   `plotCoverage()`, exon regions will be plotted at single nucleotide
+#'   resolution, allowing better quality zoomed-in images.
 #'
 #' @return A list containing two objects (`final_plot` and `ggplot`). 
 #'   `final_plot` is the plotly object.

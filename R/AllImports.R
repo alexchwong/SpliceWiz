@@ -3,6 +3,7 @@
 #' @import ompBAM
 #' @importFrom methods as is coerce callNextMethod new validObject
 #' @importFrom parallel detectCores
+#' @importFrom scales label_number cut_si
 #' @importFrom stats as.formula model.matrix qt runif na.omit prcomp aggregate
 #' @importFrom utils download.file packageVersion getFromNamespace
 #' @importFrom utils setTxtProgressBar txtProgressBar head

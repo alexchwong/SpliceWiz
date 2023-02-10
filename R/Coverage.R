@@ -212,7 +212,7 @@ plotCoverage <- function(
         track_names = tracks,
         condition,
         ribbon_mode = c("sd", "ci", "sem", "none"),
-        selected_transcripts,
+        selected_transcripts, exonRanges = NULL,
         reverseGenomeCoords = FALSE,
         plotJunctions = FALSE,
         junctionThreshold = 0.01,
@@ -277,7 +277,8 @@ plotCoverage <- function(
         t_test = t_test, condensed = condense_tracks,
         plotJunctions = plotJunctions, junctionThreshold = junctionThreshold,
         includeCalculations = includeCalculations,
-        reverseGenomeCoords = reverseGenomeCoords
+        reverseGenomeCoords = reverseGenomeCoords,
+        exonRanges = exonRanges
     )
 
     args[["highlight_events"]] <- .plotCoverage_highlight_events(se, norm_event)
@@ -1148,7 +1149,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     se, avail_files,
     transcripts, elems, highlight_events = list(), 
     selected_transcripts = "", reverseGenomeCoords = FALSE,
-    plot_key_isoforms = FALSE,
+    plot_key_isoforms = FALSE, exonRanges = NULL,
     stack_tracks, graph_mode, conf.int = 0.95,
     t_test = FALSE, condensed = FALSE,
     plotJunctions = FALSE, junctionThreshold = junctionThreshold,
@@ -1808,7 +1809,7 @@ determine_compatible_events <- function(
 .plot_cov_fn_normalize_condition <- function(
     view_chr, view_start, view_end, view_strand,
     norm_event, condition, tracks = list(), track_names = "", se, avail_files,
-    conf.int = 0.95, t_test = FALSE, ...
+    conf.int = 0.95, t_test = FALSE, exonRanges = NULL, ...
 ) {
     cur_zoom <- floor(log((view_end - view_start) / 50) / log(3))
     depth_min <- 10 # depth required for sample to be included in averages
@@ -1843,7 +1844,7 @@ determine_compatible_events <- function(
                     samples, avail_files[samples],
                     view_chr, view_start, view_end, view_strand))
                 # bin anything with cur_zoom > 4
-                df <- bin_df(df, max(1, 3^(cur_zoom - 4)))
+                df <- bin_df(df, max(1, 3^(cur_zoom - 4)), exonRanges)
                 # message(paste("Group getCoverage performed for", condition))
                 for (todo in seq_len(length(samples))) {
                     df[, samples[todo]] <-
@@ -2154,7 +2155,7 @@ determine_compatible_events <- function(
 .plot_cov_fn_indiv <- function(
     view_chr, view_start, view_end, view_strand,
     tracks = list(), track_names = NULL, avail_files, 
-    reverseGenomeCoords,
+    reverseGenomeCoords, exonRanges = NULL,
     plotJunctions, junctionThreshold, ...
 ) {
     cur_zoom <- floor(log((view_end - view_start) / 50) / log(3))
@@ -2174,7 +2175,7 @@ determine_compatible_events <- function(
             if (length(filename) == 1 && file.exists(filename)) {
                 df <- .internal_get_coverage_as_df("sample", filename,
                     view_chr, view_start, view_end, view_strand)
-                df <- bin_df(df, max(1, 3^(cur_zoom - 4)))
+                df <- bin_df(df, max(1, 3^(cur_zoom - 4)), exonRanges)
                 dfJn <- .plot_cov_fn_indiv_make_jn_arcs(df, junc_df, 
                     track_samples, 0.1 * max(df$sample), junctionThreshold)
                 juncs_plotted <- c(juncs_plotted, unique(dfJn$coord))
@@ -2505,9 +2506,21 @@ determine_compatible_events <- function(
     return(df)
 }
 
-bin_df <- function(df, binwidth = 3) {
+bin_df <- function(df, binwidth = 3, exon_gr = NULL) {
     DT <- as.data.table(df)
     brks <- seq(1, nrow(DT) + 1, length.out = (nrow(DT) + 1) / binwidth)
+    
+    # Use single nucleotide resolution for exon bins
+    if(!is.null(exon_gr)) {
+        for(i in seq_len(length(exon_gr))) {
+            brks <- c(brks, which(
+                DT$x >= BiocGenerics::start(exon_gr[i]) &
+                DT$x <= BiocGenerics::end(exon_gr[i])
+            ))
+        }
+    }
+    brks <- sort(unique(brks))
+    
     bin <- NULL
     DT[, c("bin") := findInterval(seq_len(nrow(DT)), brks)]
     DT2 <- DT[, lapply(.SD, mean, na.rm = TRUE), by = "bin"]

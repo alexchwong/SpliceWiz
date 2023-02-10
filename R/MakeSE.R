@@ -115,7 +115,8 @@ makeSE <- function(
 
     N <- 4
     dash_progress("Loading NxtSE object from file...", N)
-    if(verbose) .log("Loading NxtSE object from file...", "message")
+    if(verbose) .log("Loading NxtSE object from file...", "message", 
+        appendLF = FALSE)
 
     se <- .makeSE_load_NxtSE(collate_path)
 
@@ -150,7 +151,7 @@ makeSE <- function(
 
     # Import rowData
     dash_progress("Loading rowData...", N)
-    if(verbose) message("...rowData")   
+    if(verbose) message("rowData...", appendLF = FALSE)   
     rowData <- readRDS(file.path(collate_path, "rowEvent.Rds"))
     rowData(se) <- rowData
     
@@ -169,7 +170,7 @@ makeSE <- function(
         colData(se) <- as(colData_use, "DataFrame")
     }    
 
-    if(verbose) message("done\n")
+    if(verbose) message("done")
     if(display_cov_missing_message)
         .log(paste(
             "Note: Some coverage files were not set or not found.\n\n",
@@ -202,6 +203,7 @@ makeSE <- function(
         if(verbose) message("done\n")
     }
 
+    if(verbose) .log("NxtSE loaded", "message")
     return(se)
 }
 

@@ -127,9 +127,7 @@
 #'   coordinates - helpful for intuitive plotting of negative-strand genes
 #' @param exonRanges (default `NULL`) A GRanges object containing one or more
 #'   GRanges. `as_ggplot_cov()` will generate coverage for one or more exons
-#'   whose genomic regions are specified by the given ranges. When set in
-#'   `plotCoverage()`, exon regions will be plotted at single nucleotide
-#'   resolution, allowing better quality zoomed-in images.
+#'   whose genomic regions are specified by the given ranges.
 #'
 #' @return A list containing two objects (`final_plot` and `ggplot`). 
 #'   `final_plot` is the plotly object.
@@ -214,7 +212,7 @@ plotCoverage <- function(
         track_names = tracks,
         condition,
         ribbon_mode = c("sd", "ci", "sem", "none"),
-        selected_transcripts, exonRanges = NULL,
+        selected_transcripts,
         reverseGenomeCoords = FALSE,
         plotJunctions = FALSE,
         junctionThreshold = 0.01,
@@ -279,8 +277,7 @@ plotCoverage <- function(
         t_test = t_test, condensed = condense_tracks,
         plotJunctions = plotJunctions, junctionThreshold = junctionThreshold,
         includeCalculations = includeCalculations,
-        reverseGenomeCoords = reverseGenomeCoords,
-        exonRanges = exonRanges
+        reverseGenomeCoords = reverseGenomeCoords
     )
 
     args[["highlight_events"]] <- .plotCoverage_highlight_events(se, norm_event)
@@ -1151,7 +1148,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     se, avail_files,
     transcripts, elems, highlight_events = list(), 
     selected_transcripts = "", reverseGenomeCoords = FALSE,
-    plot_key_isoforms = FALSE, exonRanges = NULL,
+    plot_key_isoforms = FALSE,
     stack_tracks, graph_mode, conf.int = 0.95,
     t_test = FALSE, condensed = FALSE,
     plotJunctions = FALSE, junctionThreshold = junctionThreshold,
@@ -1175,6 +1172,17 @@ getCoverageBins <- function(file, region, bins = 2000,
     if (is.null(track_names)) args$track_names <- unlist(tracks)
 
     data.t_test <- list()
+
+    # Determine exon ranges here
+    args[["exonRanges"]] <- .plot_view_ref_fn_exonRanges(
+        view_chr, view_start, view_end,
+        transcripts, elems, highlight_events,
+        condensed = condensed,
+        selected_transcripts = selected_transcripts,
+        reverseGenomeCoords = reverseGenomeCoords,
+        plot_key_isoforms = plot_key_isoforms,
+        filterByJunctions = NULL
+    )
 
     calcs <- NULL
     if (is_valid(condition) & is_valid(norm_event)) {
@@ -1258,6 +1266,27 @@ getCoverageBins <- function(file, region, bins = 2000,
 }
 
 ############################### PLOT GENOME TRACK ##############################
+
+.plot_view_ref_fn_exonRanges <- function(
+    view_chr, view_start, view_end,
+    transcripts, elems, highlight_events = list(),
+    condensed = FALSE, selected_transcripts = "",
+    reverseGenomeCoords = FALSE,
+    plot_key_isoforms = FALSE,
+    filterByJunctions = NULL
+) {
+    DTlist <- .plot_view_ref_fn_getDTlist(
+        view_chr, view_start, view_end,
+        transcripts, elems, highlight_events,
+        condensed, selected_transcripts,
+        plot_key_isoforms, filterByJunctions
+    )
+    exonRanges <- .plot_view_ref_fn_getExonRanges(
+        DTlist$reduced.DT, DTlist$transcripts.DT,
+        view_start, view_end
+    )
+    return(exonRanges)
+}
 
 # Plots the transcript track, highlighting where required
 .plot_view_ref_fn <- function(
@@ -1773,26 +1802,6 @@ determine_compatible_events <- function(
     gp <- p + geom_text(data = data.frame(x = anno[["x"]], y = anno[["y"]],
             Information = anno[["text"]]),
         aes(x = get("x"), y = get("y"), label = get("Information")))
-
-    # if(reverseGenomeCoords) {
-        # gp <- gp + coord_cartesian(
-            # xlim = c(view_end, view_start),
-            # ylim = c(
-                # min(reduced$plot_level) - 1,
-                # max(reduced$plot_level) + 0.5
-            # ),
-            # expand = FALSE
-        # )   
-    # } else {
-        # gp <- gp + coord_cartesian(
-            # xlim = c(view_start, view_end),
-            # ylim = c(
-                # min(reduced$plot_level) - 1,
-                # max(reduced$plot_level) + 0.5
-            # ),
-            # expand = FALSE
-        # )    
-    # }
         
     pl <- ggplotly(p, tooltip = "text") %>%
     layout(
@@ -2277,54 +2286,38 @@ determine_compatible_events <- function(
         view_chr, view_start, view_end,
         samples_to_get,
         view_strand_jn,
-        se = NULL,
-        plotJunctions = FALSE, ...
+        se = NULL, ...
 ) {
-    # if(plotJunctions) {
-        gr_select <- GRanges(view_chr, 
-            IRanges(view_start, view_end), view_strand_jn)
-        OL <- findOverlaps(junc_gr(se), gr_select)
+    gr_select <- GRanges(view_chr, 
+        IRanges(view_start, view_end), view_strand_jn)
+    OL <- findOverlaps(junc_gr(se), gr_select)
 
-        # Unstrand junction counts summation
-        if(view_strand_jn == "*") {
-            junc_counts_select  <- as.matrix(junc_counts_uns(se)[
-                unique(from(OL)),samples_to_get])
-        } else {
-            junc_counts_select  <- as.matrix(junc_counts(se)[
-                unique(from(OL)),samples_to_get])
-        }
-        if(nrow(junc_counts_select) == 0) return(NA)
+    # Unstrand junction counts summation
+    if(view_strand_jn == "*") {
+        junc_counts_select  <- as.matrix(junc_counts_uns(se)[
+            unique(from(OL)),samples_to_get])
+    } else {
+        junc_counts_select  <- as.matrix(junc_counts(se)[
+            unique(from(OL)),samples_to_get])
+    }
+    if(nrow(junc_counts_select) == 0) return(NA)
 
-        # junc_counts_select$rownames <- rownames(junc_counts_select)
-        # junc_counts_select <- as.data.table(junc_counts_select)        
-        
-        # final <- as.data.frame(junc_counts_select[, samples_to_get, 
-            # with = FALSE])
-        # rownames(final) <- junc_counts_select$rownames
-        return(as.data.frame(junc_counts_select))
-    # } else {
-        # return(NA)
-    # }
+    return(as.data.frame(junc_counts_select))
 }
 
 .plot_cov_fn_retrieve_PSI <- function(
         view_chr, view_start, view_end,
         view_strand_jn,
         se = NULL,
-        plotJunctions = FALSE,
         ...
 ) {
-    # if(plotJunctions) {
-        gr_select <- GRanges(view_chr, 
-            IRanges(view_start, view_end), view_strand_jn)
-        OL <- findOverlaps(junc_gr(se), gr_select)
+    gr_select <- GRanges(view_chr, 
+        IRanges(view_start, view_end), view_strand_jn)
+    OL <- findOverlaps(junc_gr(se), gr_select)
         
-        if(length(unique(from(OL))) == 0) return(NA)
-        final  <- as.matrix(junc_PSI(se)[unique(from(OL)),])
-        return(as.data.frame(final))
-    # } else {
-        # return(NA)
-    # }
+    if(length(unique(from(OL))) == 0) return(NA)
+    final  <- as.matrix(junc_PSI(se)[unique(from(OL)),])
+    return(as.data.frame(final))
 }
 
 .plot_cov_fn_indiv_make_jn_arcs <- function(

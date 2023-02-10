@@ -22,7 +22,6 @@ plotCoverage(
   condition,
   ribbon_mode = c("sd", "ci", "sem", "none"),
   selected_transcripts,
-  exonRanges = NULL,
   reverseGenomeCoords = FALSE,
   plotJunctions = FALSE,
   junctionThreshold = 0.01,
@@ -108,10 +107,6 @@ or transcript names of transcripts
 to be displayed on the gene annotation track. Useful to remove minor
 isoforms that are not relevant to the samples being displayed.}
 
-\item{exonRanges}{(default \code{NULL}) A GRanges object containing one or more
-GRanges. \code{as_ggplot_cov()} will generate coverage for one or more exons
-whose genomic regions are specified by the given ranges.}
-
 \item{reverseGenomeCoords}{(default \code{FALSE}) Whether to reverse the genomic
 coordinates - helpful for intuitive plotting of negative-strand genes}
 
@@ -159,6 +154,10 @@ is required if \code{Event} is not set and \code{condition} is set.}
 \item{p_obj}{In \code{as_ggplot_cov}, takes the output of \code{plotCoverage} and
 plots all tracks in a static plot using \code{ggarrange} function of the
 \code{egg} package. Requires \code{egg} package to be installed.}
+
+\item{exonRanges}{(default \code{NULL}) A GRanges object containing one or more
+GRanges. \code{as_ggplot_cov()} will generate coverage for one or more exons
+whose genomic regions are specified by the given ranges.}
 }
 \value{
 A list containing two objects (\code{final_plot} and \code{ggplot}).

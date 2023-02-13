@@ -394,6 +394,8 @@ as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
     if(is.null(exonRanges)) {
         for(i in seq_len(lenTracks - 1)) {
             plot_tracks[[i]] <- plot_tracks[[i]] +
+                scale_x_continuous(labels = label_number(
+                    scale_cut = cut_si(""))) +
                 coord_cartesian(
                     xlim = c(p_obj$plotViewStart, p_obj$plotViewEnd),
                     ylim = c(0, p_obj$yrange_list[i]),
@@ -402,6 +404,8 @@ as_ggplot_cov <- function(p_obj, exonRanges = NULL) {
         }
         # Fix y axis of reference
         plot_tracks[[lenTracks]] <- plot_tracks[[lenTracks]] +
+            scale_x_continuous(labels = label_number(
+                scale_cut = cut_si(""))) +
             coord_cartesian(
                 xlim = c(p_obj$plotViewStart, p_obj$plotViewEnd),
                 ylim = c(ref_ymin - 1, ref_ymax + 1),

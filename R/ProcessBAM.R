@@ -144,6 +144,8 @@ processBAM <- function(
     .log("Running SpliceWiz processBAM", "message")
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & useOpenMP) {
+        max_omp_threads <- Has_OpenMP()
+        if(max_omp_threads > n_threads) n_threads <- max_omp_threads
         SpliceWizMain_multi(
             ref_file, s_bam, output_files, n_threads, verbose, multiRead
         )
@@ -194,6 +196,8 @@ processBAM <- function(
     .log("Running BAM2COV", "message")
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & useOpenMP) {
+        max_omp_threads <- Has_OpenMP()
+        if(max_omp_threads > n_threads) n_threads <- max_omp_threads
         # Simple FOR loop:
         for (i in seq_len(length(s_bam))) {
             .BAM2COV_run_single(s_bam[i], output_file_prefixes[i],

@@ -21,7 +21,7 @@ License: MIT + file LICENSE
 Depends: NxtIRFdata
 Imports:
     ompBAM,
-	methods, stats, utils, tools, parallel,
+	methods, stats, utils, tools, parallel, scales,
 	magrittr,
 	Rcpp (>= 1.0.5),
 	data.table,

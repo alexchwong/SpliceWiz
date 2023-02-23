@@ -67,6 +67,7 @@ processBAM <- function(
         overwrite = FALSE,
         run_featureCounts = FALSE,
         verbose = FALSE,
+        skipCOVfiles = FALSE,
         multiRead = FALSE
 ) {
     # Check args
@@ -103,7 +104,8 @@ processBAM <- function(
             output_files = s_output[!already_exist],
             max_threads = n_threads, useOpenMP = useOpenMP,
             overwrite_SpliceWiz_Output = overwrite,
-            verbose = verbose, multiRead = multiRead
+            verbose = verbose, skipCOVfiles = skipCOVfiles,
+            multiRead = multiRead
         )
     } else {
         .log("processBAM has already been run on given BAM files", "message")
@@ -131,7 +133,7 @@ processBAM <- function(
         max_threads = max(parallel::detectCores(), 1),
         useOpenMP = TRUE,
         overwrite_SpliceWiz_Output = FALSE,
-        verbose = TRUE, multiRead = FALSE
+        verbose = TRUE, skipCOVfiles = FALSE, multiRead = FALSE
     ) {
     .validate_reference(reference_path) # Check valid SpliceWiz reference
     s_bam <- normalizePath(bamfiles) # Clean path name for C++
@@ -145,9 +147,10 @@ processBAM <- function(
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & useOpenMP) {
         max_omp_threads <- Has_OpenMP()
-        if(max_omp_threads > n_threads) n_threads <- max_omp_threads
+        if(max_omp_threads < n_threads) n_threads <- max_omp_threads
         SpliceWizMain_multi(
-            ref_file, s_bam, output_files, n_threads, verbose, multiRead
+            ref_file, s_bam, output_files, n_threads, verbose, 
+            skipCOVfiles, multiRead
         )
     } else {
         # Use BiocParallel
@@ -165,7 +168,7 @@ processBAM <- function(
                 function(i, s_bam, reference_file,
                         output_files, verbose, overwrite) {
                     .processBAM_run_single(s_bam[i], reference_file,
-                        output_files[i], verbose, overwrite)
+                        output_files[i], verbose, overwrite, skipCOVfiles)
                 },
                 s_bam = s_bam,
                 reference_file = ref_file,
@@ -232,14 +235,14 @@ processBAM <- function(
 
 # Call C++ on a single sample. Used for BiocParallel
 .processBAM_run_single <- function(
-    bam, ref, out, verbose, overwrite
+    bam, ref, out, verbose, overwrite, skipCOVfiles = FALSE
 ) {
     file_gz <- paste0(out, ".txt.gz")
     file_cov <- paste0(out, ".cov")
     bam_short <- file.path(basename(dirname(bam)), basename(bam))
     if (overwrite ||
         !(file.exists(file_gz) | file.exists(file_cov))) {
-        ret <- SpliceWizMain(bam, ref, out, verbose, 1, FALSE)
+        ret <- SpliceWizMain(bam, ref, out, verbose, 1, skipCOVfiles, FALSE)
         # Check SpliceWiz returns all files successfully
         if (ret != 0) {
             .log(paste(

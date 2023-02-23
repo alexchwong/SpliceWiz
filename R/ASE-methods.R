@@ -556,7 +556,7 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
     res.exc[, c("EventName") :=
         sub(".Excluded","",get("EventName"), fixed=TRUE)]
 
-    .log("Performing DESeq2 contrast for included / excluded counts separately",
+    .log("Performing DESeq2 contrast for included / excluded counts together",
         "message")
     rowData <- as.data.frame(rowData(se_use))
     se_use <- se_use[rowData$EventName %in% res.inc$EventName &

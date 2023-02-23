@@ -33,12 +33,12 @@ c_gunzip <- function(s_in, s_out) {
     .Call(`_SpliceWiz_c_gunzip`, s_in, s_out)
 }
 
-SpliceWizMain <- function(bam_file, reference_file, output_file, verbose, n_threads, multiRead) {
-    .Call(`_SpliceWiz_SpliceWizMain`, bam_file, reference_file, output_file, verbose, n_threads, multiRead)
+SpliceWizMain <- function(bam_file, reference_file, output_file, verbose, n_threads, skipCOV, multiRead) {
+    .Call(`_SpliceWiz_SpliceWizMain`, bam_file, reference_file, output_file, verbose, n_threads, skipCOV, multiRead)
 }
 
-SpliceWizMain_multi <- function(reference_file, bam_files, output_files, max_threads, verbose, multiRead) {
-    .Call(`_SpliceWiz_SpliceWizMain_multi`, reference_file, bam_files, output_files, max_threads, verbose, multiRead)
+SpliceWizMain_multi <- function(reference_file, bam_files, output_files, max_threads, verbose, skipCOV, multiRead) {
+    .Call(`_SpliceWiz_SpliceWizMain_multi`, reference_file, bam_files, output_files, max_threads, verbose, skipCOV, multiRead)
 }
 
 c_GenerateMappabilityReads <- function(genome_file, out_fa, read_len, read_stride, error_pos) {

@@ -365,6 +365,7 @@ int swEngine::SpliceWizMultiCore(
     std::vector<std::string> &s_output_txt, 
     std::vector<std::string> &s_output_cov,
     bool const verbose,
+    bool const skipCOV,
     bool const multithreadedRead
 ) {
 
@@ -532,12 +533,14 @@ int swEngine::SpliceWizMultiCore(
     }
 
     // Write Coverage Binary file:
-    std::ofstream ofCOV;
-    ofCOV.open(s_output_cov.at(z), std::ofstream::binary);
-    covWriter outCOV;
-    outCOV.SetOutputHandle(&ofCOV);
-    oFM.at(0).WriteBinary(&outCOV, verbose, n_threads_to_use);
-    ofCOV.close();
+    if(!skipCOV) {
+      std::ofstream ofCOV;
+      ofCOV.open(s_output_cov.at(z), std::ofstream::binary);
+      covWriter outCOV;
+      outCOV.SetOutputHandle(&ofCOV);
+      oFM.at(0).WriteBinary(&outCOV, verbose, n_threads_to_use);
+      ofCOV.close();      
+    }
 
   // Write output to file:  
     if(verbose) cout << "Writing output file\n";

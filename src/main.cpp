@@ -407,7 +407,7 @@ int c_gunzip(std::string s_in, std::string s_out) {
 // [[Rcpp::export]]
 int SpliceWizMain(
     std::string bam_file, std::string reference_file, std::string output_file,
-    bool verbose, int n_threads, bool multiRead
+    bool verbose, int n_threads, bool skipCOV, bool multiRead
 ) {
   
   std::string s_output_txt = output_file + ".txt.gz";
@@ -420,6 +420,7 @@ int SpliceWizMain(
 	
   bool verbose = true;
   bool multiRead = false;
+  bool skipCOV = false;
 #endif
    
   std::string s_bam = bam_file;
@@ -444,7 +445,7 @@ int SpliceWizMain(
   }
   int ret2 = Engine.SpliceWizMultiCore(
     v_bam, v_out_txt, v_out_cov,
-    verbose, multiRead
+    verbose, skipCOV, multiRead
   );
   Engine.clear();
 #ifdef __linux__
@@ -457,7 +458,7 @@ int SpliceWizMain(
 // [[Rcpp::export]]
 int SpliceWizMain_multi(
     std::string reference_file, StringVector bam_files, StringVector output_files,
-    int max_threads, bool verbose, bool multiRead
+    int max_threads, bool verbose, bool skipCOV, bool multiRead
 ){
 	if(bam_files.size() != output_files.size() || bam_files.size() < 1) {
 		cout << "bam_files and output_files are of different sizes\n";
@@ -489,7 +490,7 @@ int SpliceWizMain_multi(
   }
   int ret2 = Engine.SpliceWizMultiCore(
     v_bam, v_out_txt, v_out_cov,
-    verbose, multiRead
+    verbose, skipCOV, multiRead
   );
   Engine.clear();
 #ifdef __linux__

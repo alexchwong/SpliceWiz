@@ -42,6 +42,10 @@
 #'   saved to `"main.FC.Rds` in the `output_path` directory as a list object.
 #' @param verbose (default `FALSE`) Set to `TRUE` to allow `processBAM()` to 
 #'   output progress bars and messages
+#' @param skipCOVfiles (default `FALSE`) Whether processBAM should skip
+#'   the production of COV files (containing coverage data). Default is to
+#'   create COV files unless this is set to `TRUE`. COV files can be generated
+#'   separately using [BAM2COV]
 #' @param multiRead (default `FALSE`) Whether SpliceWiz/ompBAM should use one
 #'   (set to `FALSE`) or all available threads (set to `TRUE`) to read BAM
 #'   files from the storage drive. In SSD drives or high performance computing

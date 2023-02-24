@@ -62,11 +62,12 @@ server_vis_diag <- function(
             req(all(tmpres$EventName %in% rowData(get_se())$EventName))
 
             withProgress(message = 'Calculating mean PSIs...', value = 0, {
-                settings_Diag$meanPSI <- makeMeanPSI(
+                df.diag <- makeMeanPSI(
                     get_se(), tmpres$EventName, input$variable_diag, 
                     list(input$nom_diag, input$denom_diag)
                 )
                 colnames(df.diag)[seq(2,3)] <- c("nom", "denom")
+                settings_Diag$meanPSI <- df.diag
             })
         })
 

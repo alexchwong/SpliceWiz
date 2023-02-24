@@ -27,6 +27,14 @@ server_cov <- function(
             
             req(is(get_se(), "NxtSE"))
             se <- isolate(get_se())
+            
+            # Slow step - populate genes
+            req(get_ref())
+            ref <- isolate(get_ref())
+            withProgress(message = 'Populating gene list...', value = 0, {
+                .server_cov_update_genes(session, ref$geneList)
+            })
+            
             settings_Cov$event.ranges <- as.data.table(
                 coord2GR(rowData(se)$EventRegion))
             settings_Cov$event.ranges$EventName <- rowData(se)$EventName
@@ -37,15 +45,15 @@ server_cov <- function(
         })
 
         # Reactive to generate gene list
-        observeEvent(get_ref(), {
-            req(get_ref())
-            ref <- isolate(get_ref())
-            settings_Cov$geneList <- ref$geneList
-        })
+        # observeEvent(get_ref(), {
+            # req(get_ref())
+            # ref <- isolate(get_ref())
+            # settings_Cov$geneList <- ref$geneList
+        # })
 
-        observeEvent(settings_Cov$geneList, {
-            .server_cov_update_genes(session, settings_Cov$geneList)
-        })
+        # observeEvent(settings_Cov$geneList, {
+            # .server_cov_update_genes(session, settings_Cov$geneList)
+        # })
 
         # Reactive to generate filtered DE object
         observe({

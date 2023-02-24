@@ -46,9 +46,29 @@ server_vis_diag <- function(
             }
         })
 
+        # Reactive to generate mean PSIs
+        # - this is the main bottleneck
+        observe({
+            req(is(get_se(), "NxtSE"))
+            req(get_de())
+            req(input$variable_diag)
+            req(input$nom_diag)
+            req(input$denom_diag)
+
+            tmpres <- as.data.table(
+                .get_unified_volcano_data(get_de()[rows_all(),]))
+
+            withProgress(message = 'Calculating mean PSIs...', value = 0, {
+                settings_Diag$meanPSI <- makeMeanPSI(
+                    get_se(), tmpres$EventName, input$variable_diag, 
+                    list(input$nom_diag, input$denom_diag)
+                )
+                colnames(df.diag)[seq(2,3)] <- c("nom", "denom")
+            })
+        })
+
         # Reactive to generate filtered DE object
         observe({
-            req(get_de())
             tmpres <- as.data.table(
                 .get_unified_volcano_data(get_de()[rows_all(),]))
             if(input$filterType_diag == "Adjusted P value") {
@@ -72,17 +92,7 @@ server_vis_diag <- function(
         output$plot_diag <- renderPlotly({
             validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
             validate(need(settings_Diag$useDE, "Perform DE Analysis first"))
-            validate(need(input$variable_diag, 
-                "Select conditions and contrasts"))
-            validate(need(input$nom_diag, 
-                "Select conditions and contrasts"))
-            validate(need(input$denom_diag, 
-                "Select conditions and contrasts"))
-            validate(need(input$variable_diag != "(none)", 
-                "Select conditions and contrasts"))
-            validate(need(input$nom_diag != "(none)", 
-                "Select conditions and contrasts"))
-            validate(need(input$denom_diag != "(none)", 
+            validate(need(settings_Diag$meanPSI, 
                 "Select conditions and contrasts"))
 
             # Filter DE by EventType; fetch diag object
@@ -90,13 +100,8 @@ server_vis_diag <- function(
             if(is_valid(input$EventType_diag)) {
                 res <- res[get("EventType") %in% input$EventType_diag]
             }
-            withProgress(message = 'Calculating mean PSIs...', value = 0, {
-                df.diag <- makeMeanPSI(
-                    get_se(), res$EventName, input$variable_diag, 
-                    list(input$nom_diag, input$denom_diag)
-                )
-                colnames(df.diag)[seq(2,3)] <- c("nom", "denom")
-            })
+            df.diag <- settings_Diag$meanPSI[
+                settings_Diag$meanPSI$EventName %in% res$EventName,]
             
             # Annotate which rows are selected; NMD direction
             selected <- settings_Diag$selected      

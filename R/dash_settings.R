@@ -113,6 +113,8 @@ setreactive_Diag <- function() {
     # NB same code as Volcano
     reactiveValues(
         useDE = NULL,
+        
+        meanPSI = NULL,
 
         plot_ini = FALSE,
         plotly_click = NULL,

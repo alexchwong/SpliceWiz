@@ -51,25 +51,26 @@ server_GO <- function(
                 res_bkgd$All <- seq_len(nrow(res_bkgd)) %in% rows_all()
                 res_bkgd$Selected <- seq_len(nrow(res_bkgd)) %in% rows_selected()
 
+                res_all <- res_bkgd[get("All") == TRUE]
                if(is_valid(input$EventType_GO)) {
-                    res_ET <- res_bkgd[get("EventType") %in% input$EventType_GO]
+                    res_all <- res_all[get("EventType") %in% input$EventType_GO]
                 } else {
-                    res_ET <- res_bkgd
+                    res_all <- res_all
                 }
                 
-                validate(need(nrow(res_ET) > 0, "Zero differential events"))
+                validate(need(nrow(res_all) > 0, "Zero differential events"))
                 # Filter for Top N events or significant events
                 if(input$threshType_GO == "Top events by p-value") {
                     req(input$topN_GO)
-                    res <- res_ET[seq_len(input$topN_GO)]
+                    res <- res_all[seq_len(input$topN_GO)]
                 } else if(input$threshType_GO == "Nominal P value") {
                     req(input$pvalT_GO)
-                    res <- res_ET[get("pvalue") <= input$pvalT_GO]
+                    res <- res_all[get("pvalue") <= input$pvalT_GO]
                 } else if(input$threshType_GO == "Adjusted P value") {
                     req(input$pvalT_GO)
-                    res <- res_ET[get("FDR") <= input$pvalT_GO]                
+                    res <- res_all[get("FDR") <= input$pvalT_GO]                
                 } else if(input$threshType_GO == "Highlighted events") {
-                    res <- res_ET[get("Selected") == TRUE]
+                    res <- res_all[get("Selected") == TRUE]
                 }
 
                 validate(need(nrow(res) > 0, "Zero differential events"))
@@ -83,14 +84,11 @@ server_GO <- function(
                 selectedEvents <- res$EventName
                 
                 # debug
-                print(selectedEvents)
+                # print(selectedEvents)
                 
                 # Get Universe
-                res_all <- res_bkgd[get("All") == TRUE]
                 universeEvents <- res_all$EventName
-                if(input$universe_GO == "Selected ASE Modality") {
-                    universeEvents <- res_ET$EventName
-                } else if(input$universe_GO == "All Genes") {
+                if(input$universe_GO == "All Genes") {
                     # a signal to use all genes instead            
                     universeEvents <- NULL 
                 }

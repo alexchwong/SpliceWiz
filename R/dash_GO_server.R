@@ -45,31 +45,31 @@ server_GO <- function(
                     "No gene ontology found for this NxtSE object"))
                 
                 # Get volcano data
-                if(input$threshType_GO == "Highlighted events") {
-                    res_all <- as.data.table(get_de()[rows_selected(),])
+                
+                res_bkgd <- as.data.table(.get_unified_volcano_data(get_de()))
+                xunits <- .get_volcano_data_FCunits(res_bkgd)
+                res_bkgd$All <- rows_all()
+                res_bkgd$Selected <- rows_selected()
+
+               if(is_valid(input$EventType_GO)) {
+                    res_ET <- res_bkgd[get("EventType") %in% input$EventType_GO]
                 } else {
-                    res_all <- as.data.table(get_de()[rows_all(),])
+                    res_ET <- res_bkgd
                 }
                 
-                if(is_valid(input$EventType_GO)) {
-                    res_ET <- res_all[get("EventType") %in% input$EventType_GO]
-                } else {
-                    res_ET <- res_all
-                }
-                res <- as.data.table(.get_unified_volcano_data(res_ET))
-                xunits <- .get_volcano_data_FCunits(res)
-
                 validate(need(nrow(res) > 0, "Zero differential events"))
                 # Filter for Top N events or significant events
                 if(input$threshType_GO == "Top events by p-value") {
                     req(input$topN_GO)
-                    res <- res[seq_len(input$topN_GO)]
+                    res <- res_ET[seq_len(input$topN_GO)]
                 } else if(input$threshType_GO == "Nominal P value") {
                     req(input$pvalT_GO)
-                    res <- res[get("pvalue") <= input$pvalT_GO]
+                    res <- res_ET[get("pvalue") <= input$pvalT_GO]
                 } else if(input$threshType_GO == "Adjusted P value") {
                     req(input$pvalT_GO)
-                    res <- res[get("FDR") <= input$pvalT_GO]                
+                    res <- res_ET[get("FDR") <= input$pvalT_GO]                
+                } else if(input$threshType_GO == "Highlighted events") {
+                    res <- res_ET[get("Selected") == TRUE]
                 }
 
                 validate(need(nrow(res) > 0, "Zero differential events"))
@@ -86,6 +86,7 @@ server_GO <- function(
                 print(selectedEvents)
                 
                 # Get Universe
+                res_all <- res_bkgd[get("All") == TRUE]
                 universeEvents <- res_all$EventName
                 if(input$universe_GO == "Selected ASE Modality") {
                     universeEvents <- res_ET$EventName

@@ -197,13 +197,14 @@ extract_gene_ids_for_GO <- function(
 #' @examples
 #' \dontrun{
 #' # Below example code of how to use output of differential ASEs for GO analysis
-#' # It will not work because the reference must be either human / mouse, or a
-#' # valid `ontologySpecies` given to buildRef()
+#' # It will not work with the example dataset because the reference must be 
+#' # either human / mouse, or a  valid `ontologySpecies` given to buildRef()
+#' # We hope the example code is simple enough to understand for users to adapt
+#' # to their own workflows.
 #' 
 #' se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
 #' 
 #' colData(se)$treatment <- rep(c("A", "B"), each = 3)
-#' colData(se)$replicate <- rep(c("P","Q","R"), 2)
 #' 
 #' require("limma")
 #' res_limma <- ASE_limma(se, "treatment", "A", "B")

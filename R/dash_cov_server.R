@@ -62,7 +62,7 @@ server_cov <- function(
                     selGOterm <- isolate(input$GOterm_COV)
                     
                     go_id <- goInfo$go_id[match(selGOterm, goInfo$Term)]
-                    events <- .subset_EventNames_by_GO(tmpres$EventName, go_id,
+                    events <- subset_EventNames_by_GO(tmpres$EventName, go_id,
                         isolate(get_se()))
                     
                     tmpres <- tmpres[get("EventName") %in% events]

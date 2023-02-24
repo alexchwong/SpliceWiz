@@ -40,7 +40,11 @@ server_cov <- function(
         observeEvent(get_ref(), {
             req(get_ref())
             ref <- isolate(get_ref())
-            .server_cov_update_genes(session, ref$geneList)
+            settings_Cov$geneList <- ref$geneList
+        })
+
+        observeEvent(settings_Cov$geneList, {
+            .server_cov_update_genes(session, settings_Cov$geneList)
         })
 
         # Reactive to generate filtered DE object

@@ -617,7 +617,7 @@ server_vis_heatmap <- function(
                     "Run Gene Ontology analysis first"))
                 goInfo <- get_go()
                 go_id <- goInfo$go_id[match(input$GO_heat, goInfo$Term)]
-                events <- .subset_EventNames_by_GO(res$EventName, go_id,
+                events <- subset_EventNames_by_GO(res$EventName, go_id,
                     get_se())
                 res <- res[get("EventName") %in% events]
             } else {

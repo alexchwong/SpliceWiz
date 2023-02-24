@@ -67,7 +67,7 @@ server_GO <- function(
                 } else if(input$threshType_GO == "Nominal P value") {
                     req(input$pvalT_GO)
                     res <- res[get("pvalue") <= input$pvalT_GO]
-                } else {
+                } else if(input$threshType_GO == "Adjusted P value") {
                     req(input$pvalT_GO)
                     res <- res[get("FDR") <= input$pvalT_GO]                
                 }
@@ -81,6 +81,9 @@ server_GO <- function(
                 
                 validate(need(nrow(res) > 0, "Zero differential events"))
                 selectedEvents <- res$EventName
+                
+                # debug
+                print(selectedEvents)
                 
                 # Get Universe
                 universeEvents <- res_all$EventName
@@ -103,7 +106,7 @@ server_GO <- function(
                     settings_GO$filteredVolc <- res
                     
                     # Get gene_ids for ASEs (for optional save to file)
-                    geneIds <- .extract_gene_ids_for_GO(
+                    geneIds <- extract_gene_ids_for_GO(
                         selectedEvents,
                         universeEvents,
                         get_se()

@@ -75,7 +75,10 @@
     return(final)
 }
 
-.subset_EventNames_by_GO <- function(
+#' @describeIn Gene-ontology-methods Returns a list of ASEs enriched in a given
+#' gene ontology category
+#' @export
+subset_EventNames_by_GO <- function(
     EventNames, go_id, se
 ) {
     ont <- ref(se)$ontology
@@ -96,7 +99,10 @@
     return(allEvents$EventName)
 }
 
-.extract_gene_ids_for_GO <- function(
+#' @describeIn Gene-ontology-methods Produces a list containing enriched and
+#'   universe `gene_id`s of given enriched and background ASE `EventName`s
+#' @export
+extract_gene_ids_for_GO <- function(
     enrichedEventNames,
     universeEventNames = NULL,
     se
@@ -147,6 +153,95 @@
     return(final)
 }
 
+
+#' Gene ontology (over-representation) analysis using enriched genes of 
+#' top alternative splicing events
+#'
+#' Genes containing differential alternative splicing events (ASEs) may be
+#' enriched in key functional pathways. This can be identified using a simple
+#' over-representation analysis. Biologists can identify key pathways of
+#' interest in order to focus on studying ASEs belonging to genes of functional
+#' interest.
+#'
+#' @param EventNames,go_id In `subset_EventNames_by_GO()`, a vector of ASE 
+#'   `EventName`s to subset against the given `go_id`.
+#' @param enrichedEventNames A vector of `EventName`s. This is typically one
+#'   or more `EventName`s of differential ASEs
+#' @param universeEventNames A vector of `EventName`s, typically the 
+#'   `EventName`s of all ASEs that were tested. If left as `NULL`, all genes
+#'   are considered background genes.
+#' @param se The NxtSE object containing the GO reference and the `EventName`s
+#' @param ontologyType One of either `"BP"` - biological pathways, `"MF"` -
+#'   molecular function, or `"CC"` - cellular component.
+#' @param pAdjustMethod The method for p-value adjustment for FDR.
+#'   See `?p.adjust`
+#' @param ... Additional arguments to be passed to `fgsea::fora()`
+#' @return 
+#' For `goASE()`, A data table containing the following:
+#'    * go_id: Gene ontology ID
+#'    * go_term: Gene ontology term
+#'    * pval: Raw p values
+#'    * padj: Adjusted p values
+#'    * overlap: Number of enriched genes (of enriched ASEs)
+#'    * size: Number of background genes (of background ASEs)
+#'    * overlapGenes: A list of `gene_id`'s from genes of enriched ASEs
+#'    * expected: The number of overlap genes expected by random 
+#' 
+#' For `extract_gene_ids_for_GO()`, A list containing the following:
+#'    * genes: A vector of enriched `gene_id`s
+#'    * universe: A vector of background `gene_id`s
+#'
+#' For `subset_EventNames_by_GO()`, A vector of all ASE `EventName`s belonging
+#'   to the given gene ontology `go_id`
+#'
+#' @examples
+#' \dontrun{
+#' # Below example code of how to use output of differential ASEs for GO analysis
+#' # It will not work because the reference must be either human / mouse, or a
+#' # valid `ontologySpecies` given to buildRef()
+#' 
+#' se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
+#' 
+#' colData(se)$treatment <- rep(c("A", "B"), each = 3)
+#' colData(se)$replicate <- rep(c("P","Q","R"), 2)
+#' 
+#' require("limma")
+#' res_limma <- ASE_limma(se, "treatment", "A", "B")
+#'
+#' # Perform gene ontology analysis of the first 10 differential ASEs
+#' 
+#' go_df <- goASE(
+#'   enrichedEventNames = res_limma$EventName[1:10],
+#'   universeEventNames = res_limma$EventName,
+#'   se = se
+#' )
+#'
+#' # Return a list of all ASEs belonging to the top enriched category
+#'
+#' GOsubset_EventName <- subset_EventNames_by_GO(
+#'   EventNames = res_limma$EventName,
+#'   go_id = go_df$go_id[1],
+#'   se = se
+#' )
+#' 
+#' # Return a list of all ASEs belonging to the top enriched category.
+#' # - typically used if one wishes to export `gene_id` for use in other gene
+#' #   ontology tools
+#'
+#' gene_id_list <- extract_gene_ids_for_GO(
+#'   enrichedEventNames = res_limma$EventName[1:10],
+#'   universeEventNames = res_limma$EventName,
+#'   se = se
+#' )
+#'
+#' }
+#' @name Gene-ontology-methods
+#' @md
+NULL
+
+#' @describeIn Gene-ontology-methods Performs over-representation gene ontology
+#' analysis using a given list of enriched / background ASEs
+#' @export
 goASE <- function(
     enrichedEventNames,
     universeEventNames = NULL,
@@ -164,7 +259,7 @@ goASE <- function(
         .log(paste("pAdjustMethod must a valid option.",
             "See details section in ?p.adjust"))
 
-    geneIds <- .extract_gene_ids_for_GO(
+    geneIds <- extract_gene_ids_for_GO(
         enrichedEventNames,
         universeEventNames,
         se

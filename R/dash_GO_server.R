@@ -57,7 +57,7 @@ server_GO <- function(
                     res_ET <- res_bkgd
                 }
                 
-                validate(need(nrow(res) > 0, "Zero differential events"))
+                validate(need(nrow(res_ET) > 0, "Zero differential events"))
                 # Filter for Top N events or significant events
                 if(input$threshType_GO == "Top events by p-value") {
                     req(input$topN_GO)

@@ -48,8 +48,8 @@ server_GO <- function(
                 
                 res_bkgd <- as.data.table(.get_unified_volcano_data(get_de()))
                 xunits <- .get_volcano_data_FCunits(res_bkgd)
-                res_bkgd$All <- rows_all()
-                res_bkgd$Selected <- rows_selected()
+                res_bkgd$All <- rows_all() %in% seq_len(nrow(res_bkgd))
+                res_bkgd$Selected <- rows_selected() %in% seq_len(nrow(res_bkgd))
 
                if(is_valid(input$EventType_GO)) {
                     res_ET <- res_bkgd[get("EventType") %in% input$EventType_GO]
@@ -125,7 +125,10 @@ server_GO <- function(
                     )
                 })
                 
-                settings_GO$final_plot <- .generate_plotly_GO(settings_GO$resGO)
+                p <- .generate_ggplot_GO(settings_GO$resGO)
+                settings_GO$final_plot <- ggplotly(
+                    p, tooltip = "text"
+                )
                 
                 "GO analysis complete"
             }))
@@ -141,7 +144,7 @@ server_GO <- function(
     
 }
 
-.generate_plotly_GO_labels <- function(axis_term) {
+.generate_plot_GO_labels <- function(axis_term) {
     if(axis_term == "log10FDR") {
         return("Enrichment FDR (-log10)")
     } else if(axis_term == "nGenes") {
@@ -165,7 +168,7 @@ server_GO <- function(
     return(res)
 }
 
-.generate_plotly_GO <- function(
+.generate_ggplot_GO <- function(
     res,
     plot_x = c("log10FDR", "foldEnrichment", "nGenes"),
     plot_size = c("nGenes", "foldEnrichment", "log10FDR"),
@@ -198,13 +201,14 @@ server_GO <- function(
         scale_colour_gradient(low = "blue", high = "red") +
         scale_y_discrete(limits=rev) +
         labs(
-            x = .generate_plotly_GO_labels(plot_x),
+            x = .generate_plot_GO_labels(plot_x),
             y = "Gene Ontology Term",
-            color = .generate_plotly_GO_labels(plot_color), 
-            size = .generate_plotly_GO_labels(plot_size)
+            color = .generate_plot_GO_labels(plot_color), 
+            size = .generate_plot_GO_labels(plot_size)
         )
     
-    return(ggplotly(
-        p, tooltip = "text"
-    ))
+    return(p)
+    # return(ggplotly(
+        # p, tooltip = "text"
+    # ))
 }

@@ -51,10 +51,10 @@ server_vis_diag <- function(
         observe({
             req(is(get_se(), "NxtSE"))
             req(get_de())
-            req(input$variable_diag)
-            req(input$nom_diag)
-            req(input$denom_diag)
-            
+            req(is_valid(input$variable_diag))
+            req(is_valid(input$denom_diag))
+            req(is_valid(input$nom_diag))
+
             tmpres <- as.data.table(
                 .get_unified_volcano_data(get_de()[rows_all(),]))
 

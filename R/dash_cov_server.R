@@ -343,6 +343,10 @@ server_cov_get_all_tracks <- function(input) {
             choices = c("(none)", 
                 as.character(sort(unique(geneList$seqnames)))),
             selected = "(none)")
+        # Initialize first then repopulate later
+        updateSelectizeInput(session = session, inputId = "genes_cov",
+            server = TRUE, choices = c("(none)"), 
+            selected = "(none)")
         updateSelectizeInput(session = session, inputId = "genes_cov",
             server = TRUE, choices = c("(none)", geneList$gene_display_name), 
             selected = "(none)")
@@ -361,22 +365,7 @@ server_cov_get_all_tracks <- function(input) {
         selected_event, mode
 ) {
     # Gene list drop-down refresh
-    if(!is.null(geneList)) {
-        message("Populating drop-down box with ", 
-            length(unique(geneList$gene_display_name)), " genes")
-        updateSelectInput(session = session, inputId = "chr_cov", 
-            choices = c("(none)", 
-                as.character(sort(unique(geneList$seqnames)))),
-            selected = "(none)")
-        updateSelectizeInput(session = session, inputId = "genes_cov",
-            server = TRUE, choices = c("(none)", geneList$gene_display_name), 
-            selected = "(none)")
-    } else {
-        updateSelectInput(session = session, inputId = "chr_cov", 
-            choices = c("(none)"), selected = "(none)")
-        updateSelectizeInput(session = session, inputId = "genes_cov", 
-            server = TRUE, choices = c("(none)"), selected = "(none)") 
-    }
+    # .server_cov_update_genes(session, geneList)
 
     # Event list drop-down refresh
     if(is_valid(DE)) {

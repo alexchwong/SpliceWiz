@@ -48,8 +48,8 @@ server_GO <- function(
                 
                 res_bkgd <- as.data.table(.get_unified_volcano_data(get_de()))
                 xunits <- .get_volcano_data_FCunits(res_bkgd)
-                res_bkgd$All <- rows_all() %in% seq_len(nrow(res_bkgd))
-                res_bkgd$Selected <- rows_selected() %in% seq_len(nrow(res_bkgd))
+                res_bkgd$All <- seq_len(nrow(res_bkgd)) %in% rows_all()
+                res_bkgd$Selected <- seq_len(nrow(res_bkgd)) %in% rows_selected()
 
                if(is_valid(input$EventType_GO)) {
                     res_ET <- res_bkgd[get("EventType") %in% input$EventType_GO]

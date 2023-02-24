@@ -69,6 +69,8 @@ server_vis_diag <- function(
 
         # Reactive to generate filtered DE object
         observe({
+            req(is(get_se(), "NxtSE"))
+            req(get_de())
             tmpres <- as.data.table(
                 .get_unified_volcano_data(get_de()[rows_all(),]))
             if(input$filterType_diag == "Adjusted P value") {

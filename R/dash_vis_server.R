@@ -54,9 +54,12 @@ server_vis_diag <- function(
             req(input$variable_diag)
             req(input$nom_diag)
             req(input$denom_diag)
-
+            
             tmpres <- as.data.table(
                 .get_unified_volcano_data(get_de()[rows_all(),]))
+
+            req(tmpres$EventName)
+            req(all(tmpres$EventName %in% rowData(get_se())$EventName))
 
             withProgress(message = 'Calculating mean PSIs...', value = 0, {
                 settings_Diag$meanPSI <- makeMeanPSI(

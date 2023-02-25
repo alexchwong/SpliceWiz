@@ -8,6 +8,7 @@
 \alias{viewIR_NMD}
 \alias{viewExons}
 \alias{viewGenes}
+\alias{viewGO}
 \alias{viewProteins}
 \alias{viewTranscripts}
 \title{View SpliceWiz Reference in read-able data frames}
@@ -23,6 +24,8 @@ viewIR_NMD(reference_path)
 viewExons(reference_path)
 
 viewGenes(reference_path)
+
+viewGO(reference_path)
 
 viewProteins(reference_path)
 
@@ -63,6 +66,9 @@ from the annotation.
 \item \code{viewGenes()}: Outputs information for every gene
 from the annotation.
 
+\item \code{viewGO()}: Outputs information for every gene
+from the annotation.
+
 \item \code{viewProteins()}: Outputs information for every
 protein-coding exon from the annotation.
 
@@ -71,12 +77,12 @@ transcript from the annotation.
 
 }}
 \examples{
-ref_path <- file.path(tempdir(), "Reference")
-
+ref_path <- file.path(tempdir(), "Reference_withGO")
 buildRef(
     reference_path = ref_path,
     fasta = chrZ_genome(),
-    gtf = chrZ_gtf()
+    gtf = chrZ_gtf(),
+    ontologySpecies = "Homo sapiens"
 )
 
 df <- viewASE(ref_path)
@@ -94,6 +100,8 @@ df <- viewGenes(ref_path)
 df <- viewProteins(ref_path)
 
 df <- viewTranscripts(ref_path)
+
+df <- viewGO(ref_path)
 
 }
 \seealso{

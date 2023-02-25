@@ -116,7 +116,7 @@ server_GO <- function(
                     # Generate GO
                     settings_GO$resGO <- .format_GO_result(
                         .ora_internal(
-                            get_se(), 
+                            ref(get_se())[["ontology"]], 
                             geneIds$genes, geneIds$universe,
                             ontologyType, pAdjustMethod = "BH"
                         )
@@ -142,71 +142,3 @@ server_GO <- function(
     
 }
 
-.generate_plot_GO_labels <- function(axis_term) {
-    if(axis_term == "log10FDR") {
-        return("Enrichment FDR (-log10)")
-    } else if(axis_term == "nGenes") {
-        return("Number of Enriched Genes")
-    } else {
-        return("Fold Enrichment")
-    }
-}
-
-.format_GO_result <- function(res, trim_go_term = 50) {
-    res$go_term <- substr(res$go_term, 1, trim_go_term + 1)
-    res[nchar(get("go_term")) > 50, c("go_term") :=
-        paste0(substr(get("go_term"), 1, trim_go_term-3), "...")]
-    res$Term <- paste(res$go_term, res$go_id, sep = "~")
-    res$Term <- factor(res$Term, res$Term, ordered = TRUE)
-    
-    res$FDR = res$padj
-    res$log10FDR = -log10(res$FDR)
-    res$nGenes = res$overlap
-
-    return(res)
-}
-
-.generate_ggplot_GO <- function(
-    res,
-    plot_x = c("log10FDR", "foldEnrichment", "nGenes"),
-    plot_size = c("nGenes", "foldEnrichment", "log10FDR"),
-    plot_color = c("foldEnrichment", "nGenes", "log10FDR"),
-    filter_n_terms = 20,
-    filter_padj = 1, # don't filter by default
-    filter_pvalue = 1, # don't filter by default
-    trim_go_term = 50
-) {
-    if(nrow(res) == 0) return(NULL)
-    
-    plot_x <- match.arg(plot_x)
-    plot_size <- match.arg(plot_size)
-    plot_color <- match.arg(plot_color)
-
-    res_use <- res[seq_len(filter_n_terms)]
-    res_use <- res_use[get("pval") <= filter_pvalue]    
-    res_use <- res_use[get("padj") <= filter_padj]
-        
-    p <- ggplot(res_use, aes(text = get("Term"))) + 
-        geom_segment(data = res_use, mapping = aes(
-            x = 0, xend = get(plot_x), 
-            y = get("Term"), yend = get("Term"), 
-            color = get(plot_color)
-        )) +
-        geom_point(data = res_use, mapping = aes(
-            x = get(plot_x), y = get("Term"), 
-            size = get(plot_size), color = get(plot_color)
-        )) +
-        scale_colour_gradient(low = "blue", high = "red") +
-        scale_y_discrete(limits=rev) +
-        labs(
-            x = .generate_plot_GO_labels(plot_x),
-            y = "Gene Ontology Term",
-            color = .generate_plot_GO_labels(plot_color), 
-            size = .generate_plot_GO_labels(plot_size)
-        )
-    
-    return(p)
-    # return(ggplotly(
-        # p, tooltip = "text"
-    # ))
-}

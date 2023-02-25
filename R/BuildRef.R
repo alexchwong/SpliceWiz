@@ -146,6 +146,11 @@
 #' @param ontologySpecies (default `""`) The species for which gene ontology 
 #'   classifications should be fetched from AnnotationHub. Ignored if
 #'   `genome_type` is set (as human or mouse GO will be used instead).
+#' @param localHub (default `FALSE`) For `getAvailableGO()`, whether to use
+#'   offline mode for AnnotationHub resources. If `TRUE`, offline mode will be
+#'   used.
+#' @param ah For `getAvailableGO()`, the AnnotationHub object. Leave as default
+#'   to use the entirety of AnnotationHub resources.
 #' @param ... For STAR_buildRef, additional parameters to be parsed into
 #'   `STAR_buildRef` which it runs internally. See [STAR_buildRef]
 #' @return
@@ -198,6 +203,20 @@
 #' # Get the path to the Non-PolyA BED file for hg19
 #'
 #' getNonPolyARef("hg19")
+#'
+#' # View available species for AnnotationHub's Ensembl/orgDB-based GO resources
+#' 
+#' availSpecies <- getAvailableGO()
+#'
+#' # Build example reference with `Homo sapiens` Ens/orgDB gene ontology
+#'
+#' ont_ref <- file.path(tempdir(), "Reference_withGO")
+#' buildRef(
+#'     reference_path = ont_ref,
+#'     fasta = chrZ_genome(),
+#'     gtf = chrZ_gtf(),
+#'     ontologySpecies = "Homo sapiens"
+#' )
 #'
 #' \dontrun{
 #'

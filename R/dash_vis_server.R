@@ -120,15 +120,20 @@ server_vis_diag <- function(
             df.diag$NMD_direction <- .getNMDcode(get_de()$flags[
                 match(df.diag$EventName, get_de()$EventName)])
             
-            # Generate ggplot object
-            settings_Diag$plot_ini <- TRUE
             if(input$NMD_diag == TRUE) {
                 df.diag             <- df.diag[df.diag$NMD_direction != 0, ]
                 df.diag$nom_NMD     <- ifelse(df.diag$NMD_direction == 1, 
                                         df.diag$nom, df.diag$denom)
                 df.diag$denom_NMD   <- ifelse(df.diag$NMD_direction == -1, 
                                         df.diag$nom, df.diag$denom)
-                                        
+            }
+            
+            validate(need(nrow(df.diag) > 0, 
+                "Zero ASEs to plot. Consider relaxing p-value filters"))
+
+            # Generate ggplot object
+            settings_Diag$plot_ini <- TRUE            
+            if(input$NMD_diag == TRUE) {
                 p <- ggplot(df.diag, 
                         aes(
                             x = get("nom_NMD"), y = get("denom_NMD"), 
@@ -161,13 +166,16 @@ server_vis_diag <- function(
             
             # Record ggplot / plotly objects into settings_Diag
             settings_Diag$ggplot <- p
-            settings_Diag$final_plot <- ggplotly(
-                p, tooltip = "text",
-                source = "plotly_diagonal"
-            ) %>% layout(
-                dragmode = "lasso",
-                yaxis = list(scaleanchor="x", scaleratio=1)
-            )
+            suppressWarnings({
+                settings_Diag$final_plot <- ggplotly(
+                    p, tooltip = "text",
+                    source = "plotly_diagonal",
+                    type = "scatter_gl"
+                ) %>% toWebGL() %>% layout(
+                    dragmode = "lasso",
+                    yaxis = list(scaleanchor="x", scaleratio=1)
+                )
+            })
             if(packageVersion("plotly") >= "4.9.0") {
                 plotly::event_register(
                     settings_Diag$final_plot, "plotly_click")
@@ -382,6 +390,9 @@ server_vis_volcano <- function(
                 df.volc$logFC <- df.volc$logFC * df.volc$NMD_direction
             }
 
+            validate(need(nrow(df.volc) > 0, 
+                "Zero ASEs to plot. Consider relaxing p-value filters"))
+
             settings_Volc$plot_ini <- TRUE
             if(input$adjP_volc) {
                 p <- ggplot(df.volc, aes(
@@ -421,10 +432,14 @@ server_vis_volcano <- function(
             
             p <- p + labs(color = "Selected")
             settings_Volc$ggplot <- p
-            settings_Volc$final_plot <- ggplotly(
-                p, tooltip = "text",
-                source = "plotly_volcano"
-            ) %>% layout(dragmode = "select")
+            
+            suppressWarnings({
+                settings_Volc$final_plot <- ggplotly(
+                    p, tooltip = "text",
+                    source = "plotly_volcano",
+                    type = "scatter_gl"
+                ) %>% toWebGL() %>% layout(dragmode = "select")
+            })
             if(packageVersion("plotly") >= "4.9.0") {
                 plotly::event_register(
                     settings_Volc$final_plot, "plotly_click")

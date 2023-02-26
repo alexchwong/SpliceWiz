@@ -41,7 +41,7 @@
 #' @importFrom patchwork area plot_layout wrap_plots
 #' @importFrom plotly config layout plotlyOutput event_data ggplotly 
 #' @importFrom plotly plotlyProxy plotlyProxyInvoke renderPlotly subplot 
-#' @importFrom plotly highlight orca
+#' @importFrom plotly highlight orca toWebGL
 #' @importFrom rhdf5 h5createFile h5createDataset h5delete h5write h5createGroup
 #' @importFrom rtracklayer import export TwoBitFile track
 #' @importFrom S4Vectors mcols mcols<- metadata Rle metadata<- SimpleList 

@@ -69,6 +69,10 @@ viewASE <- function(reference_path) {
         "Exc_transcript_id", "Exc_transcript_name"    
     )
     
+    Genes <- viewGenes(reference_path)
+    tmp$Inc_gene_name <- Genes$gene_name[match(tmp$Inc_gene_id, Genes$gene_id)]
+    tmp$Exc_gene_name <- Genes$gene_name[match(tmp$Exc_gene_id, Genes$gene_id)]
+    
     return(tmp)
 }
 

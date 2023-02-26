@@ -245,14 +245,15 @@ processBAM_hts <- function(
 
 # Call C++ on a single sample. Used for BiocParallel
 .processBAM_run_single_hts <- function(
-    bam, ref, out, verbose, overwrite, read_pool_size
+    bam, ref, out, verbose, overwrite, skipCOVfiles, read_pool_size
 ) {
     file_gz <- paste0(out, ".txt.gz")
     file_cov <- paste0(out, ".cov")
     bam_short <- file.path(basename(dirname(bam)), basename(bam))
     if (overwrite ||
         !(file.exists(file_gz) | file.exists(file_cov))) {
-        ret <- SpliceWizMain_hts(bam, ref, out, verbose, 1, read_pool_size)
+        ret <- SpliceWizMain_hts(bam, ref, out, verbose, 1, 
+        skipCOVfiles, read_pool_size)
         # Check SpliceWiz returns all files successfully
         if (ret != 0) {
             .log(paste(

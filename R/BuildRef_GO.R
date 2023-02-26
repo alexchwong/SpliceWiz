@@ -126,6 +126,8 @@
 #' )
 #'
 #' }
+#' @seealso
+#' [Build-Reference-methods] on how to generate gene ontology annotations\cr\cr
 #' @name Gene-ontology-methods
 #' @md
 NULL

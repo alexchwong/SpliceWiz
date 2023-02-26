@@ -164,10 +164,12 @@ server_vis_diag <- function(
             # Annotate colors, etc
             p <- p + labs(color = "Selected")
             
-            # Record ggplot / plotly objects into settings_Diag
-            settings_Diag$ggplot <- p
-            suppressWarnings({
-                settings_Diag$final_plot <- ggplotly(
+            withProgress(message = 'Rendering plot...', value = 0, {
+
+                # Record ggplot / plotly objects into settings_Diag
+                settings_Diag$ggplot <- p
+                
+                py <- ggplotly(
                     p, tooltip = "text",
                     source = "plotly_diagonal",
                     type = "scatter_gl"
@@ -175,15 +177,20 @@ server_vis_diag <- function(
                     dragmode = "lasso",
                     yaxis = list(scaleanchor="x", scaleratio=1)
                 )
-            })
-            if(packageVersion("plotly") >= "4.9.0") {
-                plotly::event_register(
-                    settings_Diag$final_plot, "plotly_click")
-                plotly::event_register(
-                    settings_Diag$final_plot, "plotly_selected")
-            }
+                # Add hoveron entry
+                py$x$data <- lapply(gg$x$data, function(x) {
+                    x$hoveron <- NULL
+                    x
+                })
+                settings_Diag$final_plot <- py
+                
+                if(packageVersion("plotly") >= "4.9.0") {
+                    plotly::event_register(
+                        settings_Diag$final_plot, "plotly_click")
+                    plotly::event_register(
+                        settings_Diag$final_plot, "plotly_selected")
+                }
             
-            withProgress(message = 'Rendering plot...', value = 0, {
                 print(settings_Diag$final_plot)
             })
         })
@@ -432,21 +439,27 @@ server_vis_volcano <- function(
             
             p <- p + labs(color = "Selected")
             settings_Volc$ggplot <- p
-            
-            suppressWarnings({
-                settings_Volc$final_plot <- ggplotly(
+
+            withProgress(message = 'Rendering plot...', value = 0, {
+                py <- ggplotly(
                     p, tooltip = "text",
                     source = "plotly_volcano",
                     type = "scatter_gl"
                 ) %>% toWebGL() %>% layout(dragmode = "select")
-            })
-            if(packageVersion("plotly") >= "4.9.0") {
-                plotly::event_register(
-                    settings_Volc$final_plot, "plotly_click")
-                plotly::event_register(
-                    settings_Volc$final_plot, "plotly_selected")
-            }
-            withProgress(message = 'Rendering plot...', value = 0, {
+
+                # Add hoveron entry
+                py$x$data <- lapply(gg$x$data, function(x) {
+                    x$hoveron <- NULL
+                    x
+                })
+                settings_Volc$final_plot <- py
+
+                if(packageVersion("plotly") >= "4.9.0") {
+                    plotly::event_register(
+                        settings_Volc$final_plot, "plotly_click")
+                    plotly::event_register(
+                        settings_Volc$final_plot, "plotly_selected")
+                }
                 print(settings_Volc$final_plot)
             })
         })

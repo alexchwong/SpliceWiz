@@ -160,15 +160,28 @@ GRanges. \code{as_ggplot_cov()} will generate coverage for one or more exons
 whose genomic regions are specified by the given ranges.}
 }
 \value{
-A list containing two objects (\code{final_plot} and \code{ggplot}).
-\code{final_plot} is the plotly object.
-\code{ggplot} is a list of ggplot tracks, with:
+For \code{plotCoverage}, a list containing the following objects:
+\itemize{
+\item \code{ggplot} - a list of 6 static ggplots, containing
 \itemize{
 \item \code{ggplot[[n]]} is the nth track (where n = 1, 2, 3 or 4).
 \item \code{ggplot[[5]]} contains the T-test track if one is generated.
 \item \code{ggplot[[6]]} always contains the genome track.
+}
+\item \code{final_plot} - the plotly object of the final rendered plot
+\item \code{exonRanges} - A \code{GRanges} object containing exon windows
+\item \code{yrange_list} - The maximum coverage values of each plotted track.
+For internal use only
+\item \code{plotViewStart},\code{plotViewStart} - The genomic range being plotted.
+For internal use only
 A static plot can be generated using the \code{as_ggplot_cov} function.
 }
+
+For \code{plotGenome}, a list containing \code{final_plot} and \code{ggplot}, the latter
+as a final ggplot object (not a list of ggplot objects).
+
+For \code{as_ggplot_cov}, a \code{patchwork} plot containing the final assembled static
+plot is generated.
 }
 \description{
 Generate plotly / ggplot RNA-seq genome and coverage plots from command line.

@@ -173,7 +173,7 @@ processBAM <- function(
                 s_bam = s_bam,
                 reference_file = ref_file,
                 output_files = output_files,
-                verbose = verbose,
+                verbose = verbose, skipCOVfiles = skipCOVfiles,
                 overwrite = overwrite_SpliceWiz_Output,
                 BPPARAM = BPPARAM_mod
             )

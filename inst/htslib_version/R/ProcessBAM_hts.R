@@ -77,7 +77,7 @@ processBAM_hts <- function(
         n_threads = 1, useOpenMP = TRUE,
         overwrite = FALSE,
         run_featureCounts = FALSE,
-        verbose = FALSE,
+        verbose = FALSE, skipCOVfiles = FALSE,
         read_pool_size = 1000000
 ) {
     if(compiled_with_htslib() == -1)
@@ -117,7 +117,8 @@ processBAM_hts <- function(
             output_files = s_output[!already_exist],
             max_threads = n_threads, useOpenMP = useOpenMP,
             overwrite_SpliceWiz_Output = overwrite,
-            verbose = verbose, read_pool_size = read_pool_size
+            verbose = verbose, skipCOVfiles = skipCOVfiles,
+            read_pool_size = read_pool_size
         )
     } else {
         .log("processBAM has already been run on given BAM files", "message")
@@ -145,7 +146,7 @@ processBAM_hts <- function(
         max_threads = max(parallel::detectCores(), 1),
         useOpenMP = TRUE,
         overwrite_SpliceWiz_Output = FALSE,
-        verbose = TRUE, read_pool_size = 1000000
+        verbose = TRUE, skipCOVfiles = FALSE, read_pool_size = 1000000
     ) {
     .validate_reference(reference_path) # Check valid SpliceWiz reference
     s_bam <- normalizePath(bamfiles) # Clean path name for C++
@@ -159,7 +160,8 @@ processBAM_hts <- function(
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & useOpenMP) {
         SpliceWizMain_multi_hts(
-            ref_file, s_bam, output_files, n_threads, verbose, read_pool_size
+            ref_file, s_bam, output_files, n_threads, verbose, 
+            skipCOVfiles, read_pool_size
         )
     } else {
         # Use BiocParallel
@@ -177,12 +179,13 @@ processBAM_hts <- function(
                 function(i, s_bam, reference_file,
                         output_files, verbose, overwrite) {
                     .processBAM_run_single_hts(s_bam[i], reference_file,
-                        output_files[i], verbose, overwrite, read_pool_size)
+                        output_files[i], verbose, overwrite, 
+                        skipCOVfiles, read_pool_size)
                 },
                 s_bam = s_bam,
                 reference_file = ref_file,
                 output_files = output_files,
-                verbose = verbose,
+                verbose = verbose, skipCOVfiles = skipCOVfiles,
                 overwrite = overwrite_SpliceWiz_Output,
                 BPPARAM = BPPARAM_mod
             )

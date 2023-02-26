@@ -209,3 +209,6 @@ gene_id_list <- extract_gene_ids_for_GO(
 
 }
 }
+\seealso{
+\link{Build-Reference-methods} on how to generate gene ontology annotations\cr\cr
+}

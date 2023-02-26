@@ -47,8 +47,8 @@ SOFTWARE.  */
     std::vector<std::string> const &bam_file, 
     std::vector<std::string> const &s_output_txt, 
     std::vector<std::string> const &s_output_cov,
-    bool const verbose,
-    int const read_pool
+    bool const verbose, bool const skipCOV,
+    int const read_pool = 1000000
   );
 
   int BAM2COVCore_hts(
@@ -70,7 +70,8 @@ SOFTWARE.  */
   int SpliceWizMain_hts(
     std::string reference_file, 
     StringVector bam_files, StringVector output_files,
-    int max_threads = 1, bool verbose = true, int read_pool = 1000000
+    int max_threads = 1, bool verbose = true, 
+    bool const skipCOV = false, int read_pool = 1000000
   );
   
   int SpliceWizMain_multi_hts(
@@ -78,7 +79,7 @@ SOFTWARE.  */
       StringVector bam_files, 
       StringVector output_files,
       int max_threads = 1, 
-      bool verbose = true, 
+      bool verbose = true, bool const skipCOV = false, 
       int read_pool = 1000000
   );
 

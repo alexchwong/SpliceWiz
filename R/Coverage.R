@@ -129,14 +129,26 @@
 #'   GRanges. `as_ggplot_cov()` will generate coverage for one or more exons
 #'   whose genomic regions are specified by the given ranges.
 #'
-#' @return A list containing two objects (`final_plot` and `ggplot`). 
-#'   `final_plot` is the plotly object.
-#'   `ggplot` is a list of ggplot tracks, with:
-#'
-#' * `ggplot[[n]]` is the nth track (where n = 1, 2, 3 or 4).
-#' * `ggplot[[5]]` contains the T-test track if one is generated.
-#' * `ggplot[[6]]` always contains the genome track.
+#' @return 
+#' For `plotCoverage`, a list containing the following objects:
+#'   * `ggplot` - a list of 6 static ggplots, containing
+#'     * `ggplot[[n]]` is the nth track (where n = 1, 2, 3 or 4).
+#'     * `ggplot[[5]]` contains the T-test track if one is generated.
+#'     * `ggplot[[6]]` always contains the genome track.
+#'   * `final_plot` - the plotly object of the final rendered plot
+#'   * `exonRanges` - A `GRanges` object containing exon windows
+#'   * `yrange_list` - The maximum coverage values of each plotted track.
+#'     For internal use only
+#'   * `plotViewStart`,`plotViewStart` - The genomic range being plotted.
+#'     For internal use only
 #' A static plot can be generated using the `as_ggplot_cov` function.
+#'
+#' For `plotGenome`, a list containing `final_plot` and `ggplot`, the latter
+#'   as a final ggplot object (not a list of ggplot objects).
+#'
+#' For `as_ggplot_cov`, a `patchwork` plot containing the final assembled static
+#'   plot is generated.
+#' 
 #' @examples
 #' se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
 #'

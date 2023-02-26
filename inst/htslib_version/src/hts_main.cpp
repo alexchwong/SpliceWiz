@@ -40,7 +40,7 @@ int SpliceWizCore_htsMulti(
     std::vector<std::string> const &bam_file, 
     std::vector<std::string> const &s_output_txt, 
     std::vector<std::string> const &s_output_cov,
-    bool const verbose,
+    bool const verbose, bool skipCOV, 
     int const read_pool
 ) {
 
@@ -271,12 +271,14 @@ int SpliceWizCore_htsMulti(
   }
 
   // Write Coverage Binary file:
-    std::ofstream ofCOV;
-    ofCOV.open(s_output_cov.at(z), std::ofstream::binary);
-    covWriter outCOV;
-    outCOV.SetOutputHandle(&ofCOV);
-    Engine.oFM.at(0).WriteBinary(&outCOV, verbose, Engine.n_threads_to_use);
-    ofCOV.close();
+    if(!skipCOV) {
+      std::ofstream ofCOV;
+      ofCOV.open(s_output_cov.at(z), std::ofstream::binary);
+      covWriter outCOV;
+      outCOV.SetOutputHandle(&ofCOV);
+      Engine.oFM.at(0).WriteBinary(&outCOV, verbose, Engine.n_threads_to_use);
+      ofCOV.close();
+    }
 
   // Write output to file:  
     if(verbose) cout << "Writing output file\n";
@@ -769,7 +771,7 @@ int compiled_with_htslib() {
 // [[Rcpp::export]]
 int SpliceWizMain_hts(
     std::string bam_file, std::string reference_file, std::string output_file,
-    bool verbose, int n_threads, int read_pool
+    bool verbose, int n_threads, bool skipCOV, int read_pool
 ) {
   
   std::string s_output_txt = output_file + ".txt.gz";
@@ -801,7 +803,7 @@ int SpliceWizMain_hts(
   int ret2 = SpliceWizCore_htsMulti(
     Engine,
     v_bam, v_out_txt, v_out_cov,
-    verbose, read_pool
+    verbose, skipCOV, read_pool
   );
 
   Engine.clear();
@@ -816,7 +818,7 @@ int SpliceWizMain_hts(
 int SpliceWizMain_multi_hts(
     std::string reference_file, 
     StringVector bam_files, StringVector output_files,
-    int max_threads, bool verbose, int read_pool
+    int max_threads, bool verbose, bool skipCOV, int read_pool
 ){
 	if(bam_files.size() != output_files.size() || bam_files.size() < 1) {
 		cout << "bam_files and output_files are of different sizes\n";
@@ -849,7 +851,7 @@ int SpliceWizMain_multi_hts(
   int ret2 = SpliceWizCore_htsMulti(
     Engine,
     v_bam, v_out_txt, v_out_cov,
-    verbose, read_pool
+    verbose, skipCOV, read_pool
   );
   Engine.clear();
 #ifdef __linux__

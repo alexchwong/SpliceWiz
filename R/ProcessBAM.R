@@ -166,7 +166,7 @@ processBAM <- function(
             )
             BiocParallel::bplapply(selected_rows_subset,
                 function(i, s_bam, reference_file,
-                        output_files, verbose, overwrite) {
+                        output_files, verbose, overwrite, skipCOVfiles) {
                     .processBAM_run_single(s_bam[i], reference_file,
                         output_files[i], verbose, overwrite, skipCOVfiles)
                 },

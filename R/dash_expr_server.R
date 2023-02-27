@@ -626,9 +626,9 @@ server_expr <- function(
     if(is_valid(df) && is(df, "data.frame")) {
         r <- rhandsontable(df, useTypes = TRUE, stretchH = "all",
             selectCallback = enable_select)
-        # if("sample" %in% colnames(df)) {
-            # r <- r %>% hot_col("sample", readOnly = TRUE)
-        # }
+        if("sample" %in% colnames(df)) {
+            r <- r %>% hot_col("sample", readOnly = TRUE)
+        }
         return(r)
     } else {
         return(NULL)

@@ -178,7 +178,7 @@ server_vis_diag <- function(
                     yaxis = list(scaleanchor="x", scaleratio=1)
                 )
                 # Add hoveron entry
-                py$x$data <- lapply(gg$x$data, function(x) {
+                py$x$data <- lapply(py$x$data, function(x) {
                     x$hoveron <- NULL
                     x
                 })
@@ -448,7 +448,7 @@ server_vis_volcano <- function(
                 ) %>% toWebGL() %>% layout(dragmode = "select")
 
                 # Add hoveron entry
-                py$x$data <- lapply(gg$x$data, function(x) {
+                py$x$data <- lapply(py$x$data, function(x) {
                     x$hoveron <- NULL
                     x
                 })

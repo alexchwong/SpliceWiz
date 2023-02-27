@@ -47,12 +47,14 @@ int c_gunzip(std::string s_in, std::string s_out);
 #ifdef SPLICEWIZ
   int SpliceWizMain(
       std::string bam_file, std::string reference_file, std::string output_file, 
-      bool verbose = true, int n_threads = 1, bool multiRead = false
+      bool verbose = true, int n_threads = 1, 
+      bool skipCOV = false, bool multiRead = false
   );
 
   int SpliceWizMain_multi(
       std::string reference_file, StringVector bam_files, StringVector output_files,
-      int max_threads = 1, bool verbose = true, bool multiRead = false
+      int max_threads = 1, bool verbose = true, 
+      bool skipCOV = false, bool multiRead = false
   );
 
   int c_GenerateMappabilityReads(

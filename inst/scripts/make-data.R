@@ -49,7 +49,7 @@ make_example_NxtSE <- function() {
         overwrite = TRUE
     )
     
-    # De-identify COV files for validity:
+    # De-identify COV files for validity once tempdir() no longer exists:
     covfile(se) <- rep("", 6)
     
     # Convert from HDF5-linked se to in-memory se:

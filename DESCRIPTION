@@ -1,7 +1,7 @@
 Package: SpliceWiz
 Title: Easy, optimized, and accurate alternative splicing analysis in R
 Version: 1.1.5
-Date: 2022-12-20
+Date: 2023-02-27
 Authors@R: c(person("Alex Chit Hei", "Wong", email="a.wong@centenary.org.au", 
 		role=c("aut", "cre", "cph")),
 	person("Ulf", "Schmitz", role=c("ctb")),
@@ -21,7 +21,7 @@ License: MIT + file LICENSE
 Depends: NxtIRFdata
 Imports:
     ompBAM,
-	methods, stats, utils, tools, parallel,
+	methods, stats, utils, tools, parallel, scales,
 	magrittr,
 	Rcpp (>= 1.0.5),
 	data.table,
@@ -40,6 +40,7 @@ Imports:
 	GenomicRanges,
 	HDF5Array,
 	IRanges,
+    patchwork,
 	progress,
 	plotly,
 	R.utils,
@@ -55,14 +56,13 @@ Imports:
 	rhandsontable,
 	DT,
 	grDevices,
-	heatmaply, pheatmap,
+	heatmaply,
 	matrixStats,
 	RColorBrewer,
 	XML
 Suggests: 
-    knitr, rmarkdown, openssl, crayon, egg,
-    DESeq2, limma, DoubleExpSeq, satuRn, splines, edgeR,
-    Rsubread, testthat (>= 3.0.0)
+    knitr, rmarkdown, openssl, crayon, splines, testthat (>= 3.0.0), pheatmap,
+    DESeq2, limma, DoubleExpSeq, satuRn, edgeR, DBI, GO.db, fgsea, Rsubread 
 LinkingTo: 
     ompBAM,
     Rcpp,
@@ -85,6 +85,7 @@ Collate: AllImports.R
 	Coverage.R
 	utils.R
 	File_finders.R
+    BuildRef_GO.R
 	BuildRef.R
     ViewRef.R
 	STAR_utils.R
@@ -111,6 +112,8 @@ Collate: AllImports.R
 	dash_vis_server.R
 	dash_cov_ui.R
 	dash_cov_server.R
+	dash_GO_ui.R
+	dash_GO_server.R
 	dash_ui.R
 	dash_server.R
 	dash.R

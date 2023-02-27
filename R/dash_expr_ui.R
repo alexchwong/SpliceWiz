@@ -266,7 +266,7 @@ ui_ddb_build_annos <- function(id, color = "danger") {
     ui_toggle_wellPanel_modular(
         inputId = "expr_ddb_expr_anno",
         id = id,
-        title = "Review Annotations",
+        title = "Add / Modify Annotations",
         color = color,
         icon = icon("edit", lib = "font-awesome"),
 
@@ -315,6 +315,9 @@ ui_ddb_build_expr <- function(id, color = "danger") {
         numericInput(ns("nsOpt_Threshold"), 
             label = "Threshold split read count", value = 10),
         br(),#br(),
+        shinyWidgets::switchInput(ns("package_COV"), 
+            label = "Copy COV files to output folder", labelWidth = "200px"),
+        br(),
 
         tags$h4("Collate Experiment"),
         actionButton(ns("run_collate_expr"), "Run collateData()"),
@@ -373,7 +376,7 @@ ui_ddb_save_NxtSE <- function(id, color = "danger") {
     ui_toggle_wellPanel_modular(
         inputId = "expr_ddb_save_NxtSE",
         id = id,
-        title = "Save NxtSE to/from RDS file",
+        title = "Save / Load Pre-made NxtSE (Rds file)",
         color = color,
         icon = icon("file", lib = "font-awesome"),
 
@@ -394,7 +397,7 @@ ui_ddb_load_expr <- function(id, color = "danger") {
     ui_toggle_wellPanel_modular(
         inputId = "expr_ddb_expr_build",
         id = id,
-        title = "Load NxtSE object",
+        title = "Load NxtSE object from folder",
         color = color,
         icon = icon("flask", lib = "font-awesome"),
 

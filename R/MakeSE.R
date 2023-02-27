@@ -53,6 +53,7 @@
 #'   novel IR events belonging to minor isoforms. See details.
 #' @param realize (default = `FALSE`) Whether to load all assay data into
 #'   memory. See details
+#' @param verbose (default = `TRUE`) Whether loading messages are displayed
 #'
 #' @return A \linkS4class{NxtSE} object containing the compiled data in
 #' DelayedArrays (or as matrices if `realize = TRUE`), pointing to the assay 
@@ -99,73 +100,110 @@
 #' @export
 makeSE <- function(
         collate_path, colData, RemoveOverlapping = TRUE,
-        realize = FALSE
+        realize = FALSE, verbose = TRUE
 ) {
     # Includes iterative filtering for IR events with highest mean PSI
         # To annotate IR events of major isoforms
+
+    fullExperiment <- FALSE
+    if(missing(colData)) fullExperiment <- TRUE
 
     colData <- .makeSE_validate_args(collate_path, colData)
     colData <- .makeSE_colData_clean(colData)
 
     collate_path <- normalizePath(collate_path)
 
-    N <- 3
+    N <- 4
     dash_progress("Loading NxtSE object from file...", N)
-    .log("Loading NxtSE object from file...", "message", appendLF = FALSE)
+    if(verbose) .log("Loading NxtSE object from file...", "message", 
+        appendLF = FALSE)
 
-    se <- .makeSE_load_NxtSE(file.path(collate_path, "NxtSE.rds"))
+    se <- .makeSE_load_NxtSE(collate_path)
 
     # Locate relative paths of COV files, or have all-empty if not all are found
-    covfiles <- file.path(collate_path, se@metadata[["cov_file"]])
+    suppressWarnings({
+        covfiles <- normalizePath(
+            file.path(collate_path, se@metadata[["cov_file"]])
+        )    
+    })
+    
     display_cov_missing_message <- FALSE
-    if (all(se@metadata[["cov_file"]] == "") || any(!file.exists(covfiles))) {
+    if (!all(file.exists(covfiles))) {
         se@metadata[["cov_file"]] <- rep("", ncol(se))
         display_cov_missing_message <- TRUE
-    } else {
-        se@metadata[["cov_file"]] <- normalizePath(covfiles)
+    }
+    names(se@metadata[["cov_file"]]) <- colnames(se)
+    
+    # Compatibility with SpliceWiz version < 1.1.5
+    if(!("junc_counts_uns" %in% names(se@metadata))) {
+        .log(paste(
+            "This NxtSE was collated with SpliceWiz <1.1.6,",
+            "unstranded junction counts will use stranded junction count"
+        ), "warning")
+        se@metadata[["junc_counts_uns"]] <- HDF5Array(
+            file.path(normalizePath(collate_path),
+            "data.h5"), "junc_counts")[, , drop = FALSE]
+        colnames(se@metadata[["junc_counts_uns"]]) <-
+            colnames(se)
+        rownames(se@metadata[["junc_counts_uns"]]) <-
+            rownames(se@metadata[["junc_counts"]])
     }
 
-    # Compatibility with SpliceWiz version < 0.99.4
-    if(!("junc_PSI" %in% names(se@metadata))) {
-        se@metadata[["junc_PSI"]] <- HDF5Array(
-            file.path(normalizePath(collate_path),
-            "data.h5"), "junc_PSI")[, colnames(se), drop = FALSE]
-        se@metadata[["junc_counts"]] <- HDF5Array(
-            file.path(normalizePath(collate_path),
-            "data.h5"), "junc_counts")[, colnames(se), drop = FALSE]
-        se@metadata[["junc_gr"]] <- 
-            coord2GR(rownames(se@metadata[["junc_PSI"]]))
-    }
+    # Import rowData
+    dash_progress("Loading rowData...", N)
+    if(verbose) message("rowData...", appendLF = FALSE)   
+    rowData <- readRDS(file.path(collate_path, "rowEvent.Rds"))
+    rowData(se) <- rowData
     
     # Encapsulate as NxtSE object
     se <- as(se, "NxtSE")
 
-    # Subset
-    se <- se[, colData$sample]
+    # Subset, if required
+    if(all(colnames(se) %in% colData$sample)) {
+        fullExperiment <- TRUE
+    } else {
+        se <- se[, colData$sample]
+    }
     if (ncol(colData) > 1) {
         colData_use <- colData[, -1, drop = FALSE]
         rownames(colData_use) <- colData$sample
         colData(se) <- as(colData_use, "DataFrame")
-    }
+    }    
 
-    message("done\n")
+    if(verbose) message("done")
     if(display_cov_missing_message)
-        .log(paste("Coverage files were not set or not found.",
-            "To set coverage files, use `covfile(se) <- filenames`")
-        , "message")
+        .log(paste(
+            "Note: Some coverage files were not set or not found.\n\n",
+            "To set coverage files, use `covfile(se) <- filenames`.",
+            "Setting COV files is only supported if every COV file for",
+            "every sample in the NxtSE object is valid.\n"
+        ), "message")
 
     if (realize == TRUE) {
         dash_progress("Realizing NxtSE object...", N)
-        .log("Realizing NxtSE object...", "message")
+        if(verbose) .log("...realizing NxtSE object", "message")
         se <- realize_NxtSE(se)
     }
     
+    filtered_rowData_file <- file.path(collate_path, "filteredIntrons.Rds")
     if (RemoveOverlapping == TRUE) {
         dash_progress("Removing overlapping introns...", N)
-        .log("Removing overlapping introns...", "message")
-        se <- .makeSE_iterate_IR(se, collate_path)
+
+        if(fullExperiment & file.exists(filtered_rowData_file)) {
+            # Take a shortcut
+            if(verbose) .log("...removing overlapping introns...", "message", 
+                appendLF = FALSE)
+            tmpFiltered <- readRDS(filtered_rowData_file)
+            se <- se[tmpFiltered,]
+        } else {
+            if(verbose) .log("...removing overlapping introns...", "message", 
+                appendLF = FALSE)
+            se <- .makeSE_iterate_IR(se, verbose)
+        } 
+        if(verbose) message("done\n")
     }
 
+    if(verbose) .log("NxtSE loaded", "message")
     return(se)
 }
 
@@ -195,9 +233,20 @@ makeSE <- function(
         colData <- colData.Rds$df.anno
     } else {
         colData <- as.data.frame(colData)
-        if (!("sample" %in% colnames(colData))) {
+        if (!("sample" %in% colnames(colData)))
             colnames(colData)[1] <- "sample"
-        }
+
+        # Check all names unique
+        if(!identical(colData$sample, unique(colData$sample)))
+            .log("All sample names in colData must be unique.")
+
+        # Make sample the 1st column if it is not
+        whichColIsSample <- which(colnames(colData) == "sample")
+        colData <- cbind(
+            colData[, whichColIsSample, drop = FALSE],
+            colData[, -whichColIsSample, drop = FALSE]
+        )
+
         if (!all(colData$sample %in% colData.Rds$df.anno$sample)) {
             .log(paste("In makeSE():",
                 "some samples in colData were not found in given path"),
@@ -230,27 +279,40 @@ makeSE <- function(
 }
 
 # Loads a NxtSE RDS
-.makeSE_load_NxtSE <- function(filepath) {
+.makeSE_load_NxtSE <- function(collate_path) {
+    filepath <- file.path(collate_path, "seed.Rds")
     se <- readRDS(filepath)
-    path <- dirname(filepath)
-    se@assays <- .collateData_expand_assay_paths(se@assays, path)
-    se@metadata[["Up_Inc"]] <- .collateData_expand_assay_path(
-        se@metadata[["Up_Inc"]], path)
-    se@metadata[["Down_Inc"]] <- .collateData_expand_assay_path(
-        se@metadata[["Down_Inc"]], path)
-    se@metadata[["Up_Exc"]] <- .collateData_expand_assay_path(
-        se@metadata[["Up_Exc"]], path)
-    se@metadata[["Down_Exc"]] <- .collateData_expand_assay_path(
-        se@metadata[["Down_Exc"]], path)
+    se@metadata[["sourcePath"]] <- collate_path
+
+    # Add reference
+    metadata(se)$ref <- readRDS(file.path(collate_path, "cov_data.Rds"))
+
+    se@assays <- .makeSE_adjust_paths(se)
+    se@metadata[["Up_Inc"]] <- .makeSE_expand_assay_path(
+        se@metadata[["Up_Inc"]], collate_path)
+    se@metadata[["Down_Inc"]] <- .makeSE_expand_assay_path(
+        se@metadata[["Down_Inc"]], collate_path)
+    se@metadata[["Up_Exc"]] <- .makeSE_expand_assay_path(
+        se@metadata[["Up_Exc"]], collate_path)
+    se@metadata[["Down_Exc"]] <- .makeSE_expand_assay_path(
+        se@metadata[["Down_Exc"]], collate_path)
     
     if(
             "junc_PSI" %in% names(se@metadata) &&
             is(se@metadata[["junc_PSI"]], "DelayedMatrix")
     ) {
-        se@metadata[["junc_PSI"]] <- .collateData_expand_assay_path(
-            se@metadata[["junc_PSI"]], path)
-        se@metadata[["junc_counts"]] <- .collateData_expand_assay_path(
-            se@metadata[["junc_counts"]], path)    
+        se@metadata[["junc_PSI"]] <- .makeSE_expand_assay_path(
+            se@metadata[["junc_PSI"]], collate_path)
+        se@metadata[["junc_counts"]] <- .makeSE_expand_assay_path(
+            se@metadata[["junc_counts"]], collate_path)    
+    }
+
+    if(
+            "junc_counts_uns" %in% names(se@metadata) &&
+            is(se@metadata[["junc_counts_uns"]], "DelayedMatrix")
+    ) {
+        se@metadata[["junc_counts_uns"]] <- .makeSE_expand_assay_path(
+            se@metadata[["junc_counts_uns"]], collate_path)    
     }
     
     if(
@@ -265,13 +327,34 @@ makeSE <- function(
                 metadata(se)$BuildVersion,
                 "< 0.99.4"
             ), ")"
-        ), "warning")
+        ), "error")
     }
     return(se)
 }
 
+.makeSE_adjust_paths <- function(se) {
+    assays <- se@assays
+    path <- se@metadata[["sourcePath"]]
+    
+    nassay <- length(assays)
+    for (i in seq_len(nassay)) {
+        a <- .makeSE_expand_assay_path(getListElement(assays, i), path)
+        assays <- setListElement(assays, i, a)
+    }
+    return(assays)
+}
+
+.makeSE_expand_assay_path <- function(assay, path) {
+    DelayedArray::modify_seeds(assay,
+        function(x) {
+            x@filepath <- file.path(path, x@filepath)
+            x
+        }
+    )
+}
+
 # Iterates through introns; removes overlapping minor introns
-.makeSE_iterate_IR <- function(se, collate_path) {
+.makeSE_iterate_IR <- function(se, verbose = TRUE) {
 
     junc_PSI <- junc_PSI(se)
     
@@ -291,7 +374,7 @@ makeSE <- function(
     )
     
     if (length(se.coords.gr) > 0) {
-        .log(paste("Iterating through IR events to determine introns",
+        if(verbose) .log(paste("Iterating through IR events to determine introns",
             "of main isoforms"), type = "message")
         include <- .makeSE_iterate_IR_select_events_fast(se.coords.gr)
         se.coords.final <- se.coords.gr[include]
@@ -303,7 +386,7 @@ makeSE <- function(
         iteration <- 0
         while (length(include) > 0 & length(se.coords.final) > 0) {
             iteration <- iteration + 1
-            .log(paste("Iteration", iteration), type = "message")
+            if(verbose) .log(paste("Iteration", iteration), type = "message")
             dash_progress(paste("Iteration", iteration), 8)
             se.coords.excluded <- se.coords.excluded[include]
 

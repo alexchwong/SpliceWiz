@@ -196,7 +196,7 @@
 #' @examples
 #' # Load the NxtSE object and set up the annotations
 #' # - see ?makeSE on example code of generating this NxtSE object
-#' se <- SpliceWiz_example_NxtSE()
+#' se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
 #'
 #' colData(se)$treatment <- rep(c("A", "B"), each = 3)
 #' colData(se)$replicate <- rep(c("P","Q","R"), 2)
@@ -556,7 +556,7 @@ ASE_DESeq <- function(se, test_factor, test_nom, test_denom,
     res.exc[, c("EventName") :=
         sub(".Excluded","",get("EventName"), fixed=TRUE)]
 
-    .log("Performing DESeq2 contrast for included / excluded counts separately",
+    .log("Performing DESeq2 contrast for included / excluded counts together",
         "message")
     rowData <- as.data.frame(rowData(se_use))
     se_use <- se_use[rowData$EventName %in% res.inc$EventName &
@@ -908,7 +908,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 
     y <- edgeR::DGEList(counts=in_data$countData)
     y <- edgeR::estimateDisp(y,in_data$design1)
-    
+    y$offset <- 1
     if(useQL) {
         fit <- edgeR::glmQLFit(y, in_data$design1)
         qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)        
@@ -957,7 +957,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
 
     y <- edgeR::DGEList(counts=in_data$countData)
     y <- edgeR::estimateDisp(y,in_data$design1)
-    
+    y$offset <- 1
     if(useQL) {
         fit <- edgeR::glmQLFit(y, in_data$design1)
         qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)        
@@ -1252,8 +1252,25 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
         flags_nonIR[isExcNovel] <- paste0(
             flags_nonIR[isExcNovel], ";Exc-novel")
     }
-    flagsStr <- c(flags_IR, flags_nonIR)
-    res[, c("flags") := substr(flagsStr, 2, nchar(flagsStr))]
+    if(length(flags_IR) == 0) {
+        flagsDT <- data.table(
+            EventName = res_nonIR$EventName,
+            flags = flags_nonIR
+        )
+    } else if(length(flags_nonIR) == 0) {
+        flagsDT <- data.table(
+            EventName = res_IR$EventName,
+            flags = flags_IR
+        )
+    } else {
+        flagsDT <- data.table(
+            EventName = c(res_IR$EventName, res_nonIR$EventName),
+            flags = c(flags_IR, flags_nonIR)
+        )
+    }
+    
+    res <- res[flagsDT, on = "EventName"]
+    res[, c("flags") := substr(get("flags"), 2, nchar(get("flags")))]
     return(res[, c("EventName","EventType","EventRegion", "flags")])
 }
 

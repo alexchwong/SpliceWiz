@@ -1,4 +1,52 @@
 .onAttach <- function(libname, pkgname) {
+
+    # Detect optional dependencies, prompt to install if missing:
+    CRAN_deps <- c("DoubleExpSeq", "egg", "DBI", "crayon")
+    Bioc_deps <- c("DESeq2", "limma", "satuRn", "edgeR", 
+        "GO.db", "fgsea", "Rsubread")
+
+    CRAN_deps_inst <- vapply(CRAN_deps, .check_package_installed,
+        FUN.VALUE = logical(1), "0.0.0", "silent")
+    Bioc_deps_inst <- vapply(Bioc_deps, .check_package_installed,
+        FUN.VALUE = logical(1), "0.0.0", "silent")
+    
+    if(!all(CRAN_deps_inst) | !all(Bioc_deps_inst)) {
+        CRAN_deps_install <- c()
+        Bioc_deps_install <- c()
+            
+        CRAN_deps_prompt <- CRAN_deps[!CRAN_deps_inst]
+        if(length(CRAN_deps_prompt) > 0) {
+            CRAN_deps_prompt <- paste0('"', CRAN_deps_prompt, '"')
+
+            CRAN_deps_install <- paste0(
+                "install.packages(", 
+                ifelse(length(CRAN_deps_prompt) > 1, "c(", ""),
+                paste(CRAN_deps_prompt, collapse = ", "),
+                ifelse(length(CRAN_deps_prompt) > 1, "))", ")")
+            )        
+        }
+        
+        Bioc_deps_prompt <- Bioc_deps[!Bioc_deps_inst]
+        if(length(Bioc_deps_prompt) > 0) {
+            Bioc_deps_prompt <- paste0('"', Bioc_deps_prompt, '"')
+
+            Bioc_deps_install <- paste0(
+                "BiocManager::install(", 
+                ifelse(length(Bioc_deps_prompt) > 1, "c(", ""),
+                paste(Bioc_deps_prompt, collapse = ", "),
+                ifelse(length(Bioc_deps_prompt) > 1, "))", ")")
+            )
+        }
+        
+        .log(paste0(
+            "Some optional dependencies are not installed.\n",
+            "For full SpliceWiz functionally, install all dependencies",
+            " by running the following:\n\n",
+            CRAN_deps_install, ifelse(is.null(CRAN_deps_install), "", "\n\n"),
+            Bioc_deps_install, ifelse(is.null(Bioc_deps_install), "", "\n\n")
+        ), "message")
+    }
+    
     SW_threads <- setSWthreads(0)
     packageStartupMessage("SpliceWiz package loaded with ", SW_threads, 
         " threads")

@@ -12,14 +12,14 @@ server_DE <- function(
                 
                 # "Experiment Loaded"
             # })
-            req(get_se())
-            colcat <- .get_discrete_cats(get_se())
-            updateSelectInput(session = session, inputId = "variable_DE", 
-                choices = c("(none)", colcat), selected = "(none)")
-            updateSelectInput(session = session, inputId = "batch1_DE", 
-                choices = c("(none)", colcat), selected = "(none)")
-            updateSelectInput(session = session, inputId = "batch2_DE", 
-                choices = c("(none)", colcat), selected = "(none)")
+            req(is(get_se(), "NxtSE"))
+            colcats <- .get_discrete_cats(get_se())
+            .update_fields_DE(session, "variable_DE", 
+                colcats, input$variable_DE)
+            .update_fields_DE(session, "batch1_DE", 
+                colcats, input$batch1_DE)
+            .update_fields_DE(session, "batch2_DE", 
+                colcats, input$batch2_DE)
         })
         
         observeEvent(input$DT_DE_rows_all, {
@@ -120,8 +120,10 @@ server_DE <- function(
 
         observe({
             output$warning_DE <- renderText({
-                validate(need(get_se(), 
+                validate(need(is(get_se(), "NxtSE"), 
                     "Please load experiment via 'Experiment' tab"))
+                validate(need(is_valid(input$method_DE),
+                    "Choose a statistical method for differential ASE analysis"))
                 validate(need(is_valid(input$variable_DE),
                     "Variable for DE needs to be defined"))
                 validate(need(is_valid(input$nom_DE), 
@@ -129,9 +131,9 @@ server_DE <- function(
                 validate(need(is_valid(input$denom_DE), 
                     "Denominator for DE Variable needs to be defined"))
                 validate(need(input$nom_DE != "(time series)" ||
-                        input$method_DE %in% c("limma", "DESeq2"), 
+                        input$method_DE %in% c("limma", "DESeq2", "edgeR"), 
                     paste("Time series analysis can only be performed",
-                    "using limma or DESeq2")))
+                    "using limma, edgeR or DESeq2")))
                 validate(need(input$denom_DE != input$nom_DE, 
                     "Denominator and Nominator must be different"))
                 "Ready to run differential analysis"
@@ -139,7 +141,7 @@ server_DE <- function(
         })
 
         observeEvent(input$perform_DE, {
-            req(get_se())
+            req(is(get_se(), "NxtSE"))
             output$warning_DE <- renderText({
                 validate(need(is_valid(input$variable_DE),
                     "Variable for DE needs to be defined"))
@@ -148,9 +150,9 @@ server_DE <- function(
                 validate(need(is_valid(input$denom_DE), 
                     "Denominator for DE Variable needs to be defined"))
                 validate(need(input$nom_DE != "(time series)" ||
-                        input$method_DE %in% c("limma", "DESeq2"), 
+                        input$method_DE %in% c("limma", "DESeq2", "edgeR"), 
                     paste("Time series analysis can only be performed",
-                    "using limma or DESeq2")))
+                    "using limma, edgeR or DESeq2")))
                 validate(need(input$denom_DE != input$nom_DE, 
                     "Denominator and Nominator must be different"))
                 "Running differential analysis"
@@ -160,7 +162,7 @@ server_DE <- function(
             req(is_valid(input$denom_DE))
             req(input$denom_DE != input$nom_DE)
             req(input$nom_DE != "(time series)" ||
-                input$method_DE %in% c("limma", "DESeq2"))
+                input$method_DE %in% c("limma", "DESeq2", "edgeR"))
 
             rowData <- as.data.frame(rowData(get_se()))
             colData <- as.data.frame(colData(get_se()))
@@ -255,6 +257,34 @@ server_DE <- function(
                         setorderv(res.ASE, "adj.P.Val")
                     }
                 })
+            } else if(settings_DE$method == "edgeR") {
+                withProgress(message = 'Running edgeR...', value = 0, {
+                    if(settings_DE$nom_DE != "(time series)") {
+                        res.ASE <- ASE_edgeR(
+                            se = get_se(), 
+                            test_factor = settings_DE$DE_Var, 
+                            test_nom = settings_DE$nom_DE, 
+                            test_denom = settings_DE$denom_DE,
+                            batch1 = settings_DE$batchVar1, 
+                            batch2 = settings_DE$batchVar2,
+                            IRmode = settings_DE$IRmode_DE
+                        )                
+                    } else {
+                        res.ASE <- ASE_edgeR_timeseries(
+                            se = get_se(), 
+                            test_factor = settings_DE$DE_Var, 
+                            batch1 = settings_DE$batchVar1, 
+                            batch2 = settings_DE$batchVar2,
+                            IRmode = settings_DE$IRmode_DE,
+                            degrees_of_freedom = settings_DE$dof
+                        )    
+                    }
+                    if(!input$adjP_DE) {
+                        setorderv(res.ASE, "PValue")
+                    } else {
+                        setorderv(res.ASE, "FDR")
+                    }
+                })
             } else if(settings_DE$method == "DoubleExpSeq") {
                 withProgress(message = 'Running DoubleExpSeq...', value = 0, {
                     res.ASE <- ASE_DoubleExpSeq(
@@ -316,14 +346,16 @@ server_DE <- function(
 
         observeEvent(settings_DE$res, {
             req(settings_DE$res)
-            output$DT_DE <- DT::renderDataTable(
-                DT::datatable(
-                    settings_DE$res,
-                    class = 'cell-border stripe',
-                    rownames = FALSE,
-                    filter = 'top'
+            withProgress(message = 'Rendering DE results table...', value = 0, {
+                output$DT_DE <- DT::renderDataTable(
+                    DT::datatable(
+                        settings_DE$res,
+                        class = 'cell-border stripe',
+                        rownames = FALSE,
+                        filter = 'top'
+                    )
                 )
-            )
+            })
         })
         
         observe({
@@ -385,19 +417,19 @@ server_DE <- function(
             req(all(c("res", "settings") %in% names(load_DE)))
             # check all parameters exist in colData(se)
             output$warning_DE <- renderText({
-                validate(need(get_se(), 
+                validate(need(is(get_se(), "NxtSE"), 
                     "Please load experiment via 'Experiment' tab"))
                 validate(need(
                         "BuildVersion" %in% names(load_DE$settings) &&
                         load_DE$settings$BuildVersion >= ASE_version, 
                     paste(
                         "This differential expression Rds was produced with",
-                        "SpliceWiz version 0.99.4 or below."
+                        "SpliceWiz version 1.1.5 or below"
                     )))
                 
                 "Experiment Loaded"
             })
-            req(get_se())
+            req(is(get_se(), "NxtSE"))
             colData <- colData(get_se())
             req(load_DE$settings$DE_Var %in% colnames(colData))
             req(!is_valid(load_DE$settings$batchVar1) || 
@@ -409,7 +441,7 @@ server_DE <- function(
             req(any(unlist(colData[,load_DE$settings$DE_Var]) == 
                 load_DE$settings$denom_DE))
             req(load_DE$settings$method %in% 
-                c("DESeq2", "limma", "DoubleExpSeq", "satuRn"))
+                c("DESeq2", "limma", "DoubleExpSeq", "edgeR", "satuRn"))
             req(load_DE$settings$IRmode_DE %in% 
                 c("all", "annotated", "annotated_binary"))
             req("dof" %in% names(load_DE$settings))
@@ -479,6 +511,8 @@ server_DE <- function(
     })
 }
 
+################################################################################
+
 .get_discrete_cats <- function(se) {
     if(!is(se, "NxtSE")) return(NULL)
     colData <- colData(se)
@@ -493,4 +527,18 @@ server_DE <- function(
         }
     }
     return(ret)
+}
+
+.update_fields_DE <- function(
+    session, inputId, colcats, selected
+) {
+    if(is_valid(selected)) {
+        if(!(selected %in% colcats)) {
+            selected <- "(none)"
+        }
+    } else {
+        selected <- "(none)"
+    }
+    updateSelectInput(session = session, inputId = inputId, 
+        choices = c("(none)", colcats), selected = selected)
 }

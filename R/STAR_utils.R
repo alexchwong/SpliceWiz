@@ -365,7 +365,8 @@ STAR_alignExperiment <- function(
     n_threads = 4,
     overwrite = FALSE,
     two_pass = FALSE, 
-    trim_adaptor = "AGATCGGAAG"
+    trim_adaptor = "AGATCGGAAG",
+    additional_args = NULL
 ) {
 
     .validate_STAR_version()
@@ -434,9 +435,10 @@ STAR_alignExperiment <- function(
             }
             memory_mode <- "LoadAndKeep"
             if (two_pass && pass == 1) {
-                additional_args <- c("--outSAMtype", "None")
+                additional_args_use <- c(additional_args,
+                    "--outSAMtype", "None")
             } else {
-                additional_args <- NULL
+                additional_args_use <- additional_args
             }
 
             .log(paste("Aligning", sample, "using STAR"), "message")
@@ -446,7 +448,7 @@ STAR_alignExperiment <- function(
                 fastq_1 = fastq_1, fastq_2 = fastq_2,
                 trim_adaptor = trim_adaptor,
                 memory_mode = memory_mode,
-                additional_args = additional_args,
+                additional_args = additional_args_use,
                 n_threads = n_threads,
                 overwrite = overwrite
             )

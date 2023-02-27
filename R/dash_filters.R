@@ -88,7 +88,7 @@ server_filters <- function(
         r_filter12 <- reactive({getFilterData(12)})
         
         conditionList <- reactive({
-            req(get_se())
+            req(is(get_se(), "NxtSE"))
             if(is(get_se(), "NxtSE")) {
                 colnames(colData(get_se()))
             } else {
@@ -166,7 +166,7 @@ server_filters <- function(
             settings_filter$filterSummary,
             input$graphscale_Filters
         )}, {
-            req(get_se())
+            req(is(get_se(), "NxtSE"))
             req(settings_filter$filterSummary)
             DT <- data.table(
                 EventType = rowData(get_se())$EventType,

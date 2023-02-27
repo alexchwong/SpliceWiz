@@ -78,6 +78,7 @@ processBAM_hts <- function(
         overwrite = FALSE,
         run_featureCounts = FALSE,
         verbose = FALSE,
+        skipCOVfiles = FALSE,
         read_pool_size = 1000000
 ) {
     if(compiled_with_htslib() == -1)
@@ -117,7 +118,8 @@ processBAM_hts <- function(
             output_files = s_output[!already_exist],
             max_threads = n_threads, useOpenMP = useOpenMP,
             overwrite_SpliceWiz_Output = overwrite,
-            verbose = verbose, read_pool_size = read_pool_size
+            verbose = verbose, skipCOVfiles = skipCOVfiles,
+            read_pool_size = read_pool_size
         )
     } else {
         .log("processBAM has already been run on given BAM files", "message")
@@ -131,7 +133,7 @@ processBAM_hts <- function(
     # Run featureCounts
     if (run_featureCounts) {
         .processBAM_run_featureCounts(
-            reference_path, s_output,
+            reference_path, output_path,
             bamfiles, sample_names, n_threads, overwrite
         )
     }
@@ -145,7 +147,7 @@ processBAM_hts <- function(
         max_threads = max(parallel::detectCores(), 1),
         useOpenMP = TRUE,
         overwrite_SpliceWiz_Output = FALSE,
-        verbose = TRUE, read_pool_size = 1000000
+        verbose = TRUE, skipCOVfiles = FALSE, read_pool_size = 1000000
     ) {
     .validate_reference(reference_path) # Check valid SpliceWiz reference
     s_bam <- normalizePath(bamfiles) # Clean path name for C++
@@ -158,8 +160,11 @@ processBAM_hts <- function(
     .log("Running SpliceWiz processBAM", "message")
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & useOpenMP) {
+        max_omp_threads <- Has_OpenMP()
+        if(max_omp_threads < n_threads) n_threads <- max_omp_threads
         SpliceWizMain_multi_hts(
-            ref_file, s_bam, output_files, n_threads, verbose, read_pool_size
+            ref_file, s_bam, output_files, n_threads, verbose, 
+            skipCOVfiles, read_pool_size
         )
     } else {
         # Use BiocParallel
@@ -177,12 +182,13 @@ processBAM_hts <- function(
                 function(i, s_bam, reference_file,
                         output_files, verbose, overwrite) {
                     .processBAM_run_single_hts(s_bam[i], reference_file,
-                        output_files[i], verbose, overwrite, read_pool_size)
+                        output_files[i], verbose, overwrite, skipCOVfiles,
+                        read_pool_size)
                 },
                 s_bam = s_bam,
                 reference_file = ref_file,
                 output_files = output_files,
-                verbose = verbose,
+                verbose = verbose, skipCOVfiles = skipCOVfiles,
                 overwrite = overwrite_SpliceWiz_Output,
                 BPPARAM = BPPARAM_mod
             )
@@ -208,6 +214,8 @@ processBAM_hts <- function(
     .log("Running BAM2COV", "message")
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & useOpenMP) {
+        max_omp_threads <- Has_OpenMP()
+        if(max_omp_threads > n_threads) n_threads <- max_omp_threads
         # Simple FOR loop:
         for (i in seq_len(length(s_bam))) {
             .BAM2COV_run_single_hts(s_bam[i], output_file_prefixes[i],
@@ -242,14 +250,15 @@ processBAM_hts <- function(
 
 # Call C++ on a single sample. Used for BiocParallel
 .processBAM_run_single_hts <- function(
-    bam, ref, out, verbose, overwrite, read_pool_size
+    bam, ref, out, verbose, overwrite, skipCOVfiles = FALSE, read_pool_size
 ) {
     file_gz <- paste0(out, ".txt.gz")
     file_cov <- paste0(out, ".cov")
     bam_short <- file.path(basename(dirname(bam)), basename(bam))
     if (overwrite ||
         !(file.exists(file_gz) | file.exists(file_cov))) {
-        ret <- SpliceWizMain_hts(bam, ref, out, verbose, 1, read_pool_size)
+        ret <- SpliceWizMain_hts(bam, ref, out, verbose, 1, skipCOVfiles,
+            read_pool_size)
         # Check SpliceWiz returns all files successfully
         if (ret != 0) {
             .log(paste(
@@ -291,119 +300,4 @@ processBAM_hts <- function(
         .log(paste(file_cov,
             "already exists, skipping..."), "message")
     }
-}
-
-# Runs featureCounts on given BAM files, intended to be run after processBAM
-# as processBAM determines the strandedness and paired-ness of the experiment
-.processBAM_run_featureCounts <- function(
-        reference_path, output_files,
-        s_bam, s_names, n_threads, overwrite
-) {
-    .check_package_installed("Rsubread", "2.4.0")
-    gtf_file <- Get_GTF_file(reference_path)
-
-    # determine paired-ness, strandedness, assume all BAMS are the same
-    data.list <- get_multi_DT_from_gz(
-        normalizePath(paste0(output_files[1], ".txt.gz")),
-        c("BAM", "Directionality")
-    )
-    stats <- data.list$BAM
-    direct <- data.list$Directionality
-
-    paired <- (stats$Value[3] == 0 & stats$Value[4] > 0) ||
-        (stats$Value[3] > 0 && stats$Value[4] / stats$Value[3] / 1000)
-    strand <- direct$Value[9]
-    if (strand == -1) strand <- 2
-
-    # Check which have already been run, do not run if overwrite = FALSE
-    outfile <- file.path(dirname(output_files[1]), "main.FC.Rds")
-    if (file.exists(outfile) & !overwrite) {
-        res.old <- readRDS(outfile)
-        need_to_do <- (!(s_names %in% res.old$targets))
-    } else {
-        need_to_do <- rep(TRUE, length(s_bam))
-    }
-
-    if (any(need_to_do)) {
-        # Run FeatureCounts in bulk
-        res <- Rsubread::featureCounts(
-            s_bam[need_to_do],
-            annot.ext = gtf_file,
-            isGTFAnnotationFile = TRUE,
-            strandSpecific = strand,
-            isPairedEnd = paired,
-            requireBothEndsMapped = paired,
-            nthreads = n_threads
-        )
-        res$targets <- s_names[need_to_do]
-        colnames(res$counts) <- s_names[need_to_do]
-        colnames(res$stat)[-1] <- s_names[need_to_do]
-        columns <- c("counts", "annotation", "targets", "stat")
-        # Append to existing main.FC.Rds if exists, overwriting where necessary:
-        if (file.exists(outfile)) {
-            res.old <- readRDS(outfile)
-            if (!all(columns %in% names(res))) {
-                .log(paste(outfile,
-                    "found but was not a valid SpliceWiz featureCounts",
-                    "output; overwriting previous output"
-                ), "warning")
-            } else if (
-                identical(res.old$annotation, res$annotation) &
-                identical(res.old$stat$Status, res$stat$Status)
-            ) {
-                new_samples <- res$targets[!(res$targets %in% res.old$targets)]
-                res$targets <- c(res.old$targets, new_samples)
-                res$stat <- cbind(res.old$stat, res$stat[, new_samples])
-                res$counts <- cbind(res.old$counts, res$counts[, new_samples])
-            } else {
-                .log(paste(
-                    "featureCounts output not compatible with previous",
-                    "output in", outfile, "; overwriting previous output"
-                ), "warning")
-            }
-        }
-        if (all(columns %in% names(res))) {
-            saveRDS(res, outfile)
-        } else {
-            .log("Error encountered when running featureCounts")
-        }
-        .log(paste("featureCounts ran succesfully; saved to",
-            outfile), "message")
-    } else {
-        .log("featureCounts has already been run on given BAM files", "message")
-    }
-
-}
-
-
-
-# Validate arguments; return error if invalid
-.processBAM_validate_args <- function(s_bam, max_threads, output_files) {
-    if (!is.numeric(max_threads)) max_threads <- 1
-    if (max_threads < 1) max_threads <- 1
-    max_threads <- floor(max_threads)
-
-    if (max_threads > 1 && max_threads > parallel::detectCores()) {
-        .log(paste(
-            max_threads, " threads is not allowed for this system"))
-    }
-
-    if (!all(file.exists(s_bam))) {
-        .log(paste(
-            paste(unique(s_bam[!file.exists(s_bam)]), collapse = ""),
-            " - these BAM files were not found"))
-    }
-
-    if (!all(dir.exists(dirname(output_files)))) {
-        .log(paste(
-            paste(unique(dirname(
-                    output_files[!dir.exists(dirname(output_files))])),
-                collapse = ""),
-            " - directories not found"))
-    }
-
-    if (!(length(s_bam) == length(output_files))) {
-        .log("Number of output files and bam files must be the same")
-    }
-    return(TRUE)
 }

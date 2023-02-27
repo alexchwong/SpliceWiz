@@ -207,6 +207,32 @@ or mouse, please see the `Calculating Mappability Exclusions using STAR` section
 below.
 \
 
+### (NEW) Gene ontology annotations
+
+For human and mouse genomes, gene ontology annotations are automatically
+generated. This is inferred by specifying `genome_type` to the human or mouse
+genome. For other species, or to specify human/mouse, this should be
+specified in the `ontologySpecies` parameter of `buildRef()`.
+
+Only Ensembl/orgDB resources are supported (for now). For a list of available
+species:
+
+```{r}
+getAvailableGO()
+```
+
+For example, to specify arabidopsis:
+
+```{r eval=FALSE}
+buildRef(
+    reference_path = ref_path,
+    fasta = "genome.fa", gtf = "transcripts.gtf",
+    genome_type = "",
+    ontologySpecies = "Arabidopsis thaliana"
+)
+```
+\
+
 # STAR reference generation
 
 ### Checking if STAR is installed
@@ -255,6 +281,41 @@ STAR_BuildRef(
 )
 ```
 \
+
+### Building a STAR genome without specifying gene annotations
+
+Sometimes, one might wish to build a genome annotation without first specifying
+the gene annotations. We can use `STAR_buildGenome` to do this:
+
+```{r eval = FALSE}
+# Generate a STAR genome reference:
+STAR_buildGenome(
+    reference_path = ref_path,
+    STAR_ref_path = "/path/to/hg38"
+    n_threads = 8
+)
+```
+
+Gene annotations can be injected, on-the-fly, at a later step. Additionally,
+the `sjdbOverhang` parameter, and any extra FASTA files (such as ERCC standards,
+ can be set at this stage.
+
+```{r, eval = FALSE}
+STAR_new_ref <- STAR_loadGenomeGTF(
+    reference_path = ref_path,
+    STAR_ref_path = "/path/to/hg38",
+    STARgenome_output = file.path(tempdir(), "STAR"),
+    n_threads = 8,
+    sjdbOverhang = 100,
+    extraFASTA = "./ercc.fasta"
+)
+```
+
+This allows a single STAR reference to be built for each species, then these
+can be adapted for different projects based on their specific technical
+specifications (e.g. different read length can be adapted by setting different
+`sjdbOverhang`, or any spike-ins by setting the spike-in FASTA using 
+`extraFASTA`).
 
 ### Calculating Mappability Exclusions using STAR
 

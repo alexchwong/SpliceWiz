@@ -4,6 +4,7 @@
 #' These function builds the reference required by the SpliceWiz engine, as well
 #' as alternative splicing annotation data for SpliceWiz. See examples
 #' below for guides to making the SpliceWiz reference.
+#'
 #' @details
 #' `getResources()` processes the files, downloads resources from
 #' web links or from `AnnotationHub()`, and saves a local copy in the "resource"
@@ -55,6 +56,20 @@
 #' file, open the file specified in the path returned by
 #' `getNonPolyARef("hg38")`
 #'
+#' If `MappabilityRef`, `nonPolyARef` and `BlacklistRef` are left blank, the
+#' following will be used (by priority):
+#' 
+#' 1) The previously used Mappability, non-polyA and/or Blacklist file resource
+#' from a previous run, if available,
+#' 2) The resource implied by the `genome_type` parameter, if specified,
+#' 3) No resource is used.
+#'
+#' **To rebuild a SpliceWiz reference using existing resources**
+#' This is typically run when updating an old resource to a new SpliceWiz 
+#' version. Simply run buildRef(), specifying the existing reference directory,
+#' leave the `fasta` and `gtf` parameters blank, and set `overwrite = TRUE`. 
+#' SpliceWiz will use the previously-used resources to re-create the reference.
+#' 
 #' See examples below for common use cases.
 #'
 #' @param reference_path (REQUIRED) The directory path to store the generated
@@ -128,6 +143,14 @@
 #'   `genome_type`. When set to false, the MappabilityExclusion default file
 #'   corresponding to `genome_type` will automatically be used.
 #' @param verbose (default `TRUE`) If `FALSE`, will silence progress messages
+#' @param ontologySpecies (default `""`) The species for which gene ontology 
+#'   classifications should be fetched from AnnotationHub. Ignored if
+#'   `genome_type` is set (as human or mouse GO will be used instead).
+#' @param localHub (default `FALSE`) For `getAvailableGO()`, whether to use
+#'   offline mode for AnnotationHub resources. If `TRUE`, offline mode will be
+#'   used.
+#' @param ah For `getAvailableGO()`, the AnnotationHub object. Leave as default
+#'   to use the entirety of AnnotationHub resources.
 #' @param ... For STAR_buildRef, additional parameters to be parsed into
 #'   `STAR_buildRef` which it runs internally. See [STAR_buildRef]
 #' @return
@@ -180,6 +203,20 @@
 #' # Get the path to the Non-PolyA BED file for hg19
 #'
 #' getNonPolyARef("hg19")
+#'
+#' # View available species for AnnotationHub's Ensembl/orgDB-based GO resources
+#' 
+#' availSpecies <- getAvailableGO()
+#'
+#' # Build example reference with `Homo sapiens` Ens/orgDB gene ontology
+#'
+#' ont_ref <- file.path(tempdir(), "Reference_withGO")
+#' buildRef(
+#'     reference_path = ont_ref,
+#'     fasta = chrZ_genome(),
+#'     gtf = chrZ_gtf(),
+#'     ontologySpecies = "Homo sapiens"
+#' )
 #'
 #' \dontrun{
 #'
@@ -309,6 +346,7 @@ buildRef <- function(
         overwrite = FALSE, force_download = FALSE,
         chromosome_aliases = NULL, genome_type = "",
         nonPolyARef = "", MappabilityRef = "", BlacklistRef = "",
+        ontologySpecies = "",
         useExtendedTranscripts = TRUE, lowMemoryMode = TRUE,
         verbose = TRUE
 ) {
@@ -318,92 +356,116 @@ buildRef <- function(
         .log("SpliceWiz reference already exists in given directory", "message")
         return()
     }
-    extra_files <- .fetch_genome_defaults(reference_path,
-        genome_type, nonPolyARef, MappabilityRef, BlacklistRef,
-        force_download = force_download, verbose = verbose)
-    
-    session <- shiny::getDefaultReactiveDomain()
 
-    N_steps <- 8
-    dash_progress("Reading Reference Files", N_steps)
-    reference_data <- .get_reference_data(
-        reference_path = reference_path,
-        fasta = fasta, gtf = gtf, verbose = verbose,
-        overwrite = overwrite, force_download = force_download,
-        pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
+    originalSWthreads <- .getSWthreads()
+    # tryCatch({
+        setSWthreads(1) # try this to prevent memory leak
 
-    dash_progress("Processing gtf file", N_steps)
-    reference_data$gtf_gr <- .validate_gtf_chromosomes(
-        reference_data$genome, reference_data$gtf_gr)
-    reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
-    
-    .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
-    extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
-    reference_data$gtf_gr <- NULL # To save memory, remove original gtf
-    gc()
+        session <- shiny::getDefaultReactiveDomain()
+        N_steps <- 8
 
-    # Check here whether fetching from TwoBitFile is problematic
-    reference_data$genome <- .check_2bit_performance(reference_path,
-        reference_data$genome, verbose = verbose)
-    gc()
+        dash_progress("Reading Reference Files", N_steps)
+        
+        extra_files <- .fetch_genome_defaults(reference_path,
+            genome_type, nonPolyARef, MappabilityRef, BlacklistRef,
+            force_download = force_download, verbose = verbose)        
 
-    dash_progress("Processing introns", N_steps)
-    chromosomes <- .convert_chromosomes(chromosome_aliases)
-    # save chromosomes for later
-    saveRDS(chromosomes, file.path(reference_path, "chromosomes.Rds"))
-    
-    .process_introns(reference_path, reference_data$genome,
-        useExtendedTranscripts, verbose = verbose)
+        reference_data <- .get_reference_data(
+            reference_path = reference_path,
+            fasta = fasta, gtf = gtf, verbose = verbose,
+            overwrite = overwrite, force_download = force_download,
+            pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
 
-    dash_progress("Generating SpliceWiz Reference", N_steps)
-    .gen_irf(reference_path, extra_files, reference_data$genome, chromosomes,
-        verbose = verbose)
-    gc()
+        dash_progress("Processing gtf file", N_steps)
+        reference_data$gtf_gr <- .validate_gtf_chromosomes(
+            reference_data$genome, reference_data$gtf_gr)
+        reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
+        
+        .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
+        
+        if(ontologySpecies == "" & genome_type != "") {
+            ontologySpecies <- .getOntologySpecies(genome_type)
+        }
+        .process_ontology(reference_path, ontologySpecies, verbose)
+        extra_files$genome_style <- .gtf_get_genome_style(reference_data$gtf_gr)
+        reference_data$gtf_gr <- NULL # To save memory, remove original gtf
+        gc()
 
-    dash_progress("Annotating IR-NMD", N_steps)
-    if(!is.null(session)) {
-        shiny::withProgress(message = "Determining NMD Transcripts", {
-            .gen_nmd(reference_path, reference_data$genome,
-                verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
-        })
-    } else {
-        .gen_nmd(reference_path, reference_data$genome, 
-            verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
-    }
-    gc()
+        # Check here whether fetching from TwoBitFile is problematic
+        reference_data$genome <- .check_2bit_performance(reference_path,
+            reference_data$genome, verbose = verbose)
+        gc()
 
-    dash_progress("Annotating Splice Events", N_steps)
-    .gen_splice(reference_path, verbose = verbose)
-    gc()
-    if (file.exists(file.path(reference_path, "fst", "Splice.fst")) &
-        file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
-        dash_progress("Translating AS Peptides", N_steps)
-        .gen_splice_proteins(reference_path, reference_data$genome, 
+        dash_progress("Processing introns", N_steps)
+        chromosomes <- .convert_chromosomes(chromosome_aliases)
+        # save chromosomes for later
+        saveRDS(chromosomes, file.path(reference_path, "chromosomes.Rds"))
+        
+        .process_introns(reference_path, reference_data$genome,
+            useExtendedTranscripts, verbose = verbose)
+
+        dash_progress("Generating SpliceWiz Reference", N_steps)
+        .gen_irf(reference_path, extra_files, reference_data$genome, chromosomes,
             verbose = verbose)
-        if(verbose) .log("Splice Annotations finished\n", "message")
-    } else {
-        dash_progress("No protein-coding splicing events detected", N_steps)
-    }
-   
-    # Prepare a reference-specific cov_data for reference-only plots:
-    cov_data <- .prepare_covplot_data(reference_path)
-    saveRDS(cov_data, file.path(reference_path, "cov_data.Rds"))
-    rm(cov_data, reference_data)
-    
-    # Update settings.Rds only after everything is finalised
-    settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
-    settings.list$genome_type <- genome_type
-    settings.list$nonPolyARef <- nonPolyARef
-    settings.list$MappabilityRef <- MappabilityRef
-    settings.list$BlacklistRef <- BlacklistRef
-    settings.list$useExtendedTranscripts <- useExtendedTranscripts
-    settings.list$BuildVersion <- buildRef_version
+        gc()
 
-    saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
+        if(file.exists(file.path(reference_path, "fst", "Proteins.fst"))) {
+            dash_progress("Annotating IR-NMD", N_steps)
+            if(!is.null(session)) {
+                shiny::withProgress(message = "Determining NMD Transcripts", {
+                    .gen_nmd(reference_path, reference_data$genome,
+                        verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
+                })
+            } else {
+                .gen_nmd(reference_path, reference_data$genome, 
+                    verbose = verbose, tryNew = TRUE, tr_per_block = 2500)
+            }
+            gc()
+        } else {
+            dash_progress("NMD annotation skipped", N_steps)
+        }
 
-    if(verbose) message("Reference build finished")
-    dash_progress("Reference build finished", N_steps)
-    gc()
+        dash_progress("Annotating Splice Events", N_steps)
+        .gen_splice(reference_path, verbose = verbose)
+        gc()
+        if (
+            file.exists(file.path(reference_path, "fst", "Splice.fst")) &
+            file.exists(file.path(reference_path, "fst", "Proteins.fst"))
+        ) {
+            dash_progress("Translating AS Peptides", N_steps)
+            .gen_splice_proteins(reference_path, reference_data$genome, 
+                verbose = verbose)
+            if(verbose) .log("Splice Annotations finished\n", "message")
+        } else {
+            dash_progress("No protein-coding splicing events detected", N_steps)
+        }
+       
+        # Prepare a reference-specific cov_data for reference-only plots:
+        cov_data <- .prepare_covplot_data(reference_path)
+        saveRDS(cov_data, file.path(reference_path, "cov_data.Rds"))
+        rm(cov_data, reference_data)
+        
+        # Update settings.Rds only after everything is finalised
+        settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
+        settings.list$genome_type <- genome_type
+        settings.list$nonPolyARef <- nonPolyARef
+        settings.list$MappabilityRef <- MappabilityRef
+        settings.list$BlacklistRef <- BlacklistRef
+        settings.list$useExtendedTranscripts <- useExtendedTranscripts
+        settings.list$BuildVersion <- buildRef_version
+
+        saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
+
+        if(verbose) message("Reference build finished")
+        dash_progress("Reference build finished", N_steps)
+        gc()
+
+    # }, error = function(e) {
+        # stop("In buildRef(...): ", e, call. = FALSE)
+    # }, finally = {
+        .restore_threads(originalSWthreads)
+    # })
+
     invisible()
 }
 
@@ -561,30 +623,25 @@ Get_GTF_file <- function(reference_path) {
     return(file.path(base, basename(reference_path)))
 }
 
+# Only used for STAR
+# - hence, only check if genome.2bit and transcripts.gtf.gz exist
 .validate_reference_resource <- function(reference_path, from = "") {
-    ref <- normalizePath(reference_path)
-    from_str <- ifelse(from == "", "",
-        paste("In function", from, ":"))
-    if (!dir.exists(ref)) {
-        .log(paste(from_str,
-            "in reference_path =", reference_path,
-            ": this path does not exist"))
-    }
-    if (!file.exists(file.path(ref, "settings.Rds"))) {
-        .log(paste(from_str,
-            "in reference_path =", reference_path,
-            ": settings.Rds not found"))
-    }
-    settings.list <- readRDS(file.path(ref, "settings.Rds"))
-    if (!("BuildVersion" %in% names(settings.list)) ||
-            settings.list[["BuildVersion"]] < buildRef_version) {
-        .log(paste(from_str,
-            "in reference_path =", reference_path,
-            "SpliceWiz reference is earlier than current version",
-            buildRef_version))
-    }
+    resourceDir <- normalizePath(file.path(reference_path, "resource"))
+
+    if(!dir.exists(resourceDir))
+        .log(paste(resourceDir, "does not exist"))
+
+    genomeFile <- file.path(resourceDir, "genome.2bit")
+    gtfFile <- file.path(resourceDir, "transcripts.gtf.gz")
+    if(!file.exists(genomeFile))
+        .log(paste(genomeFile, "not found.",
+            "Please use getResources() or buildRef() first."))
+    if(!file.exists(gtfFile))
+        .log(paste(gtfFile, "not found.",
+            "Please use getResources() or buildRef() first."))
 }
 
+# Validates this as a complete SpliceWiz reference
 .validate_reference <- function(reference_path, from = "") {
     ref <- normalizePath(reference_path)
     from_str <- ifelse(from == "", "",
@@ -599,11 +656,6 @@ Get_GTF_file <- function(reference_path) {
             "in reference_path =", reference_path,
             ": settings.Rds not found"))
     }
-    if (!file.exists(file.path(ref, "SpliceWiz.ref.gz"))) {
-        .log(paste(from_str,
-            "in reference_path =", reference_path,
-            ": SpliceWiz.ref.gz not found"))
-    }
     settings.list <- readRDS(file.path(ref, "settings.Rds"))
     if (!("BuildVersion" %in% names(settings.list)) ||
             settings.list[["BuildVersion"]] < buildRef_version) {
@@ -611,10 +663,10 @@ Get_GTF_file <- function(reference_path) {
             "in reference_path =", reference_path,
             "reference was built using an earlier version of SpliceWiz (",
             settings.list[["BuildVersion"]], 
-            "). SpliceWiz may encounter errors with this reference.",
-            "Please re-build your reference using the current version."
-            ), "warning"
-        )
+            "). Please re-build your reference using the current version,",
+            "by calling buildRef() with `overwrite = TRUE` and",
+            "leaving the `fasta` and `gtf` arguments blank."
+        ), "error")
     }
 }
 
@@ -623,7 +675,30 @@ Get_GTF_file <- function(reference_path) {
         force_download = FALSE, verbose = TRUE
 ) {
     if(!is_valid(genome_type)) genome_type = ""
-    if (!is_valid(nonPolyARef)) {
+    
+    prev_NPA_file <- file.path(reference_path, "resource", 
+        "nonPolyAFile.resource")
+    map_path <- file.path(normalizePath(reference_path), "Mappability")
+    map_file <- file.path(map_path, "MappabilityExclusion.bed.gz")
+    prev_map_file <- file.path(normalizePath(reference_path),
+        "resource/MappabilityFile.resource")
+    prev_BL_file <- file.path(reference_path, "resource", 
+        "BlacklistFile.resource")
+
+    # Order of operations:
+    # 1) Use specified file
+    # 2a) (Mappability) - use generated file
+    # 2b) Use previously used file (.resource files)
+    # 3) Use file implied by genome_type
+    # 4) Don't use any
+
+    if (is_valid(nonPolyARef)) {
+        nonPolyAFile <- .parse_valid_file(nonPolyARef,
+            "Reference generated without non-polyA reference",
+            force_download = force_download, verbose = verbose)
+    } else if(file.exists(prev_NPA_file)) {
+        nonPolyAFile <- .parse_valid_file(prev_NPA_file, verbose = verbose)
+    } else if (genome_type %in% c("hg38", "hg19", "mm9", "mm10")) {
         nonPolyAFile <- getNonPolyARef(genome_type)
         nonPolyAFile <- .parse_valid_file(nonPolyAFile,
             "Reference generated without non-polyA reference", 
@@ -633,13 +708,14 @@ Get_GTF_file <- function(reference_path) {
             "Reference generated without non-polyA reference",
             force_download = force_download, verbose = verbose)
     }
-    map_path <- file.path(normalizePath(reference_path), "Mappability")
-    map_file <- file.path(map_path, "MappabilityExclusion.bed.gz")
+    
     if (is_valid(MappabilityRef)) {
         MappabilityFile <- .parse_valid_file(MappabilityRef,
             force_download = force_download, verbose = verbose)
     } else if (file.exists(map_file)) {
         MappabilityFile <- .parse_valid_file(map_file, verbose = verbose)
+    } else if(file.exists(prev_map_file)) {
+        MappabilityFile <- .parse_valid_file(prev_map_file, verbose = verbose)
     } else if (genome_type %in% c("hg38", "hg19", "mm9", "mm10")) {
         # Attempt to fetch resource from ExperimentHub
         map.gz <- NULL
@@ -663,10 +739,20 @@ Get_GTF_file <- function(reference_path) {
             "Reference generated without Mappability reference", 
             verbose = verbose)
     }
-    BlacklistFile <-
-        .parse_valid_file(BlacklistRef,
-            "Reference generated without Blacklist exclusion",
-            force_download = force_download, verbose = verbose)
+
+    if (is_valid(BlacklistRef)) {
+        BlacklistFile <-
+            .parse_valid_file(BlacklistRef,
+                "Reference generated without Blacklist exclusion",
+                force_download = force_download, verbose = verbose)
+    } else if (file.exists(prev_BL_file)) {
+        BlacklistFile <- .parse_valid_file(prev_BL_file, verbose = verbose)
+    } else {
+        BlacklistFile <-
+            .parse_valid_file(BlacklistRef,
+                "Reference generated without Blacklist exclusion",
+                force_download = force_download, verbose = verbose)
+    }
 
     # Check files are valid BED files; fail early if not
     .check_is_BED_or_RDS(nonPolyAFile)
@@ -680,12 +766,12 @@ Get_GTF_file <- function(reference_path) {
         "MappabilityFile.resource")
     local.BlacklistFile <- file.path(reference_path, "resource", 
         "BlacklistFile.resource")
-    if(file.exists(nonPolyAFile) && !file.exists(local.nonPolyAFile))
-        file.copy(nonPolyAFile, local.nonPolyAFile)
-    if(file.exists(MappabilityFile) && !file.exists(local.MappabilityFile))
-        file.copy(MappabilityFile, local.MappabilityFile)
-    if(file.exists(BlacklistFile) && !file.exists(local.BlacklistFile))
-        file.copy(BlacklistFile, local.BlacklistFile)
+    if(file.exists(nonPolyAFile) && nonPolyAFile != local.nonPolyAFile)
+        file.copy(nonPolyAFile, local.nonPolyAFile, overwrite = TRUE)
+    if(file.exists(MappabilityFile) && MappabilityFile != local.MappabilityFile)
+        file.copy(MappabilityFile, local.MappabilityFile, overwrite = TRUE)
+    if(file.exists(BlacklistFile) && BlacklistFile != local.BlacklistFile)
+        file.copy(BlacklistFile, local.BlacklistFile, overwrite = TRUE)
         
     final <- list(
         nonPolyAFile = nonPolyAFile, MappabilityFile = MappabilityFile,
@@ -761,7 +847,9 @@ Get_GTF_file <- function(reference_path) {
         verbose = TRUE, overwrite = FALSE, force_download = FALSE,
         pseudo_fetch_fasta = FALSE, pseudo_fetch_gtf = FALSE
 ) {
-
+    fastaArg <- fasta
+    gtfArg <- gtf
+    
     # Checks fasta or gtf files exist if omitted, or are valid URLs
     .validate_path(reference_path, subdirs = "resource")
     if (!is_valid(fasta)) {
@@ -820,10 +908,40 @@ Get_GTF_file <- function(reference_path) {
     }
 
     # Save Resource details to settings.Rds:
-    settings.list <- list(fasta_file = fasta_use, gtf_file = gtf_use,
-        ah_genome = ah_genome_use, ah_transcriptome = ah_gtf_use,
-        reference_path = reference_path
-    )
+    settingsFile <- file.path(reference_path, "settings.Rds")
+    if(file.exists(settingsFile)) {
+        settings.list <- readRDS(settingsFile)
+        # Update as required
+        if(is_valid(fastaArg) && fastaArg != settings.list$fasta_file)
+            settings.list$fasta_file <- fastaArg
+        if(is_valid(gtfArg) && gtfArg != settings.list$gtf_file)
+            settings.list$gtf_file <- gtfArg
+        if(
+                is_valid(ah_genome_use) && 
+                ah_genome_use != settings.list$ah_genome &&
+                is_valid(fastaArg)
+                # given fastaArg is a valid AH-object and
+                #   is different to previous
+        ) {
+            settings.list$ah_genome <- ah_genome_use
+        }
+        if(
+                is_valid(ah_gtf_use) && 
+                ah_gtf_use != settings.list$ah_transcriptome &&
+                is_valid(gtfArg)
+                # given gtfArg is a valid AH-object and
+                #   is different to previous
+        ) {
+            settings.list$ah_transcriptome <- ah_gtf_use
+        }
+    } else {
+        settings.list <- list(
+            fasta_file = fastaArg, gtf_file = gtfArg,
+            ah_genome = ah_genome_use, ah_transcriptome = ah_gtf_use,
+            reference_path = reference_path
+        )    
+    }
+    
     settings.list$BuildVersion <- buildRef_version
     saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
 
@@ -977,7 +1095,7 @@ Get_GTF_file <- function(reference_path) {
         }
         if (is(genome, "TwoBitFile") && 
                 file.exists(rtracklayer::path(genome))) {
-            file.copy(rtracklayer::path(genome), genome.2bit)
+            file.copy(rtracklayer::path(genome), genome.2bit, overwrite = TRUE)
         } else {
             rtracklayer::export(genome, genome.2bit, "2bit")
         }
@@ -1053,10 +1171,10 @@ Get_GTF_file <- function(reference_path) {
                 if (substr(gtf_file, nchar(gtf_file) - 2,
                         nchar(gtf_file)) == ".gz") {
                     if (file.exists(gtf_path)) file.remove(gtf_path)
-                    file.copy(gtf_file, gtf_path)
+                    file.copy(gtf_file, gtf_path, overwrite = TRUE)
                 } else {
                     gzip(filename = gtf_file, destname = gtf_path,
-                        remove = FALSE)
+                        remove = FALSE, overwrite = TRUE)
                 }
                 if(verbose) message("done")
             }
@@ -1222,6 +1340,39 @@ Get_GTF_file <- function(reference_path) {
 # - also fix missing gene_name and transcript_names in newer Ensembl refs
 .fix_gtf <- function(gtf_gr) {
 
+    # Guarantee type == "exon" is annotated in gtf
+    Exons <- gtf_gr[gtf_gr$type == "exon"]
+    if (length(Exons) == 0) .log(paste(
+        "No exons detected in reference!",
+        "Ensure there are entries in the gtf file with type == `exon`"
+    ))
+    rm(Exons)
+
+    # Ensure the following columns are found in the fixed gtf:
+    # - transcript_name,
+    # - transcript_biotype, transcript_support_level
+    if ("transcript_name" %in% names(mcols(gtf_gr))) {
+        gtf_gr$transcript_name[is.na(gtf_gr$transcript_name)] <-
+            gtf_gr$transcript_id[is.na(gtf_gr$transcript_name)]
+        gtf_gr$transcript_name <- gsub("/", "_", gtf_gr$transcript_name)
+    } else {
+        gtf_gr$transcript_name <- gtf_gr$transcript_id
+    }
+    if (!("transcript_biotype" %in% names(mcols(gtf_gr)))) {
+        if("transcript_type" %in% names(mcols(gtf_gr))) {
+            colnames(mcols(gtf_gr))[
+                which(colnames(mcols(gtf_gr))) == "transcript_type"
+            ] <- "transcript_biotype"
+        } else {
+            gtf_gr$transcript_biotype <- "protein_coding"        
+        }
+    }
+    if (!("transcript_support_level" %in% names(mcols(gtf_gr)))) {
+        gtf_gr$transcript_support_level <- 1
+    }
+
+    # Ensure the following columns are found in the fixed gtf:
+    # - gene_name, gene_biotype, \
     if ("gene_name" %in% names(mcols(gtf_gr))) {
         gtf_gr$gene_name[is.na(gtf_gr$gene_name)] <-
             gtf_gr$gene_id[is.na(gtf_gr$gene_name)]
@@ -1236,11 +1387,9 @@ Get_GTF_file <- function(reference_path) {
         dup_gene_names <- unique(unique_gene_name[
             duplicated(unique_gene_name)])
         if(length(dup_gene_names) > 0) {
-            if ("transcript_name" %in% names(mcols(gtf_gr))) {
-                gtf_gr$transcript_name[gtf_gr$gene_name %in% dup_gene_names] <-
-                    gtf_gr$transcript_id[gtf_gr$gene_name %in% dup_gene_names]
-            }
-            
+            gtf_gr$transcript_name[gtf_gr$gene_name %in% dup_gene_names] <-
+                gtf_gr$transcript_id[gtf_gr$gene_name %in% dup_gene_names]
+                
             # Replace {gene_name} with {gene_name}_{gene_id}
             gtf_gr$gene_name[gtf_gr$gene_name %in% dup_gene_names] <-
                 paste(
@@ -1252,38 +1401,56 @@ Get_GTF_file <- function(reference_path) {
     } else {
         gtf_gr$gene_name <- gtf_gr$gene_id
     }
-
-    # Ensure the following columns are found in the fixed gtf:
-    # - transcript_name, gene_biotype, transcript_biotype,
-    # - transcript_support_level
-    if ("transcript_name" %in% names(mcols(gtf_gr))) {
-        gtf_gr$transcript_name[is.na(gtf_gr$transcript_name)] <-
-            gtf_gr$transcript_id[is.na(gtf_gr$transcript_name)]
-        gtf_gr$transcript_name <- gsub("/", "_", gtf_gr$transcript_name)
+    # Fix gene_biotype
+    if ("gene_biotype" %in% names(mcols(gtf_gr))) {
+        # do nothing
+    } else if ("gene_type" %in% names(mcols(gtf_gr))) {
+        colnames(mcols(gtf_gr))[which(colnames(mcols(gtf_gr)) ==
+            "gene_type")] <- "gene_biotype"
     } else {
-        gtf_gr$transcript_name <- gtf_gr$transcript_id
+        mcols(gtf_gr)$gene_biotype <- "protein_coding"
     }
-    if (!("gene_biotype" %in% names(mcols(gtf_gr)))) {
-        if("gene_type" %in% names(mcols(gtf_gr))) {
-            colnames(mcols(gtf_gr))[
-                which(colnames(mcols(gtf_gr))) == "gene_type"
-            ] <- "gene_biotype"
-        } else {
-            gtf_gr$gene_biotype <- "protein_coding"     
-        }
+    
+    Transcripts <- gtf_gr[gtf_gr$type == "transcript"]
+    # If transcript are not annotated by "type" column, then do manually
+    if (length(Transcripts) == 0) {
+        tx_cols <- c("seqnames", "strand",
+            "gene_id", "gene_name", "gene_biotype",
+            "transcript_id", "transcript_name", "transcript_biotype")
+        Transcripts <- as.data.table(gtf_gr[gtf_gr$type == "exon"])
+        Transcripts <- Transcripts[, c("start", "end", "width") := list(
+            min(get("start")), max(get("end")),
+            max(get("end")) - min(get("start")) + 1
+        ), by = tx_cols]
+        Transcripts <- unique(Transcripts, by = tx_cols)
+        Transcripts$type <- "transcript"
+        Transcripts <- .grDT(Transcripts, keep.extra.columns = TRUE)
+        if (length(Transcripts) == 0) 
+            .log("No transcripts detected in reference!")
+
+        # Add annotated genes into gtf
+        gtf_gr <- c(gtf_gr, Transcripts)
     }
-    if (!("transcript_biotype" %in% names(mcols(gtf_gr)))) {
-        if("transcript_type" %in% names(mcols(gtf_gr))) {
-            colnames(mcols(gtf_gr))[
-                which(colnames(mcols(gtf_gr))) == "transcript_type"
-            ] <- "transcript_biotype"
-        } else {
-            gtf_gr$transcript_biotype <- "protein_coding"        
-        }
+    rm(Transcripts)
+
+    Genes <- gtf_gr[gtf_gr$type == "gene"]
+    if (length(Genes) == 0) {
+        gene_cols <- c("seqnames", "strand",
+            "gene_id", "gene_name", "gene_biotype")
+        Genes <- as.data.table(gtf_gr[gtf_gr$type == "transcript"])
+        Genes <- Genes[, c("start", "end", "width") := list(
+            min(get("start")), max(get("end")),
+            max(get("end")) - min(get("start")) + 1
+        ), by = gene_cols]
+        Genes <- unique(Genes, by = gene_cols)
+        Genes$type <- "gene"
+        Genes <- .grDT(Genes, keep.extra.columns = TRUE)
+        if (length(Genes) == 0) .log("No genes detected in reference!")
+        
+        # Add annotated genes into gtf
+        gtf_gr <- c(gtf_gr, Genes)
     }
-    if (!("transcript_support_level" %in% names(mcols(gtf_gr)))) {
-        gtf_gr$transcript_support_level <- 1
-    }
+    rm(Genes)
 
     return(gtf_gr)
 }
@@ -1329,35 +1496,13 @@ Get_GTF_file <- function(reference_path) {
 .process_gtf_genes <- function(gtf_gr, reference_path, verbose = TRUE) {
     Genes <- gtf_gr[gtf_gr$type == "gene"]
 
-    # If genes are not annotated by "type" column, then have to do it manually
-    if (length(Genes) == 0) {
-        gene_cols <- c("seqnames", "strand",
-            "gene_id", "gene_name", "gene_biotype")
-        Genes <- as.data.table(gtf_gr)
-        Genes <- Genes[, c("start", "end", "width") := list(
-            min(get("start")), max(get("end")),
-            max(get("end")) - min(get("start")) + 1
-        ), by = gene_cols]
-        Genes <- unique(Genes, by = gene_cols)
-        Genes$type <- "gene"
-        Genes <- .grDT(Genes, keep.extra.columns = TRUE)
-        if (length(Genes) == 0) .log("No genes detected in reference!")
-    }
-
     Genes <- GenomeInfoDb::sortSeqlevels(Genes)
     Genes <- sort(Genes)
     
-    # Fix gene_biotype and transcript_biotype tags
-    if ("gene_biotype" %in% names(mcols(Genes))) {
-        # do nothing
-    } else if ("gene_type" %in% names(mcols(Genes))) {
-        colnames(mcols(Genes))[which(colnames(mcols(Genes)) ==
-            "gene_type")] <- "gene_biotype"
-    } else {
-        mcols(Genes)$gene_biotype <- "protein_coding"
-    }
-
-    Genes$gene_display_name <- paste0(Genes$gene_name, " (", Genes$gene_id, ")")
+    mcols(Genes) <- mcols(Genes)[, c(
+        "type",
+        "gene_id", "gene_name", "gene_biotype"
+    )]
 
     # Annotate gene_groups_stranded
     Genes_group.stranded <- as.data.table(reduce(Genes))
@@ -1381,7 +1526,9 @@ Get_GTF_file <- function(reference_path) {
     Genes$gene_group_unstranded[from(OL)] <-
         Genes_group.unstranded$gene_group[to(OL)]
 
-    write.fst(as.data.frame(Genes),
+    df_out <- as.data.frame(Genes)
+    
+    write.fst(df_out,
         file.path(reference_path, "fst", "Genes.fst")
     )
     final <- list(
@@ -1394,25 +1541,15 @@ Get_GTF_file <- function(reference_path) {
 .process_gtf_transcripts <- function(gtf_gr, reference_path, verbose = TRUE) {
     Transcripts <- gtf_gr[gtf_gr$type == "transcript"]
 
-    # If transcript are not annotated by "type" column, then do manually
-    if (length(Transcripts) == 0) {
-        tx_cols <- c("seqnames", "strand",
-            "gene_id", "gene_name", "gene_biotype",
-            "transcript_id", "transcript_name", "transcript_biotype")
-        Transcripts <- as.data.table(gtf_gr)
-        Transcripts <- Transcripts[, c("start", "end", "width") := list(
-            min(get("start")), max(get("end")),
-            max(get("end")) - min(get("start")) + 1
-        ), by = tx_cols]
-        Transcripts <- unique(Transcripts, by = tx_cols)
-        Transcripts$type <- "transcript"
-        Transcripts <- .grDT(Transcripts, keep.extra.columns = TRUE)
-        if (length(Transcripts) == 0) 
-            .log("No transcripts detected in reference!")
-    }
-
     Transcripts <- GenomeInfoDb::sortSeqlevels(Transcripts)
     Transcripts <- sort(Transcripts)
+
+    mcols(Transcripts) <- mcols(Transcripts)[, c(
+        "type",
+        "gene_id", "gene_name", "gene_biotype",
+        "transcript_id", "transcript_name", 
+        "transcript_biotype", "transcript_support_level"
+    )]
 
     write.fst(as.data.frame(Transcripts),
         file.path(reference_path, "fst", "Transcripts.fst")
@@ -1420,14 +1557,34 @@ Get_GTF_file <- function(reference_path) {
 }
 
 .process_gtf_misc <- function(gtf_gr, reference_path, verbose = TRUE) {
+    # If the requisite elements are not found, skip this entire step
+    if(sum(gtf_gr$type == "CDS") + sum(gtf_gr$type == "start_codon") == 0) {
+        .log(paste(
+            "No protein information detected in reference!",
+            "Ensure there are valid entries with type == `CDS`",
+            "and type == `start_codon` in the gtf file.",
+            "Protein reference and NMD annotation is skipped.",
+        ), "message")
+        return(0)
+    }
+    
     # Proteins
     Proteins <- gtf_gr[gtf_gr$type == "CDS"]
-    if (length(Proteins) == 0) {
-        .log("No CDS (proteins) detected in reference!")
-    } # Is this critical to SpliceWiz function?
 
     Proteins <- GenomeInfoDb::sortSeqlevels(Proteins)
     Proteins <- sort(Proteins)
+
+    protCols <- c(
+        "type",
+        "gene_id", "gene_name", "gene_biotype",
+        "transcript_id", "transcript_name", 
+        "transcript_biotype", "transcript_support_level",
+        "exon_number", "exon_id", "ccds_id",
+        "protein_id", "phase"
+    )
+    protCols <- intersect(protCols, colnames(mcols(Proteins)))
+    mcols(Proteins) <- mcols(Proteins)[, protCols]
+    
     write.fst(
         as.data.frame(Proteins),
         file.path(reference_path, "fst", "Proteins.fst")
@@ -1439,6 +1596,8 @@ Get_GTF_file <- function(reference_path) {
     }
     gtf.misc <- GenomeInfoDb::sortSeqlevels(gtf.misc)
     gtf.misc <- sort(gtf.misc)
+    mcols(gtf.misc) <- mcols(gtf.misc)[, protCols]
+
     write.fst(
         as.data.frame(gtf.misc),
         file.path(reference_path, "fst", "Misc.fst")
@@ -1449,10 +1608,19 @@ Get_GTF_file <- function(reference_path) {
     gtf_gr, reference_path, Genes_group, verbose = TRUE
 ) {
     Exons <- gtf_gr[gtf_gr$type == "exon"]
-    if (length(Exons) == 0) .log("No exons detected in reference!")
 
     Exons <- GenomeInfoDb::sortSeqlevels(Exons)
     Exons <- sort(Exons)
+
+    exonCols <- c(
+        "type",
+        "gene_id", "gene_name", "gene_biotype",
+        "transcript_id", "transcript_name", 
+        "transcript_biotype", "transcript_support_level",
+        "exon_number", "exon_id", "ccds_id"
+    )
+    exonCols <- intersect(exonCols, colnames(mcols(Exons)))
+    mcols(Exons) <- mcols(Exons)[, exonCols]
 
     # Assign gene groups then bake exon-groups into Exons
     tmp.Exons_group.stranded <- .process_exon_groups(
@@ -2289,50 +2457,50 @@ Get_GTF_file <- function(reference_path) {
 # Generates SpliceWiz intron name
 .gen_irf_irfname <- function(IntronCover.summa, stranded = TRUE) {
     if (stranded) {
-        IntronCover.summa[, c("IRname") := paste("dir",
-            get("gene_name"), get("intron_id"), get("strand"),
-            get("num_blocks"), sprintf("%.f", get("intron_start") - 1),
-            sprintf("%.f", get("intron_end")), get("inclbases"),
-            get("exclbases"),
-            ifelse(get("known_exon_dir"), "known-exon", "clean"), sep = "/"
-        )]
+        IntronCover.summa[, c("intronQC") := 
+            ifelse(get("known_exon_dir"), "known-exon", "clean")
+        ]
     } else {
-        IntronCover.summa[, c("IRname") := paste("nd",
-            get("gene_name"), get("intron_id"), get("strand"),
-            get("num_blocks"), sprintf("%.f", get("intron_start") - 1),
-            sprintf("%.f", get("intron_end")), get("inclbases"),
-            get("exclbases"), sep = "/"
-        )]
-        # casewise naming of last condition
+        IntronCover.summa[, c("intronQC") := ""]
         IntronCover.summa[
             get("known_exon_nd") & get("antiover") & get("antinear"),
-            c("IRname") := paste(get("IRname"),
-                "known-exon+anti-over+anti-near", sep = "/")]
+            c("intronQC") := "known-exon+anti-over+anti-near"]
+        
         IntronCover.summa[
             get("known_exon_nd") & get("antiover") & !get("antinear"),
-            c("IRname") := paste(get("IRname"),
-                "known-exon+anti-over", sep = "/")]
+            c("intronQC") := "known-exon+anti-over"]
         IntronCover.summa[
             get("known_exon_nd") & !get("antiover") & get("antinear"),
-            c("IRname") := paste(get("IRname"),
-                "known-exon+anti-near", sep = "/")]
+            c("intronQC") := "known-exon+anti-near"]
         IntronCover.summa[
             !get("known_exon_nd") & get("antiover") & get("antinear"),
-            c("IRname") := paste(get("IRname"),
-                "anti-over+anti-near", sep = "/")]
-        IntronCover.summa[
-            !get("known_exon_nd") & !get("antiover") & get("antinear"),
-            c("IRname") := paste(get("IRname"), "anti-near", sep = "/")]
-        IntronCover.summa[
-            !get("known_exon_nd") & get("antiover") & !get("antinear"),
-            c("IRname") := paste(get("IRname"), "anti-over", sep = "/")]
+            c("intronQC") := "anti-over+anti-near"]
+
         IntronCover.summa[
             get("known_exon_nd") & !get("antiover") & !get("antinear"),
-            c("IRname") := paste(get("IRname"), "known-exon", sep = "/")]
+            c("intronQC") := "known-exon"]
+        IntronCover.summa[
+            !get("known_exon_nd") & !get("antiover") & get("antinear"),
+            c("intronQC") := "anti-near"]
+        IntronCover.summa[
+            !get("known_exon_nd") & get("antiover") & !get("antinear"),
+            c("intronQC") := "anti-over"]
+
         IntronCover.summa[
             !get("known_exon_nd") & !get("antiover") & !get("antinear"),
-            c("IRname") := paste(get("IRname"), "clean", sep = "/")]
+            c("intronQC") := "clean"]
     }
+    IntronCover.summa[, c("IRname") := paste(ifelse(stranded, "dir", "nd"),
+        get("gene_name"), get("intron_id"), get("strand"),
+        get("num_blocks"), sprintf("%.f", get("intron_start") - 1),
+        sprintf("%.f", get("intron_end")), get("inclbases"),
+        get("exclbases"),
+        get("intronQC"), sep = "/"
+    )]
+    IntronCover.summa[, c("EventName") := paste(
+        get("gene_name"), get("intron_id"), get("intronQC"), sep = "/"
+    )]
+    IntronCover.summa[, c("intronQC") := NULL]
     return(IntronCover.summa)
 }
 
@@ -3146,8 +3314,8 @@ Get_GTF_file <- function(reference_path) {
     tmp_AS <- base::Filter(is_valid_splice_type, tmp_AS)
     AS_Table <- rbindlist(tmp_AS)
 
-    if (nrow(AS_Table) > 0) {
-        .gen_splice_save(AS_Table, candidate.introns, reference_path)
+    .gen_splice_save(AS_Table, candidate.introns, reference_path)
+    if (nrow(AS_Table) > 0) {        
         if(verbose) .log("Splice Annotations Filtered", "message")
     } else {
         if(verbose) message("No splice events found\n")
@@ -3430,7 +3598,7 @@ Get_GTF_file <- function(reference_path) {
 .gen_splice_AFE <- function(candidate.introns, introns_found_A5SS) {
     # There's no way a novel junction could be known to be the first exon
     introns_search_AFE <- candidate.introns[
-        get("transcript_biotype") != "novel_transcript"]
+        !grepl("novel_transcript", get("transcript_biotype"))]
     introns_search_AFE <- introns_search_AFE[get("intron_number") == 1]
     introns_search_AFE_pos <- introns_search_AFE[get("strand") == "+"]
     setorderv(introns_search_AFE_pos,
@@ -3522,7 +3690,7 @@ Get_GTF_file <- function(reference_path) {
 # Generate a list of ALE
 .gen_splice_ALE <- function(candidate.introns, introns_found_A3SS) {
     introns_search_ALE <- candidate.introns[
-        get("transcript_biotype") != "novel_transcript"]
+        !grepl("novel_transcript", get("transcript_biotype"))]
         
     introns_search_ALE <- introns_search_ALE[introns_search_ALE[,
         .I[get("intron_number") == max(get("intron_number"))],
@@ -4381,3 +4549,8 @@ Get_GTF_file <- function(reference_path) {
     }
     return(AS_Table.Extended)
 }
+
+################################################################################
+
+# Getter functions
+

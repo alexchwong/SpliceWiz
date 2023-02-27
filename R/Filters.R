@@ -21,13 +21,29 @@
 #'   shared with another transcript for which it is not its last intron
 #' * (6) ExclusiveMXE filter: For MXE events, the two alternate
 #'   casette exons must not overlap in their genomic regions
+#' * (7) StrictAltSS filter: For A5SS / A3SS events, the two alternate splice
+#'   sites must not be interrupted by an intron
 #'
 #' In all data-based filters, we require at least 80% samples (`pcTRUE = 80`)
 #'   to pass this filters from the entire dataset (`minCond = -1`).
 #'
-#' Events with event read depth (reads supporting either included or excluded
-#'   isoforms) lower than 5 (`minDepth = 5`) are not assessed in filter #2, and
-#'   in #3 and #4 this threshold is (`minDepth = 20`).
+#' Threshold depths for Participation filters:
+#' 
+#' For IR/RI, Participation filter is only applied for IR events
+#' for which the intron depth is above a certain threshold (set by `minDepth`).
+#' This avoids the filters running on samples for which there is no IR.
+#' 
+#' For non-IR ASEs, Participation is only run on events with
+#' splice depth (SpliceOver metric) higher than `minDepth`. This avoids filters
+#' running on events with low total participation (i.e., (Inc+Exc)/SpliceOver)
+#'
+#' Threshold depths for Consistency filters:
+#' Consistency filters are only applied for events where the sum of 
+#' upstream and downstream junction counts surpass a given threshold `minDepth`.
+#' This is applied on both included and excluded counts (the latter only
+#' applies to MXE). This avoids consistency filters running on events with
+#' insufficient junction counts (leading to high variance between up/downstream
+#' values).
 #'
 #' For an explanation of the various parameters mentioned here, see [ASEFilter]
 #'
@@ -82,7 +98,8 @@ getDefaultFilters <- function() {
         maximum = 2, minDepth = 20, EventTypes = c("MXE", "SE", "RI"))
     f5 <- ASEFilter("Annotation", "Terminus")
     f6 <- ASEFilter("Annotation", "ExclusiveMXE")
-    return(list(f1, f2, f3, f4, f5, f6))
+    f7 <- ASEFilter("Annotation", "StrictAltSS")
+    return(list(f1, f2, f3, f4, f5, f6, f7))
 }
 
 #' @describeIn Run_SpliceWiz_Filters Run a vector or list of ASEFilter objects
@@ -145,6 +162,9 @@ runFilter <- function(se, filterObj) {
         } else if (filterObj@filterType == "ExclusiveMXE") {
             message("Running ExclusiveMXE filter")
             return(.runFilter_anno_mxe(se, filterObj))
+        } else if (filterObj@filterType == "StrictAltSS") {
+            message("Running StrictAltSS filter")
+            return(.runFilter_anno_strictSS(se, filterObj))
         }
     } else {
         return(rep(TRUE, nrow(se)))
@@ -456,6 +476,27 @@ runFilter <- function(se, filterObj) {
     return(res)
 }
 
+.runFilter_anno_strictSS <- function(se, filterObj) {
+    rowSelected <- as.data.table(rowData(se))
+    ASS <- rowSelected[get("EventType") %in% c("A5SS", "A3SS")]
+    rowSelected <- rowSelected[!(get("EventType")  %in% c("A5SS", "A3SS"))]
+
+    gr1 <- .runFilter_anno_ssdiff(ASS$Event1a, ASS$Event1b)
+
+    introns <- copy(ref(se)$elements)
+    introns <- introns[get("type") == "intron"]
+    gr2 <- .grDT(introns)
+    
+    OL <- findOverlaps(gr2, gr1, type = "within")
+
+    ASS_exclude <- (seq_len(nrow(ASS)) %in% to(OL))
+    ASS <- ASS[!ASS_exclude]
+
+    res <- rowData(se)$EventName %in% c(rowSelected$EventName, ASS$EventName)        
+    res[!(rowData(se)$EventType %in% filterObj@EventTypes)] <- TRUE
+    return(res)
+}
+
 .runFilter_anno_mxe_gr_casette <- function(coord1, coord2) {
     if(length(coord1) != length(coord2))
         .log("INTERNAL ERROR: two MXE coord vectors must be of equal size")
@@ -467,4 +508,12 @@ runFilter <- function(se, filterObj) {
     return(unlist(
         .grlGaps(GenomicRanges::split(grbind, grbind$ID))
     ))
+}
+
+.runFilter_anno_ssdiff <- function(coord1, coord2) {
+    if(length(coord1) != length(coord2))
+        .log("ERROR: two A5SS/A3SS coord vectors must be of equal size")
+    gr1 <- coord2GR(coord1)
+    gr2 <- coord2GR(coord2)
+    return(psetdiff(gr2,gr1))
 }

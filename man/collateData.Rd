@@ -9,12 +9,15 @@ collateData(
   reference_path,
   output_path,
   IRMode = c("SpliceOver", "SpliceMax"),
+  packageCOVfiles = FALSE,
   novelSplicing = FALSE,
   forceStrandAgnostic = FALSE,
   novelSplicing_minSamples = 3,
   novelSplicing_countThreshold = 10,
   novelSplicing_minSamplesAboveThreshold = 1,
   novelSplicing_requireOneAnnotatedSJ = TRUE,
+  novelSplicing_useTJ = TRUE,
+  novelSplicing_extrapolateTJ = FALSE,
   overwrite = FALSE,
   n_threads = 1,
   lowMemoryMode = TRUE
@@ -40,6 +43,11 @@ collated dataset}
 'splice abundance' in IR quantification.
 Valid options are \code{SpliceOver} and \code{SpliceMax}.
 See details}
+
+\item{packageCOVfiles}{(default \code{FALSE}) Whether COV files should be copied
+over to the NxtSE object. This is useful if one wishes to transfer the
+NxtSE folder to a collaborator, who can then open the NxtSE object with
+valid COV file paths.}
 
 \item{novelSplicing}{(default FALSE) Whether collateData will use
 novel junction reads detected in samples to infer novel splice variants.
@@ -69,6 +77,15 @@ above a pre-defined threshold exceeds this number}
 novel junctions to have one annotated splice site. If this is disabled,
 collateData will include novel junctions where neither splice site is
 annotated.}
+
+\item{novelSplicing_useTJ}{(default \code{TRUE}) For novel splicing, should
+SpliceWiz use reads with 2 or more junctions to find novel exons? Ignored
+if novelSplicing is set to \code{FALSE}.}
+
+\item{novelSplicing_extrapolateTJ}{(default \code{FALSE}) Whether to allow any
+pair of observed (and known) junctions and observed (and known) exons
+to construct "putative" tandem junctions. Assists in identifying novel
+exon skipping and MXE events at a cost of increased false positives.}
 
 \item{overwrite}{(default \code{FALSE}) If \code{collateData()} has previously been run
 using the same set of samples, it will not be overwritten unless this is
@@ -159,6 +176,15 @@ collateData(expr,
   reference_path = file.path(tempdir(), "Reference"),
   output_path = file.path(tempdir(), "Collated_output")
 )
+
+# Enable novel splicing:
+
+collateData(expr,
+  reference_path = file.path(tempdir(), "Reference"),
+  output_path = file.path(tempdir(), "Collated_output"),
+  novelSplicing = TRUE
+)
+
 }
 \seealso{
 \link{processBAM}, \link{makeSE}

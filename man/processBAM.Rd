@@ -26,6 +26,7 @@ processBAM(
   overwrite = FALSE,
   run_featureCounts = FALSE,
   verbose = FALSE,
+  skipCOVfiles = FALSE,
   multiRead = FALSE
 )
 }
@@ -62,6 +63,11 @@ should result in higher performance.}
 \link[Rsubread:featureCounts]{Rsubread::featureCounts} on the BAM files after counting spliced reads.
 If so, the output will be
 saved to \verb{"main.FC.Rds} in the \code{output_path} directory as a list object.}
+
+\item{skipCOVfiles}{(default \code{FALSE}) Whether processBAM should skip
+the production of COV files (containing coverage data). Default is to
+create COV files unless this is set to \code{TRUE}. COV files can be generated
+separately using \link{BAM2COV}}
 }
 \value{
 Output will be saved to \code{output_path}. Output files

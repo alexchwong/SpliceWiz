@@ -368,7 +368,8 @@ server_expr <- function(
                         novelSplicing_minSamples = input$nsOpt_minSamples,
                         novelSplicing_minSamplesAboveThreshold = 
                             input$nsOpt_minSamplesThreshold,
-                        novelSplicing_countThreshold  = input$nsOpt_Threshold
+                        novelSplicing_countThreshold  = input$nsOpt_Threshold,
+                        packageCOVfiles = input$package_COV
                     )
                 })
                 Expr_Update_colData(
@@ -625,9 +626,9 @@ server_expr <- function(
     if(is_valid(df) && is(df, "data.frame")) {
         r <- rhandsontable(df, useTypes = TRUE, stretchH = "all",
             selectCallback = enable_select)
-        # if("sample" %in% colnames(df)) {
-            # r <- r %>% hot_col("sample", readOnly = TRUE)
-        # }
+        if("sample" %in% colnames(df)) {
+            r <- r %>% hot_col("sample", readOnly = TRUE)
+        }
         return(r)
     } else {
         return(NULL)
@@ -1113,7 +1114,7 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
     } else if(
             is_valid(settings_expr$collate_path) &&
             file.exists(file.path(
-                settings_expr$collate_path, "NxtSE.rds"))
+                settings_expr$collate_path, "seed.Rds"))
     ) {
         if(
                 ncol(settings_expr$df.anno) > 1 && 
@@ -1156,7 +1157,7 @@ Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
 .server_expr_parse_collate_path_full <- function(settings_expr, output) {
     if(
             is_valid(settings_expr$collate_path) &&
-            file.exists(file.path(settings_expr$collate_path, "NxtSE.rds"))
+            file.exists(file.path(settings_expr$collate_path, "seed.Rds"))
     ) {
         if(.server_expr_check_savestate(settings_expr)) {
             output$se_expr_infobox <- renderUI(

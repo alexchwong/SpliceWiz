@@ -10,7 +10,7 @@ retention events}
 ASEFilter(
   filterClass = c("Data", "Annotation"),
   filterType = c("Depth", "Participation", "Consistency", "Modality", "Protein_Coding",
-    "NMD", "TSL", "Terminus", "ExclusiveMXE"),
+    "NMD", "TSL", "Terminus", "ExclusiveMXE", "StrictAltSS"),
   pcTRUE = 100,
   minimum = 20,
   maximum = 1,
@@ -83,6 +83,9 @@ shared with another transcript for which it is not its last intron
 \item \strong{ExclusiveMXE}:
 For MXE events, the two alternate
 casette exons must not overlap in their genomic regions
+\item \strong{StrictAltSS}:
+For A5SS / A3SS events, the two alternate splice sites must not be
+interupted by detected introns
 }
 
 \strong{Data Filters}
@@ -95,16 +98,17 @@ sum of all splicing and IR reads spanning the event. Events with
 and alternative splicing.\cr\cr
 For \strong{IR}, Participation refers to the percentage of the measured intron
 covered with reads. Only introns of samples with a depth of intron
-coverage above
-\code{minDepth} are assessed, with introns with coverage percentage
+coverage (intron depth) above
+\code{minDepth} are assessed, where introns with coverage percentage
 below \code{minimum} are filtered out.\cr\cr
-For \strong{Alternative Splicing}, Participation refers to the percentage of
-all splicing events observed across the genomic region that is
+For \strong{non-IR ASEs}, Participation refers to the percentage of
+all splicing events observed across the genomic region
+(SpliceOver metric) that is
 compatible with either the included or excluded event. This prevents
 SpliceWiz from doing differential analysis between two minor isoforms.
 Instead of IntronDepth, in AS events SpliceWiz considers events where
-the spliced reads from both exonic regions exceed \code{minDepth}.
-Then, events with a splicing coverage below \code{minimum}
+the SpliceOver metric exceed \code{minDepth}.
+Then, events with a SpliceOver metric below \code{minimum}
 are excluded. \cr\cr
 We recommend testing IR events for > 70\% coverage and AS
 events for > 40\% coverage as given in the default filters which can be
@@ -124,9 +128,9 @@ above \code{maximum}. For example, if
 events to represent at least 1/(2^2) = 1/4 of the sum of upstream
 and downstream event. If \code{maximum = 3}, then each junction must be at
 least 1/8 of total, etc.
-This is considered for each isoform of each event, as long as the
-total counts belonging to the considered isoform is above
-\code{minDepth}.\cr\cr
+This is considered for each isoform of each event, and is NOT tested
+when total (upstream+downstream) counts belonging to each isoform is
+below \code{minDepth}.\cr\cr
 IR-events are also checked. For IR events, the upstream and downstream
 exon-intron spanning reads must comprise a reasonable proportion of total
 exon-intron spanning reads.

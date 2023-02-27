@@ -58,6 +58,12 @@ ui_ref_new <- function(id) {
         column(6,
             wellPanel(
                 h4("Additional Files"),
+                tags$div(title = "Species for Gene Ontology reference",
+                    selectInput(ns('newref_species_GO'),
+                        paste('Species (Gene Ontology)'),
+                        c("(none)", "Homo sapiens", "Mus musculus")
+                    )
+                ),
                 tags$div(title = paste("SpliceWiz will auto-populate default",
                         "mappability and non-polyA reference files for",
                         "hg38, hg19, mm10 and mm9 genomes"),

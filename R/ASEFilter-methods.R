@@ -5,7 +5,7 @@ ASEFilter <- function(
         filterType = c(
             "Depth", "Participation", "Consistency",
             "Modality", "Protein_Coding", "NMD", "TSL", "Terminus", 
-            "ExclusiveMXE"
+            "ExclusiveMXE", "StrictAltSS"
         ),
         pcTRUE = 100, minimum = 20, maximum = 1, minDepth = 5,
         condition = "", minCond = -1,
@@ -25,7 +25,7 @@ setMethod("initialize", "ASEFilter", function(.Object,
         filterType = c(
             "Depth", "Participation", "Consistency",
             "Modality", "Protein_Coding", "NMD", "TSL", "Terminus", 
-            "ExclusiveMXE"
+            "ExclusiveMXE", "StrictAltSS"
         ),
         pcTRUE = 100, minimum = 20, maximum = 1, minDepth = 5,
         condition = "", minCond = -1,
@@ -38,7 +38,7 @@ setMethod("initialize", "ASEFilter", function(.Object,
 
     data_methods <- c("Depth", "Participation", "Consistency")
     annotation_methods <- c("Modality", "Protein_Coding", "NMD", "TSL",
-        "Terminus", "ExclusiveMXE")
+        "Terminus", "ExclusiveMXE", "StrictAltSS")
     
     if(filterClass %in% c("Data", "Annotation")) {
         filterClass <- filterClass[1]
@@ -160,6 +160,9 @@ setMethod("show", "ASEFilter", function(object) {
         cat("first/last introns are removed")
     } else if (object@filterType == "ExclusiveMXE") {
         cat("MXE events with overlapping casette exons are removed")
+    } else if (object@filterType == "StrictAltSS") {
+        cat("A5SS / A3SS events with introns detected between the two alt-")
+        cat("splice sites are removed")
     }
 }
 

@@ -52,12 +52,33 @@
 #' se_NxtSE <- as(se_raw, "NxtSE")
 #' identical(se, se_NxtSE) # Returns TRUE
 #' 
+#' # Get directory path of NxtSE (i.e., collate_path)
+#' sourcePath(se)
+#'
+#' # Get Main Assay Counts
+#' assay(se, "Included") # Junction (or IR depth) counts for included isoform
+#' assay(se, "Excluded") # Junction (or IR depth) counts for excluded isoform
+#'
+#' # Get Auxiliary Counts (for filter use only)
+#' assay(se, "Coverage") # Participation ratio (intron coverage for IR/RI)
+#' assay(se, "minDepth") # SpliceOver junction counts (Intron Depths for IR/RI)
+#' assay(se, "Depth")    # Sum of intron depth and SpliceOver (used for
+#'                       # coverage normalization factor
+#'
 #' # Get Junction reads of SE / MXE and spans-reads of IR events
-#' up_inc(se)
-#' down_inc(se)
-#' up_exc(se)
-#' down_exc(se)
+#' up_inc(se)   # Upstream included junction counts (IR/MXE/SE/RI)
+#' down_inc(se) # Downstream included junction counts (IR/MXE/SE/RI)
+#' up_exc(se)   # Upstream excluded junction counts (MXE only)
+#' down_exc(se) # Downstream excluded junction counts (MXE only)
 #' 
+#' # Get Junction counts
+#' junc_counts(se) # stranded (if RNA-seq is auto-detected as stranded)
+#' junc_counts_uns(se) # unstranded (sum of junction reads from both strand)
+#' junc_PSI(se) # PSI of junction (as proportion of SpliceOver metric)
+#'
+#' # Get Junction GRanges object
+#' junc_gr(se)
+#'
 #' # Get list of available coverage files
 #' covfile(se)
 #' 
@@ -114,8 +135,10 @@
 #' sampleQC sampleQC,NxtSE-method
 #' sampleQC<- sampleQC<-,NxtSE-method
 #' ref ref,NxtSE-method
+#' sourcePath sourcePath,NxtSE-method
 #' junc_PSI junc_PSI,NxtSE-method
 #' junc_counts junc_counts,NxtSE-method
+#' junc_counts_uns junc_counts_uns,NxtSE-method
 #' junc_gr junc_gr,NxtSE-method
 #' realize_NxtSE realize_NxtSE,NxtSE-method
 #' coerce,SummarizedExperiment,NxtSE-method
@@ -180,6 +203,9 @@ setClass("NxtSE",
 #'   * **ExclusiveMXE**:
 #'       For MXE events, the two alternate
 #'       casette exons must not overlap in their genomic regions
+#'   * **StrictAltSS**:
+#'       For A5SS / A3SS events, the two alternate splice sites must not be
+#'       interupted by detected introns
 #'
 #'   **Data Filters**
 #'   * **Depth**: Filters IR or alternative splicing events of transcripts
@@ -190,16 +216,17 @@ setClass("NxtSE",
 #'       and alternative splicing.\cr\cr
 #'     For **IR**, Participation refers to the percentage of the measured intron
 #'       covered with reads. Only introns of samples with a depth of intron
-#'       coverage above 
-#'       `minDepth` are assessed, with introns with coverage percentage
+#'       coverage (intron depth) above 
+#'       `minDepth` are assessed, where introns with coverage percentage
 #'       below `minimum` are filtered out.\cr\cr
-#'     For **Alternative Splicing**, Participation refers to the percentage of 
-#'       all splicing events observed across the genomic region that is 
+#'     For **non-IR ASEs**, Participation refers to the percentage of 
+#'       all splicing events observed across the genomic region 
+#'       (SpliceOver metric) that is 
 #'       compatible with either the included or excluded event. This prevents 
 #'       SpliceWiz from doing differential analysis between two minor isoforms. 
 #'       Instead of IntronDepth, in AS events SpliceWiz considers events where 
-#'       the spliced reads from both exonic regions exceed `minDepth`.
-#'       Then, events with a splicing coverage below `minimum`
+#'       the SpliceOver metric exceed `minDepth`.
+#'       Then, events with a SpliceOver metric below `minimum`
 #'       are excluded. \cr\cr
 #'       We recommend testing IR events for > 70% coverage and AS
 #'       events for > 40% coverage as given in the default filters which can be
@@ -219,9 +246,9 @@ setClass("NxtSE",
 #'       events to represent at least 1/(2^2) = 1/4 of the sum of upstream
 #'       and downstream event. If `maximum = 3`, then each junction must be at
 #'       least 1/8 of total, etc.
-#'       This is considered for each isoform of each event, as long as the
-#'       total counts belonging to the considered isoform is above 
-#'       `minDepth`.\cr\cr
+#'       This is considered for each isoform of each event, and is NOT tested
+#'       when total (upstream+downstream) counts belonging to each isoform is
+#'       below `minDepth`.\cr\cr
 #'     IR-events are also checked. For IR events, the upstream and downstream
 #'     exon-intron spanning reads must comprise a reasonable proportion of total
 #'     exon-intron spanning reads.

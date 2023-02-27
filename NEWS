@@ -1,3 +1,35 @@
+Changes in version 1.1.6 (2023-02-24)
++ Gene ontology analysis is available! This is implemented via a wrapper to
+  fgsea's fora() function (over-representation analysis)
++ plotCoverage improved - now exons are plotted at higher resolution, and can
+  be plotted in isolation (i.e., by removing intronic regions) using static 
+  plots (via as_ggplot_cov()). Further plotCoverage improvements:
+  + better hover-info for plotly-based events
+  + unstranded coverage now displays unstranded junction counts
+  + fixed display of novel transcripts to only display those that are supported
+    by junction counts in the display data. All annotated transcripts are still
+    shown
+  + other miscellaneous bugfixes
++ collateData's output is improved. Temporary output files are removed, the
+  reference is compressed, allowing for lower storage footprint. This
+  facilitates file transfer among collaborators. Additionally, COV files can be
+  copied into the NxtSE folder for file-transfer purposes
++ Novel splicing - (optionally) tandem junctions can now be extrapolated from
+  the data. Given known exons and observed junctions, "putative tandem junctions"
+  are included among observed tandem junctions, during novel splicing event
+  generation. This allows for better identification, especially for novel
+  casette exon skipping.
++ Introduced StrictAltSS filter - this removes A5SS/A3SS events for which the
+  two alternate splice sites are separated by an observed intron.
++ Integrated GO analysis into GUI. Heatmaps and event lists in COV can now be
+  subsetted by top gene ontology categories. GO analysis must first be performed
+  prior to this option being available.
++ Incompatibilities with prior versions:
+  + buildRef in 1.1.6 now generates gene ontology annotation.
+  + collateData output is incompatible with prior versions
+  + processBAM output remains largely unchanged compared with 1.1.5
+  + NxtSE objects are incompatible with that of prior versions
+
 Changes in version 1.1.5 (2022-12-20)
 + Fix vignettes not building
 

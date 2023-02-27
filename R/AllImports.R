@@ -3,9 +3,10 @@
 #' @import ompBAM
 #' @importFrom methods as is coerce callNextMethod new validObject
 #' @importFrom parallel detectCores
+#' @importFrom scales label_number cut_si
 #' @importFrom stats as.formula model.matrix qt runif na.omit prcomp aggregate
 #' @importFrom utils download.file packageVersion getFromNamespace
-#' @importFrom utils setTxtProgressBar txtProgressBar
+#' @importFrom utils setTxtProgressBar txtProgressBar head
 #' @importFrom tools R_user_dir
 #' @importFrom magrittr %>%
 #' @importFrom R.utils gzip
@@ -13,7 +14,7 @@
 #' @import data.table
 #' @importFrom fst read.fst write.fst threads_fst
 #' @import ggplot2
-#' @importFrom AnnotationHub AnnotationHub cache
+#' @importFrom AnnotationHub AnnotationHub cache query
 #' @importFrom BiocFileCache BiocFileCache bfcrpath bfcquery
 #' @importFrom BiocGenerics start end width
 #' @importFrom BiocGenerics nrow ncol rbind cbind
@@ -31,19 +32,19 @@
 #' @importFrom GenomeInfoDb genomeStyles
 #' @importFrom GenomicRanges GRanges reduce findOverlaps 
 #' @importFrom GenomicRanges makeGRangesFromDataFrame 
-#' @importFrom GenomicRanges makeGRangesListFromDataFrame mcols split strand 
-#' @importFrom GenomicRanges flank setdiff seqnames psetdiff disjoin mcols<- 
+#' @importFrom GenomicRanges makeGRangesListFromDataFrame split strand 
+#' @importFrom GenomicRanges flank setdiff seqnames psetdiff disjoin
 #' @importFrom GenomicRanges strand<- seqnames<-
 #' @importFrom HDF5Array HDF5Array writeHDF5Array h5writeDimnames 
 #' @importFrom IRanges IRanges Views RleList
 #' @importFrom progress progress_bar
-#' @importFrom pheatmap pheatmap
+#' @importFrom patchwork area plot_layout wrap_plots
 #' @importFrom plotly config layout plotlyOutput event_data ggplotly 
 #' @importFrom plotly plotlyProxy plotlyProxyInvoke renderPlotly subplot 
-#' @importFrom plotly highlight orca
+#' @importFrom plotly highlight orca toWebGL
 #' @importFrom rhdf5 h5createFile h5createDataset h5delete h5write h5createGroup
 #' @importFrom rtracklayer import export TwoBitFile track
-#' @importFrom S4Vectors mcols metadata Rle metadata<- SimpleList 
+#' @importFrom S4Vectors mcols mcols<- metadata Rle metadata<- SimpleList 
 #' @importFrom S4Vectors from to setValidity2 DataFrame
 #' @importFrom S4Vectors bindCOLS bindROWS getListElement setListElement
 #' @importFrom SummarizedExperiment SummarizedExperiment 
@@ -63,7 +64,7 @@
 #' @importFrom shinyWidgets sendSweetAlert ask_confirmation
 #' @importFrom rhandsontable rhandsontable hot_to_r hot_col
 #' @importFrom rhandsontable renderRHandsontable rHandsontableOutput
-#' @importFrom stats runif na.omit prcomp
+#' @importFrom stats runif na.omit prcomp complete.cases p.adjust
 #' @importFrom DT datatable selectRows dataTableProxy  
 #' @importFrom grDevices colorRampPalette
 #' @importFrom heatmaply heatmaply

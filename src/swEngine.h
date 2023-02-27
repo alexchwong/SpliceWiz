@@ -99,7 +99,7 @@ class swEngine {
       std::vector<std::string> &bam_file, 
       std::vector<std::string> &s_output_txt, 
       std::vector<std::string> &s_output_cov,
-      bool const verbose,
+      bool const verbose, bool const skipCOV = false,
       bool const multithreadedRead = false
     );
 

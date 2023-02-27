@@ -130,6 +130,19 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
             })
 
             settings_newref$ui_newref_genome_type <- input$newref_genome_type
+            if(input$newref_genome_type %in% c("hg38", "hg19")) {
+                updateSelectInput(session = session, 
+                    inputId = "newref_species_GO", 
+                    choices = c("(none)", "Homo sapiens", "Mus musculus"),
+                    selected = "Homo sapiens"
+                )            
+            } else if(input$newref_genome_type %in% c("mm10", "mm9")) {
+                updateSelectInput(session = session, 
+                    inputId = "newref_species_GO", 
+                    choices = c("(none)", "Homo sapiens", "Mus musculus"),
+                    selected = "Mus musculus"
+                )   
+            }
         })
 
         # This block runs when the tab is refreshed
@@ -200,6 +213,11 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
             )
             output$txt_gtf <- renderText(settings_newref$newref_gtf)
         })
+
+        observeEvent(input$newref_species_GO, {
+            req(input$newref_species_GO)
+            settings_newref$newref_speciesGO <- input$newref_species_GO
+        })
         
         # Click Build Reference
         observeEvent(input$buildRef, {
@@ -210,7 +228,8 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                 genome_type     = input$newref_genome_type, 
                 nonPolyARef     = settings_newref$newref_NPA, 
                 MappabilityRef  = settings_newref$newref_mappa,
-                BlacklistRef    = settings_newref$newref_bl
+                BlacklistRef    = settings_newref$newref_bl,
+                ontologySpecies = settings_newref$newref_speciesGO
             )
 
             args <- Filter(is_valid, args)
@@ -222,23 +241,24 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
                 output$refStatus <- renderText("Gene annotations not provided")
             } else {        
                 # Copy MappabilityRef into target directory
-                if(
-                        "MappabilityRef" %in% names(args) && 
-                        file.exists(args$MappabilityRef)
-                ) {
-                    mappa_base <- basename(args$MappabilityRef)
-                    new_mappa_path <- file.path(args$reference_path, 
-                        "Mappability")
-                    new_mappa_file <- file.path(new_mappa_path, mappa_base)
+                # if(
+                        # "MappabilityRef" %in% names(args) && 
+                        # file.exists(args$MappabilityRef)
+                # ) {
+                    # mappa_base <- basename(args$MappabilityRef)
+                    # new_mappa_path <- file.path(args$reference_path, 
+                        # "Mappability")
+                    # new_mappa_file <- file.path(new_mappa_path, mappa_base)
                     
-                    if(!dir.exists(new_mappa_path)) dir.create(new_mappa_path)
+                    # if(!dir.exists(new_mappa_path)) dir.create(new_mappa_path)
                     
-                    if(dir.exists(new_mappa_path))
-                        file.copy(args$MappabilityRef, new_mappa_file)
+                    # if(dir.exists(new_mappa_path))
+                        # file.copy(args$MappabilityRef, new_mappa_file, 
+                            # overwrite = TRUE)
                     
-                    if(file.exists(new_mappa_file)) 
-                        args$MappabilityRef <- new_mappa_file
-                }
+                    # if(file.exists(new_mappa_file)) 
+                        # args$MappabilityRef <- new_mappa_file
+                # }
                 args$lowMemoryMode <- get_memmode_reactive()
                 withProgress(message = 'Building Reference', value = 0, {
                     do.call(buildRef, args)

@@ -9,12 +9,12 @@
 #'   RNAseq `TRUE` or unstranded protocol `FALSE`
 #' @return A data frame containing the relevant info. See details
 #' @examples
-#' ref_path <- file.path(tempdir(), "Reference")
-#'
+#' ref_path <- file.path(tempdir(), "Reference_withGO")
 #' buildRef(
 #'     reference_path = ref_path,
 #'     fasta = chrZ_genome(),
-#'     gtf = chrZ_gtf()
+#'     gtf = chrZ_gtf(),
+#'     ontologySpecies = "Homo sapiens"
 #' )
 #'
 #' df <- viewASE(ref_path)
@@ -32,6 +32,8 @@
 #' df <- viewProteins(ref_path)
 #'
 #' df <- viewTranscripts(ref_path)
+#'
+#' df <- viewGO(ref_path)
 #'
 #' @seealso [Build-Reference-methods]
 #' @name View-Reference-methods
@@ -66,6 +68,10 @@ viewASE <- function(reference_path) {
         "Inc_transcript_id", "Inc_transcript_name",
         "Exc_transcript_id", "Exc_transcript_name"    
     )
+    
+    Genes <- viewGenes(reference_path)
+    tmp$Inc_gene_name <- Genes$gene_name[match(tmp$Inc_gene_id, Genes$gene_id)]
+    tmp$Exc_gene_name <- Genes$gene_name[match(tmp$Exc_gene_id, Genes$gene_id)]
     
     return(tmp)
 }
@@ -212,6 +218,33 @@ viewGenes <- function(reference_path) {
     )
     
     tmp <- tmp[, colnames(tmp)[!colnames(tmp) %in% excl_columns]]
+    return(tmp)
+}
+
+#' @describeIn View-Reference-methods Outputs information for every gene 
+#' from the annotation.
+#' @export
+viewGO <- function(reference_path) {
+    .validate_reference(reference_path)
+    
+    targetFile <- file.path(reference_path, "fst", "Ontology.fst")
+    
+    if(!file.exists(targetFile))
+        .log(paste(targetFile, "does not exist!"))
+        
+    tmp <- read.fst(targetFile)
+    
+    if("ensembl_id" %in% colnames(tmp)) {
+        idName <- "ensembl_id"
+    } else {
+        # hard code for now; TODO - test all available species on aHub
+        idName <- colnames(tmp)[4]
+    }
+
+    Genes <- viewGenes(reference_path)
+    tmp$gene_name <- Genes$gene_name[match(tmp[, idName], Genes$gene_id)]
+    # tmp <- tmp[!is.na(tmp$gene_name),]
+    
     return(tmp)
 }
 

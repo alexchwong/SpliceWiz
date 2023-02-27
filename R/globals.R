@@ -2,11 +2,11 @@
 
 globalVariables(c(":=", "."))
 
-ASE_version <- "1.1.3"
+ASE_version <- "1.1.6"
 
-collateData_version <- "1.1.3"
+collateData_version <- "1.1.6"
 
-buildRef_version <- "1.1.3"
+buildRef_version <- "1.1.6"
 
 is.nan.data.frame <- function(x) do.call(cbind, lapply(x, is.nan))
 
@@ -40,7 +40,7 @@ is_valid <- function(x) {
         stop(msg, call. = FALSE)
     } else if (type == "warning") {
         warning(msg, call. = FALSE)
-    } else {
+    } else if (type == "message") {
         message(msg, ...)
     }
 }
@@ -157,16 +157,17 @@ is_valid <- function(x) {
 
 .make_path_relative <- function(files, relative_to) {
     if (is.null(files)) return(files)
-    if (!all(file.exists(files))) .log("Some files do not exist")
-    if (!all(file.exists(relative_to))) .log("Some directories do not exist")
+    # if (!all(file.exists(files))) .log("Some files do not exist")
+    # if (!all(file.exists(relative_to))) .log("Some directories do not exist")
     if (length(relative_to) == 1) relative_to <- rep(relative_to, length(files))
 
     if (Sys.info()["sysname"] == "Windows") {
-        files <- normalizePath(files, winslash = "/")
-        relative_to <- normalizePath(relative_to, winslash = "/")
+        files <- suppressWarnings(normalizePath(files, winslash = "/"))
+        relative_to <- suppressWarnings(
+            normalizePath(relative_to, winslash = "/"))
     } else {
-        files <- normalizePath(files)
-        relative_to <- normalizePath(relative_to)
+        files <- suppressWarnings(normalizePath(files))
+        relative_to <- suppressWarnings(normalizePath(relative_to))
     }
     out <- c()
     for (i in seq_len(length(files))) {

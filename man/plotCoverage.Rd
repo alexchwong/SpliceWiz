@@ -22,11 +22,14 @@ plotCoverage(
   condition,
   ribbon_mode = c("sd", "ci", "sem", "none"),
   selected_transcripts,
+  reverseGenomeCoords = FALSE,
   plotJunctions = FALSE,
+  junctionThreshold = 0.01,
   plot_key_isoforms = FALSE,
   condense_tracks = FALSE,
   stack_tracks = FALSE,
   t_test = FALSE,
+  includeCalculations = FALSE,
   norm_event
 )
 
@@ -41,10 +44,11 @@ plotGenome(
   zoom_factor,
   bases_flanking = 100,
   selected_transcripts,
+  reverseGenomeCoords = FALSE,
   condense_tracks = FALSE
 )
 
-as_ggplot_cov(p_obj)
+as_ggplot_cov(p_obj, exonRanges = NULL)
 }
 \arguments{
 \item{se}{A \linkS4class{NxtSE} object, created by \link{makeSE}.
@@ -103,8 +107,18 @@ or transcript names of transcripts
 to be displayed on the gene annotation track. Useful to remove minor
 isoforms that are not relevant to the samples being displayed.}
 
+\item{reverseGenomeCoords}{(default \code{FALSE}) Whether to reverse the genomic
+coordinates - helpful for intuitive plotting of negative-strand genes}
+
 \item{plotJunctions}{(default \code{FALSE}) If \code{TRUE}, sashimi plot junction arcs
 are plotted. Currently only implemented for plots of individual samples.}
+
+\item{junctionThreshold}{(default \code{0.01}) The threshold expression of
+junction reads below which junction arcs will be omitted. This removes
+cluttering of junction arcs from lowly-expressed (rare) junctions.
+For individual
+tracks, this is the fraction of coverage height. For by-condition
+tracks, this is a PSI threshold.}
 
 \item{plot_key_isoforms}{(default \code{FALSE}) If \code{TRUE}, only
 transcripts involved in the selected \code{Event} or pair of \code{Event}s will be
@@ -119,6 +133,11 @@ in a different colour on the same track. Ignored if \code{condition} is not set.
 
 \item{t_test}{(default \code{FALSE}) Whether to perform a pair-wise T-test.
 Only used if there are TWO condition tracks.}
+
+\item{includeCalculations}{(default \code{FALSE}) Whether per-coordinate coverage
+data should be returned as output. If \code{TRUE}, the final returned list
+includes a third object \code{"calc"} which is a data frame containing
+coverage data.}
 
 \item{norm_event}{Whether to normalise by an event different to that given
 in "Event". The difference between this and Event is that the genomic
@@ -135,17 +154,34 @@ is required if \code{Event} is not set and \code{condition} is set.}
 \item{p_obj}{In \code{as_ggplot_cov}, takes the output of \code{plotCoverage} and
 plots all tracks in a static plot using \code{ggarrange} function of the
 \code{egg} package. Requires \code{egg} package to be installed.}
+
+\item{exonRanges}{(default \code{NULL}) A GRanges object containing one or more
+GRanges. \code{as_ggplot_cov()} will generate coverage for one or more exons
+whose genomic regions are specified by the given ranges.}
 }
 \value{
-A list containing two objects (\code{final_plot} and \code{ggplot}).
-\code{final_plot} is the plotly object.
-\code{ggplot} is a list of ggplot tracks, with:
+For \code{plotCoverage}, a list containing the following objects:
+\itemize{
+\item \code{ggplot} - a list of 6 static ggplots, containing
 \itemize{
 \item \code{ggplot[[n]]} is the nth track (where n = 1, 2, 3 or 4).
 \item \code{ggplot[[5]]} contains the T-test track if one is generated.
 \item \code{ggplot[[6]]} always contains the genome track.
+}
+\item \code{final_plot} - the plotly object of the final rendered plot
+\item \code{exonRanges} - A \code{GRanges} object containing exon windows
+\item \code{yrange_list} - The maximum coverage values of each plotted track.
+For internal use only
+\item \code{plotViewStart},\code{plotViewStart} - The genomic range being plotted.
+For internal use only
 A static plot can be generated using the \code{as_ggplot_cov} function.
 }
+
+For \code{plotGenome}, a list containing \code{final_plot} and \code{ggplot}, the latter
+as a final ggplot object (not a list of ggplot objects).
+
+For \code{as_ggplot_cov}, a \code{patchwork} plot containing the final assembled static
+plot is generated.
 }
 \description{
 Generate plotly / ggplot RNA-seq genome and coverage plots from command line.
@@ -202,11 +238,11 @@ intervals are shown.
 genomic region, or belonging to a specified gene
 
 \item \code{as_ggplot_cov()}: Coerce the \code{plotCoverage()} output as a vertically
-stacked ggplot, using egg::ggarrange
+stacked ggplot, using patchwork package
 
 }}
 \examples{
-se <- SpliceWiz_example_NxtSE()
+se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
 
 # Assign annotation of the experimental conditions
 colData(se)$treatment <- rep(c("A", "B"), each = 3)
@@ -240,6 +276,15 @@ p <- plotCoverage(
     se = se,
     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
     tracks = c("A", "B"), condition = "treatment", plotJunctions = TRUE
+)
+as_ggplot_cov(p)
+
+# As above, but stack all traces into the same track
+# - NB: plotJunctions is disabled when `stack_tracks = TRUE`
+p <- plotCoverage(
+    se = se,
+    Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+    tracks = c("A", "B"), condition = "treatment", stack_tracks = TRUE
 )
 as_ggplot_cov(p)
 

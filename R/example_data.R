@@ -73,6 +73,7 @@ SpliceWiz_example_NxtSE <- function(novelSplicing = FALSE) {
             "example_NxtSE_novel.Rds", package = "SpliceWiz"))    
     }
     covs <- findSamples(system.file("extdata", package = "SpliceWiz"), ".cov")
+    se@metadata[["sourcePath"]] <- dirname(covs$path[1])
     covfile(se) <- covs$path
     se
 }

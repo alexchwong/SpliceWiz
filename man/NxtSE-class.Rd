@@ -30,10 +30,14 @@
 \alias{sampleQC<-,NxtSE-method}
 \alias{ref}
 \alias{ref,NxtSE-method}
+\alias{sourcePath}
+\alias{sourcePath,NxtSE-method}
 \alias{junc_PSI}
 \alias{junc_PSI,NxtSE-method}
 \alias{junc_counts}
 \alias{junc_counts,NxtSE-method}
+\alias{junc_counts_uns}
+\alias{junc_counts_uns,NxtSE-method}
 \alias{junc_gr}
 \alias{junc_gr,NxtSE-method}
 \alias{realize_NxtSE}
@@ -60,11 +64,15 @@ NxtSE(...)
 
 \S4method{sampleQC}{NxtSE}(x, withDimnames = TRUE, ...)
 
+\S4method{sourcePath}{NxtSE}(x, withDimnames = TRUE, ...)
+
 \S4method{ref}{NxtSE}(x, withDimnames = TRUE, ...)
 
 \S4method{junc_PSI}{NxtSE}(x, withDimnames = TRUE, ...)
 
 \S4method{junc_counts}{NxtSE}(x, withDimnames = TRUE, ...)
+
+\S4method{junc_counts_uns}{NxtSE}(x, withDimnames = TRUE, ...)
 
 \S4method{junc_gr}{NxtSE}(x, withDimnames = TRUE, ...)
 
@@ -143,6 +151,9 @@ the paths to the corresponding COV files
 \item \code{sampleQC(NxtSE)}: Gets a data frame with the QC parameters
 of the samples
 
+\item \code{sourcePath(NxtSE)}: Retrieves the directory path containing the source
+data for this NxtSE object.
+
 \item \code{ref(NxtSE)}: Retrieves a list of annotation data associated
 with this NxtSE object; primarily used in plotCoverage()
 
@@ -151,6 +162,9 @@ primarily used in plotCoverage()
 
 \item \code{junc_counts(NxtSE)}: Getter for junction counts DelayedMatrix;
 primarily used in plotCoverage()
+
+\item \code{junc_counts_uns(NxtSE)}: Getter for (unstranded) junction counts
+DelayedMatrix; primarily used in plotCoverage()
 
 \item \code{junc_gr(NxtSE)}: Getter for junction GenomicRanges coordinates;
 primarily used in plotCoverage()
@@ -214,11 +228,32 @@ se_raw <- as(se, "SummarizedExperiment")
 se_NxtSE <- as(se_raw, "NxtSE")
 identical(se, se_NxtSE) # Returns TRUE
 
+# Get directory path of NxtSE (i.e., collate_path)
+sourcePath(se)
+
+# Get Main Assay Counts
+assay(se, "Included") # Junction (or IR depth) counts for included isoform
+assay(se, "Excluded") # Junction (or IR depth) counts for excluded isoform
+
+# Get Auxiliary Counts (for filter use only)
+assay(se, "Coverage") # Participation ratio (intron coverage for IR/RI)
+assay(se, "minDepth") # SpliceOver junction counts (Intron Depths for IR/RI)
+assay(se, "Depth")    # Sum of intron depth and SpliceOver (used for
+                      # coverage normalization factor
+
 # Get Junction reads of SE / MXE and spans-reads of IR events
-up_inc(se)
-down_inc(se)
-up_exc(se)
-down_exc(se)
+up_inc(se)   # Upstream included junction counts (IR/MXE/SE/RI)
+down_inc(se) # Downstream included junction counts (IR/MXE/SE/RI)
+up_exc(se)   # Upstream excluded junction counts (MXE only)
+down_exc(se) # Downstream excluded junction counts (MXE only)
+
+# Get Junction counts
+junc_counts(se) # stranded (if RNA-seq is auto-detected as stranded)
+junc_counts_uns(se) # unstranded (sum of junction reads from both strand)
+junc_PSI(se) # PSI of junction (as proportion of SpliceOver metric)
+
+# Get Junction GRanges object
+junc_gr(se)
 
 # Get list of available coverage files
 covfile(se)

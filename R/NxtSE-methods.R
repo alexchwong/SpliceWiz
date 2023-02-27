@@ -45,15 +45,21 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
         return(se)
     }
     out <- new("NxtSE", se)
+
     up_inc(out) <- se@metadata[["Up_Inc"]]
     down_inc(out) <- se@metadata[["Down_Inc"]]
     up_exc(out) <- se@metadata[["Up_Exc"]]
     down_exc(out) <- se@metadata[["Down_Exc"]]
-    covfile(out) <- se@metadata[["cov_file"]]
-    sampleQC(out) <- se@metadata[["sampleQC"]]
+
+    sourcePath(out) <- se@metadata[["sourcePath"]]
     ref(out) <- se@metadata[["ref"]]
+
+    out@metadata[["cov_file"]] <- se@metadata[["cov_file"]]
+    sampleQC(out) <- se@metadata[["sampleQC"]]
+
     junc_PSI(out) <- se@metadata[["junc_PSI"]]
     junc_counts(out) <- se@metadata[["junc_counts"]]
+    junc_counts_uns(out) <- se@metadata[["junc_counts_uns"]] 
     junc_gr(out) <- se@metadata[["junc_gr"]]
 
     # Restore validity
@@ -124,22 +130,30 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
 # Will validate if all files are COV, or if all are empty
 .valid.NxtSE.meta_cov <- function(x) {
     cov_files <- metadata(x)[["cov_file"]]
-    if (!all(file.exists(cov_files) | all(cov_files == ""))) {
+    suppressWarnings({
+        normcovfiles <- normalizePath(
+            file.path(metadata(x)[["sourcePath"]], cov_files)
+        )    
+    })
+
+    if(all(cov_files == "")) {
+        # NxtSE object with zero cov files, just ignore it
+    } else if (!all(file.exists(normcovfiles))) {
+        examples <- head(normcovfiles[!file.exists(normcovfiles)], 3)
         txt <- paste(
-            "Some coverage files are not found:",
-            paste(cov_files[!file.exists(cov_files)], collapse = " ")
+            "Some coverage files are not found, for example:",
+            paste(examples, collapse = " ")
         )
         return(txt)
-    }
-    if (!(isCOV(cov_files) | all(cov_files == ""))) {
+    } else if (!(isCOV(normcovfiles))) {
         txt <- "Some coverage files are not validated"
         return(txt)
     }
-    if (length(cov_files) != ncol(x)) {
+    if (length(metadata(x)[["cov_file"]]) != ncol(x)) {
         txt <- "cov_files must be of same length as number of samples"
         return(txt)
     }
-    if (!identical(names(cov_files), colnames(x))) {
+    if (!identical(names(metadata(x)[["cov_file"]]), colnames(x))) {
         txt <- paste("names of cov_files vector must be identical to",
             "colnames of NxtSE object")
         return(txt)
@@ -302,9 +316,11 @@ setMethod("down_exc", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
 #' @export
 setMethod("covfile", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     if (withDimnames) {
-        vector_withDimnames(x, x@metadata[["cov_file"]])
+        vector_withDimnames(x, 
+            normalizePath(file.path(sourcePath(x), x@metadata[["cov_file"]]))
+        )
     } else {
-        x@metadata[["cov_file"]]
+        normalizePath(file.path(sourcePath(x), x@metadata[["cov_file"]]))
     }
 })
 
@@ -317,6 +333,13 @@ setMethod("sampleQC", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     } else {
         x@metadata[["sampleQC"]]
     }
+})
+
+#' @describeIn NxtSE-class Retrieves the directory path containing the source
+#'   data for this NxtSE object.
+#' @export
+setMethod("sourcePath", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
+    x@metadata[["sourcePath"]]
 })
 
 #' @describeIn NxtSE-class Retrieves a list of annotation data associated
@@ -340,6 +363,12 @@ setMethod("junc_counts", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     x@metadata[["junc_counts"]]
 })
 
+#' @describeIn NxtSE-class Getter for (unstranded) junction counts 
+#' DelayedMatrix; primarily used in plotCoverage()
+#' @export
+setMethod("junc_counts_uns", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
+    x@metadata[["junc_counts_uns"]]
+})
 #' @describeIn NxtSE-class Getter for junction GenomicRanges coordinates; 
 #' primarily used in plotCoverage()
 #' @export
@@ -367,6 +396,7 @@ setMethod("realize_NxtSE", c("NxtSE"), function(x, includeJunctions = FALSE,
     if(includeJunctions) {
         junc_PSI(x) <- as.matrix(x@metadata[["junc_PSI"]])
         junc_counts(x) <- as.matrix(x@metadata[["junc_counts"]])    
+        junc_counts_uns(x) <- as.matrix(x@metadata[["junc_counts_uns"]])  
     }
     return(x)
 })
@@ -435,11 +465,21 @@ setReplaceMethod("down_exc", c("NxtSE"), function(x, withDimnames = TRUE, value)
 #' @export
 setReplaceMethod("covfile", c("NxtSE"), function(x, withDimnames = TRUE, value)
 {
-    if (withDimnames) {
-        value <- vector_withDimnames(x, value)
+    # Presume given files are all "", or all exist
+    if(all(value == "")) {
+        x@metadata[["cov_file"]] <- vector_withDimnames(x, value)
+        return(x)
+    } else if(any(!file.exists(value))) {
+        .log("Some files do not exist, unable to set COV files")
+        return(x)
+    } else {
+        if (withDimnames) {
+            value <- vector_withDimnames(x, .make_path_relative(value, sourcePath(x)))
+        }
+        x@metadata[["cov_file"]] <- value
+        x
     }
-    x@metadata[["cov_file"]] <- value
-    x
+
 })
 
 #' @describeIn NxtSE-class Sets the values in the data frame containing
@@ -451,6 +491,12 @@ setReplaceMethod("sampleQC", c("NxtSE"), function(x, withDimnames = TRUE, value)
         value <- sampleQC_withDimnames(x, value)
     }
     x@metadata[["sampleQC"]] <- value
+    x
+})
+
+setReplaceMethod("sourcePath", c("NxtSE"), function(x, value)
+{
+    x@metadata[["sourcePath"]] <- value
     x
 })
 
@@ -472,6 +518,11 @@ setReplaceMethod("junc_counts", c("NxtSE"), function(x, value)
     x
 })
 
+setReplaceMethod("junc_counts_uns", c("NxtSE"), function(x, value)
+{
+    x@metadata[["junc_counts_uns"]] <- value
+    x
+})
 setReplaceMethod("junc_gr", c("NxtSE"), function(x, value)
 {
     x@metadata[["junc_gr"]] <- value
@@ -518,10 +569,14 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
             up_exc(x, FALSE)[events_Exc, samples, drop = dontDrop]
         down_exc(x, FALSE) <-
             down_exc(x, FALSE)[events_Exc, samples, drop = dontDrop]
-        covfile(x, FALSE) <- covfile(x, FALSE)[samples]
+        # covfile(x, FALSE) <- covfile(x, FALSE)[samples]
+        metadata(x)[["cov_file"]] <- 
+            metadata(x)[["cov_file"]][samples]
         sampleQC(x, FALSE) <- sampleQC(x, FALSE)[samples, , drop = FALSE]
         junc_PSI(x, FALSE) <- junc_PSI(x, FALSE)[, samples, drop = FALSE]
         junc_counts(x, FALSE) <- junc_counts(x, FALSE)[, samples, drop = FALSE]
+        junc_counts_uns(x, FALSE) <- 
+            junc_counts_uns(x, FALSE)[, samples, drop = FALSE]
     } else if (!missing(i)) {
         events <- rownames(x)[ii]
         events_Inc <- events[events %in% rownames(metadata(x)[["Up_Inc"]])]
@@ -545,10 +600,14 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
         down_inc(x, FALSE) <- down_inc(x, FALSE)[, samples, drop = dontDrop]
         up_exc(x, FALSE) <- up_exc(x, FALSE)[, samples, drop = dontDrop]
         down_exc(x, FALSE) <- down_exc(x, FALSE)[, samples, drop = dontDrop]
-        covfile(x, FALSE) <- covfile(x, FALSE)[samples]
+        # covfile(x, FALSE) <- covfile(x, FALSE)[samples]
+        metadata(x)[["cov_file"]] <- 
+            metadata(x)[["cov_file"]][samples]
         sampleQC(x, FALSE) <- sampleQC(x, FALSE)[samples, , drop = FALSE]
         junc_PSI(x, FALSE) <- junc_PSI(x, FALSE)[, samples, drop = FALSE]
         junc_counts(x, FALSE) <- junc_counts(x, FALSE)[, samples, drop = FALSE]
+        junc_counts_uns(x, FALSE) <- 
+            junc_counts_uns(x, FALSE)[, samples, drop = FALSE]
     }
     callNextMethod()
 
@@ -572,9 +631,12 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         up_exc(x, FALSE)[events_Exc, samples] <- up_exc(value, FALSE)
         down_exc(x, FALSE)[events_Exc, samples] <- down_exc(value, FALSE)
         covfile(x)[samples] <- covfile(value)
+        metadata(x)[["cov_file"]] <- 
+            metadata(x)[["cov_file"]][samples]
         sampleQC(x)[samples, ] <- sampleQC(value)
         junc_PSI(x, FALSE)[, samples] <- junc_PSI(value)
         junc_counts(x, FALSE)[, samples] <- junc_counts(value)
+        junc_counts_uns(x, FALSE)[, samples] <- junc_counts_uns(value)
     } else if (!missing(i)) {
         events <- rownames(x)[i]
         events_Inc <- events[events %in% rownames(metadata(x)[["Up_Inc"]])]
@@ -590,10 +652,12 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         down_inc(x, FALSE)[, samples] <- down_inc(value, FALSE)
         up_exc(x, FALSE)[, samples] <- up_exc(value, FALSE)
         down_exc(x, FALSE)[, samples] <- down_exc(value, FALSE)
-        covfile(x)[samples] <- covfile(value)
+        metadata(x)[["cov_file"]] <- 
+            metadata(x)[["cov_file"]][samples]
         sampleQC(x)[samples, ] <- sampleQC(value)
         junc_PSI(x, FALSE)[, samples] <- junc_PSI(value)
         junc_counts(x, FALSE)[, samples] <- junc_counts(value)
+        junc_counts_uns(x, FALSE)[, samples] <- junc_counts_uns(value)
     }
 
     callNextMethod()
@@ -614,6 +678,9 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
 
     metadata <- list()
     args <- list(...)
+
+    # Active cbinds
+    
     tryCatch({
         metadata$Up_Inc <- do.call(cbind, lapply(args, up_inc, 
             withDimnames = FALSE))
@@ -669,6 +736,18 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
+        metadata$junc_counts_uns <- do.call(cbind, lapply(args, junc_counts_uns, 
+            withDimnames = FALSE))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'junc_counts_uns' in 'cbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    
+    # c() concatenates
+    
+    tryCatch({
         metadata$cov_file <- do.call(c, lapply(args, covfile))
     }, error = function(err) {
         stop(
@@ -676,6 +755,9 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+    
+    # rbinds (samples as rows)
+    
     tryCatch({
         metadata$sampleQC <- do.call(rbind, lapply(args, sampleQC))
     }, error = function(err) {
@@ -684,30 +766,27 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+    
+    # Straight up copies
+    
     tryCatch({
         metadata$ref <- ref(args[[1]])
     }, error = function(err) {
         stop(
-            "failed to combine 'cov_file' in 'cbind(<",
+            "failed to combine 'ref' in 'cbind(<",
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
     tryCatch({
-        metadata$junc_PSI <- junc_PSI(args[[1]])
+        metadata$sourcePath <- sourcePath(args[[1]])
     }, error = function(err) {
         stop(
-            "failed to combine 'cov_file' in 'cbind(<",
+            "failed to combine 'sourcePath' in 'cbind(<",
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
-    tryCatch({
-        metadata$junc_counts <- junc_counts(args[[1]])
-    }, error = function(err) {
-        stop(
-            "failed to combine 'cov_file' in 'cbind(<",
-            class(args[[1]]), ">)':\n  ",
-            conditionMessage(err))
-    })
+
+    # cbind does not disturb rows, so this can be just copied over
     tryCatch({
         metadata$junc_gr <- junc_gr(args[[1]])
     }, error = function(err) {
@@ -731,6 +810,9 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
 
     metadata <- list()
     args <- list(...)
+    
+    # Active rbinds
+    
     tryCatch({
         metadata$Up_Inc <- do.call(rbind, lapply(args, up_inc, 
             withDimnames = FALSE))
@@ -767,6 +849,37 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+
+    tryCatch({
+        metadata$junc_PSI <- do.call(rbind, lapply(args, junc_PSI, 
+            withDimnames = FALSE))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'junc_PSI' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_counts <- do.call(rbind, lapply(args, junc_counts, 
+            withDimnames = FALSE))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'junc_counts' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_counts_uns <- do.call(rbind, lapply(args, junc_counts_uns, 
+            withDimnames = FALSE))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'junc_counts_uns' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+
+    # Straight up copies
+
     tryCatch({
         metadata$cov_file <- covfile(args[[1]])
     }, error = function(err) {
@@ -792,26 +905,21 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
     tryCatch({
-        metadata$junc_PSI <- junc_PSI(args[[1]])
+        metadata$sourcePath <- sourcePath(args[[1]])
     }, error = function(err) {
         stop(
-            "failed to combine 'cov_file' in 'cbind(<",
+            "failed to combine 'sourcePath' in 'rbind(<",
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+    
+    # c() concatenates
+    
     tryCatch({
-        metadata$junc_counts <- junc_counts(args[[1]])
+        metadata$junc_gr <- do.call(c, lapply(args, junc_gr))
     }, error = function(err) {
         stop(
-            "failed to combine 'cov_file' in 'cbind(<",
-            class(args[[1]]), ">)':\n  ",
-            conditionMessage(err))
-    })
-    tryCatch({
-        metadata$junc_gr <- junc_gr(args[[1]])
-    }, error = function(err) {
-        stop(
-            "failed to combine 'cov_file' in 'cbind(<",
+            "failed to combine 'junc_gr' in 'cbind(<",
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })    

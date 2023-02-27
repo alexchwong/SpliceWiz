@@ -91,10 +91,31 @@ setreactive_DE <- function() {
     )
 }
 
+setreactive_GO <- function() {
+    reactiveValues(
+        res = NULL,
+
+        # gene_ids that can optionally be saved to file by user
+        gene_ids = NULL,
+        univ_ids = NULL,
+
+        # Save GO results
+        filteredVolc = NULL,
+        
+        resGO = NULL,
+
+        final_plot = NULL
+    )
+}
+
 # Settings for Diag and Volcano
 setreactive_Diag <- function() {
     # NB same code as Volcano
     reactiveValues(
+        useDE = NULL,
+        
+        meanPSI = NULL,
+
         plot_ini = FALSE,
         plotly_click = NULL,
         final_plot = NULL,
@@ -106,6 +127,8 @@ setreactive_Diag <- function() {
 # Settings for Heatmap
 setreactive_Heat <- function() {
     reactiveValues(
+        useDE = NULL,
+        
         ggplot = NULL,
         final_plot = NULL
     )
@@ -114,6 +137,9 @@ setreactive_Heat <- function() {
 # Settings for Coverage plots
 setreactive_Cov <- function() {
     reactiveValues(
+        geneList = NULL,
+        useDE = NULL,
+        
         view_chr = "",
         view_start = "",
         view_end = "",

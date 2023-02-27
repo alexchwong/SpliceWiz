@@ -67,6 +67,7 @@ processBAM <- function(
         overwrite = FALSE,
         run_featureCounts = FALSE,
         verbose = FALSE,
+        skipCOVfiles = FALSE,
         multiRead = FALSE
 ) {
     # Check args
@@ -103,7 +104,8 @@ processBAM <- function(
             output_files = s_output[!already_exist],
             max_threads = n_threads, useOpenMP = useOpenMP,
             overwrite_SpliceWiz_Output = overwrite,
-            verbose = verbose, multiRead = multiRead
+            verbose = verbose, skipCOVfiles = skipCOVfiles,
+            multiRead = multiRead
         )
     } else {
         .log("processBAM has already been run on given BAM files", "message")
@@ -117,7 +119,7 @@ processBAM <- function(
     # Run featureCounts
     if (run_featureCounts) {
         .processBAM_run_featureCounts(
-            reference_path, s_output,
+            reference_path, output_path,
             bamfiles, sample_names, n_threads, overwrite
         )
     }
@@ -131,7 +133,7 @@ processBAM <- function(
         max_threads = max(parallel::detectCores(), 1),
         useOpenMP = TRUE,
         overwrite_SpliceWiz_Output = FALSE,
-        verbose = TRUE, multiRead = FALSE
+        verbose = TRUE, skipCOVfiles = FALSE, multiRead = FALSE
     ) {
     .validate_reference(reference_path) # Check valid SpliceWiz reference
     s_bam <- normalizePath(bamfiles) # Clean path name for C++
@@ -144,8 +146,11 @@ processBAM <- function(
     .log("Running SpliceWiz processBAM", "message")
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & useOpenMP) {
+        max_omp_threads <- Has_OpenMP()
+        if(max_omp_threads < n_threads) n_threads <- max_omp_threads
         SpliceWizMain_multi(
-            ref_file, s_bam, output_files, n_threads, verbose, multiRead
+            ref_file, s_bam, output_files, n_threads, verbose, 
+            skipCOVfiles, multiRead
         )
     } else {
         # Use BiocParallel
@@ -161,14 +166,14 @@ processBAM <- function(
             )
             BiocParallel::bplapply(selected_rows_subset,
                 function(i, s_bam, reference_file,
-                        output_files, verbose, overwrite) {
+                        output_files, verbose, overwrite, skipCOVfiles) {
                     .processBAM_run_single(s_bam[i], reference_file,
-                        output_files[i], verbose, overwrite)
+                        output_files[i], verbose, overwrite, skipCOVfiles)
                 },
                 s_bam = s_bam,
                 reference_file = ref_file,
                 output_files = output_files,
-                verbose = verbose,
+                verbose = verbose, skipCOVfiles = skipCOVfiles,
                 overwrite = overwrite_SpliceWiz_Output,
                 BPPARAM = BPPARAM_mod
             )
@@ -194,6 +199,8 @@ processBAM <- function(
     .log("Running BAM2COV", "message")
     n_threads <- floor(max_threads)
     if (Has_OpenMP() > 0 & useOpenMP) {
+        max_omp_threads <- Has_OpenMP()
+        if(max_omp_threads > n_threads) n_threads <- max_omp_threads
         # Simple FOR loop:
         for (i in seq_len(length(s_bam))) {
             .BAM2COV_run_single(s_bam[i], output_file_prefixes[i],
@@ -228,14 +235,14 @@ processBAM <- function(
 
 # Call C++ on a single sample. Used for BiocParallel
 .processBAM_run_single <- function(
-    bam, ref, out, verbose, overwrite
+    bam, ref, out, verbose, overwrite, skipCOVfiles = FALSE
 ) {
     file_gz <- paste0(out, ".txt.gz")
     file_cov <- paste0(out, ".cov")
     bam_short <- file.path(basename(dirname(bam)), basename(bam))
     if (overwrite ||
         !(file.exists(file_gz) | file.exists(file_cov))) {
-        ret <- SpliceWizMain(bam, ref, out, verbose, 1, FALSE)
+        ret <- SpliceWizMain(bam, ref, out, verbose, 1, skipCOVfiles, FALSE)
         # Check SpliceWiz returns all files successfully
         if (ret != 0) {
             .log(paste(
@@ -282,16 +289,146 @@ processBAM <- function(
 # Runs featureCounts on given BAM files, intended to be run after processBAM
 # as processBAM determines the strandedness and paired-ness of the experiment
 .processBAM_run_featureCounts <- function(
-        reference_path, output_files,
+        reference_path, output_path,
         s_bam, s_names, n_threads, overwrite
 ) {
     .check_package_installed("Rsubread", "2.4.0")
     gtf_file <- Get_GTF_file(reference_path)
 
+    expr <- findSpliceWizOutput(output_path)
+    if(nrow(expr) == 0) .log(paste(
+        "SpliceWiz output files missing from", output_path,
+        "- cannot run SpliceWiz's featureCounts wrapper"
+    ))
+    output_files <- expr$sw_file[match(s_names, expr$sample)]
+
+
+    # Check which have already been run, do not run if overwrite = FALSE
+    outfile <- file.path(output_path, "main.FC.Rds")
+    if(overwrite) {
+        need_to_do <- rep(TRUE, length(s_names))
+    } else {
+        samples_todo <-  .processBAM_fcfile_validate(outfile, s_names)
+        if(!is.null(samples_todo) && length(samples_todo) == 0) {
+            .log(paste(
+                "featureCounts already run on all samples, output in",
+                outfile
+            ), "message")
+            return(0)
+        }
+        if(is.null(samples_todo)) samples_todo <- s_names
+        need_to_do <- s_names %in% samples_todo
+    }
+
     # determine paired-ness, strandedness, assume all BAMS are the same
+    output_files <- expr$sw_file[match(samples_todo, expr$sample)]
+    
+    strand <- c()
+    paired <- c()
+    for(i in seq_len(length(output_files))) {
+        ret <- .processBAM_getStrand(output_files[i])
+        strand <- c(strand, ret$strand)
+        paired <- c(paired, ret$paired)
+    }
+    if(length(unique(strand)) > 1) {    
+        .log(paste(
+            "Samples with different stranded-ness found:",
+            paste(unique(strand), collapse = ", "),
+            ", running featureCounts using un-stranded mode."
+        ), "warning")
+        strandUse <- 0
+    } else {
+        strandUse <- unique(strand)
+    }
+    if(length(unique(paired)) > 1) {    
+        .log(paste(
+            "Samples with both single / paired reads",
+            paste(unique(paired), collapse = ", "),
+            ", running featureCounts using single-end reads."
+        ), "warning")
+        pairedUse <- FALSE
+    } else {
+        pairedUse <- unique(paired)
+    }
+    
+    # Run FeatureCounts in bulk
+    res <- Rsubread::featureCounts(
+        s_bam[need_to_do],
+        annot.ext = gtf_file,
+        isGTFAnnotationFile = TRUE,
+        strandSpecific = strandUse,
+        isPairedEnd = pairedUse,
+        requireBothEndsMapped = pairedUse,
+        nthreads = n_threads
+    )
+    res$targets <- s_names[need_to_do]
+    colnames(res$counts) <- s_names[need_to_do]
+    colnames(res$stat)[-1] <- s_names[need_to_do]
+    columns <- c("counts", "annotation", "targets", "stat")
+    if (!all(columns %in% names(res))) 
+        .log("Error encountered when running featureCounts")
+
+    # Append to existing main.FC.Rds if exists, overwriting where necessary:
+    validFC <- .processBAM_fcfile_validate(outfile, s_names[need_to_do])
+    if(!is.null(validFC)) {
+        # Valid prior output that needs to be overwritten
+        res.old <- readRDS(outfile)
+        if (
+            identical(res.old$annotation, res$annotation) &
+            identical(res.old$stat$Status, res$stat$Status)
+        ) {
+            if(overwrite) {
+                # Remove samples in old output that have been re-run
+                removeSamples <- intersect(res.old$targets, res$targets)
+                if(length(removeSamples) > 0) {
+                    res.old$targets <- setdiff(res.old$targets, res$targets)
+                    res.old$stat <- res.old$stat[, -removeSamples]
+                    res.old$counts <- res.old$counts[, -removeSamples]
+                }
+            }
+            # Append old sample results to existing results
+            new_samples <- res$targets[!(res$targets %in% res.old$targets)]
+            res$targets <- c(res.old$targets, new_samples)
+            res$stat <- cbind(res.old$stat, res$stat[, new_samples])
+            res$counts <- cbind(res.old$counts, res$counts[, new_samples])
+        } else {
+            .log(paste(
+                "featureCounts output not compatible with previous",
+                "output in", outfile, "; overwriting previous output"
+            ), "warning")
+        }
+    }
+    
+    if (file.exists(outfile) & is.null(validFC)) {
+        .log(paste(outfile,
+            "found but was not a valid SpliceWiz featureCounts",
+            "output; overwriting previous output"
+        ), "warning")
+    }
+    saveRDS(res, outfile)
+    .log(paste("featureCounts ran succesfully; saved to",
+        outfile), "message")
+}
+
+# Validates old fc output
+# Returns:
+# - NULL if no or invalid output file
+# - character(0) if all samples already processed
+# - vector of samples that need to be processed
+.processBAM_fcfile_validate <- function(outfile, samples) {
+    if (!file.exists(outfile)) return(NULL)
+    
+    columns <- c("counts", "annotation", "targets", "stat")
+    res <- readRDS(outfile)
+    
+    if (!all(columns %in% names(res))) return(NULL)
+    need_to_do <- samples[!(samples %in% res[["targets"]])]
+    return(need_to_do)
+}
+
+.processBAM_getStrand <- function(outfile) {
     data.list <- get_multi_DT_from_gz(
-        normalizePath(paste0(output_files[1], ".txt.gz")),
-        c("BAM", "Directionality")
+        outfile, c("BAM", "Directionality")
     )
     stats <- data.list$BAM
     direct <- data.list$Directionality
@@ -300,68 +437,11 @@ processBAM <- function(
         (stats$Value[3] > 0 && stats$Value[4] / stats$Value[3] / 1000)
     strand <- direct$Value[9]
     if (strand == -1) strand <- 2
-
-    # Check which have already been run, do not run if overwrite = FALSE
-    outfile <- file.path(dirname(output_files[1]), "main.FC.Rds")
-    if (file.exists(outfile) & !overwrite) {
-        res.old <- readRDS(outfile)
-        need_to_do <- (!(s_names %in% res.old$targets))
-    } else {
-        need_to_do <- rep(TRUE, length(s_bam))
-    }
-
-    if (any(need_to_do)) {
-        # Run FeatureCounts in bulk
-        res <- Rsubread::featureCounts(
-            s_bam[need_to_do],
-            annot.ext = gtf_file,
-            isGTFAnnotationFile = TRUE,
-            strandSpecific = strand,
-            isPairedEnd = paired,
-            requireBothEndsMapped = paired,
-            nthreads = n_threads
-        )
-        res$targets <- s_names[need_to_do]
-        colnames(res$counts) <- s_names[need_to_do]
-        colnames(res$stat)[-1] <- s_names[need_to_do]
-        columns <- c("counts", "annotation", "targets", "stat")
-        # Append to existing main.FC.Rds if exists, overwriting where necessary:
-        if (file.exists(outfile)) {
-            res.old <- readRDS(outfile)
-            if (!all(columns %in% names(res))) {
-                .log(paste(outfile,
-                    "found but was not a valid SpliceWiz featureCounts",
-                    "output; overwriting previous output"
-                ), "warning")
-            } else if (
-                identical(res.old$annotation, res$annotation) &
-                identical(res.old$stat$Status, res$stat$Status)
-            ) {
-                new_samples <- res$targets[!(res$targets %in% res.old$targets)]
-                res$targets <- c(res.old$targets, new_samples)
-                res$stat <- cbind(res.old$stat, res$stat[, new_samples])
-                res$counts <- cbind(res.old$counts, res$counts[, new_samples])
-            } else {
-                .log(paste(
-                    "featureCounts output not compatible with previous",
-                    "output in", outfile, "; overwriting previous output"
-                ), "warning")
-            }
-        }
-        if (all(columns %in% names(res))) {
-            saveRDS(res, outfile)
-        } else {
-            .log("Error encountered when running featureCounts")
-        }
-        .log(paste("featureCounts ran succesfully; saved to",
-            outfile), "message")
-    } else {
-        .log("featureCounts has already been run on given BAM files", "message")
-    }
-
+    return(list(
+        paired = paired,
+        strand = strand
+    ))
 }
-
-
 
 # Validate arguments; return error if invalid
 .processBAM_validate_args <- function(s_bam, max_threads, output_files) {

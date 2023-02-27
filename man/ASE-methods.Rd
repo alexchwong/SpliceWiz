@@ -345,7 +345,7 @@ a filtered NxtSE object
 \examples{
 # Load the NxtSE object and set up the annotations
 # - see ?makeSE on example code of generating this NxtSE object
-se <- SpliceWiz_example_NxtSE()
+se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
 
 colData(se)$treatment <- rep(c("A", "B"), each = 3)
 colData(se)$replicate <- rep(c("P","Q","R"), 2)

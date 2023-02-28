@@ -283,7 +283,7 @@
 #' buildFullRef(
 #'     reference_path = "./Reference_with_STAR",
 #'     fasta = "genome.fa", gtf = "transcripts.gtf",
-#'     genome_type = "",
+#'     genome_type = "hg38",
 #'     use_STAR_mappability = TRUE,
 #'     n_threads = 4
 #' )
@@ -476,6 +476,7 @@ buildRef <- function(
 buildFullRef <- function(
         reference_path = "./Reference",
         fasta = "", gtf = "", 
+        use_STAR_mappability = FALSE,
         overwrite = FALSE, force_download = FALSE,
         chromosome_aliases = NULL, genome_type = "",
         nonPolyARef = "", MappabilityRef = "", BlacklistRef = "",
@@ -505,24 +506,13 @@ buildFullRef <- function(
         n_threads = n_threads, 
         ...
     )
-    
-    if(use_STAR_mappability) {
-        use_genome_type <- ""
-        use_npa_type <- nonPolyARef
-        if(use_npa_type == "" & genome_type != "") {
-            use_npa_type <- getNonPolyARef(genome_type)
-        }
-    } else {
-        use_genome_type <- genome_type
-        use_npa_type <- nonPolyARef
-    }
-    
+
     buildRef(
         reference_path = reference_path,
         chromosome_aliases = chromosome_aliases,
-        genome_type = use_genome_type, # makes sure generated map-ref is used
-        nonPolyARef = use_npa_type,
-        MappabilityRef = MappabilityRef,
+        genome_type = genome_type,
+        nonPolyARef = nonPolyARef,
+        MappabilityRef = MappabilityRef, # if "", generated map will be used
         BlacklistRef = BlacklistRef,
         ontologySpecies = ontologySpecies,
         useExtendedTranscripts = useExtendedTranscripts,

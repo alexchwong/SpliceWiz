@@ -164,7 +164,7 @@ go_df <- goGenes(
 
 # Plots the top 12 GO terms
 
-p <- plotGO(go_df, filter_n_terms = 12)
+plotGO(go_df, filter_n_terms = 12)
 
 # Below example code of how to use output of differential ASEs for GO analysis
 # It will not work with the example dataset because the reference must be 

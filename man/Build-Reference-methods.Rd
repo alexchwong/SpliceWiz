@@ -38,17 +38,19 @@ buildRef(
 )
 
 buildFullRef(
-  reference_path,
-  fasta,
-  gtf,
-  chromosome_aliases = NULL,
+  reference_path = "./Reference",
+  fasta = "",
+  gtf = "",
   overwrite = FALSE,
   force_download = FALSE,
-  genome_type = genome_type,
-  use_STAR_mappability = FALSE,
-  nonPolyARef = getNonPolyARef(genome_type),
+  chromosome_aliases = NULL,
+  genome_type = "",
+  nonPolyARef = "",
+  MappabilityRef = "",
   BlacklistRef = "",
+  ontologySpecies = "",
   useExtendedTranscripts = TRUE,
+  verbose = TRUE,
   n_threads = 4,
   ...
 )
@@ -141,20 +143,20 @@ slow on some systems. Set this option to \code{FALSE} (which will convert the
 TwoBit file back to FASTA) if you experience
 very slow genome fetching (e.g. when annotating splice motifs).}
 
+\item{n_threads}{The number of threads used to generate the STAR reference
+and mappability calculations. Multi-threading is not used for SpliceWiz
+reference generation (but multiple cores are utilised in data-table
+and fst file processing automatically, where available). See \link{STAR-methods}}
+
+\item{...}{For \code{buildFullRef()}, additional parameters to be parsed into
+\code{STAR_buildRef} which \code{buildFullRef()} runs internally. See \link{STAR_buildRef}}
+
 \item{use_STAR_mappability}{(default FALSE) In \code{buildFullRef()},
 whether to run \link{STAR_mappability} to calculate low-mappability regions.
 We recommend setting this to \code{FALSE} for the common genomes
 (human and mouse), and to \code{TRUE} for genomes not supported by
 \code{genome_type}. When set to false, the MappabilityExclusion default file
 corresponding to \code{genome_type} will automatically be used.}
-
-\item{n_threads}{The number of threads used to generate the STAR reference
-and mappability calculations. Multi-threading is not used for SpliceWiz
-reference generation (but multiple cores are utilised in data-table
-and fst file processing automatically, where available). See \link{STAR-methods}}
-
-\item{...}{For STAR_buildRef, additional parameters to be parsed into
-\code{STAR_buildRef} which it runs internally. See \link{STAR_buildRef}}
 }
 \value{
 For \code{getResources}: creates the following local resources:

@@ -11,7 +11,7 @@ SpliceWiz is an R package for exploring differential alternative splicing events
     1. [Enabling OpenMP (MacOS)](#ompmac)
     2. [Installation for Bioconductor (current release)](#instrelease)
     3. [Installation for Bioconductor (devel)](#instdevel)
-    4. [Installation for older Bioconductor versions](#instlegacy)
+    4. [Installing via GitHub](#instlegacy)
 3. [Publication](#pub)
 
 # Documentation <a name="doco"></a>
@@ -66,16 +66,25 @@ BiocManager::valid()              # checks for out of date packages
 BiocManager::install("SpliceWiz")
 ```
 
-## On older versions of Bioconductor (3.15 or earlier) <a name="instlegacy"></a>
+## Installing via GitHub <a name="instlegacy"></a>
+
+Reasons for installing via GitHub:
+* Using the latest development version on current release of Bioconductor -
+means you don't have to install Bioconductor devel
+* You are using Bioconductor version 3.15 or earlier
 
 ```
 library("devtools")
 install_github("alexchwong/ompBAM")
-install_github("alexchwong/SpliceWiz", dependencies=TRUE)
+
+# to install SpliceWiz version 1.1.6, install from the "1.1.6-release" branch:
+install_github("alexchwong/SpliceWiz", "1.1.6-release", dependencies=TRUE)
 ```
 
-Note that prior to version 3.14 or earlier, you may need to retrieve
+Note that prior to Bioconductor versions 3.14 or earlier, you may need to retrieve
 Mappability files from https://github.com/alexchwong/SpliceWizResources
+
+
 
 # Publication <a name="pub"></a>
 

@@ -182,38 +182,6 @@ For more documentation
 \
 
 <details>
-<summary>What's New: Inferring "putative" tandem junctions (version 1.1.6+)</summary>
-\
-In version 1.1.3, we modified SpliceWiz to identify reads that map to 2 or more
-splice junctions. These allow us to definitively identify novel exons, as these
-are mapped regions flanked by two splice events. By setting
-`novelSplicing_useTJ = TRUE` in `collateData()`, SpliceWiz is instructed to
-use these tandem junctions to identify novel casette exons, or casette exons
-connected to novel flanking exons.
-
-However, this only allows us to identify novel ASEs that contain exons for which
-a single read spans entirely across its entire body. This means we are not able
-to identify novel events containing longer casette exons.
-
-In 1.1.6+, we introduce a new mode in `collateData()`. By setting
-`novelSplicing_extrapolateTJ = TRUE`, `collateData()` will assume a set of
-"putative tandem junctions", constructed by a set of known/observed exons,
-flanked by coordinate-matched known/observed junctions on each end. These
-"putative tandem junctions" are useful, NOT for identifying novel exons (as
-these can only be identified using "real" tandem junction reads), but for
-identifying casette exons connected to novel flanking exons. These are useful
-especially for identifying novel skipped exon events.
-
-As one might imagine, this mode might take longer to run, and will identify
-a lot of false positive novel ASEs. We recommend using the `consistency` filter
-prior to differential analysis to weed-out these false positives. To reiterate,
-the `consistency` filter removes events for which there is orders of magnitude
-difference between upstream and downstream read counts.
-
-</details>
-\
-
-<details>
 <summary>What's New: edgeR-based differential alternative splicing event
 analysis (version 1.1.3+)</summary>
 \
@@ -288,6 +256,7 @@ if(interactive()) {
 ```
 
 Note that `plotJunctions` will plot the following:
+
 * For individual tracks, it will count the number of reads mapped to each
 corresponding splice junction
 * For group-combined coverage tracks, it will estimate the region-specific

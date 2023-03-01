@@ -38,17 +38,20 @@ buildRef(
 )
 
 buildFullRef(
-  reference_path,
-  fasta,
-  gtf,
-  chromosome_aliases = NULL,
+  reference_path = "./Reference",
+  fasta = "",
+  gtf = "",
+  use_STAR_mappability = FALSE,
   overwrite = FALSE,
   force_download = FALSE,
-  genome_type = genome_type,
-  use_STAR_mappability = FALSE,
-  nonPolyARef = getNonPolyARef(genome_type),
+  chromosome_aliases = NULL,
+  genome_type = "",
+  nonPolyARef = "",
+  MappabilityRef = "",
   BlacklistRef = "",
+  ontologySpecies = "",
   useExtendedTranscripts = TRUE,
+  verbose = TRUE,
   n_threads = 4,
   ...
 )
@@ -153,8 +156,8 @@ and mappability calculations. Multi-threading is not used for SpliceWiz
 reference generation (but multiple cores are utilised in data-table
 and fst file processing automatically, where available). See \link{STAR-methods}}
 
-\item{...}{For STAR_buildRef, additional parameters to be parsed into
-\code{STAR_buildRef} which it runs internally. See \link{STAR_buildRef}}
+\item{...}{For \code{buildFullRef()}, additional parameters to be parsed into
+\code{STAR_buildRef} which \code{buildFullRef()} runs internally. See \link{STAR_buildRef}}
 }
 \value{
 For \code{getResources}: creates the following local resources:
@@ -390,7 +393,7 @@ buildRef(
 buildFullRef(
     reference_path = "./Reference_with_STAR",
     fasta = "genome.fa", gtf = "transcripts.gtf",
-    genome_type = "",
+    genome_type = "hg38",
     use_STAR_mappability = TRUE,
     n_threads = 4
 )

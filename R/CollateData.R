@@ -96,10 +96,6 @@
 #' @param novelSplicing_useTJ (default `TRUE`) For novel splicing, should
 #'   SpliceWiz use reads with 2 or more junctions to find novel exons? Ignored
 #'   if novelSplicing is set to `FALSE`.
-#' @param novelSplicing_extrapolateTJ (default `FALSE`) Whether to allow any
-#'   pair of observed (and known) junctions and observed (and known) exons
-#'   to construct "putative" tandem junctions. Assists in identifying novel
-#'   exon skipping and MXE events at a cost of increased false positives.
 #' @param forceStrandAgnostic (default `FALSE`) In poorly-prepared stranded
 #'   libraries, it may be better to quantify in unstranded mode. Set this to
 #'   `TRUE` if your stranded libraries may be contaminated with unstranded reads
@@ -153,12 +149,19 @@ collateData <- function(Experiment, reference_path, output_path,
         novelSplicing_minSamplesAboveThreshold = 1,
         novelSplicing_requireOneAnnotatedSJ = TRUE,
         novelSplicing_useTJ = TRUE,
-        novelSplicing_extrapolateTJ = FALSE,
+        # novelSplicing_extrapolateTJ = FALSE,
         overwrite = FALSE, n_threads = 1,
         lowMemoryMode = TRUE
 ) {
     # TODO - dynamic memory management
     # - see https://stackoverflow.com/questions/6457290/how-to-check-the-amount-of-ram
+
+    # TODO - benchmark putative TJ before releasing it
+    # @param novelSplicing_extrapolateTJ (default `FALSE`) Whether to allow any
+    #   pair of observed (and known) junctions and observed (and known) exons
+    #   to construct "putative" tandem junctions. Assists in identifying novel
+    #   exon skipping and MXE events at a cost of increased false positives.
+    novelSplicing_extrapolateTJ <- FALSE
 
     if(lowMemoryMode) n_threads <- min(n_threads, 4)
     IRMode <- match.arg(IRMode)

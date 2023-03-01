@@ -151,8 +151,8 @@
 #'   used.
 #' @param ah For `getAvailableGO()`, the AnnotationHub object. Leave as default
 #'   to use the entirety of AnnotationHub resources.
-#' @param ... For STAR_buildRef, additional parameters to be parsed into
-#'   `STAR_buildRef` which it runs internally. See [STAR_buildRef]
+#' @param ... For `buildFullRef()`, additional parameters to be parsed into
+#'   `STAR_buildRef` which `buildFullRef()` runs internally. See [STAR_buildRef]
 #' @return
 #' For `getResources`: creates the following local resources:
 #' * `reference_path/resource/genome.2bit`: Local copy of the genome sequences
@@ -283,7 +283,7 @@
 #' buildFullRef(
 #'     reference_path = "./Reference_with_STAR",
 #'     fasta = "genome.fa", gtf = "transcripts.gtf",
-#'     genome_type = "",
+#'     genome_type = "hg38",
 #'     use_STAR_mappability = TRUE,
 #'     n_threads = 4
 #' )
@@ -474,15 +474,15 @@ buildRef <- function(
 #'   creates the SpliceWiz reference
 #' @export
 buildFullRef <- function(
-        reference_path,
-        fasta, gtf,
-        chromosome_aliases = NULL,
-        overwrite = FALSE, force_download = FALSE,
-        genome_type = genome_type,
+        reference_path = "./Reference",
+        fasta = "", gtf = "", 
         use_STAR_mappability = FALSE,
-        nonPolyARef = getNonPolyARef(genome_type),
-        BlacklistRef = "",
+        overwrite = FALSE, force_download = FALSE,
+        chromosome_aliases = NULL, genome_type = "",
+        nonPolyARef = "", MappabilityRef = "", BlacklistRef = "",
+        ontologySpecies = "",
         useExtendedTranscripts = TRUE,
+        verbose = TRUE,
         n_threads = 4,
         ...
 ) {
@@ -494,31 +494,31 @@ buildFullRef <- function(
 
     .validate_STAR_version()
 
-    getResources(reference_path = reference_path,
+    getResources(
+        reference_path = reference_path,
         fasta = fasta, gtf = gtf,
-        overwrite = overwrite, force_download = force_download)
+        overwrite = overwrite, force_download = force_download
+    )
 
-    STAR_buildRef(reference_path = reference_path,
+    STAR_buildRef(
+        reference_path = reference_path,
         also_generate_mappability = use_STAR_mappability,
-        n_threads = n_threads, ...)
-    
-    if(use_STAR_mappability) {
-        use_genome_type <- ""
-        use_npa_type <- nonPolyARef
-        if(use_npa_type == "" & genome_type != "") {
-            use_npa_type <- getNonPolyARef(genome_type)
-        }
-    } else {
-        use_genome_type <- genome_type
-        use_npa_type <- nonPolyARef
-    }
-    
-    buildRef(reference_path = reference_path,
-        genome_type = use_genome_type, # makes sure generated map-ref is used
-        nonPolyARef = use_npa_type,
-        BlacklistRef = BlacklistRef,
+        n_threads = n_threads, 
+        ...
+    )
+
+    buildRef(
+        reference_path = reference_path,
         chromosome_aliases = chromosome_aliases,
-        useExtendedTranscripts = useExtendedTranscripts)
+        genome_type = genome_type,
+        nonPolyARef = nonPolyARef,
+        MappabilityRef = MappabilityRef, # if "", generated map will be used
+        BlacklistRef = BlacklistRef,
+        ontologySpecies = ontologySpecies,
+        useExtendedTranscripts = useExtendedTranscripts,
+        lowMemoryMode = FALSE,
+        verbose = verbose
+    )
 }
 
 #' @describeIn Build-Reference-methods Returns the path to the BED file 

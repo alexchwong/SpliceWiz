@@ -463,6 +463,9 @@ runFilter <- function(se, filterObj) {
 .runFilter_anno_mxe <- function(se, filterObj) {
     rowSelected <- as.data.table(rowData(se))
     MXE <- rowSelected[get("EventType") == "MXE"]
+
+    if(nrow(MXE) == 0) return(rep(TRUE, nrow(se)))
+
     rowSelected <- rowSelected[get("EventType") != "MXE"]
     cas_A <- .runFilter_anno_mxe_gr_casette(MXE$Event1a, MXE$Event2a)
     cas_B <- .runFilter_anno_mxe_gr_casette(MXE$Event1b, MXE$Event2b)
@@ -479,6 +482,9 @@ runFilter <- function(se, filterObj) {
 .runFilter_anno_strictSS <- function(se, filterObj) {
     rowSelected <- as.data.table(rowData(se))
     ASS <- rowSelected[get("EventType") %in% c("A5SS", "A3SS")]
+    
+    if(nrow(ASS) == 0) return(rep(TRUE, nrow(se)))
+    
     rowSelected <- rowSelected[!(get("EventType")  %in% c("A5SS", "A3SS"))]
 
     gr1 <- .runFilter_anno_ssdiff(ASS$Event1a, ASS$Event1b)

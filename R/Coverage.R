@@ -2152,6 +2152,7 @@ determine_compatible_events <- function(
 
         DT <- data.table(x = calcs$data.t_test[, 1])
         DT[, c("t_stat") := -log10(t_test$p.value)]
+        DT[!is.finite(get("t_stat")), c("t_stat") := 0]
         plot_objs$gp_track[[5]] <- ggplot() +
             geom_hline(yintercept = 0) +
             geom_line(data = as.data.frame(DT),

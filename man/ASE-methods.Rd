@@ -167,6 +167,8 @@ column names are replaced with the condition names. Note this is a
 geometric mean, based on the arithmetic mean of logit PSI values.
 \item deltaPSI: The difference in PSI between the mean values of the two
 conditions.
+\item abs_deltaPSI: The absolute value of difference in PSI between
+the mean values of the two conditions.
 }
 
 \strong{limma specific output}

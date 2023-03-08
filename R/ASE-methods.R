@@ -152,6 +152,8 @@
 #'     geometric mean, based on the arithmetic mean of logit PSI values.
 #'   * deltaPSI: The difference in PSI between the mean values of the two
 #'     conditions.
+#'   * abs_deltaPSI: The absolute value of difference in PSI between 
+#'     the mean values of the two conditions.
 #'
 #'   **limma specific output**
 #'   * logFC, AveExpr, t, P.Value, adj.P.Val, B: limma topTable columns of
@@ -1284,6 +1286,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     colnames(diag)[2:3] <- c(paste0("AvgPSI_", test_nom),
         paste0("AvgPSI_", test_denom))
     diag$deltaPSI <- diag[, 2] - diag[, 3]
+    diag$abs_deltaPSI <- abs(diag$deltaPSI)
     if(all(c("EventName","EventType","EventRegion", "flags") %in%
         colnames(res))) {
         res <- cbind(
@@ -1316,6 +1319,7 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     }
     if(ncol(diag) == 3) {
         diag$deltaPSI <- diag[, 2] - diag[, 3]
+        diag$abs_deltaPSI <- abs(diag$deltaPSI)
     }
     if(all(c("EventName","EventType","EventRegion", "flags") %in%
         colnames(res))) {

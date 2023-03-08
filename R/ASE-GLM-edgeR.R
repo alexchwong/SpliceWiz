@@ -100,6 +100,8 @@
 #'     geometric mean, based on the arithmetic mean of logit PSI values.
 #'   * deltaPSI: The difference in PSI between the mean values of the two
 #'     conditions.
+#'   * abs_deltaPSI: The absolute value of difference in PSI between 
+#'     the mean values of the two conditions.
 #'
 #' @examples
 #' # Load the NxtSE object and set up the annotations

@@ -541,8 +541,18 @@ getAvailableGO <- function(
     res_use <- res[seq_len(filter_n_terms)]
     res_use <- res_use[get("pval") <= filter_pvalue]    
     res_use <- res_use[get("padj") <= filter_padj]
-        
-    p <- ggplot(res_use, aes(text = get("Term"))) + 
+
+    res_use[, c("Information") := paste(
+        get("Term"),
+        paste0(plot_x, ": ", get(plot_x)),
+        paste0(plot_size, ": ", get(plot_size)),
+        paste0(plot_color, ": ", get(plot_color)),
+        sep = "\n"
+    )]
+
+    setorderv(res_use, plot_x)
+
+    p <- ggplot(res_use, aes(text = get("Information"))) + 
         geom_segment(data = res_use, mapping = aes(
             x = 0, xend = get(plot_x), 
             y = get("Term"), yend = get("Term"), 

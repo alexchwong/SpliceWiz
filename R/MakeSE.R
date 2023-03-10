@@ -116,7 +116,7 @@ makeSE <- function(
 
     collate_path <- normalizePath(collate_path)
 
-    se <- .makeSE_load_NxtSE(collate_path, colData, N, verbose)
+    se <- .makeSE_load_NxtSE(collate_path, N, verbose)
     # Subset, if required
     if(all(colnames(se) %in% colData$sample)) {
         fullExperiment <- TRUE
@@ -224,7 +224,7 @@ makeSE <- function(
 }
 
 # Loads a NxtSE RDS
-.makeSE_load_NxtSE <- function(collate_path, colData, N, verbose = TRUE) {
+.makeSE_load_NxtSE <- function(collate_path, N, verbose = TRUE) {
     dash_progress("Loading NxtSE object from file...", N)
     if(verbose) .log("Loading NxtSE object from file...", "message")
 

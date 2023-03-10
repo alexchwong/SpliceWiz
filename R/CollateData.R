@@ -189,7 +189,7 @@ collateData <- function(Experiment, reference_path, output_path,
         .collateData_COV(Experiment), output_path)
     df.internal <- .collateData_expr(Experiment)
     if (!overwrite && file.exists(file.path(output_path, "seed.Rds"))) {
-        se <- .makeSE_load_NxtSE(output_path)
+        se <- .makeSE_load_NxtSE(output_path, N = 7)
         if (all(colnames(se) %in% df.internal$sample) &
             all(df.internal$sample %in% colnames(se))
         ) {

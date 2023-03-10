@@ -117,7 +117,17 @@ makeSE <- function(
     collate_path <- normalizePath(collate_path)
 
     se <- .makeSE_load_NxtSE(collate_path, colData, N, verbose)
-
+    # Subset, if required
+    if(all(colnames(se) %in% colData$sample)) {
+        fullExperiment <- TRUE
+    } else {
+        se <- se[, colData$sample]
+    }
+    if (ncol(colData) > 1) {
+        colData_use <- colData[, -1, drop = FALSE]
+        rownames(colData_use) <- colData$sample
+        colData(se) <- as(colData_use, "DataFrame")
+    }
 
     if (realize == TRUE) {
         dash_progress("Realizing NxtSE object...", N)
@@ -143,8 +153,6 @@ makeSE <- function(
     if(verbose) .log("NxtSE loaded", "message")
     return(se)
 }
-
-
 
 ################################################################################
 
@@ -287,18 +295,6 @@ makeSE <- function(
 
     # Encapsulate as NxtSE object
     se <- as(se, "NxtSE")
-
-    # Subset, if required
-    if(all(colnames(se) %in% colData$sample)) {
-        fullExperiment <- TRUE
-    } else {
-        se <- se[, colData$sample]
-    }
-    if (ncol(colData) > 1) {
-        colData_use <- colData[, -1, drop = FALSE]
-        rownames(colData_use) <- colData$sample
-        colData(se) <- as(colData_use, "DataFrame")
-    }    
 
     if(display_cov_missing_message) {
         .log(paste(

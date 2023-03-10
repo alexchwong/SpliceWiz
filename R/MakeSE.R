@@ -248,7 +248,7 @@ makeSE <- function(
     }
 
     # Add reference
-    dash_progress("Loading rowData...", N)
+    dash_progress("Loading reference (NxtSE)...", N)
     if(verbose) .log("...loading reference (NxtSE)", "message")
     metadata(se)$ref <- readRDS(file.path(collate_path, "cov_data.Rds"))
 

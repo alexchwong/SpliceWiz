@@ -2564,7 +2564,7 @@ bin_ranges <- function(coords, binwidth = 3, exon_gr = NULL) {
         }
     }
     brks <- sort(unique(brks))
-    starts <- c(1, ceiling(brks)[-1])
+    starts <- ceiling(brks)[-length(brks)]
     ends <- c(starts[-1] - 1, length(coords))
     return(data.frame(
         start = coords[starts],

@@ -857,7 +857,7 @@ getCoverageBins <- function(file, region, bins = 2000,
     )
     df <- bin_df(df, bin_size)
 
-    bin_gr <- bin_ranges(df$x, binwidth = window_size)
+    bin_gr <- bin_ranges(df$x, binwidth = bin_size)
     bin_gr$seqnames <- as.character(GenomeInfoDb::seqnames(region))
     bin_gr$strand <- strand
     gr.fetch <- SpliceWiz:::.grDT(bin_gr)

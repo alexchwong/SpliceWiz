@@ -834,7 +834,7 @@ getCoverageBins <- function(file, region, bins = 2000,
         bin_size <- ceiling(width(region) / bins)
     }
 
-    gr.fetch <- .bin_gr(region, bin_size) 
+    # gr.fetch <- .bin_gr(region, bin_size) 
 
     if (strandMode == "unstranded") {
         strand <- "*"
@@ -856,6 +856,12 @@ getCoverageBins <- function(file, region, bins = 2000,
         start(region), end(region), strand)
     )
     df <- bin_df(df, bin_size)
+
+    bin_gr <- bin_ranges(df$x, binwidth = window_size)
+    bin_gr$seqnames <- as.character(GenomeInfoDb::seqnames(region))
+    bin_gr$strand <- strand
+    gr.fetch <- SpliceWiz:::.grDT(bin_gr)
+
     gr.fetch$cov_mean <- df$sample
 
     return(gr.fetch)
@@ -2520,7 +2526,10 @@ determine_compatible_events <- function(
 
 bin_df <- function(df, binwidth = 3, exon_gr = NULL) {
     DT <- as.data.table(df)
-    brks <- seq(1, nrow(DT) + 1, length.out = (nrow(DT) + 1) / binwidth)
+    brks <- seq(0, 
+        nrow(DT) - 1, 
+        length.out = nrow(DT) / binwidth
+    )
     
     # Use single nucleotide resolution for exon bins
     if(!is.null(exon_gr)) {
@@ -2538,4 +2547,27 @@ bin_df <- function(df, binwidth = 3, exon_gr = NULL) {
     DT2 <- DT[, lapply(.SD, mean, na.rm = TRUE), by = "bin"]
     DT2[, c("bin") := NULL]
     return(as.data.frame(DT2))
+}
+
+bin_ranges <- function(coords, binwidth = 3, exon_gr = NULL) {
+    # coords is a vector of coordinates
+    brks <- seq(0, 
+        length(coords) - 1, 
+        length.out = (length(coords)) / binwidth
+    )
+    if(!is.null(exon_gr)) {
+        for(i in seq_len(length(exon_gr))) {
+            brks <- c(brks, which(
+                coords >= BiocGenerics::start(exon_gr[i]) &
+                coords <= BiocGenerics::end(exon_gr[i])
+            ))
+        }
+    }
+    brks <- sort(unique(brks))
+    starts <- c(1, ceiling(brks)[-1])
+    ends <- c(starts[-1] - 1, length(coords))
+    return(data.frame(
+        start = coords[starts],
+        end = coords[ends]
+    ))
 }

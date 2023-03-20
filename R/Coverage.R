@@ -2526,9 +2526,9 @@ determine_compatible_events <- function(
 
 bin_df <- function(df, binwidth = 3, exon_gr = NULL) {
     DT <- as.data.table(df)
-    brks <- seq(0, 
-        nrow(DT) - 1, 
-        length.out = nrow(DT) / binwidth
+    brks <- seq(1, 
+        nrow(DT) + 1, 
+        length.out = (nrow(DT) + 1) / binwidth
     )
     
     # Use single nucleotide resolution for exon bins
@@ -2551,9 +2551,9 @@ bin_df <- function(df, binwidth = 3, exon_gr = NULL) {
 
 bin_ranges <- function(coords, binwidth = 3, exon_gr = NULL) {
     # coords is a vector of coordinates
-    brks <- seq(0, 
-        length(coords) - 1, 
-        length.out = (length(coords)) / binwidth
+    brks <- seq(1, 
+        length(coords) + 1, 
+        length.out = (length(coords) + 1) / binwidth
     )
     if(!is.null(exon_gr)) {
         for(i in seq_len(length(exon_gr))) {

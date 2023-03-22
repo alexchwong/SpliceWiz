@@ -1,3 +1,6 @@
+Changes in version 1.0.3 (2023-03-23)
++ Minor bug fix for compatibility with non-Ensembl GTFs
+
 Changes in version 1.0.2 (2022-12-19)
 + Improved performance of SpliceWiz processBAM() in multi-sample setting
 + Fixed memory leak in processBAM and BAM2COV functions

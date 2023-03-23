@@ -683,6 +683,12 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
     if(length(unique(paths)) > 1) stop(
         "cannot combine NxtSE objects created from different datasets"
     )
+
+    # detect and stop if common colnames detected
+    cns <- do.call(c, lapply(args, colnames))
+    if(any(duplicated(cns))) stop(
+        "cannot combine NxtSE objects because of duplicate colnames"
+    )
     
     # Active cbinds
     
@@ -820,6 +826,12 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
     paths <- do.call(c, lapply(args, sourcePath))
     if(length(unique(paths)) > 1) stop(
         "cannot combine NxtSE objects created from different datasets"
+    )
+    
+    # detect and stop if common rownames detected
+    rns <- do.call(c, lapply(args, rownames))
+    if(any(duplicated(rns))) stop(
+        "cannot combine NxtSE objects because of duplicate rownames"
     )
     
     # Active rbinds

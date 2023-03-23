@@ -678,7 +678,12 @@ setMethod("cbind", "NxtSE", function(..., deparse.level = 1) {
 
     metadata <- list()
     args <- list(...)
-
+    # disallow combining two distinct NxtSEs with different path
+    paths <- do.call(c, lapply(args, sourcePath))
+    if(length(unique(paths)) > 1) stop(
+        "cannot combine NxtSE objects created from different datasets"
+    )
+    
     # Active cbinds
     
     tryCatch({
@@ -811,8 +816,13 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
     metadata <- list()
     args <- list(...)
     
-    # Active rbinds
+    # disallow combining two distinct NxtSEs with different path
+    paths <- do.call(c, lapply(args, sourcePath))
+    if(length(unique(paths)) > 1) stop(
+        "cannot combine NxtSE objects created from different datasets"
+    )
     
+    # Active rbinds
     tryCatch({
         metadata$Up_Inc <- do.call(rbind, lapply(args, up_inc, 
             withDimnames = FALSE))
@@ -850,33 +860,33 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             conditionMessage(err))
     })
 
-    tryCatch({
-        metadata$junc_PSI <- do.call(rbind, lapply(args, junc_PSI, 
-            withDimnames = FALSE))
-    }, error = function(err) {
-        stop(
-            "failed to combine 'junc_PSI' in 'rbind(<",
-            class(args[[1]]), ">)':\n  ",
-            conditionMessage(err))
-    })
-    tryCatch({
-        metadata$junc_counts <- do.call(rbind, lapply(args, junc_counts, 
-            withDimnames = FALSE))
-    }, error = function(err) {
-        stop(
-            "failed to combine 'junc_counts' in 'rbind(<",
-            class(args[[1]]), ">)':\n  ",
-            conditionMessage(err))
-    })
-    tryCatch({
-        metadata$junc_counts_uns <- do.call(rbind, lapply(args, junc_counts_uns, 
-            withDimnames = FALSE))
-    }, error = function(err) {
-        stop(
-            "failed to combine 'junc_counts_uns' in 'rbind(<",
-            class(args[[1]]), ">)':\n  ",
-            conditionMessage(err))
-    })
+    # tryCatch({
+        # metadata$junc_PSI <- do.call(rbind, lapply(args, junc_PSI, 
+            # withDimnames = FALSE))
+    # }, error = function(err) {
+        # stop(
+            # "failed to combine 'junc_PSI' in 'rbind(<",
+            # class(args[[1]]), ">)':\n  ",
+            # conditionMessage(err))
+    # })
+    # tryCatch({
+        # metadata$junc_counts <- do.call(rbind, lapply(args, junc_counts, 
+            # withDimnames = FALSE))
+    # }, error = function(err) {
+        # stop(
+            # "failed to combine 'junc_counts' in 'rbind(<",
+            # class(args[[1]]), ">)':\n  ",
+            # conditionMessage(err))
+    # })
+    # tryCatch({
+        # metadata$junc_counts_uns <- do.call(rbind, lapply(args, junc_counts_uns, 
+            # withDimnames = FALSE))
+    # }, error = function(err) {
+        # stop(
+            # "failed to combine 'junc_counts_uns' in 'rbind(<",
+            # class(args[[1]]), ">)':\n  ",
+            # conditionMessage(err))
+    # })
 
     # Straight up copies
 
@@ -912,16 +922,49 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
             class(args[[1]]), ">)':\n  ",
             conditionMessage(err))
     })
+
+    tryCatch({
+        metadata$junc_PSI <- junc_PSI(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'sourcePath' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_counts <- junc_counts(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'sourcePath' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_counts_uns <- junc_counts_uns(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'sourcePath' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+    tryCatch({
+        metadata$junc_gr <- junc_gr(args[[1]])
+    }, error = function(err) {
+        stop(
+            "failed to combine 'sourcePath' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
     
     # c() concatenates
     
-    tryCatch({
-        metadata$junc_gr <- do.call(c, lapply(args, junc_gr))
-    }, error = function(err) {
-        stop(
-            "failed to combine 'junc_gr' in 'cbind(<",
-            class(args[[1]]), ">)':\n  ",
-            conditionMessage(err))
-    })    
+    # tryCatch({
+        # metadata$junc_gr <- do.call(c, lapply(args, junc_gr))
+    # }, error = function(err) {
+        # stop(
+            # "failed to combine 'junc_gr' in 'cbind(<",
+            # class(args[[1]]), ">)':\n  ",
+            # conditionMessage(err))
+    # })    
     BG_replaceSlots(out, metadata = metadata, check = FALSE)
 })

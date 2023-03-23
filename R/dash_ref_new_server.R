@@ -371,7 +371,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_genome <- function(release, species) {
-    test_genome <- XML::getHTMLLinks(paste0(
+    test_genome <- getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
@@ -386,7 +386,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_gtf <- function(release, species) {
-    test_gtf <- XML::getHTMLLinks(paste0(
+    test_gtf <- getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),

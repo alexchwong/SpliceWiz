@@ -1137,26 +1137,17 @@ getCoverageBins <- function(file, region, bins = 2000,
     if (norm_event == "") return(list())
     
     events_to_highlight <- list()
-    rowData <- as.data.frame(rowData(se))
-    
-    if (rowData$EventType[match(norm_event, rowData$EventName)]
-        %in% c("MXE", "SE")) {
-        events_to_highlight[[1]] <- c(
-            rowData$Event1a[match(norm_event, rowData$EventName)],
-            rowData$Event2a[match(norm_event, rowData$EventName)])
+    # rowData <- as.data.frame(rowData(se))
+    row <- as.data.frame(rowData(se)[match(norm_event, rowData(se)$EventName),])    
+    if (row$EventType %in% c("MXE", "SE")) {
+        events_to_highlight[[1]] <- c(row$Event1a, row$Event2a)
     } else {
-        events_to_highlight[[1]] <- rowData$Event1a[
-            match(norm_event, rowData$EventName)]
+        events_to_highlight[[1]] <- row$Event1a
     }
-    if (rowData$EventType[match(norm_event, rowData$EventName)]
-        %in% c("MXE")) {
-        events_to_highlight[[2]] <- c(
-            rowData$Event1b[match(norm_event, rowData$EventName)],
-            rowData$Event2b[match(norm_event, rowData$EventName)])
-    } else if (rowData$EventType[match(norm_event, rowData$EventName)]
-        %in% c("SE", "A3SS", "A5SS", "ALE", "AFE")) {
-        events_to_highlight[[2]] <- rowData$Event1b[
-            match(norm_event, rowData$EventName)]
+    if (row$EventType %in% c("MXE")) {
+        events_to_highlight[[2]] <- c(row$Event1b, row$Event2b)
+    } else if (row$EventType %in%  c("SE", "A3SS", "A5SS", "ALE", "AFE")) {
+        events_to_highlight[[2]] <- row$Event1b
     }
     return(events_to_highlight)
 }
@@ -1349,17 +1340,20 @@ getCoverageBins <- function(file, region, bins = 2000,
         get("end") >= view_start - (view_end - view_start)
     ]
     setorderv(transcripts.DT, c("transcript_support_level", "width"))
-    if (length(selected_transcripts) > 1 || selected_transcripts != "") {
+    if (
+        is_valid(selected_transcripts) && (
+            any(selected_transcripts %in% transcripts.DT$transcript_id) |
+            any(selected_transcripts %in% transcripts.DT$transcript_name)
+        )   
+    ) {
         transcripts.DT <- transcripts.DT[
             get("transcript_id") %in% selected_transcripts |
             get("transcript_name") %in% selected_transcripts
         ]
     } # filter transcripts if applicable
 
-    reduced.DT <- elems[
-        get("transcript_id") %in% transcripts.DT$transcript_id &
-        get("type") %in% c("CDS", "exon", "intron")
-    ]
+    reduced.DT <- elems[get("transcript_id") %in% transcripts.DT$transcript_id]
+    reduced.DT <- reduced.DT[get("type") %in% c("CDS", "exon", "intron")]
     
     # Transfer feature_id from exons -> CDS
     CDS.DT <- reduced.DT[get("type") == "CDS"]

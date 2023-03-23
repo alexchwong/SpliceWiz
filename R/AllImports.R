@@ -70,7 +70,7 @@
 #' @importFrom heatmaply heatmaply
 #' @importFrom matrixStats colVars
 #' @importFrom RColorBrewer brewer.pal.info
-#' @importFrom XML getHTMLLinks
+#' @importFrom rvest read_html html_nodes html_attr
 NULL
 
 # Import namespaces of internal functions of BiocGenerics and S4Vectors

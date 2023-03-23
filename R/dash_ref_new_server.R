@@ -329,7 +329,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_releases <- function() {
-    test <- XML::getHTMLLinks("http://ftp.ensembl.org/pub")
+    test <- getHTMLLinks("http://ftp.ensembl.org/pub")
     test <- test[grepl("release-", test)]
     test <- test[grepl("/", test)]
     int_release <- tstrsplit(test, split="-")[[2]]
@@ -339,13 +339,13 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_species <- function(release) {
-    test_genome <- XML::getHTMLLinks(paste0(
+    test_genome <- getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
         "/fasta/"
     ))
-    test_gtf <- XML::getHTMLLinks(paste0(
+    test_gtf <- getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
@@ -368,7 +368,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_genome <- function(release, species) {
-    test_genome <- XML::getHTMLLinks(paste0(
+    test_genome <- getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
@@ -383,7 +383,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_gtf <- function(release, species) {
-    test_gtf <- XML::getHTMLLinks(paste0(
+    test_gtf <- getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),

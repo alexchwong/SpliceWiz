@@ -239,3 +239,6 @@ update_data_frame <- function(existing_df, new_df) {
     return(as.data.frame(newDT))
 }
 
+getHTMLLinks <- function(link) {
+    read_html(link) %>% html_nodes("a") %>% html_attr("href")
+}

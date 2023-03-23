@@ -59,7 +59,7 @@ Imports:
 	heatmaply,
 	matrixStats,
 	RColorBrewer,
-	XML
+	rvest
 Suggests: 
     knitr, rmarkdown, openssl, crayon, splines, testthat (>= 3.0.0), pheatmap,
     DESeq2, limma, DoubleExpSeq, satuRn, edgeR, DBI, GO.db, fgsea, Rsubread 

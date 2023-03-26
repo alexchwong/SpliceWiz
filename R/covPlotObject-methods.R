@@ -127,6 +127,7 @@ setMethod("plotCPO", c(x = "covPlotObject"), function(
                 )
             }
         }
+    }
     
     for(j in seq_len(plotRanges)) {
         if(stackTracks) {

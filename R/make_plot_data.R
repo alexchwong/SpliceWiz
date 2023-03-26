@@ -99,7 +99,12 @@ makeMatrix <- function(
         event_list, sample_list, drop = FALSE])
     mat <- inc / (inc + exc)
     mat[inc + exc < depth_threshold] <- NA
-    mat <- mat[rowSums(is.na(mat)) < na.percent.max * ncol(mat), , drop = FALSE]
+    
+    if(!is.na(na.percent.max)) {
+        which_exclude <- rowSums(is.na(mat)) < na.percent.max * ncol(mat)
+        mat <- mat[which_exclude, , drop = FALSE]
+    }
+    
     if (method == "PSI") {
         # essentially M/Cov
     } else if (method == "logit") {
@@ -110,8 +115,6 @@ makeMatrix <- function(
         mat <- mat - rowMeans(mat)
         mat <- mat / rowSds(mat)
     }
-    rm(inc, exc)
-    gc()
     return(as.matrix(mat))
 }
 
@@ -122,35 +125,39 @@ makeMeanPSI <- function(
         se, event_list = rownames(se),
         condition, 
         conditionList,
-        # nom_DE, denom_DE,
         depth_threshold = 10, logit_max = 10
 ) {
     if (!any(event_list %in% rownames(se))) .log(
         "None of events in event_list matches those in the NxtSE object")
 
-    inc <- assay(se, "Included")[event_list, ]
-    exc <- assay(se, "Excluded")[event_list, ]
-    mat <- inc / (inc + exc)
-    mat[inc + exc < depth_threshold] <- NA
+    mat <- makeMatrix(
+        se, event_list,
+        colnames(se)[colData(se)[, condition] %in% conditionList],
+        method = "logit",
+        depth_threshold = depth_threshold,
+        logit_max = logit_max,
+        na.percent.max = NA
+    )
 
+    if(nrow(mat) < length(event_list) || !all(rownames(mat) == event_list)) {
+        .log("Error retrieving matrix via makeMatrix")
+    }
+    
     # use logit method to calculate geometric mean
     df <- data.frame(EventName = event_list)
     for(cond in conditionList) {
         if(cond %in% colData(se)[, condition]) {
-            mat.cond <- qlogis(mat[, colData(se)[, condition] == cond])
-            mat.cond[mat.cond > logit_max] <- logit_max
-            mat.cond[mat.cond < -logit_max] <- -logit_max
-            df$newcond <- plogis(rowMeans(mat.cond, na.rm = TRUE))
+            cond_samples <- colnames(se)[
+                colData(se)[, condition] == cond]
+            df$newcond <- plogis(rowMeans(mat[, cond_samples], na.rm = TRUE))
             colnames(df)[ncol(df)] <- paste(condition, cond, sep = "_")
-            rm(mat.cond)
-            gc()
         } else {
             .log(paste(
                 cond, "not found in", condition, "-", cond, "ignored"
             ), "message")
+            df$newcond <- rep(NA, nrow(df))
+            colnames(df)[ncol(df)] <- paste(condition, cond, sep = "_")
         }
     }
-    rm(mat, inc, exc)
-    gc()
     return(df)
 }

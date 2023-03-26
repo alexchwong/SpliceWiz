@@ -834,7 +834,7 @@ getCoverageBins <- function(file, region, bins = 2000,
         bin_size <- ceiling(width(region) / bins)
     }
 
-    gr.fetch <- .bin_gr(region, bin_size) 
+    # gr.fetch <- .bin_gr(region, bin_size) 
 
     if (strandMode == "unstranded") {
         strand <- "*"
@@ -855,6 +855,11 @@ getCoverageBins <- function(file, region, bins = 2000,
         as.character(seqnames(region)), 
         start(region), end(region), strand)
     )
+    bin_gr <- bin_ranges(df$x, binwidth = bin_size)
+    bin_gr$seqnames <- as.character(GenomeInfoDb::seqnames(region))
+    bin_gr$strand <- strand
+    gr.fetch <- .grDT(bin_gr)
+
     df <- bin_df(df, bin_size)
     gr.fetch$cov_mean <- df$sample
 
@@ -1132,26 +1137,17 @@ getCoverageBins <- function(file, region, bins = 2000,
     if (norm_event == "") return(list())
     
     events_to_highlight <- list()
-    rowData <- as.data.frame(rowData(se))
-    
-    if (rowData$EventType[match(norm_event, rowData$EventName)]
-        %in% c("MXE", "SE")) {
-        events_to_highlight[[1]] <- c(
-            rowData$Event1a[match(norm_event, rowData$EventName)],
-            rowData$Event2a[match(norm_event, rowData$EventName)])
+    # rowData <- as.data.frame(rowData(se))
+    row <- as.data.frame(rowData(se)[match(norm_event, rowData(se)$EventName),])    
+    if (row$EventType %in% c("MXE", "SE")) {
+        events_to_highlight[[1]] <- c(row$Event1a, row$Event2a)
     } else {
-        events_to_highlight[[1]] <- rowData$Event1a[
-            match(norm_event, rowData$EventName)]
+        events_to_highlight[[1]] <- row$Event1a
     }
-    if (rowData$EventType[match(norm_event, rowData$EventName)]
-        %in% c("MXE")) {
-        events_to_highlight[[2]] <- c(
-            rowData$Event1b[match(norm_event, rowData$EventName)],
-            rowData$Event2b[match(norm_event, rowData$EventName)])
-    } else if (rowData$EventType[match(norm_event, rowData$EventName)]
-        %in% c("SE", "A3SS", "A5SS", "ALE", "AFE")) {
-        events_to_highlight[[2]] <- rowData$Event1b[
-            match(norm_event, rowData$EventName)]
+    if (row$EventType %in% c("MXE")) {
+        events_to_highlight[[2]] <- c(row$Event1b, row$Event2b)
+    } else if (row$EventType %in%  c("SE", "A3SS", "A5SS", "ALE", "AFE")) {
+        events_to_highlight[[2]] <- row$Event1b
     }
     return(events_to_highlight)
 }
@@ -1344,17 +1340,20 @@ getCoverageBins <- function(file, region, bins = 2000,
         get("end") >= view_start - (view_end - view_start)
     ]
     setorderv(transcripts.DT, c("transcript_support_level", "width"))
-    if (length(selected_transcripts) > 1 || selected_transcripts != "") {
+    if (
+        is_valid(selected_transcripts) && (
+            any(selected_transcripts %in% transcripts.DT$transcript_id) |
+            any(selected_transcripts %in% transcripts.DT$transcript_name)
+        )   
+    ) {
         transcripts.DT <- transcripts.DT[
             get("transcript_id") %in% selected_transcripts |
             get("transcript_name") %in% selected_transcripts
         ]
     } # filter transcripts if applicable
 
-    reduced.DT <- elems[
-        get("transcript_id") %in% transcripts.DT$transcript_id &
-        get("type") %in% c("CDS", "exon", "intron")
-    ]
+    reduced.DT <- elems[get("transcript_id") %in% transcripts.DT$transcript_id]
+    reduced.DT <- reduced.DT[get("type") %in% c("CDS", "exon", "intron")]
     
     # Transfer feature_id from exons -> CDS
     CDS.DT <- reduced.DT[get("type") == "CDS"]
@@ -2152,6 +2151,7 @@ determine_compatible_events <- function(
 
         DT <- data.table(x = calcs$data.t_test[, 1])
         DT[, c("t_stat") := -log10(t_test$p.value)]
+        DT[!is.finite(get("t_stat")), c("t_stat") := 0]
         plot_objs$gp_track[[5]] <- ggplot() +
             geom_hline(yintercept = 0) +
             geom_line(data = as.data.frame(DT),
@@ -2519,7 +2519,10 @@ determine_compatible_events <- function(
 
 bin_df <- function(df, binwidth = 3, exon_gr = NULL) {
     DT <- as.data.table(df)
-    brks <- seq(1, nrow(DT) + 1, length.out = (nrow(DT) + 1) / binwidth)
+    brks <- seq(1, 
+        nrow(DT) + 1, 
+        length.out = (nrow(DT) + 1) / binwidth
+    )
     
     # Use single nucleotide resolution for exon bins
     if(!is.null(exon_gr)) {
@@ -2537,4 +2540,27 @@ bin_df <- function(df, binwidth = 3, exon_gr = NULL) {
     DT2 <- DT[, lapply(.SD, mean, na.rm = TRUE), by = "bin"]
     DT2[, c("bin") := NULL]
     return(as.data.frame(DT2))
+}
+
+bin_ranges <- function(coords, binwidth = 3, exon_gr = NULL) {
+    # coords is a vector of coordinates
+    brks <- seq(1, 
+        length(coords) + 1, 
+        length.out = (length(coords) + 1) / binwidth
+    )
+    if(!is.null(exon_gr)) {
+        for(i in seq_len(length(exon_gr))) {
+            brks <- c(brks, which(
+                coords >= BiocGenerics::start(exon_gr[i]) &
+                coords <= BiocGenerics::end(exon_gr[i])
+            ))
+        }
+    }
+    brks <- sort(unique(brks))
+    starts <- ceiling(brks)[-length(brks)]
+    ends <- c(starts[-1] - 1, length(coords))
+    return(data.frame(
+        start = coords[starts],
+        end = coords[ends]
+    ))
 }

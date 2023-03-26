@@ -1,3 +1,17 @@
+Changes in version 1.1.7 (2023-03-27)
++ Bugfix: t-test track plots as zero any non-finite p-values (arises when all
+  normalized coverages are the same value)
++ Bugfix: BAM2COV uses correct number of threads now
++ Bugfix: fixed duplicate junc_* elements on rbind of NxtSE objects
++ Feature: Add abs_deltaPSI as a column in differential analysis result
+  (absolute value of delta-PSI)
++ Feature: GO interactive plot now displays more information
++ Feature: faster retrieval of makeMatrix and makeMeanPSI functions
++ Feature: makeSE() now gives more verbose loading information
++ Feature: improved performance in getCoverageBins()
++ Feature: faster retrieval from Ensembl FTP (using rvest instead of XML)
++ Feature: slight performance optimization of plotCoverage
+
 Changes in version 1.1.6 (2023-02-24)
 + Gene ontology analysis is available! This is implemented via a wrapper to
   fgsea's fora() function (over-representation analysis)

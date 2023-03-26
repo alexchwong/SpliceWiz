@@ -189,7 +189,7 @@ collateData <- function(Experiment, reference_path, output_path,
         .collateData_COV(Experiment), output_path)
     df.internal <- .collateData_expr(Experiment)
     if (!overwrite && file.exists(file.path(output_path, "seed.Rds"))) {
-        se <- .makeSE_load_NxtSE(output_path)
+        se <- .makeSE_load_NxtSE(output_path, N = 7)
         if (all(colnames(se) %in% df.internal$sample) &
             all(df.internal$sample %in% colnames(se))
         ) {
@@ -290,39 +290,37 @@ collateData <- function(Experiment, reference_path, output_path,
         gc()
 
         dash_progress("Building Final NxtSE Object", N_steps)
-        .log("Saving assays into H5 file", "message")
+        .log("Building Final NxtSE Object", "message")
+        .log("...consolidating assays to H5 file", "message")
         samples_per_block <- 16
         # if(lowMemoryMode) samples_per_block <- 4
         assays <- .collateData_compile_assays_from_fst(df.internal,
             norm_output_path, samples_per_block)
-
-        .log("Saving auxiliary data", "message")
-
         .collateData_write_stats(df.internal, norm_output_path)
         .collateData_write_colData(df.internal, 
             coverage_files, norm_output_path, packageCOVfiles)
         
+        .log("...packaging reference", "message")
         if(novelSplicing) {
             cov_data <- .prepare_covplot_data(reference_path,
                 file.path(norm_output_path, "Reference"))
         } else {
             cov_data <- .prepare_covplot_data(reference_path)
         }
-        
         saveRDS(cov_data, file.path(norm_output_path, "cov_data.Rds"))
 
-        .log("Assembling final NxtSE object", "message")
+        .log("...synthesising NxtSE", "message")
         # NEW compile NxtSE:
         colData.Rds <- readRDS(file.path(norm_output_path, "colData.Rds"))
         colData <- .makeSE_colData_clean(colData.Rds$df.anno)
         se <- .collateData_initialise_HDF5(norm_output_path, colData, assays)
 
-        .log("Saving final NxtSE object", "message")
         .collateData_save_NxtSE(se, file.path(norm_output_path, "seed.Rds"))
         .collateData_cleanup(norm_output_path)
         
         # Test run of loading NxtSE
-        .log("Calculating overlapping IR-events for whole dataset", "message")
+        .log("...determining how overlapping introns should be removed", 
+            "message")
         tryCatch({
             tmpse <- makeSE(norm_output_path, verbose = FALSE,
                 RemoveOverlapping = FALSE)

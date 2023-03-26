@@ -1361,7 +1361,7 @@ Get_GTF_file <- function(reference_path) {
     if (!("transcript_biotype" %in% names(mcols(gtf_gr)))) {
         if("transcript_type" %in% names(mcols(gtf_gr))) {
             colnames(mcols(gtf_gr))[
-                which(colnames(mcols(gtf_gr))) == "transcript_type"
+                which(colnames(mcols(gtf_gr)) == "transcript_type")
             ] <- "transcript_biotype"
         } else {
             gtf_gr$transcript_biotype <- "protein_coding"        
@@ -1405,8 +1405,9 @@ Get_GTF_file <- function(reference_path) {
     if ("gene_biotype" %in% names(mcols(gtf_gr))) {
         # do nothing
     } else if ("gene_type" %in% names(mcols(gtf_gr))) {
-        colnames(mcols(gtf_gr))[which(colnames(mcols(gtf_gr)) ==
-            "gene_type")] <- "gene_biotype"
+        colnames(mcols(gtf_gr))[
+            which(colnames(mcols(gtf_gr)) == "gene_type")
+        ] <- "gene_biotype"
     } else {
         mcols(gtf_gr)$gene_biotype <- "protein_coding"
     }

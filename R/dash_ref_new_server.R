@@ -329,7 +329,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_releases <- function() {
-    test <- XML::getHTMLLinks("http://ftp.ensembl.org/pub")
+    test <- getHTMLLinks("http://ftp.ensembl.org/pub")
     test <- test[grepl("release-", test)]
     test <- test[grepl("/", test)]
     int_release <- tstrsplit(test, split="-")[[2]]
@@ -339,20 +339,23 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_species <- function(release) {
-    test_genome <- XML::getHTMLLinks(paste0(
+    test_genome <- getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
         "/fasta/"
     ))
-    test_gtf <- XML::getHTMLLinks(paste0(
+    test_genome <- test_genome[grepl("/", test_genome)]
+    test_gtf <- getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
         "/gtf/"
     ))
+    test_gtf <- test_gtf[grepl("/", test_gtf)]
     species <- union(test_genome, test_gtf)
     species <- species[!grepl("..", species, fixed = TRUE)]
+    species <- species[!grepl("release", species, fixed = TRUE)]
     species <- sub("/","",species)
     if(all(c("homo_sapiens", "mus_musculus") %in% species)) {
         species <- unique(c(
@@ -368,7 +371,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_genome <- function(release, species) {
-    test_genome <- XML::getHTMLLinks(paste0(
+    test_genome <- getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),
@@ -383,7 +386,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 }
 
 .refresh_gtf <- function(release, species) {
-    test_gtf <- XML::getHTMLLinks(paste0(
+    test_gtf <- getHTMLLinks(paste0(
         "http://ftp.ensembl.org/pub/",
         "release-",
         as.character(release),

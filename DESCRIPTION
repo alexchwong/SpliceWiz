@@ -76,6 +76,8 @@ Collate: AllImports.R
 	AllClasses.R
 	AllGenerics.R
 	ASEFilter-methods.R
+    covDataObject-methods.R
+    covPlotObject-methods.R
 	NxtSE-methods.R
 	globals.R
 	ggplot_themes.R
@@ -83,6 +85,7 @@ Collate: AllImports.R
 	wrappers.R
 	make_plot_data.R
 	Coverage.R
+    Coverage2.R
 	utils.R
 	File_finders.R
     BuildRef_GO.R

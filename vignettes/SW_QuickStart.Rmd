@@ -64,6 +64,12 @@ like these, where available.
 
 # What's New?
 
+Note: for all runnable examples, first load the SpliceWiz library:
+
+```{r}
+library(SpliceWiz)
+```
+
 <details>
 <summary>What's New: Novel splice detection (version 0.99.3+) </summary>
 \

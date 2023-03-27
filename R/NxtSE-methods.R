@@ -569,6 +569,13 @@ setReplaceMethod("junc_gr", c("NxtSE"), function(x, value)
     x
 })
 
+setReplaceMethod("row_gr", c("NxtSE"), function(x, value)
+{
+    x@metadata[["row_gr"]] <- value
+    x
+})
+
+
 ################################ SUBSETTERS ####################################
 
 #' @describeIn NxtSE-class Subsets a NxtSE object

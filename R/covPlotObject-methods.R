@@ -10,22 +10,28 @@
 #'
 #' dataObj <- getCoverageData(
 #'     se,
-#'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
+#'     Gene = "SRSF3",
 #'     tracks = colnames(se)
 #' )
 #' 
 #' # covPlotObject uses same parameters as covDataObject, unless arguments
-#' # overridden by parameters in getCovPlotObject
-#' plotObj_samples <- getCovPlotObject(
-#'     dataObj
+#' # overridden by parameters in getPlotObject
+#' plotObj_samples <- getPlotObject(
+#'     dataObj,
+#'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3"
 #' )
 #'
+#' plotView(plotObj_samples)
+#'
 #' # Generate group plot
-#' plotObj_group <- getCovPlotObject(
+#' plotObj_group <- getPlotObject(
 #'     dataObj,
+#'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
 #'     condition = "treatment",
 #'     tracks = c("A", "B")
 #' )
+#'
+#' plotView(plotObj_group, centerByEvent = TRUE)
 #'
 #' @name covPlotObject-class
 #' @seealso [getCoverageData]
@@ -37,8 +43,9 @@ covPlotObject <- function(
         cov = list(),
         norm_cov = list(),
         junc = list(),
+        norm_junc = list(),
+        junc_PSI = list(),
         cov_stats = list(),
-        diff_stats = data.frame(),
         annotation = list()
 ) {
     obj <- new("covPlotObject",
@@ -46,8 +53,9 @@ covPlotObject <- function(
         cov = cov,
         norm_cov = norm_cov,
         junc = junc,
+        norm_junc = norm_junc,
+        junc_PSI = junc_PSI,
         cov_stats = cov_stats,
-        diff_stats = diff_stats,
         annotation = annotation
     )
     obj
@@ -57,28 +65,16 @@ covPlotObject <- function(
 #'   covDataObject. Allows users to change parameters such as viewing window,
 #'   conditions, tracks, and other parameters, for customizing plot parameters
 #' @export
-getCovPlotObject <- function(
-    obj, Event,
-    view_start, view_end,
+getPlotObject <- function(
+    obj, 
+    Event, # To specify normalization event
+    # view_start, view_end, # remove to preserve scroll flexibility
     strand = c("*", "+", "-"),
-    tracks, condition,
-    ribbon_mode = c("sd", "ci", "sem", "none"),
-    diff_mode = c("none", "t-test"),
-    reverseGenomeCoords = FALSE,
-    condensed = FALSE,
-    selected_transcripts = "",
-    plot_key_isoforms = FALSE
+    tracks, # can be a list of iterables
+    condition
+    # ribbon_mode = c("sd", "ci", "sem", "none"),
 ) {
     args <- obj@args
-    if(!missing(view_start))  args[["view_start"]] <- view_start
-    if(!missing(view_end))  args[["view_end"]] <- view_end
-    args[["reverseGenomeCoords"]] <- reverseGenomeCoords
-    if(args[["view_start"]] > args[["view_end"]]) {
-        args[["reverseGenomeCoords"]] <- !reverseGenomeCoords
-        args[["view_start"]] <- args[["view_start"]] + args[["view_end"]]
-        args[["view_end"]] <- args[["view_start"]] - args[["view_end"]]
-        args[["view_start"]] <- args[["view_start"]] - args[["view_end"]]
-    }
 
     if(!missing(tracks)) args[["tracks"]] <- tracks
     if(!missing(condition)) {
@@ -87,99 +83,49 @@ getCovPlotObject <- function(
         args[["condition"]] <- NULL
     }
 
-    # sanity check condition / tracks against colData
-    colData <- obj@colData
-    sampleList <- list()
-    samples_to_check <- c()
-    if("condition" %in% names(args)) {
-        if(args[["condition"]] %in% colnames(colData)) {
-            for(cond_elem in args[["tracks"]]) {
-                if(any(cond_elem %in% colData[, args[["condition"]]])) {
-                    sampleList[[cond_elem]] <- rownames(colData)[
-                        colData[, args[["condition"]]] == cond_elem]
-                    samples_to_check <- c(samples_to_check,
-                        sampleList[[cond_elem]])
-                } else {
-                    # ignore
-                }
-            }
-        } else {
-            .log(paste("In getCovPlotObject,",
-                "condition is not a recognised column in colData"
-            ))
-        }
-    } else {
-        for(samp in args[["tracks"]]) {
-            if(samp %in% rownames(colData)) {
-                sampleList[[samp]] <- samp
-                samples_to_check <- c(samples_to_check,
-                    sampleList[[samp]])
-            }
-        }
+    if(!missing(Event)) args[["Event"]] <- Event
+    if(!("Event" %in% names(args)) && "condition" %in% names(args)) {
+        .log(paste("In getPlotObject,",
+            "for plotting by condition, normalizing `Event` must be supplied"
+        ))
     }
-    args[["sampleList"]] <- sampleList
-
+    
+    # Check tracks and conditions in args are legit, modify as necessary
+    args <- .gPO_check_tracks(obj, args)
     
     # Junction strand is always same as requested strand
     # But need to check strandedness of RNA-seq data before deciding coverage
-
     if(
             !missing(strand) && 
             length(strand) == 1 && 
             strand %in% c("*", "+", "-")
     ) {
         args[["strand"]] <- strand
+    } else if(!("strand" %in% names(args))) {
+        args[["strand"]] <- "*" # default strand
     }
 
-    args[["view_strand_jn"]] <- args[["strand"]]
-    if(args[["strand"]] != "*") {
-        if(all(obj@normData[["sampleStrand"]][samples_to_check] == -1)) {
-            if(args[["strand"]] == "+") {
-                args[["view_strand"]] <- "-"
-            } else {
-                args[["view_strand"]] <- "+"
-            }
-        }
-    } else {
-        args[["view_strand"]] <- "*"
-    }
-    
-    if(!missing(Event)) args[["Event"]] <- Event
-    
-    if(!("Event" %in% names(args)) && "condition" %in% names(args)) {
-        .log(paste("In getCovPlotObject,",
-            "for plotting by condition, normalizing `Event` must be supplied"
-        ))
-    }
+    # Check strand against stranded-ness of RNA-seq
+    args <- .gPO_check_strand(obj, args)
 
+    # Always get these
     cov <- .gCD_getCoverage(obj, args)
-    norm_cov <- list()
+    junc <- .gCD_getJunc(obj, args, cov)
+
+    norm_cov <- norm_junc <- list()
     if("Event" %in% names(args)) {
          norm_cov <- .gCD_getCoverage(obj, args, normalize = TRUE)
+         
+         # if single sample
+         norm_junc <- .gCD_getJunc(obj, args, norm_cov, normalized = TRUE)
     }
 
+    # Plot stats if applicable
+    cov_stats <- junc_PSI <- list()
     if("condition" %in% names(args)) {
         # compile junction data
-        junc <- .gCD_getPSI(obj, args, norm_cov)
-    } else {
-        # compile raw junction data
-        junc <- .gCD_getJuncRaw(obj, args, cov)
-    }
-    
-    # Plot stats if applicable
-    cov_stats <- list()
-    diff_stats <- data.table()
-    
-    ribbon_mode <- match.arg(ribbon_mode)
-    if(!is_valid(ribbon_mode)) ribbon_mode <- "none"
-    args[["ribbon_mode"]] <- ribbon_mode
-    if("condition" %in% names(args)) {
-        cov_stats <- .gCD_covStats(norm_cov, ribbon_mode)
-        
-        diff_mode <- match.arg(diff_mode)
-        if(diff_mode == "t-test" & length(args[["sampleList"]]) >= 2) {
-            diff_stats <- .gCD_ttest(norm_cov[[1]], norm_cov[[2]])
-        }
+        junc_PSI <- .gCD_getPSI(obj, args, norm_cov)
+        cov_stats <- .gCD_covStats(norm_cov)
     }
 
     # plot relevant annotations
@@ -189,6 +135,7 @@ getCovPlotObject <- function(
             args[["Event"]] %in% rownames(obj@normData$rowData)
     ) {
         row <- obj@normData$rowData[args[["Event"]],]
+        args[["EventRegion"]] <- row$EventRegion
         if (row$EventType %in% c("MXE", "SE")) {
             highlight_gr[[1]] <- coord2GR(c(row$Event1a, row$Event2a))
         } else {
@@ -202,28 +149,28 @@ getCovPlotObject <- function(
     }
     args[["highlight_gr"]] <- highlight_gr
 
-    DTlist <- obj@annotations
+    DTlist <- obj@annotation
     DTlist$reduced.DT <- .gcd_highlight_anno(
         DTlist$reduced.DT, args[["highlight_gr"]]
     )
     
     # Filtering and stacking can be done as later steps
     
-    DTlist$reduced.DT <- .gcd_filter_anno(
-        DTlist$reduced.DT, DTlist$transcripts.DT,
-        selected_transcripts = selected_transcripts,
-        gr_expressed_junctions = NULL,
-        plot_key_isoforms = plot_key_isoforms
-    )
+    # DTlist$reduced.DT <- .gcd_filter_anno(
+        # DTlist$reduced.DT, DTlist$transcripts.DT,
+        # selected_transcripts = selected_transcripts,
+        # gr_expressed_junctions = NULL,
+        # plot_key_isoforms = plot_key_isoforms
+    # )
 
-    args[["condensed"]] <- condensed
-    DTplotlist <- .gCD_stack_anno(
-        DTlist, 
-        args[["view_start"]], args[["view_end"]], 
-        args[["reverseGenomeCoords"]],
-        args[["condensed"]]
-    )
-    args[["condense_this"]] <- DTplotlist[["condense_this"]]
+    # args[["condensed"]] <- condensed
+    # DTplotlist <- .gCD_stack_anno(
+        # DTlist, 
+        # args[["view_start"]], args[["view_end"]], 
+        # args[["reverseGenomeCoords"]],
+        # args[["condensed"]]
+    # )
+    # args[["condense_this"]] <- DTplotlist[["condense_this"]]
 
     
     return(covPlotObject(
@@ -231,443 +178,708 @@ getCovPlotObject <- function(
         cov = cov,
         norm_cov = norm_cov,
         junc = junc,
+        norm_junc = norm_junc,
+        junc_PSI = junc_PSI,
         cov_stats = cov_stats,
-        diff_stats = diff_stats,
-        annotation = DTplotlist
+        annotation = DTlist
     ))
 }
+
+#' @describeIn covPlotObject-class Returns the tracks specified in the 
+#'   covPlotObject object
+#' @export
+setMethod("tracks", c(x = "covPlotObject"), function(
+    x
+) {
+    return(x@args[["tracks"]])
+})
+
+#' @describeIn covPlotObject-class Returns the condition specified in the 
+#'   covPlotObject object
+#' @export
+setMethod("condition", c(x = "covPlotObject"), function(
+    x
+) {
+    return(x@args[["condition"]])
+})
 
 
 #' @describeIn covPlotObject-class Creates a coverage plot using the stored
 #'   data in the covPlotObject
 #' @export
-setMethod("plotCPO", c(x = "covPlotObject"), function(
-    x, plotRanges = NULL,
-    tracks = NULL,
-    mode = c("raw", "normalized", "stats"),
-    stackTracks = FALSE,
-    plotJunctions = TRUE,
+plotView <- function(
+    x, 
+
+    # for single window view (to simplify things)
+    view_start,
+    view_end,
+    
+    debug = TRUE,
+    
+    # Event-centric plotting
+    centerByEvent = FALSE,
+    EventZoomFactor = 0.2,
+    EventBasesFlanking = 100,
+    
+    # specify tracks
+    trackList = list(),
+    
+    # specify differential comparisons
+    diff_stat = c("none", "t-test"),
+    diffList = list(),
+
+    reverseGenomeCoords = FALSE,
+
+    ribbon_mode = c("sd", "sem", "ci", "none"),
+
+    # plot raw or normalized coverage (only works for sample tracks)
+    normalizeCoverage = FALSE,
+
+    # specify annotation track
     plotAnnotations = TRUE,
     plotAnnoSubTrack = TRUE,
-    plotDiffTrack = TRUE,
-    interactive = FALSE,
-    resolution = 10000,
+
+    # Plot layout
+    verticalLayout = c(6,1,1,2),
+    horizontalLayout = c(),
+
+    # filter annotations
+    filterByTranscripts = "",
+
+    # plot only by transcripts with highlights
+    filterByEventTranscripts = FALSE,
+
+    # filter annotations
+    filterByExpressedTranscripts = TRUE,
+    
+    # whether to condense transcripts by gene
+    condenseTranscripts = FALSE,
+
+    # whether to plot sashimi arcs
+    plotJunctions = TRUE,
     junctionThreshold = 0.01,
+
+    # whether to plot by exon windows
+    plotRanges = GRanges(),
+
+    # ggplot or plotly object?
+    interactive = FALSE,
     ...
 ) {
-    # Plot single track
-    if(is.null(plotRanges)) {
-        plotRanges <- GRanges(
-            x@args[["view_chr"]],
-            IRanges(
-                x@args[["view_start"]], x@args[["view_end"]]
-            )
-        ) # strand is ignored
+    if(!is(x, "covPlotObject")) .log(paste(
+        "In plotView,", "x must be a covPlotObject"
+    ))
+
+    args <- x@args
+
+    # inject variables into args
+    if(!missing(view_start)) args[["view_start"]] <- view_start
+    if(!missing(view_end)) args[["view_end"]] <- view_end
+    args[["reverseGenomeCoords"]] <- reverseGenomeCoords
+    
+    ribbon_mode <- match.arg(ribbon_mode)
+    if(!is_valid(ribbon_mode)) ribbon_mode <- "none"
+    args[["ribbon_mode"]] <- ribbon_mode
+
+    if(
+            (missing(view_start) | missing(view_end)) &&
+            centerByEvent &
+            "EventRegion" %in% names(args)
+    ) {
+        args <- .pV_getEventCoords(x, args, EventZoomFactor, EventBasesFlanking)
     }
+    
+    diff_stat <- match.arg(diff_stat)
+    if(!is_valid(diff_stat)) diff_stat <- "none"
+    
+    # plotRanges checking
     
     if(!is(plotRanges, "GRanges")) .log(paste(
         "In plot() for class covPlotObject,",
-        "`plotRanges` must be a GRanges object, or NULL"
+        "`plotRanges` must be a GRanges object"
     ))
-
+    # Plot single window if no plotRanges given
+    if(length(plotRanges) == 0) plotRanges <- GRanges(
+        args[["view_chr"]],IRanges(args[["view_start"]], args[["view_end"]])
+    ) # strand is ignored
     if(
-        !is.null(plotRanges) && is(plotRanges, "GRanges") &&
-        any(as.character(seqnames(plotRanges)) != x@args[["view_chr"]])
-    ) .log(paste(
-        "In plot() for class covPlotObject,",
-        "Some elements in `plotRanges` have seqnames that do not match that",
-        "of covPlotObject"
-    ))
-
-    if(is.null(tracks)) tracks <- x@args[["tracks"]]
-
-    if(!("tracks" %in% names(x@args))) .log(paste(
-        "In plot() for class covPlotObject,",
-        "attempted to specify `tracks` when there are none in covPlotObject"
-    ))
-
-    # Allow `tracks` to be index of tracks to use
-    if(
-            all(is.numeric(tracks)) && (
-                all(tracks > 0) & all(tracks <= length(x@args[["tracks"]]))
-            )
+        any(as.character(seqnames(plotRanges)) != args[["view_chr"]])
     ) {
-        tracks <- unique(tracks)
-        tracks <- x@args[["tracks"]][tracks]
+        seqs <- unique(as.character(seqnames(plotRanges)))
+        .log(paste(
+            "In plotView() for class covPlotObject,",
+            "Some elements in `plotRanges` have seqnames that do not match that",
+            "of covPlotObject", seqs[!(seqs %in% args[["view_chr"]])]
+        ))
+    }
+    # What is the full range
+    fullRange <- range(plotRanges)
+    if(!missing(view_start) & !missing(view_end)) {
+        # whatever's larger
+        fullRange <- range(c(fullRange, 
+            GRanges(args[["view_chr"]], IRanges(view_start, view_end))
+        ))        
+    }
+    fetchRange <- fullRange
+    if(interactive) {
+        start(fetchRange) <- max(1, start(fullRange) - width(fullRange))
+        end(fetchRange) <- end(fullRange) + width(fullRange)
+    }
+    
+    # disable interactive if multi plot
+    if(interactive == TRUE & length(plotRanges) > 1) {
+        .log(paste(
+            "In plotView,",
+            "interactive plots are not supported for multi-view plotting"
+        ))
+        interactive <- FALSE
+    }
+    
+    # Sort plotRanges
+    plotRanges <- sort(plotRanges, decreasing = args[["reverseGenomeCoords"]])
+    
+    # Track list checking - should be a list of indices
+    
+    # If no trackList given, plot all tracks individually
+    if(length(trackList) == 0) trackList <- lapply(
+        seq_len(length(args[["tracks"]])),
+        function(i) i
+    )
+    if(!is(trackList, "list")) {
+        args[["trackList"]] <- .pV_trackList_from_vector(trackList, args)
+    } else {
+        args[["trackList"]] <- .pV_trackList_from_list(trackList, args)
     }
 
-    if(is(tracks, "list")) {
-        for(subtrack %in% tracks) {
-            if(!all(subtrack %in% x@args[["tracks"]])) .log(paste(
-                "In plot() for class covPlotObject,",
-                "some `tracks` are not found in covPlotObject"
-            ))
-        }
-    } else if(!all(tracks %in% x@args[["tracks"]])) .log(paste(
-        "In plot() for class covPlotObject,",
-        "some `tracks` are not found in covPlotObject"
-    ))
-    
-    if(!is.numeric(resolution) || resolution < 1000) {
-        resolution <- 1000
-    }
-    
     # Structure of plot
     # | 1a || 1b || 1c |
     # | 2a || 2b || 2c |
     # | 3a || 3b || 3c |
     # | pa || pb || pc | - diff track
     # | A  || B  || C  | - annotation subtrack
-    # | annotation     | - annotation full track
+    # | annotation     | - annotation full track   
 
-    covTrack <- list() # nested list
+    covTrack <- list()
     diffTrack <- list()
     annoSubTrack <- list()
     annoFullTrack <- list() # list of 1
     
-    subResolution <- resolution / ceiling(length(plotRanges))
+    # Proportion all viewing frames
+    widthSum <- sum(width(plotRanges))
+    widthFrac <- width(plotRanges) / widthSum
+    if(widthSum > 1e4) {
+        allocPixels <- 3 * round(widthFrac * 1e4)
+    } else {
+        allocPixels <- NULL
+    }
     
-    if(stackTracks) {
-        for(j in seq_len(length(plotRanges))) {
-            range_gr <- plotRanges[j]
-            covTrack[[j]] <- .cPO_plotCoverage_multi(
-                x, tracks, 
-                range_gr = range_gr, 
-                resolution = subResolution, 
+    aggJuncCoords <- c()
+    for(j in seq_len(length(plotRanges))) {
+        range_gr <- plotRanges[j]
+        
+        # Work out which coords to plot
+        juncCoords <- .cPO_getJuncCoords(
+            x, args, normalizeCoverage,
+            range_gr = range_gr, 
+            junctionThreshold
+        )
+        aggJuncCoords <- c(aggJuncCoords, juncCoords)
+        juncCoordsPlot <- c(
+            juncCoords[["jc_start"]], juncCoords[["jc_start"]] - 1,
+            juncCoords[["jc_end"]], juncCoords[["jc_end"]] + 1
+        )
+        
+        view_range <- width(range_gr)
+        if(is.null(allocPixels)) {
+            allocCoords <- seq(
+                start(range_gr) - view_range, 
+                end(range_gr) + view_range
+            )
+        } else {
+            allocCoords <- round(seq(
+                start(range_gr) - view_range, 
+                end(range_gr) + view_range, 
+                length.out = allocPixels[j]
+            ))
+        }
+        
+        sampleCoords <- unique(c(allocCoords, juncCoordsPlot))
+        
+        covTrack[[j]] <- .cPO_plotCoverage_multi(
+            x, args, normalizeCoverage,
+            range_gr = range_gr, 
+            sampleCoords = sampleCoords,
+            plotJunctions = plotJunctions,
+            junctionThreshold = junctionThreshold,
+            interactive = interactive
+        )
+        
+        if(diff_stat != "none" && length(diffList) > 0) {
+            diffTrack[[j]] <- .cPO_plotDiff_multi(
+                x, args, diffList,
+                diff_stat, range_gr,
+                sampleCoords,
                 interactive = interactive
             )
         }
-    } else {
-        for(i in seq_len(length(tracks))) {
-            covTrack[[i]] <- list()
-            track <- tracks[i]
-            for(j in seq_len(length(plotRanges))) {
-                range_gr <- plotRanges[j]
-                covTrack[[i]][[j]] <- .cPO_plotCoverage(
-                    x, track, 
-                    range_gr = range_gr, 
-                    resolution = subResolution, 
-                    jnThreshold = junctionThreshold,
-                    plotJunctions = plotJunctions,
-                    interactive = interactive
-                )
-            }
-        }
-    }
-    
-    
-})
-
-.cPO_plotCoverage <- function(
-    x, track, 
-    range_gr, resolution,
-    plotJunctions = TRUE, jnThreshold,
-    interactive = FALSE
-) {
-    # plot mean coverage or raw coverage?
-    plotMeanCov <- (length(x@cov_stats) > 0)
-
-    # junction processing is identical
-    juncAll <- x@junc
-    junc <- x@junc[[track]]
-    OL <- findOverlaps(junc, range_gr)
-    if(length(from(OL)) > 0) {
-        junc <- junc[unique(from(OL))]
-    } else {
-        junc <- NULL
     }
 
-    if(plotMeanCov) {
-        trackName <- paste(x@args[["condition"]], track)
-        df <- x@cov_stats[[track]]
-        df_sub <- df[,seq_len(2)] # only 2 columns
-        if(nrow(df_sub) > 2 * resolution) {
-            binwidth <- floor(nrow(df_sub) / resolution)
-            df_sub <- .gCD_bin_df(df_sub, binwidth, juncAll)
+    DTlist <- .pV_filterTranscripts(
+        x, args,
+        filterByTranscripts = filterByTranscripts,
+        filterByEventTranscripts = filterByEventTranscripts,
+        filterByExpressedTranscripts = filterByExpressedTranscripts,
+        aggJuncCoords = aggJuncCoords,
+        plotRanges = plotRanges
+    )
+    
+    DTplotlist <- .gCD_stack_anno(
+        DTlist,
+        start(fetchRange), end(fetchRange),
+        reverseGenomeCoords = args[["reverseGenomeCoords"]],
+        condensed = condenseTranscripts
+    )
+    DTplotlist[["exonRanges"]] <- plotRanges
+
+    if(plotAnnoSubTrack && length(plotRanges) > 1) {
+        for(j in seq_len(length(plotRanges))) {
+            range_gr <- plotRanges[j]
             
-            # subset df by df_sub
-            df <- df[df$x %in% round(df_sub$x),]
-        }
-
-        dfJn <- .cPO_jn_arcs(
-            junc,
-            arcHeight = 0.1 * max(df$mean),
-            junctionThreshold = jnThreshold * max(df$mean)
-        )
-    
-        if(x@args$ribbon_mode %in% c("ci", "sd", "sem")) {
-            df$info <- paste(
-                paste0("Coordinate: ", df$x), 
-                paste0("Norm-Depth (mean): ", round(df$mean, 4)),
-                paste0("Norm-Depth (", x@args$ribbon_mode, "): ", 
-                    round(df$var, 4)),
-                sep = "\n"
+            annoSubTrack[[j]] <- .gCD_plotRef(
+                DTplotlist, range_gr,
+                reverseGenomeCoords = args[["reverseGenomeCoords"]],
+                add_information = FALSE,
+                interactive = interactive
             )
-        } else {
-            df$info <- paste(
-                paste0("Coordinate: ", df$x), 
-                paste0("Norm-Depth (mean): ", round(df$mean, 4)),
-                sep = "\n"
-            )        
         }
-    } else {
-        trackName <- track
-        
-        df <- x@cov[[track]]
-        if(nrow(df) > 2 * resolution) {
-            binwidth <- floor(nrow(df) / resolution)
-            df <- .gCD_bin_df(df, binwidth, juncAll)
-        }
-        df$info <- paste(
-            paste0("Coordinate: ", df$x), 
-            paste0("Depth: ", df$depth),
-            sep = "\n"
-        )
-
-        dfJn <- .cPO_jn_arcs(
-            junc, 
-            arcHeight = 0.1 * max(df$depth),
-            junctionThreshold = jnThreshold * max(df$depth)
-        )
-    }
-    df$group <- trackName
-
-    # junc processing - common
-    if(plotJunctions) {
-        dtJn <- as.data.table(dfJn)
-        dtJn <- dtJn[
-            get("x") >= start(range_gr) &
-            get("x") <= end(range_gr)
-        ]
-        dtJn[, c("xlabel", "ylabel") := list(
-            mean(get("x")), mean(get("y"))), 
-            by = "info"
-        ]
-        dtJn <- unique(dtJn[, 
-            c("info", "value", "xlabel", "ylabel"), with = FALSE])
-        dfJnSum <- as.data.frame(dtJn)                
-    } else {
-        dfJnSum <- NA
-    }
-
-    # plotting - common
-        
-    suppressWarnings({
-        p <- ggplot(df, aes(text = get("info"))) +
-            geom_hline(yintercept = 0)            
-    })
-
-    # plot ribbon (group cov only)
-    if(plotMeanCov && x@args$ribbon_mode %in% c("ci", "sd", "sem")) {
-        p <- p +
-            geom_ribbon(data = df, alpha = 0.2,
-                aes(
-                    x = get("x"), y = get("mean"),
-                    ymin = get("mean") - get("var"),
-                    ymax = get("mean") + get("var"),
-                    group = get("group")
-                )
-            )
     }
     
-    # plot line
-    if(plotMeanCov) {
-        p <- p + geom_line(aes(
-            x = get("x"), y = get("mean"), group = get("group")
-        ))
-    } else {
-        p <- p + geom_line(aes(
-            x = get("x"), y = get("depth"), group = get("group")
-        ))
-    }
-
-    # plot y axis and format
-    p <- p + theme_white_legend + labs(y = trackName)
-
-    # plot junctions
-    if(plotJunctions) {
-        p <- p +
-            geom_line(
-                data = dfJn, 
-                aes(x = get("x"), y = get("yarc"), group = get("info")), 
-                color = "darkred"
-            ) +
-            geom_text(
-                data = dfJnSum, 
-                aes(
-                    x = get("xlabel"), y = get("ylabel"), label = get("value")
-                )
-            )
-        yrange <- c(0, 1.05 * max(
-            c(layer_scales(p)$y$range$range[2], dfJn$yarc)
-        ))
-    } else {
-        yrange <- c(0, 1.05 * layer_scales(p)$y$range$range[2])
+    if(plotAnnotations) {
+        annoFullTrack[[1]] <- .gCD_plotRef(
+            DTplotlist, fullRange, 
+            reverseGenomeCoords = args[["reverseGenomeCoords"]],
+            add_information = TRUE,
+            interactive = interactive
+        )
     }
     
-    pl <- NULL
-
-        
+    keepVLayout <- c(
+        length(covTrack) > 0,
+        length(diffTrack) > 0,
+        length(annoSubTrack) > 0,
+        length(annoFullTrack) > 0
+    )
+    if(length(verticalLayout) == 4) {
+        verticalLayout <- verticalLayout[keepVLayout]
+    } else if(length(verticalLayout) == sum(keepVLayout)) {
+        # do nothing
+    } else {
+        # revert to default
+        verticalLayout <- c(6,1,1,2)
+        verticalLayout <- verticalLayout[keepVLayout]
+    }
+    
+    if(length(horizontalLayout) == 0) {
+        horizontalLayout <- ceiling(10 * widthFrac / sum(widthFrac))
+    } else if(length(horizontalLayout) == length(covTrack)) {
+        horizontalLayout <- ceiling(horizontalLayout)
+    } else {
+        horizontalLayout <- ceiling(10 * widthFrac / sum(widthFrac))
+    }
+    
+    # if(debug) {
+        # return(list(
+            # covTrack = covTrack,
+            # diffTrack = diffTrack,
+            # annoSubTrack = annoSubTrack,
+            # annoFullTrack = annoFullTrack
+        # ))
+    # }
+    
+    if(!args[["reverseGenomeCoords"]]) {
+        plotViewStart <- start(fullRange)
+        plotViewEnd <- end(fullRange)
+    } else {
+        plotViewStart <- end(fullRange)
+        plotViewEnd <- start(fullRange)
+    }
+    
     if(interactive) {
-        pl <- ggplotly(p, tooltip = "text") %>% 
-        layout(
-            yaxis = list(
-                range = yrange,
-                rangemode = "tozero", 
-                fixedrange = TRUE
-            )
+        pl <- .pV_assemble_plotly(
+            covTrack, diffTrack, annoFullTrack, verticalLayout
         )
-        pl$x$data[[2]]$showlegend <- FALSE
-        pl$x$data[[2]]$name <- trackName
-
-        if(plotMeanCov) {
-            pl$x$data[[3]]$showlegend <- FALSE
-            pl$x$data[[3]]$name <- trackName        
-        }
-
+        pl <- pl  %>% layout(
+            dragmode = "pan",
+            xaxis = list(range = c(plotViewStart, plotViewEnd))
+        )
         return(pl)
     } else {
-        p <- p +
-            theme(axis.title.x = element_blank()) +
-            labs(x = "", y = trackName)
-
-        if(x@args[["reverseGenomeCoords"]]) {
-            plotViewStart <- end(range_gr)
-            plotViewEnd <- start(range_gr)
-        } else {
-            plotViewStart <- start(range_gr)
-            plotViewEnd <- end(range_gr)            
-        }
-
-        p <- p + coord_cartesian(
-            xlim = c(plotViewStart, plotViewEnd),
-            ylim = yrange,
-            expand = FALSE
-        )     
-        
-        return(p)
+        pl <- .pV_assemble_ggplot(
+            covTrack, diffTrack, annoSubTrack, annoFullTrack,
+                verticalLayout, horizontalLayout
+        )
+        return(pl)
     }
 }
+################################################################################
 
-.cPO_plotCoverage_multi <- function(
-    x, tracks, trackName = "Coverage",
-    mode = c("raw", "normalized", "stats"),
-    range_gr,
-    stacked = FALSE,
-    plotJunctions = TRUE, jnThreshold,
-    interactive = FALSE
+.pV_getEventCoords <- function(
+    x, args,
+    zoom_factor = 0.2,
+    bases_flanking = 100
 ) {
-    mode <- match.args(mode)
-    if(!is_valid(mode)) mode <- "raw"
-    plotMeanCov <- FALSE
-    if(mode == "normalized") {
-        if(length(x@norm_cov) > 0) {
-            plotJunctions <- FALSE
-        } else {
-            mode <- "raw"
-        }
-    } else if(mode == "stats") {
-        if(length(x@cov_stats) > 0 && all(tracks %in% names(x@cov_stats))) {
-            plotMeanCov <- TRUE
-        } else {
-            mode <- "raw"
+    # sanitise parameters
+    if(!is.numeric(bases_flanking) || bases_flanking < 0) bases_flanking <- 0
+    if(!is.numeric(zoom_factor) || zoom_factor < 0) zoom_factor <- 0
+
+    if(!("EventRegion" %in% names(args))) return(NULL)
+    EventRegion <- args[["EventRegion"]]
+    grEvent <- coord2GR(EventRegion)
+    
+    eventStart <- start(grEvent)
+    eventEnd <- end(grEvent)
+    view_length <- eventEnd - eventStart
+    view_center <- (eventEnd + eventStart) / 2
+    new_view_length <- view_length * 3^zoom_factor + 2 * bases_flanking
+    
+    view_start <- round(view_center - new_view_length / 2)
+    view_end <- round(view_center + new_view_length / 2)
+    
+    seqInfo <- args[["seqInfo"]][args[["view_chr"]]]
+    seqmax <- GenomeInfoDb::seqlengths(seqInfo)
+    if (view_end > seqmax) {
+        view_end <- seqmax - 1
+        view_start <- view_end - new_view_length
+        if(view_start < 1) view_start <- 1
+    }
+    args[["view_start"]] <- view_start
+    args[["view_end"]] <- view_end
+    
+    return(args)
+}
+
+################################################################################
+
+.pV_filterTranscripts <- function(
+    x, args,
+    filterByTranscripts,
+    filterByEventTranscripts,
+    filterByExpressedTranscripts,
+    aggJuncCoords,
+    plotRanges
+) {
+
+    # Filter annotations by observed coords
+    reduced.DT <- copy(x@annotation[["reduced.DT"]])
+    transcripts.DT <- copy(x@annotation[["transcripts.DT"]])
+    
+    transcriptFiltered <- FALSE
+    if(is_valid(filterByTranscripts)) {
+        if(
+            all(filterByTranscripts %in% 
+                c(
+                    transcripts.DT$transcript_id, transcripts.DT$transcript_name
+                )
+            )
+        ) {
+            transcripts.DT <- transcripts.DT[
+                get("transcript_name") %in% filterByTranscripts |
+                get("transcript_id") %in% filterByTranscripts
+            ]
+            reduced.DT <- reduced.DT[
+                get("transcript_id") %in% transcripts.DT$transcript_id
+            ]
+            transcriptFiltered <- TRUE
         }
     }
     
-    # junction processing is identical
-    juncAll <- x@junc
-
-    if(missing(trackName)) {
-        if(mode == "raw") {
-            trackName <- "Coverage"
-        } else if(mode == "normalized") {
-        
+    if(!transcriptFiltered & filterByEventTranscripts) {
+        reduced.DT.HL <- reduced.DT[get("highlight") != "0"]
+        reduced.DT.nonHL <- reduced.DT[get("highlight") == "0"]
+        reduced.DT.nonHL <- reduced.DT.nonHL[
+            grepl("novel", get("transcript_id"))
+        ]
+        if(nrow(reduced.DT.HL) != 0) {
+            transcripts.DT <- transcripts.DT[
+                get("transcript_id") %in% reduced.DT.HL$transcript_id &
+                
+                # remove non-highlighted novel elements
+                !(get("transcript_id") %in% reduced.DT.nonHL$transcript_id)
+            ]
+            reduced.DT <- reduced.DT[
+                get("transcript_id") %in% transcripts.DT$transcript_id
+            ]
+            transcriptFiltered <- TRUE
+        }
+    }
+    
+    if(!transcriptFiltered && filterByExpressedTranscripts) {
+        reduced.DT.introns <- reduced.DT[get("type") == "intron"]
+        expressed.introns <- reduced.DT.introns[
+            get("start") %in% aggJuncCoords[["jc_start"]] &
+            get("end") %in% aggJuncCoords[["jc_end"]]
+        ]
+        nonexpressed.novel <- reduced.DT.introns[
+            !(get("start") %in% aggJuncCoords[["jc_start"]]) |
+            !(get("end") %in% aggJuncCoords[["jc_end"]])
+        ]
+        nonexpressed.novel <- nonexpressed.novel[
+            grepl("novel", get("transcript_id"))
+        ]
+        if(nrow(expressed.introns) > 0) {
+            transcripts.DT <- transcripts.DT[
+                get("transcript_id") %in% expressed.introns$transcript_id &
+                
+                # remove non-highlighted novel elements
+                !(get("transcript_id") %in% nonexpressed.novel$transcript_id)
+            ]
+            reduced.DT <- reduced.DT[
+                get("transcript_id") %in% transcripts.DT$transcript_id
+            ]
+            transcriptFiltered <- TRUE
         }
     }
 
-    df_all <- c()
-    dfJn_all <- c()
-    for(track in tracks) {
-        if(plotJunctions) {
-            junc <- x@junc[[track]]
+    return(list(
+        reduced.DT = reduced.DT,
+        transcripts.DT = transcripts.DT
+    ))
+}
+
+################################################################################
+
+
+.cPO_getJuncCoords <- function(
+    x, args, 
+    normalizeCoverage = FALSE,
+    range_gr,
+    junctionThreshold = 0.01
+) {
+    plotMeanCov <- FALSE
+    if("condition" %in% names(args)) plotMeanCov <- TRUE
+
+    if(normalizeCoverage) {
+        if(length(x@norm_cov) == 0 || plotMeanCov) {
+            normalizeCoverage <- FALSE
+        }
+    }
+    
+    trackList <- args[["trackList"]]
+  
+    # plot view x cartesian coordinates
+    if(args[["reverseGenomeCoords"]]) {
+        plotViewStart <- end(range_gr)
+        plotViewEnd <- start(range_gr)
+    } else {
+        plotViewStart <- start(range_gr)
+        plotViewEnd <- end(range_gr)            
+    }
+
+    jc_start <- c()
+    jc_end <- c()
+    for(track_id in seq_len(length(trackList))) {
+        idx <- trackList[[track_id]]
+        for(elem in args[["tracks"]][idx]) {
+            if(plotMeanCov) {
+                junc <- x@junc_PSI[[elem]]
+            } else if(normalizeCoverage) {
+                junc <- x@norm_junc[[elem]]
+            } else {
+                junc <- x@junc[[elem]]
+            }
             OL <- findOverlaps(junc, range_gr)
             if(length(from(OL)) > 0) {
                 junc <- junc[unique(from(OL))]
             } else {
                 junc <- NULL
-            }        
-        } else {
-            junc <- NULL
-        }
-
-        if(plotMeanCov) {
-            groupName <- paste(x@args[["condition"]], track)
-            df <- x@cov_stats[[track]]
-            df_sub <- df[,seq_len(2)] # only 2 columns
-
+            } 
+        
             if(!is.null(junc)) {
-                dfJn <- .cPO_jn_arcs(
-                    junc,
-                    arcHeight = 0.1 * max(df$mean),
-                    junctionThreshold = jnThreshold * max(df$mean)
-                )            
+                isMean <- ("mean" %in% names(mcols(junc)))
+                if(isMean) {
+                    junc <- junc[mcols(junc)$mean >= junctionThreshold]
+                } else if(normalizeCoverage) {
+                    junc <- junc[mcols(junc)$count >= junctionThreshold]
+                } else {
+                    cov <- x@cov[[elem]]
+                    junc <- junc[mcols(junc)$count >= 
+                        junctionThreshold * max(cov$depth)
+                    ]
+                }
+                if(length(junc) > 0) {
+                    jc_start <- c(jc_start, start(junc))
+                    jc_end <- c(jc_end, end(junc))             
+                }
+            }
+        }
+    }
+    
+    return(list(
+        jc_start = jc_start, jc_end = jc_end
+    ))
+}
+
+.cPO_plotCoverage_multi <- function(
+    x, args,
+    normalizeCoverage,
+    range_gr, sampleCoords,
+    plotJunctions = TRUE,
+    junctionThreshold = 0.01,
+    interactive = FALSE
+) {
+    plotMeanCov <- FALSE
+    if("condition" %in% names(args)) plotMeanCov <- TRUE
+    
+    rb <- "none"
+    if(plotMeanCov) rb <- args[["ribbon_mode"]]
+
+    if(normalizeCoverage) {
+        if(length(x@norm_cov) == 0 || plotMeanCov) {
+            normalizeCoverage <- FALSE
+        }
+    }
+    
+    # junction processing is identical
+    trackName <- "Coverage"
+    
+    trackList <- args[["trackList"]]
+  
+    # plot view x cartesian coordinates
+    if(args[["reverseGenomeCoords"]]) {
+        plotViewStart <- end(range_gr)
+        plotViewEnd <- start(range_gr)
+    } else {
+        plotViewStart <- start(range_gr)
+        plotViewEnd <- end(range_gr)            
+    }
+    
+    # fetchViewStart and fetchViewEnd determine how much coverage to fetch
+    # best to fetch a bit more than we need
+    view_range <- width(range_gr)
+    fetchViewStart <- start(range_gr) - view_range
+    fetchViewEnd <- end(range_gr) + view_range
+  
+    fetch_gr <- range_gr
+    start(fetch_gr) <- max(fetchViewStart, 1)
+    end(fetch_gr) <- fetchViewEnd
+  
+    df_list <- list()
+    dfJn_list <- list()
+    for(track_id in seq_len(length(trackList))) {
+        idx <- trackList[[track_id]]
+        for(elem in args[["tracks"]][idx]) {
+            if(plotJunctions) {
+                if(plotMeanCov) {
+                    junc <- x@junc_PSI[[elem]]
+                } else if(normalizeCoverage) {
+                    junc <- x@norm_junc[[elem]]
+                } else {
+                    junc <- x@junc[[elem]]
+                }
+                OL <- findOverlaps(junc, fetch_gr)
+                if(length(from(OL)) > 0) {
+                    junc <- junc[unique(from(OL))]
+                } else {
+                    junc <- NULL
+                }        
+            } else {
+                junc <- NULL
             }
 
-            if(x@args$ribbon_mode %in% c("ci", "sd", "sem")) {
-                df$info <- paste(
-                    paste0(groupName, ":"),
-                    paste0("Coordinate: ", df$x), 
-                    paste0("Norm-Depth (mean): ", round(df$mean, 4)),
-                    paste0("Norm-Depth (", x@args$ribbon_mode, "): ", 
-                        round(df$var, 4)),
+            if(plotMeanCov) {
+                groupName <- paste(x@args[["condition"]], elem)
+                df <- x@cov_stats[[elem]]
+                df_sub <- df[,seq_len(2)] # only 2 columns
+
+                if(!is.null(junc)) {
+                    dfJn <- .cPO_jn_arcs(
+                        junc,
+                        arcHeight = 0.1 * max(df$mean),
+                        junctionThreshold = junctionThreshold * max(df$mean)
+                    )            
+                } else {
+                    dfJn <- c()
+                }
+            } else {
+                groupName <- elem
+                dfJn <- c()
+                
+                if(normalizeCoverage) {
+                    df <- x@norm_cov[[elem]]                   
+                } else {
+                    df <- x@cov[[elem]]
+                }
+                if(!is.null(junc)) {
+                    dfJn <- .cPO_jn_arcs(
+                        junc, 
+                        arcHeight = 
+                            0.1 * max(df$depth),
+                        junctionThreshold = junctionThreshold * 
+                            max(df$depth)
+                    )
+                }
+            }
+            df$group <- groupName
+            df$covTrack <- names(trackList)[track_id]
+            # df_all <- rbind(df_all, df)
+            df_list[[groupName]] <- df
+
+            if(!is.null(junc) && nrow(dfJn) > 0) {
+                dfJn$group <- groupName
+                dfJn$covTrack <- names(trackList)[track_id]
+                # dfJn_all <- rbind(dfJn_all, dfJn)
+                dfJn_list[[groupName]] <- dfJn
+            }
+        }
+    }
+    
+    df_all <- as.data.frame(rbindlist(df_list))
+    dfJn_all <- as.data.frame(rbindlist(dfJn_list))
+
+    # sample @ 10k pixels max (to make things faster)
+    df_all <- df_all[df_all$x %in% sampleCoords,]
+
+    # group annotation
+    if(interactive) {
+        if(plotMeanCov) {
+            if(rb %in% c("ci", "sd", "sem")) {
+                df_all$info <- paste(
+                    paste0(df_all$group, ":"),
+                    paste0("Coordinate: ", df_all$x), 
+                    paste0("Norm-Depth (mean): ", round(df_all$mean, 4)),
+                    paste0("Norm-Depth (", rb, "): ", 
+                        round(df_all[, rb], 4)),
                     sep = "\n"
                 )
             } else {
-                df$info <- paste(
-                    paste0("Coordinate: ", df$x), 
-                    paste0("Norm-Depth (mean): ", round(df$mean, 4)),
+                df_all$info <- paste(
+                    paste0(df_all$group, ":"),
+                    paste0("Coordinate: ", df_all$x), 
+                    paste0("Norm-Depth (mean): ", round(df_all$mean, 4)),
                     sep = "\n"
                 )        
             }
         } else {
-            groupName <- track
-            
-            if(mode == "normalized") {
-                df <- x@norm_cov[[track]]                        
-            } else {
-                df <- x@cov[[track]]            
-            }
-            
-            df$info <- paste(
-                paste0(groupName, ":"),
-                paste0("Coordinate: ", df$x), 
-                paste0("Depth: ", df$depth),
+            df_all$info <- paste(
+                paste0(df_all$group, ":"),
+                paste0("Coordinate: ", df_all$x), 
+                paste0("Depth: ", df_all$depth),
                 sep = "\n"
             )
-
-            if(!is.null(junc)) {
-                dfJn <- .cPO_jn_arcs(
-                    junc, 
-                    arcHeight = 0.1 * max(df$depth),
-                    junctionThreshold = jnThreshold * max(df$depth)
-                )
-            }
         }
-        df$group <- groupName
-        df_all <- rbind(df_all, df)
-        
-        if(!is.null(junc)) {
-            dfJn$group <- groupName
-            dfJn_all <- rbind(dfJn_all, dfJn)
-        }
+    } else {
+        # disable annotation for static plots
+        df_all$info <- ""
     }
 
     # junc processing - common
-    dfJnSum_all <- c()
+    dfJnSum_list <- list()
     if(plotJunctions) {
         dtJn_all <- as.data.table(dfJn_all)
-        for(track in tracks) {
-            dtJn <- copy(dtJn_all[get("group") == track])
+        allGroups <- unique(dtJn_all$group)
+        for(elem in allGroups) {
+            dtJn <- copy(dtJn_all[get("group") == elem])
+
             dtJn <- dtJn[
                 get("x") >= start(range_gr) &
                 get("x") <= end(range_gr)
@@ -676,28 +888,221 @@ setMethod("plotCPO", c(x = "covPlotObject"), function(
                 mean(get("x")), mean(get("y"))), 
                 by = "info"
             ]
-            dtJn <- unique(dtJn[, 
-                c("info", "value", "xlabel", "ylabel"), with = FALSE])
-            dtJn$group <- track
-            dfJnSum_all <- rbind(dfJnSum_all,
-                as.data.frame(dtJn))            
+            dtJn <- unique(
+                dtJn[, 
+                    c("info", "value", "xlabel", "ylabel", "group", "covTrack"), 
+                    with = FALSE
+                ]
+            )
+
+            # dfJnSum_all <- rbind(dfJnSum_all,
+                # as.data.frame(dtJn))
+            dfJnSum_list[[elem]] <- dtJn
         }
+    }
+    dfJnSum_all <- as.data.frame(rbindlist(dfJnSum_list))
+
+    # factor covTrack
+    df_all$covTrack <- factor(df_all$covTrack, names(trackList))
+    if(nrow(dfJn_all) > 0) {
+        dfJn_all$covTrack <- factor(dfJn_all$covTrack, names(trackList))
+    }
+    if(nrow(dfJnSum_all) > 0) {
+        dfJnSum_all$covTrack <- factor(dfJnSum_all$covTrack, names(trackList))
+    }
+
+    if(!interactive) {
+        bench <- system.time({
+            p <- .pV_seed_ggplot(
+                plotViewStart, plotViewEnd,
+                df_all, dfJn_all, dfJnSum_all,
+                plotJunctions, plotMeanCov, rb
+            )
+        })
+        print(bench)
+        return(p)
+    } else {
+        bench <- system.time({
+            p <- .pV_seed_ggplotly(
+                plotViewStart, plotViewEnd,
+                df_all, dfJn_all, dfJnSum_all,
+                plotJunctions, plotMeanCov, rb
+            )
+        })
+        print(bench)
+        return(p)
+    }
+}
+
+.cPO_plotDiff_multi <- function(
+    x, args, diffList,
+    diff_stat,
+    range_gr,
+    coordList,
+    interactive = FALSE
+) {  
+    # plot view x cartesian coordinates
+    if(args[["reverseGenomeCoords"]]) {
+        plotViewStart <- end(range_gr)
+        plotViewEnd <- start(range_gr)
+    } else {
+        plotViewStart <- start(range_gr)
+        plotViewEnd <- end(range_gr)            
+    }
+    
+    # fetchViewStart and fetchViewEnd determine how much coverage to fetch
+    # best to fetch a bit more than we need
+    view_range <- width(range_gr)
+    fetchViewStart <- start(range_gr) - view_range
+    fetchViewEnd <- end(range_gr) + view_range
+  
+    # Assume diffList is a list
+    if(is.null(names(diffList))) {
+        listNames <- character(length(diffList))
+        for(i in seq_len(length(diffList))) {
+            listNames[i] <- paste(diffList[[i]], collapse = "_vs_")
+        }
+        names(diffList) <- listNames
+    } else {
+        listNames <- names(diffList)
+        for(i in seq_len(listNames)) {
+            if(listNames[i] == "") {
+                listNames[i] <- paste(diffList[[i]], collapse = "_vs_")
+            }
+        }
+        names(diffList) <- listNames
+    }
+    
+    #
+    df_list <- list()
+    for(i in seq_len(length(diffList))) {
+        df <- c()
+        
+        diffItem <- diffList[[i]]
+        diffName <- names(diffList)[i]
+        if(length(diffItem) == 2) {
+            if(
+                    is.vector(diffItem, "character") &&
+                    all(diffItem %in% names(x@norm_cov))
+            ) {
+                # Assume these are track names
+                cov1 <- x@norm_cov[[diffItem[1]]]
+                cov2 <- x@norm_cov[[diffItem[2]]]
+            } else if(
+                    is.vector(diffItem, "numeric") &&
+                    all(diffItem %in% seq_len(length(x@norm_cov)))
+            ) {
+                cov1 <- x@norm_cov[[diffItem[1]]]
+                cov2 <- x@norm_cov[[diffItem[2]]]
+            } else {
+                next # ignore this
+            }
+        } else {
+            next # ignore this
+        }
+
+        # Filter by coordinate vector
+        if(!missing(coordList)) {
+            cov1 <- cov1[cov1$x %in% coordList,]
+            cov2 <- cov2[cov2$x %in% coordList,]
+        }
+        
+        if(diff_stat == "t-test") {
+            df <- .gCD_ttest(cov1, cov2)
+        } else {
+            next
+        }
+        if(!is.null(df)) {
+            df$diffTrack <- diffName
+            df_list <- append(df_list, df)        
+        }
+    }
+    df_all <- as.data.frame(rbindlist(df_list))
+
+    if(nrow(df_all) == 0) return(NULL)
+
+    # group annotation
+    if(interactive) {
+        df_all$info <- paste(
+            paste0(df_all$diffTrack, ":"),
+            paste0("Coordinate: ", df_all$x), 
+            paste0(diff_stat, " (-log10 P): ", df_all$stat),
+            sep = "\n"
+        )
+    } else {
+        # disable annotation for static plots
+        df_all$info <- ""
     }
 
     # plotting - common        
     suppressWarnings({
-        p <- ggplot(df_all, aes(text = get("info"))) +
-            geom_hline(yintercept = 0)            
+        p <- ggplot(df_all, aes(
+            text = get("info")
+        )) + geom_hline(yintercept = 0)            
+    })
+    
+    # plot line
+    p <- p + geom_line(aes(
+        x = get("x"), y = get("stat"), 
+        group = get("diffTrack"), color = get("diffTrack")
+    ))
+
+    # plot y axis and format
+    p <- p + theme_white_legend + labs(y = "-log10 P")
+
+    p <- p + facet_grid(
+        rows = "diffTrack", 
+        scales = "free_y", switch = "y"
+    )
+    
+    pl <- NULL
+    if(interactive) {
+        pl <- ggplotly(p, tooltip = "text") %>% 
+        layout(
+            yaxis = list(
+                rangemode = "tozero", 
+                fixedrange = TRUE
+            )
+        )
+        pl$x$data[[2]]$showlegend <- FALSE
+        pl$x$data[[2]]$name <- diff_stat
+
+        return(pl)
+    } else {
+        p <- p +
+            theme(axis.title.x = element_blank()) +
+            labs(
+                x = "", y = diff_stat
+            )
+
+        p <- p + coord_cartesian(
+            xlim = c(plotViewStart, plotViewEnd),
+            expand = FALSE
+        )     
+        
+        return(p)
+    }
+}
+
+.pV_seed_ggplot <- function(
+    plotViewStart, plotViewEnd,
+    df_all, dfJn_all, dfJnSum_all,
+    plotJunctions, plotMeanCov, rb
+) {
+    suppressWarnings({
+        p <- ggplot(df_all, aes(
+            text = get("info")
+        )) + geom_hline(yintercept = 0)            
     })
 
     # plot ribbon (group cov only)
-    if(plotMeanCov && x@args$ribbon_mode %in% c("ci", "sd", "sem")) {
+    if(plotMeanCov && rb %in% c("ci", "sd", "sem")) {
         p <- p +
             geom_ribbon(data = df_all, alpha = 0.2,
                 aes(
                     x = get("x"), y = get("mean"),
-                    ymin = get("mean") - get("var"),
-                    ymax = get("mean") + get("var"),
+                    ymin = get("mean") - get(rb),
+                    ymax = get("mean") + get(rb),
                     group = get("group"),
                     fill = get("group")
                 )
@@ -705,34 +1110,17 @@ setMethod("plotCPO", c(x = "covPlotObject"), function(
     }
     
     # plot line
-    if(stacked) {
-        if(plotMeanCov) {
-            p <- p + geom_line(aes(
-                x = get("x"), y = get("mean"), 
-                group = get("group"), color = get("group")
-            ))
-        } else {
-            p <- p + geom_line(aes(
-                x = get("x"), y = get("depth"), 
-                group = get("group"), color = get("group")
-            ))
-        }
+    if(plotMeanCov) {
+        p <- p + geom_line(aes(
+            x = get("x"), y = get("mean"), 
+            group = get("group"), color = get("group")
+        ))
     } else {
-        if(plotMeanCov) {
-            p <- p + geom_line(aes(
-                x = get("x"), y = get("mean"), 
-                group = get("group")# , color = get("group")
-            ))
-        } else {
-            p <- p + geom_line(aes(
-                x = get("x"), y = get("depth"), 
-                group = get("group")# , color = get("group")
-            ))
-        }
+        p <- p + geom_line(aes(
+            x = get("x"), y = get("depth"), 
+            group = get("group"), color = get("group")
+        ))
     }
-
-    # plot y axis and format
-    p <- p + theme_white_legend + labs(y = trackName)
 
     # plot junctions
     if(plotJunctions) {
@@ -749,55 +1137,464 @@ setMethod("plotCPO", c(x = "covPlotObject"), function(
                 )
             )
     }
+
+    p <- p + facet_grid(
+        rows = "covTrack", 
+        scales = "free_y", switch = "y"
+    )
     
-    if(!stacked) {
-        p <- p + facet_grid(
-            rows = vars(get("group")), 
-            scales = "free_y", switch = "y"
-        )
+    p <- p + theme_white_legend +
+        theme(axis.title.x = element_blank()) +
+        labs(x = "", y = "Coverage")
+
+    p <- p + coord_cartesian(
+        xlim = c(plotViewStart, plotViewEnd),
+        # ylim = yrange,
+        expand = FALSE
+    )
+    
+    return(p)
+}
+
+.pV_seed_plotly <- function(
+    plotViewStart, plotViewEnd,
+    df_all, dfJn_all, dfJnSum_all,
+    plotJunctions, plotMeanCov, rb
+) {
+    covTrack <- levels(df_all$covTrack)
+
+    p_list <- list()
+    
+    for(i in seq_len(length(covTrack))) {
+        track <- covTrack[i]
+        df <- df_all[df_all$covTrack == track,]
+        dfJn <- dfJn_all[dfJn_all$covTrack == track,]
+        dfJnSum <- dfJnSum_all[dfJnSum_all$covTrack == track,]
+        
+        groupNames <- unique(df$group)
+        nGroups <- length(groupNames)
+        if(nrow(df) > 0) {
+            df$group <- factor(df$group, groupNames)
+        }
+        if(nrow(dfJn) > 0) {
+            dfJn$group <- factor(dfJn$group, groupNames)
+        }
+        if(nrow(dfJnSum) > 0) {
+            dfJnSum$group <- factor(dfJnSum$group, groupNames)
+        }
+
+        fig <- plot_ly()
+
+        if("mean" %in% colnames(df)) {
+            fig <- fig %>% add_trace(
+                data = df,
+                x = as.formula("~x"),
+                y = as.formula("~mean"),
+                color = as.formula("~as.factor(group)"),
+                type = 'scatter', mode = 'lines'
+            )
+            if(rb %in% c("ci", "sd", "sem")) {
+                fig <- fig %>% add_ribbons(
+                    data = df,
+                    x = as.formula("~x"),
+                    ymin = as.formula(paste("~mean-", rb)),
+                    ymax = as.formula(paste("~mean+", rb)),
+                    color = as.formula("~as.factor(group)"),
+                    opacity = 0.2
+                )
+            }
+        } else {
+            fig <- fig %>% add_trace(
+                data = df,
+                x = as.formula("~x"),
+                y = as.formula("~depth"),
+                color = as.formula("~as.factor(group)"),
+                type = 'scatter', mode = 'lines'
+            )
+        }
+
+        if(plotJunctions & nGroups == 1) {
+            dfJn_summa <- dfJn %>% group_by("info")
+            fig <- fig %>% add_trace(
+                data = dfJn_summa,
+                x = as.formula("~x"),
+                y = as.formula("~yarc"),
+                line = list(color = 'rgb(255, 100, 100)', width = 0.5),
+                type = 'scatter', mode = 'lines'
+            )
+
+            fig <- fig %>% add_trace(
+                data = dfJnSum,
+                x = as.formula("~xlabel"),
+                y = as.formula("~ylabel"),
+                text = as.formula("~value"),
+                type = 'scatter', mode = 'text',
+                textposition = 'middle'
+            )
+        }
+        
+        if(nGroups > 1) {
+            for (j in seq_len(nGroups)) {
+                pl$x$data[[1 + j]]$showlegend <- FALSE
+                pl$x$data[[1 + j + nGroups]]$showlegend <- TRUE
+                pl$x$data[[1 + j]]$name <- groupNames[j]
+                pl$x$data[[1 + j + nGroups]]$name <- groupNames[j]
+            }
+        } else {
+            pl$x$data[[2]]$showlegend <- FALSE
+            pl$x$data[[3]]$showlegend <- FALSE
+            pl$x$data[[2]]$name <- groupNames[1]
+            pl$x$data[[3]]$name <- groupNames[1]
+        }
+        
+        p_list[[track]] <- pl
     }
+
+    # knit subplot here
+    pl_final <- subplot(
+        p_list, nrows = length(p_list), 
+        shareX = TRUE, titleY = TRUE
+    )
+    return(pl_final)
+}
+
+.pV_seed_ggplotly <- function(
+    plotViewStart, plotViewEnd,
+    df_all, dfJn_all, dfJnSum_all,
+    plotJunctions, plotMeanCov, rb
+) {
+    covTrack <- levels(df_all$covTrack)
+
+    p_list <- list()
     
-    pl <- NULL
-    if(interactive) {
-        pl <- ggplotly(p, tooltip = "text") %>% 
-        layout(
-            yaxis = list(
-                range = yrange,
-                rangemode = "tozero", 
-                fixedrange = TRUE
+    for(i in seq_len(length(covTrack))) {
+        track <- covTrack[i]
+        df <- df_all[df_all$covTrack == track,]
+        dfJn <- dfJn_all[dfJn_all$covTrack == track,]
+        dfJnSum <- dfJnSum_all[dfJnSum_all$covTrack == track,]
+        
+        groupNames <- unique(df$group)
+        nGroups <- length(groupNames)
+        if(nrow(df) > 0) {
+            df$group <- factor(df$group, groupNames)
+        }
+        if(nrow(dfJn) > 0) {
+            dfJn$group <- factor(dfJn$group, groupNames)
+        }
+        if(nrow(dfJnSum) > 0) {
+            dfJnSum$group <- factor(dfJnSum$group, groupNames)
+        }
+
+        suppressWarnings({
+            p <- ggplot(df, aes(
+                text = get("info")
+            )) + geom_hline(yintercept = 0)            
+        })
+
+        # plot ribbon (group cov only)
+        if(plotMeanCov && rb %in% c("ci", "sd", "sem")) {
+            p <- p +
+                geom_ribbon(data = df, alpha = 0.2,
+                    aes(
+                        x = get("x"), y = get("mean"),
+                        ymin = get("mean") - get(rb),
+                        ymax = get("mean") + get(rb),
+                        group = get("group"),
+                        fill = get("group")
+                    )
+                )
+        }
+        
+        # plot line
+        if(nGroups > 1) {
+            if(plotMeanCov) {
+                p <- p + geom_line(aes(
+                    x = get("x"), y = get("mean"), 
+                    group = get("group"), color = get("group")
+                ))
+            } else {
+                p <- p + geom_line(aes(
+                    x = get("x"), y = get("depth"), 
+                    group = get("group"), color = get("group")
+                ))
+            }
+        } else {
+            if(plotMeanCov) {
+                p <- p + geom_line(aes(
+                    x = get("x"), y = get("mean"), 
+                    group = get("group")
+                ))
+            } else {
+                p <- p + geom_line(aes(
+                    x = get("x"), y = get("depth"), 
+                    group = get("group")
+                ))
+            }
+        }
+
+        # plot junctions
+        if(plotJunctions) {
+            p <- p +
+                geom_line(
+                    data = dfJn, 
+                    aes(x = get("x"), y = get("yarc"), group = get("info")), 
+                    color = "darkred"
+                ) +
+                geom_text(
+                    data = dfJnSum, 
+                    aes(
+                        x = get("xlabel"), y = get("ylabel"), label = get("value")
+                    )
+                )
+        }
+
+        p <- p + theme_white_legend +
+            theme(axis.title.x = element_blank()) +
+            labs(x = "", y = track)
+
+        pl <- ggplotly(p, tooltip = "text") %>%
+            layout(
+                dragmode = "pan",
+                xaxis = list(range = c(plotViewStart, plotViewEnd)),
+                yaxis = list(
+                    range = c(0, 1.05 * layer_scales(p)$y$range$range[2]),
+                    rangemode = "tozero", fixedrange = TRUE, tick0 = 0
+                )
+            )
+        
+        if(nGroups > 1) {
+            for (j in seq_len(nGroups)) {
+                pl$x$data[[1 + j]]$showlegend <- FALSE
+                pl$x$data[[1 + j + nGroups]]$showlegend <- TRUE
+                pl$x$data[[1 + j]]$name <- groupNames[j]
+                pl$x$data[[1 + j + nGroups]]$name <- groupNames[j]
+            }
+        } else {
+            pl$x$data[[2]]$showlegend <- FALSE
+            pl$x$data[[3]]$showlegend <- FALSE
+            pl$x$data[[2]]$name <- groupNames[1]
+            pl$x$data[[3]]$name <- groupNames[1]
+        }
+        
+        p_list[[track]] <- pl
+    }
+
+    # knit subplot here
+    pl_final <- subplot(
+        p_list, nrows = length(p_list), 
+        shareX = TRUE, titleY = TRUE
+    )
+    return(pl_final)
+}
+
+
+.gCD_plotRef <- function(
+    DTplotlist, view_gr, 
+    reverseGenomeCoords = FALSE,
+    add_information = TRUE,
+    interactive = FALSE
+) {
+    view_chr <- as.character(seqnames(view_gr))
+    view_start <- start(view_gr)
+    view_end <- end(view_gr)
+
+    group.DT <- copy(DTplotlist$group.DT)
+
+    # use one paste function
+    if(add_information) {
+        group.DT[, c("left_extra", "right_extra") := list("","")]
+        if(reverseGenomeCoords) {
+            group.DT[get("strand") == "-", c("right_extra") := " -->"]
+            group.DT[get("strand") == "+", c("left_extra") := "<-- "]
+        } else {
+            group.DT[get("strand") == "+", c("right_extra") := " -->"]
+            group.DT[get("strand") == "-", c("left_extra") := "<-- "]
+        }
+        group.DT[, c("display_name") := paste0(
+            get("left_extra"), 
+            get("group_name"),
+            " (", get("strand"), ") ",
+            get("group_biotype"),
+            get("right_extra")
+        )]
+        group.DT[, c("left_extra", "right_extra") := list(NULL,NULL)]
+
+        group.DT[, c("disp_x") := 0.5 * (get("start") + get("end"))]
+        group.DT[get("start") < view_start & get("end") > view_start,
+            c("disp_x") := 0.5 * (view_start + get("end"))]
+        group.DT[get("end") > view_end & get("start") < view_end,
+            c("disp_x") := 0.5 * (get("start") + view_end)]
+        group.DT[get("start") < view_start & get("end") > view_end,
+            c("disp_x") := 0.5 * (view_start + view_end)]    
+    }
+
+    reduced <- copy(DTplotlist$reduced.DT)
+    reduced <- reduced[!is.na(reduced$plot_level)]
+    condense_this <- DTplotlist$condense_this
+    exonRanges <- DTplotlist$exonRanges
+
+    # Hover Text annotation
+    reduced[, c("Information") := ""]
+    reduced[get("type") %in% c("exon", "CDS"), c("Information") := paste(
+        paste(get("transcript_id"), "exon", get("aux_id")),
+        paste0("(", get("feature_id"), ")"),
+        paste0(get("seqnames"), ":", get("start"), "-", get("end"), "/", 
+            get("strand")),
+        sep = "\n"
+    )]
+    reduced[get("type") == "intron", c("Information") := paste(
+        get("feature_id"), 
+        paste0(get("seqnames"), ":", get("start"), "-", get("end"), "/", 
+            get("strand")),
+        sep = "\n"
+    )]
+    
+    reduced <- as.data.frame(reduced)
+    p <- suppressWarnings(ggplot(reduced, aes(text = get("Information"))))
+    
+    if (nrow(subset(reduced, type = "intron")) > 0) {
+        reducedIntrons <- reduced[reduced$type == "intron", ]
+        reducedIntronsExpanded <- c()
+        for(i in seq_len(nrow(reducedIntrons))) {
+            reducedIntronsExpanded <- rbind(reducedIntronsExpanded, data.frame(
+                start = seq(reducedIntrons$start[i], reducedIntrons$end[i],
+                    length.out = 10),
+                end = seq(reducedIntrons$start[i], reducedIntrons$end[i],
+                    length.out = 10),
+                plot_level = reducedIntrons$plot_level[i],
+                highlight = reducedIntrons$highlight[i],
+                Information = reducedIntrons$Information[i]              
+            ))
+        }
+        p <- p + geom_line(data = reducedIntronsExpanded,
+            aes(x = get("start"), y = get("plot_level"),
+            color = get("highlight"), group = get("Information")))
+        col_highlights <- sort(unique(reducedIntronsExpanded$highlight))
+    }
+    if (nrow(reduced[reduced$type != "intron", ]) > 0) {
+        nonIntrons <- reduced[reduced$type != "intron", ]
+        p <- p + geom_rect(data = nonIntrons,
+            aes(xmin = get("start"), xmax = get("end"),
+                ymin = get("plot_level") - 0.1 -
+                    ifelse(get("type") %in%
+                        c("CDS", "start_codon", "stop_codon"), 0.1, 0),
+                ymax = get("plot_level") + 0.1 +
+                    ifelse(get("type") %in%
+                        c("CDS", "start_codon", "stop_codon"), 0.1, 0),
+                fill = get("highlight")
             )
         )
-        pl$x$data[[2]]$showlegend <- FALSE
-        pl$x$data[[2]]$name <- trackName
-
-        if(plotMeanCov) {
-            pl$x$data[[3]]$showlegend <- FALSE
-            pl$x$data[[3]]$name <- trackName        
-        }
-
-        return(pl)
-    } else {
-        p <- p +
-            theme(axis.title.x = element_blank()) +
-            labs(x = "", y = trackName)
-
-        if(x@args[["reverseGenomeCoords"]]) {
-            plotViewStart <- end(range_gr)
-            plotViewEnd <- start(range_gr)
-        } else {
-            plotViewStart <- start(range_gr)
-            plotViewEnd <- end(range_gr)            
-        }
-
-        p <- p + coord_cartesian(
-            xlim = c(plotViewStart, plotViewEnd),
-            ylim = yrange,
-            expand = FALSE
-        )     
-        
-        return(p)
+        fill_highlights <- sort(unique(nonIntrons$highlight))
     }
+    
+    col_highlights <- .pV_highlight_to_colors(col_highlights)
+    fill_highlights <- .pV_highlight_to_colors(fill_highlights)
+    
+    p <- p + 
+        scale_color_manual(values = col_highlights) +
+        scale_fill_manual(values = fill_highlights)    
+    
+    p <- p + theme_white_legend_plot_track +
+        theme(
+            axis.text.y = element_blank(), 
+            axis.title.y = element_blank(),
+            legend.title = element_blank()
+        )
+    
+    anno <- NULL
+    if(add_information) {
+        if (condense_this == TRUE) {
+            anno <- list(
+                x = group.DT$disp_x,
+                y = group.DT$plot_level - 0.5 + 0.3 * 
+                    runif(rep(1, nrow(group.DT))),
+                text = group.DT$display_name,
+                xref = "x", yref = "y", showarrow = FALSE)
+        } else {
+            anno <- list(
+                x = group.DT$disp_x,
+                y = group.DT$plot_level - 0.4,
+                text = group.DT$display_name,
+                xref = "x", yref = "y", showarrow = FALSE)
+        }
+    }
+
+    if (nrow(group.DT) == 0) {
+        max_plot_level <- 1
+    } else {
+        max_plot_level <- max(group.DT$plot_level)
+    }
+
+    if(!interactive) {
+        out_p <- p
+        if(!is.null(anno)) {
+            out_p <- out_p + geom_text(
+                data = data.frame(
+                    x = anno[["x"]], y = anno[["y"]],
+                    Information = anno[["text"]]
+                ),
+                    aes(x = get("x"), y = get("y"), label = get("Information"))
+                )
+        }
+            
+        out_p <- out_p + theme(legend.position = "none") +
+            labs(x = paste("Chromosome", view_chr))
+        ref_ymin <- min(layer_scales(out_p)$y$range$range)
+        ref_ymax <- max(layer_scales(out_p)$y$range$range)
+        if(!reverseGenomeCoords) {
+            plotViewStart <- view_start
+            plotViewEnd <- view_end
+        } else {
+            plotViewStart <- view_end
+            plotViewEnd <- view_start     
+        }
+        out_p <- out_p + 
+            scale_x_continuous(labels = label_number(scale_cut = cut_si(""))) +
+            coord_cartesian(
+                xlim = c(plotViewStart, plotViewEnd),
+                ylim = c(ref_ymin - 1, ref_ymax + 1),
+                expand = FALSE
+            )
+    } else {
+        if(!reverseGenomeCoords) {
+            out_p <- ggplotly(p, tooltip = "text") %>%
+                layout(
+                    annotations = anno, dragmode = "pan",
+                    xaxis = list(range = c(view_start, view_end),
+                        title = paste("Chromosome/Scaffold", view_chr)),
+                    yaxis = list(range = c(0, 1 + max_plot_level),
+                        fixedrange = TRUE)
+                ) 
+        } else {
+            out_p <- ggplotly(p, tooltip = "text") %>%
+                layout(
+                    annotations = anno, dragmode = "pan",
+                    xaxis = list(
+                        range = c(view_end, view_start),
+                        title = paste("Chromosome/Scaffold", view_chr)
+                    ),
+                    yaxis = list(range = c(0, 1 + max_plot_level),
+                        fixedrange = TRUE)
+                )         
+        }
+        for (i in seq_len(length(out_p$pl$x$data))) {
+            out_p$pl$x$data[[i]]$showlegend <- FALSE
+        }
+    }
+    
+    return(out_p)
 }
+
+.pV_highlight_to_colors <- function(highlights) {
+    highlights <- sub("0", "black", highlights)
+    highlights <- sub("1", "blue", highlights)
+    highlights <- sub("2", "red", highlights)
+    highlights <- sub("3", "purple", highlights)
+    return(highlights)
+}
+
+################################################################################
+
 
 
 .cPO_jn_arcs <- function(
@@ -816,7 +1613,8 @@ setMethod("plotCPO", c(x = "covPlotObject"), function(
         juncEnd = end(junc) + 1
     )
 
-    final <- c()
+    final_list <- list()
+    listCount <- 0
     isMean <- ("mean" %in% names(mcols(junc)))
     for(i in seq_len(length(junc))) {
         count <- countsd <- 0
@@ -851,15 +1649,640 @@ setMethod("plotCPO", c(x = "covPlotObject"), function(
                     sep = "\n"
                 )
             } else {
-                outdf$value <- count            
+                outdf$value <- round(count,2)
                 outdf$info <- paste(
                     paste0("Junction: ", juncName),
                     paste0("Depth: ", count),
                     sep = "\n"
                 )
             }
-            final <- rbind(final, outdf)
+            listCount <- listCount + 1
+            final_list[[listCount]] <- outdf
         }
     }
-    return(final)
+    return(as.data.frame(rbindlist(final_list)))
+}
+
+################################################################################
+
+.gPO_check_tracks <- function(
+    obj, args
+) {
+
+    # sanity check condition / tracks against colData
+    colData <- obj@colData
+    sampleList <- list()
+    samples_to_check <- c()
+    
+    # tracks must be a character vector
+    if(!is.vector(args[["tracks"]], "character")) {
+        .log(paste(
+            "In getPlotObject,",
+            "`tracks` must be a character vector"            
+        ))
+    }
+    
+    # remove invalid tracks
+    invalid_tracks <- c()
+    if("condition" %in% names(args)) {
+        if(args[["condition"]] %in% colnames(colData)) {
+            for(cond_elem in args[["tracks"]]) {
+                # cond_elem is of length 1
+                if(
+                    any(colData[, args[["condition"]]] == cond_elem)
+                ) {
+                    sampleList[[cond_elem]] <- rownames(colData)[
+                        colData[, args[["condition"]]] == cond_elem]
+                    samples_to_check <- c(samples_to_check,
+                        sampleList[[cond_elem]])
+                } else {
+                    # ignore track altogether
+                    invalid_tracks <- c(invalid_tracks, cond_elem)
+                }
+            }
+        } else {
+            .log(paste("In getPlotObject,",
+                "condition is not a recognised column in colData"
+            ))
+        }
+    } else {
+        for(i in seq_len(length(args[["tracks"]]))) {
+            for(samp in args[["tracks"]]) {
+                if(samp %in% rownames(colData)) {
+                    sampleList[[samp]] <- samp
+                    samples_to_check <- c(samples_to_check, samp)
+                } else {
+                    invalid_tracks <- c(invalid_tracks, samp)
+                }
+            }
+        }
+    }
+    
+    # Remove invalid tracks
+    if(length(invalid_tracks) == length(args[["tracks"]])) {
+        .log(paste(
+            "In getPlotObject,",
+            "all elements in `tracks` are invalid"    
+        ))
+    } else if(length(invalid_tracks) > 0) {
+        args[["tracks"]] <- args[["tracks"]][
+            !(args[["tracks"]] %in% invalid_tracks)
+        ]
+    }
+    
+    args[["sampleList"]] <- sampleList
+    args[["samples_to_check"]] <- samples_to_check
+    
+    return(args)
+}
+
+.gPO_check_strand <- function(
+    obj, args
+) {
+    args[["view_strand_jn"]] <- args[["strand"]]
+    samples_to_check <- args[["samples_to_check"]]
+    if(args[["strand"]] != "*") {
+        if(all(obj@normData[["sampleStrand"]][samples_to_check] == -1)) {
+            if(args[["strand"]] == "+") {
+                args[["view_strand"]] <- "-"
+            } else {
+                args[["view_strand"]] <- "+"
+            }
+        }
+    } else {
+        args[["view_strand"]] <- "*"
+    }
+    return(args)
+}
+
+################################################################################
+
+# Get normalized coverage from obj
+.gCD_getCoverage <- function(obj, args, normalize = FALSE) {
+    view_start <- args[["limit_start"]]
+    view_end <- args[["limit_end"]]
+    view_strand <- args[["view_strand"]]
+    Event <- args[["Event"]]
+    
+    outList <- list()
+    sampleList <- args[["sampleList"]]
+    
+    if(view_strand == "+") {
+        cov <- obj@covData$pos
+    } else if(view_strand == "-") {
+        cov <- obj@covData$neg    
+    } else {
+        cov <- obj@covData$uns    
+    }
+    
+    for(i in seq_len(length(sampleList))) {
+        track <- names(sampleList)[i]
+        samples <- sampleList[[i]]
+        
+        matList <- list()
+        for(s in samples) {
+            view <- IRanges::Views(cov[[s]], view_start, view_end)
+            matList[[s]] <- as.matrix(view[[1]])
+        }
+        mat <- do.call(cbind, matList)
+        colnames(mat) <- samples
+        
+        # Normalize coverage
+        if(normalize) {
+            normFactor <- unlist(obj@normData$norms[Event,samples])
+            
+            # discard samples with low normalization factors
+            which_lowNorm <- which(normFactor < 5)
+            
+            if(length(which_lowNorm) == length(normFactor)) {
+                outList[[track]] <- data.frame(x = seq(view_start, view_end))
+                next
+            } else if(length(which_lowNorm) > 0) {
+                which_Norm <- which(normFactor > 5)
+                mat <- mat[, which_Norm, drop = FALSE]
+                normFactor <- normFactor[which_Norm]
+            }
+            
+            mat <- t(t(mat) / normFactor)
+        }
+        
+        outList[[track]] <- cbind(seq(view_start, view_end), as.data.frame(mat))
+        colnames(outList[[track]])[1] <- "x"
+        if(length(samples) == 1) {
+            colnames(outList[[track]])[2] <- "depth"
+        }
+    }
+    return(outList)
+}
+
+.gCD_binCoverage <- function(cov, divFactor, junc) {
+    out <- list()
+    outnames <- names(cov)
+    
+    juncSpares <- c()
+    for(i in seq_len(length(junc))) {
+        juncSpares <- c(
+            juncSpares,
+            start(junc[[i]]) - 1,
+            end(junc[[i]]) + 1
+        )
+    }
+    juncSpares <- sort(unique(juncSpares))
+    
+    for(i in seq_len(length(cov))) {
+        out[[outnames[i]]] <- .gCD_bin_df(
+            cov[[outnames[i]]], 
+            divFactor, juncSpares
+        )
+    }
+    return(out)
+}
+
+.gCD_bin_df <- function(df, binwidth = 3, spareCoords = c()) {
+    DT <- as.data.table(df)
+    brks <- seq(1, 
+        nrow(DT) + 1, 
+        length.out = (nrow(DT) + 1) / binwidth
+    )
+    if(length(spareCoords) > 0) {
+        brks <- c(brks, which(DT$x %in% spareCoords))
+    }
+    brks <- sort(unique(brks))
+    
+    bin <- NULL
+    DT[, c("bin") := findInterval(seq_len(nrow(DT)), brks)]
+    DT2 <- DT[, lapply(.SD, mean, na.rm = TRUE), by = "bin"]
+    DT2[, c("bin") := NULL]
+    return(as.data.frame(DT2))
+}
+
+.gCD_covStats <- function(cov) {
+    out <- list()
+    outnames <- names(cov)
+    conf.int <- 0.95
+    
+    for(i in seq_len(length(cov))) {
+        covmat <- as.matrix(cov[[outnames[i]]][,-1])
+        out[[outnames[i]]] <- data.frame(
+            x = cov[[outnames[i]]]$x,
+            mean = rowMeans(covmat)
+        )
+        n <- ncol(covmat)
+        
+        out[[outnames[i]]]$sd <- rowSds(covmat)
+        out[[outnames[i]]]$sem <- out[[outnames[i]]]$sd / sqrt(n)
+        out[[outnames[i]]]$ci <- qt((1 + conf.int) / 2, df = n - 1) * 
+            out[[outnames[i]]]$sem
+    }
+    return(out)
+}
+
+.gCD_ttest <- function(cov1, cov2) {
+    coords <- sort(intersect(cov1$x, cov2$x))
+    mat <- cbind(
+        as.matrix(cov1[cov1$x %in% coords, -1]),
+        as.matrix(cov2[cov2$x %in% coords, -1])
+    )
+    fac <- factor(rep(c("1", "2"), each = c(ncol(cov1) - 1, ncol(cov2) - 1)))
+    
+    t_test <- genefilter::rowttests(mat, fac)
+    
+    ret <- data.frame(
+        x = coords,
+        stat = -log10(t_test$p.value)
+    )
+    ret$stat[!is.finite(ret$stat)] <- 0
+    return(ret)
+}
+
+.gCD_getPSI <- function(obj, args, norm_cov) {
+    view_chr <- args[["view_chr"]]
+    view_start <- args[["limit_start"]]
+    view_end <- args[["limit_end"]]
+    view_strand_jn <- args[["view_strand_jn"]]
+
+    outList <- list()
+    sampleList <- args[["sampleList"]]
+
+    gr_select <- GRanges(
+        view_chr, 
+        IRanges(view_start, view_end), 
+        view_strand_jn
+    )
+    OL <- findOverlaps(obj@juncData$junc_gr, gr_select)
+        
+    if(length(unique(from(OL))) == 0) return(list())
+
+    hits <- sort(unique(from(OL)))
+    junc_gr <- obj@juncData$junc_gr[hits]
+    leftCoords <- start(junc_gr) - 1
+    rightCoords <- end(junc_gr) + 1
+    lC_inrange <- leftCoords >= view_start & leftCoords <= view_end
+    rC_inrange <- rightCoords >= view_start & rightCoords <= view_end
+
+    # normalize by starting coordinates:
+
+    for(i in seq_len(length(sampleList))) {
+        track <- names(sampleList)[i]
+        samples <- sampleList[[i]]
+        
+        junc <- obj@juncData$junc_PSI[hits, samples, drop = FALSE]
+        
+        # Returned data
+        outList[[track]] <- .grDT(cbind(
+            as.data.frame(junc_gr),
+            data.frame(
+                mean = rowMeans(junc),
+                sd = rowSds(junc),
+                leftCoordHeight = 1,
+                rightCoordHeight = 1
+            )
+        ), keep.extra.columns = TRUE)
+        
+        cov <- norm_cov[[track]]
+        
+        if(sum(lC_inrange) > 0) {
+            covL <- cov[leftCoords[lC_inrange] - cov$x[1] + 1, -1]
+            mcols(outList[[track]])$leftCoordHeight[lC_inrange] <- rowMeans(covL)
+        }
+            
+        if(sum(rC_inrange) > 0) {
+            covR <- cov[rightCoords[rC_inrange] - cov$x[1] + 1, -1]
+            mcols(outList[[track]])$rightCoordHeight[rC_inrange] <- rowMeans(covR)
+        }
+    }
+    return(outList)
+}
+
+.gCD_getJunc <- function(obj, args, raw_cov, normalized = FALSE) {
+    view_chr <- args[["view_chr"]]
+    view_start <- args[["limit_start"]]
+    view_end <- args[["limit_end"]]
+    view_strand_jn <- args[["view_strand_jn"]]
+
+    outList <- list()
+    sampleList <- args[["sampleList"]]
+
+    gr_select <- GRanges(
+        view_chr, 
+        IRanges(view_start, view_end), 
+        view_strand_jn
+    )
+    OL <- findOverlaps(obj@juncData$junc_gr, gr_select)
+        
+    if(length(unique(from(OL))) == 0) return(list())
+
+    hits <- sort(unique(from(OL)))
+    junc_gr <- obj@juncData$junc_gr[hits]
+    leftCoords <- start(junc_gr) - 1
+    rightCoords <- end(junc_gr) + 1
+    lC_inrange <- leftCoords >= view_start & leftCoords <= view_end
+    rC_inrange <- rightCoords >= view_start & rightCoords <= view_end
+
+    Event <- NULL
+    if(normalized) Event <- args[["Event"]]
+    for(i in seq_len(length(sampleList))) {
+        track <- names(sampleList)[i]
+        samples <- sampleList[[i]]
+        
+        # Only do it if cov is a single track
+        if(length(samples) == 1) {
+            if(view_strand_jn == "*") {
+                junc <- obj@juncData$junc_counts_uns[hits, samples, drop = FALSE]
+            } else {
+                junc <- obj@juncData$junc_counts[hits, samples, drop = FALSE]            
+            }
+          
+            cov <- raw_cov[[track]]
+            
+            # Normalize
+            if(normalized) {
+                if(length(samples) > 1) {
+                    # refuse to do it
+                    outList[[track]] <- GRanges()
+                    next
+                } else if(ncol(cov) != 2) {
+                    # refuse to do it
+                    outList[[track]] <- GRanges()
+                    next
+                } else {
+                    normFactor <- unlist(obj@normData$norms[Event,samples])
+                    junc <- junc / normFactor
+                }
+            }
+          
+            # Returned data
+            outList[[track]] <- .grDT(cbind(
+                as.data.frame(junc_gr),
+                data.frame(
+                    count = unname(unlist(junc)),
+                    leftCoordHeight = max(cov[,2]),
+                    rightCoordHeight = max(cov[,2])
+                )
+            ), keep.extra.columns = TRUE)
+
+            if(sum(lC_inrange) > 0) {
+                covL <- cov[leftCoords[lC_inrange] - cov$x[1] + 1, -1]
+                mcols(outList[[track]])$leftCoordHeight[lC_inrange] <- covL
+            }
+            if(sum(rC_inrange) > 0) {
+                covR <- cov[rightCoords[rC_inrange] - cov$x[1] + 1, -1]
+                mcols(outList[[track]])$rightCoordHeight[rC_inrange] <- covR
+            }
+        } else {
+            # empty
+            outList[[track]] <- GRanges()
+        }
+
+    }
+    return(outList)
+}
+
+# list checker for plotViews
+
+.pV_trackList_from_vector <- function(trackVec, args) {
+    trackList <- list()
+    
+    if(is.vector(trackVec, "numeric")) {
+        idx <- trackVec
+        if(all(idx %in% seq_len(length(args[["tracks"]])))) {
+            trackList <- lapply(idx, function(i) i)
+        } else if(any(idx %in% seq_len(length(args[["tracks"]])))) {
+            idx <- idx[idx %in% seq_len(length(args[["tracks"]]))]
+            trackList <- lapply(idx, function(i) i)
+        } else {
+            .log(paste(
+                "In plotView,",
+                "`trackList` contains indices outside the range of tracks",
+                "found in tracks(covPlotObject)"
+            ))
+        }
+    } else if(is.vector(trackVec, "character")) {
+        idxNames <- trackVec
+        if(all(idxNames %in% args[["tracks"]])) {
+            trackList <- lapply(idxNames, function(i) {
+                which(args[["tracks"]] == i)[1]
+            })
+        } else if(any(idxNames %in% args[["tracks"]])) {
+            idxNames <- idxNames[idxNames %in% args[["tracks"]]]
+            trackList <- lapply(idxNames, function(i) {
+                which(args[["tracks"]] == i)[1]
+            })
+        } else {
+            .log(paste(
+                "In plotView,",
+                "`trackList` contains tracks",
+                "not found in tracks(covPlotObject)"
+            ))
+        }
+    }
+    
+    if(!is.null(names(trackVec))) {
+        names(trackList) <- names(trackVec)
+        if(any(names(trackList) == "")) {
+            which_noname <- which(names(trackList) == "")
+            names(trackList)[which_noname] <- paste(
+                "Track", as.character(which_noname), sep = "_"
+            )
+        }
+    } else {
+        for(i in seq_len(length(trackList))) {
+            elem <- trackList[[i]]
+            elemNames <- args[["tracks"]][elem]
+            names(trackList)[i] <- paste(elemNames, collapse = ",")
+        }
+    }
+    
+    return(trackList)
+}
+
+.pV_trackList_from_list <- function(trackList, args) {
+    outList <- list()
+    for(z in seq_len(length(trackList))) {
+        trackVec <- trackList[[z]]
+        
+        if(is.vector(trackVec, "numeric")) {
+            idx <- trackVec
+            if(all(idx %in% seq_len(length(args[["tracks"]])))) {
+                outList[[z]] <- idx
+            } else if(any(idx %in% seq_len(length(args[["tracks"]])))) {
+                idx <- idx[idx %in% seq_len(length(args[["tracks"]]))]
+                outList[[z]] <- idx
+            } else {
+                .log(paste(
+                    "In plotView,",
+                    "`trackList` contains indices outside the range of tracks",
+                    "found in tracks(covPlotObject)"
+                ))
+            }
+        } else if(is.vector(trackVec, "character")) {
+            idxNames <- trackVec
+            if(all(idxNames %in% args[["tracks"]])) {
+                outList[[z]] <- which(args[["tracks"]] %in% idxNames)
+            } else if(any(idxNames %in% args[["tracks"]])) {
+                idxNames <- idxNames[idxNames %in% args[["tracks"]]]
+                outList[[z]] <- which(args[["tracks"]] %in% idxNames)
+            } else {
+                .log(paste(
+                    "In plotView,",
+                    "`trackList` contains tracks",
+                    "not found in tracks(covPlotObject)"
+                ))
+            }
+        }
+    }
+    
+    # transfer names
+    if(!is.null(names(trackList))) {
+        names(outList) <- names(trackList)
+        if(any(names(outList) == "")) {
+            which_noname <- which(names(outList) == "")
+            names(outList)[which_noname] <- paste(
+                "Track", as.character(which_noname), sep = "_"
+            )
+        }
+    } else {
+        for(i in seq_len(length(outList))) {
+            elem <- outList[[i]]
+            elemNames <- args[["tracks"]][elem]
+            names(outList)[i] <- paste(elemNames, collapse = ",")
+        }
+    }
+    
+    return(outList)
+}
+
+.pV_assemble_plotly <- function(
+    covTrack, diffTrack, annoFullTrack, verticalLayout
+) {
+    vLnorm <- verticalLayout / sum(verticalLayout)
+
+    inputList <- list(
+        covTrack = covTrack,
+        diffTrack = diffTrack,
+        annoFullTrack = annoFullTrack
+    )
+    doPlot <- c(
+        length(covTrack) > 0, 
+        length(diffTrack) > 0, 
+        length(annoFullTrack) > 0
+    )
+    if(sum(doPlot) == 0) return(NULL)
+
+    # simple plot - don't muck around
+    plotList <- lapply(inputList[doPlot], function(z) z[[1]])
+    finalPlot <- subplot(
+        plotList, nrows = length(vLnorm), 
+        shareX = TRUE, titleY = TRUE,
+        heights = vLnorm
+    )
+    return(finalPlot)
+}
+
+.pV_assemble_ggplot <- function(
+    covTrack, diffTrack, annoSubTrack, annoFullTrack,
+    verticalLayout, horizontalLayout
+) {
+    hCount <- length(horizontalLayout)
+    vCount <- length(verticalLayout)
+    
+    bVec <- cumsum(verticalLayout)
+    rVec <- cumsum(horizontalLayout)
+    if(vCount > 1){
+        tVec <- c(1, 1 + bVec[-vCount])
+    } else {
+        tVec <- 1
+    }
+    if(hCount > 1){
+        lVec <- c(1, 1 + rVec[-hCount])
+    } else {
+        lVec <- 1
+    }
+    
+    # Set up patchwork
+    hasAnnoFT <- length(annoFullTrack) == 1
+    
+    for(v in seq_len(length(verticalLayout))) {
+        if(v == vCount & hasAnnoFT) {
+            layout_instr <- c(layout_instr, patchwork::area(
+                t = tVec[v], b = bVec[v], l = 1, r = sum(horizontalLayout)
+            ))
+        }
+        for(h in seq_len(length(horizontalLayout))) {
+            if(v == 1 & h == 1) {
+                # initialize
+                layout_instr <- patchwork::area(
+                    t = tVec[1], b = bVec[1], l = lVec[1], r = rVec[1]
+                )
+            } else {
+                layout_instr <- c(layout_instr, patchwork::area(
+                    t = tVec[v], b = bVec[v], 
+                    l = lVec[h], r = rVec[h]
+                ))
+            }
+            
+        }
+    }
+
+    fullPlotList <- list()
+    plotCount <- 0
+    rowCount <- 0
+    if(length(covTrack) > 0) {
+        rowCount <- rowCount + 1
+        for(i in seq_len(length(covTrack))) {
+            plotCount <- plotCount + 1
+            fullPlotList[[plotCount]] <- .pV_mod_ggplot(
+                covTrack[[i]], rowCount, i, hCount, length(covTrack)
+            )
+        }
+    }
+    if(length(diffTrack) > 0) {
+        rowCount <- rowCount + 1
+        for(i in seq_len(length(diffTrack))) {
+            plotCount <- plotCount + 1
+            fullPlotList[[plotCount]] <- .pV_mod_ggplot(
+                diffTrack[[i]], rowCount, i, hCount, length(diffTrack)
+            )
+        }
+    }
+    if(length(annoSubTrack) > 0) {
+        rowCount <- rowCount + 1
+        for(i in seq_len(length(annoSubTrack))) {
+            plotCount <- plotCount + 1
+            fullPlotList[[plotCount]] <- .pV_mod_ggplot(
+                annoSubTrack[[i]], rowCount, i, hCount, length(annoSubTrack)
+            )
+        }
+    } 
+    if(hasAnnoFT) {
+        plotCount <- plotCount + 1
+        fullPlotList[[plotCount]] <- annoFullTrack[[1]]
+    }
+
+    return(
+        patchwork::wrap_plots(fullPlotList) +
+            patchwork::plot_layout(design = layout_instr)
+    )
+}
+
+.pV_mod_ggplot <- function(p, x, y, maxX, maxY) {
+    theme_nonright <- theme(
+        legend.position = "none"
+    )
+    theme_nonleft <- theme(
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank()
+    )
+    theme_nonbottom <- theme(
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank()
+    )
+
+    if(x > 1) p <- p + theme_nonleft
+    if(x < maxX) p <- p + theme_nonright
+    if(y < maxY) p <- p + theme_nonbottom
+    
+    return(p)
 }

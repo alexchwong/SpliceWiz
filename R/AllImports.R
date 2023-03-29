@@ -16,7 +16,7 @@
 #' @import ggplot2
 #' @importFrom AnnotationHub AnnotationHub cache query
 #' @importFrom BiocFileCache BiocFileCache bfcrpath bfcquery
-#' @importFrom BiocGenerics start end width
+#' @importFrom BiocGenerics start end start<- end<- width
 #' @importFrom BiocGenerics nrow ncol rbind cbind
 #' @importFrom BiocParallel SnowParam MulticoreParam SerialParam
 #' @importFrom BiocParallel bpparam bplapply

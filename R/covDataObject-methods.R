@@ -91,7 +91,7 @@ NULL
 
 covDataObject <- function(
         args = list(),
-        annotations = list(),
+        annotation = list(),
         colData = data.frame(),
         covData = list(),
         juncData = list(),
@@ -99,7 +99,7 @@ covDataObject <- function(
 ) {
     newCovObj <- new("covDataObject",
         args = args,
-        annotations = annotations,
+        annotation = annotation,
         colData = colData,
         covData = covData, juncData = juncData,
         normData = normData
@@ -112,12 +112,15 @@ covDataObject <- function(
 #' @export
 getCoverageData <- function(
         se,
+# Info for determining genomic locus
         Event, Gene,
         seqname, start, end,
         coordinates,
         strand = c("*", "+", "-"),
+# Amplifiers - for initial plot view start/end
         zoom_factor = 0.2, 
         bases_flanking = 100,
+# Samples to retrieve
         tracks,
         condition
 ) {    
@@ -157,7 +160,7 @@ getCoverageData <- function(
     normData <- .gCD_retrieve_norms(args, colData)
 
     # Retrieve genome annotations
-    annotations <- .gCD_retrieve_annotations(args)
+    annotation <- .gCD_retrieve_annotations(args)
     
     raw_cov <- .gCD_retrieve_raw_cov(args, colData)
 
@@ -167,7 +170,7 @@ getCoverageData <- function(
     args[["se"]] <- args[["cov_data"]] <- NULL
     return(covDataObject(
         args = args,
-        annotations = annotations,
+        annotation = annotation,
         colData = colData,
         covData = raw_cov,
         juncData = juncData,
@@ -201,19 +204,19 @@ getGenomeData <- function(
 
     args <- .gCD_validate_args(args)
 
-    annotations <- .gCD_retrieve_annotations(args)
+    annotation <- .gCD_retrieve_annotations(args)
     
     args[["cov_data"]] <- NULL
     return(covDataObject(
         args = args,
-        annotations = annotations
+        annotation = annotation
     ))
 }
 
 #' @describeIn covDataObject-class Directly plots the annotation from a 
 #'   covDataObject. 
 #' @export
-CDOplotGenome <- function(
+plotAnnoTrack <- function(
     obj, Event,
     view_start, view_end,
     reverseGenomeCoords = FALSE,
@@ -253,7 +256,7 @@ CDOplotGenome <- function(
         }    
     }
     
-    DTlist <- obj@annotations
+    DTlist <- obj@annotation
     DTlist$reduced.DT <- .gcd_highlight_anno(
         DTlist$reduced.DT, highlight_gr
     )
@@ -521,7 +524,43 @@ CDOplotGenome <- function(
     }
     args[["view_start"]] <- view_start
     args[["view_end"]] <- view_end
+    
+    args <- .gCD_determine_limits(args)
+    
     return(args)    
+}
+
+.gCD_determine_limits <- function(args) {
+    # Get fetch limits of coverage and annotations, based on a 5-fold window
+    # of view start/end
+
+    view_start <- args[["view_start"]]
+    view_end <- args[["view_end"]]
+    
+    seqInfo <- args[["seqInfo"]][args[["view_chr"]]]
+    seqmax <- GenomeInfoDb::seqlengths(seqInfo)
+    
+    limit_start <- view_start - 2 * (view_end - view_start)
+    limit_end <- view_end + 2 * (view_end - view_start)
+    
+    limit_span <- limit_start - limit_end
+    
+    if(limit_span > seqmax - 1) limit_span <- seqmax - 2
+    
+    if(limit_start < 1) {
+        limit_start <- 1
+        limit_end <- limit_start + limit_span
+    }
+    
+    if (limit_end > seqmax) {
+        limit_end <- seqmax - 1
+        limit_start <- limit_end - limit_span
+        if(limit_start < 1) limit_start <- 1
+    }
+    
+    args[["limit_start"]] <- limit_start
+    args[["limit_end"]] <- limit_end
+    return(args)
 }
 
 ################################################################################
@@ -562,19 +601,19 @@ CDOplotGenome <- function(
         pos[[i]] <- getCoverage(
             file = covfiles[i], 
             seqname = args[["view_chr"]], 
-            start = args[["view_start"]] - 1, end = args[["view_end"]], 
+            start = args[["limit_start"]] - 1, end = args[["limit_end"]], 
             strand = c("+")
         )
         neg[[i]] <- getCoverage(
             file = covfiles[i], 
             seqname = args[["view_chr"]], 
-            start = args[["view_start"]] - 1, end = args[["view_end"]], 
+            start = args[["limit_start"]] - 1, end = args[["limit_end"]], 
             strand = c("-")
         )
         uns[[i]] <- getCoverage(
             file = covfiles[i], 
             seqname = args[["view_chr"]], 
-            start = args[["view_start"]] - 1, end = args[["view_end"]], 
+            start = args[["limit_start"]] - 1, end = args[["limit_end"]], 
             strand = c("*")
         )
     }
@@ -595,7 +634,7 @@ CDOplotGenome <- function(
     view_gr <- GRanges(
         seqnames = args[["view_chr"]],
         ranges = IRanges(
-            start = args[["view_start"]], end = args[["view_end"]]
+            start = args[["limit_start"]], end = args[["limit_end"]]
         ),
         strand = "*"
     )
@@ -670,8 +709,8 @@ CDOplotGenome <- function(
 
 .gCD_retrieve_annotations <- function(args) {
     view_chr <- args[["view_chr"]]
-    view_start <- args[["view_start"]]
-    view_end <- args[["view_end"]]
+    view_start <- args[["limit_start"]]
+    view_end <- args[["limit_end"]]
 
     transcripts.DT <- args[["cov_data"]]$transcripts[
         get("seqnames") == view_chr &
@@ -735,11 +774,14 @@ CDOplotGenome <- function(
         gr <- highlight_gr[[1]]
         introns.gr <- .grDT(introns)
         OL <- findOverlaps(gr, introns.gr)
-        introns[OL@to, c("highlight") := "1"]
+        introns[OL@to, c("highlight") := "3"] # purple
         OL2 <- findOverlaps(gr, introns.gr, type = "equal")
-        introns[OL2@to, c("highlight") := "2"]
+        introns[OL2@to, c("highlight") := "2"] # red
         
-        tr_filter <- unique(introns[get("highlight") != "0"]$transcript_id)
+        # exons that overlap introns
+        exons.gr <- .grDT(exons)
+        OL3 <- findOverlaps(gr, exons.gr, type = "within")
+        exons[OL3@to, c("highlight") := "1"] # blue
     } else if (length(highlight_gr) == 2) {
         AS_count <- 1
         for (event in highlight_gr) {
@@ -767,7 +809,8 @@ CDOplotGenome <- function(
                     c("highlight") := as.character(AS_count)
                 ]
 
-                # Remove novel transcripts if not all introns highlighted
+                # Remove highlight from novel transcripts 
+                # if not all introns highlighted
                 introns_novel <- introns[
                     grepl("novel", get("transcript_id")) &
                     get("highlight") == as.character(AS_count)
@@ -796,25 +839,34 @@ CDOplotGenome <- function(
                     get("end") %in% coord_keys_end),
                     c("highlight") := as.character(AS_count)]
             }
- 
-            tr_filter <- c(tr_filter, tr_final)
             AS_count <- AS_count + 1
         }
-        
-        # transfer highlighting from exons to CDS
-        for(tr in unique(exons[get("highlight") != "0"]$transcript_id)) {
-            exons_selected <- exons[get("transcript_id") == tr &
-                get("highlight") != "0"]
-            highlight_id <- exons_selected$highlight[1]
-            OL <- findOverlaps(
-                .grDT(misc),
-                .grDT(exons_selected)
-            )
-            misc[seq_len(nrow(misc)) %in% unique(OL@from) & 
-                get("transcript_id") == tr,
-                c("highlight") := highlight_id]
-        }
     }
+
+    for(hl in c("1", "2")) {
+        exons_selected <- exons[get("highlight") == hl]
+        hl_trid <- unique(exons_selected$transcript_id)
+        OL <- findOverlaps(
+            .grDT(misc),
+            .grDT(exons_selected)
+        )
+        misc[seq_len(nrow(misc)) %in% unique(OL@from) & 
+            get("transcript_id") %in% hl_trid,
+            c("highlight") := hl]        
+    }
+    # transfer highlighting from exons to CDS
+    # for(tr in unique(exons[get("highlight") != "0"]$transcript_id)) {
+        # exons_selected <- exons[get("transcript_id") == tr &
+            # get("highlight") != "0"]
+        # highlight_id <- exons_selected$highlight[1]
+        # OL <- findOverlaps(
+            # .grDT(misc),
+            # .grDT(exons_selected)
+        # )
+        # misc[seq_len(nrow(misc)) %in% unique(OL@from) & 
+            # get("transcript_id") == tr,
+            # c("highlight") := highlight_id]
+    # }
     
     return(rbind(introns, exons, misc))
 }
@@ -950,6 +1002,9 @@ CDOplotGenome <- function(
     reduced.DT <- copy(DTlist$reduced.DT)
     condense_this <- condensed
 
+    # Filter before condense
+    reduced.DT <- reduced.DT[get("end") > view_start & get("start") < view_end]
+
     transcripts.DT <- transcripts.DT[
         get("transcript_id") %in% reduced.DT$transcript_id]
 
@@ -970,7 +1025,7 @@ CDOplotGenome <- function(
     data.table::setnames(group.DT, "group_name", "group_id")
 
     # Filter before stack
-    group.DT <- group.DT[get("end") > view_start & get("start") < view_end]
+    # group.DT <- group.DT[get("end") > view_start & get("start") < view_end]
     
     # apply plot_order on transcripts.DT
     OL <- findOverlaps(.grDT(group.DT), .grDT(group.DT), ignore.strand = TRUE)

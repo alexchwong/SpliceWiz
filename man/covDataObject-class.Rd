@@ -4,7 +4,7 @@
 \alias{covDataObject-class}
 \alias{getCoverageData}
 \alias{getGenomeData}
-\alias{CDOplotGenome}
+\alias{plotAnnoTrack}
 \title{Container to hold raw data for SpliceWiz coverage plots}
 \usage{
 getCoverageData(
@@ -34,7 +34,7 @@ getGenomeData(
   bases_flanking = 100
 )
 
-CDOplotGenome(
+plotAnnoTrack(
   obj,
   Event,
   view_start,
@@ -134,7 +134,7 @@ coverage plots
 \item \code{getGenomeData()}: Get coverage / genome data for plotting
 coverage plots
 
-\item \code{CDOplotGenome()}: Directly plots the annotation from a
+\item \code{plotAnnoTrack()}: Directly plots the annotation from a
 covDataObject.
 
 }}

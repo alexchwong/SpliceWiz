@@ -127,14 +127,12 @@ setGeneric("junc_gr<-",
     
 # covPlotObject specific functions:
 
-setGeneric("plotCPO", signature="x", function(
+setGeneric("tracks", signature="x", function(
     x, 
-    # plotRanges = NULL,
-    # tracks = NULL,
-    # plotAnnotations = TRUE,
-    # plotAnnoSubTrack = TRUE,
-    # plotDiffTrack = TRUE,
-    # resolution = 10000,
-    # junctionThreshold = 0.01,
     ...
-) standardGeneric("plotCPO"))
+) standardGeneric("tracks"))
+
+setGeneric("condition", signature="x", function(
+    x, 
+    ...
+) standardGeneric("condition"))

@@ -321,12 +321,10 @@ setClass("ASEFilter",
 setClass("covDataObject",
     slots = c(
         args = "list",
-        annotations = "list",
-    
+        annotation = "list",
         colData = "data.frame",
         covData = "list",
         juncData = "list",
-        
         normData = "list"
     )
 )
@@ -338,8 +336,9 @@ setClass("covPlotObject",
         cov = "list",
         norm_cov = "list",
         junc = "list",
+        norm_junc = "list",
+        junc_PSI = "list",
         cov_stats = "list",
-        diff_stats = "data.frame",
         annotation = "list"
     )
 )

@@ -1036,22 +1036,16 @@ plotView <- function(
     df_all$diffTrack <- factor(df_all$diffTrack, names(diffList))
 
     if(!interactive) {
-        bench <- system.time({
-            p <- .pV_seed_ggplot_diffTrack(
-                plotViewStart, plotViewEnd,
-                df_all, diff_stat
-            )
-        })
-        print(bench)
+        p <- .pV_seed_ggplot_diffTrack(
+            plotViewStart, plotViewEnd,
+            df_all, diff_stat
+        )
         return(p)
     } else {
-        bench <- system.time({
-            p <- .pV_seed_plotly_diffTrack(
-                plotViewStart, plotViewEnd,
-                df_all, diff_stat
-            )
-        })
-        print(bench)
+        p <- .pV_seed_plotly_diffTrack(
+            plotViewStart, plotViewEnd,
+            df_all, diff_stat
+        )
         return(p)
     }
 }
@@ -1161,11 +1155,12 @@ plotView <- function(
         cols <- scales::hue_pal()(nGroups)
         if(nGroups == 1) cols <- "#000000"
         if("mean" %in% colnames(df)) {
-
             fig <- fig %>% add_trace(
                 data = df,
                 x = as.formula("~x"),
                 y = as.formula("~mean"),
+                text = as.formula("~info"),
+                hoveron = "points", hoverinfo = 'text',
                 colors = cols,
                 color = as.formula("~as.factor(group)"),
                 type = 'scatter', mode = 'lines',
@@ -1177,6 +1172,8 @@ plotView <- function(
                     x = as.formula("~x"),
                     ymin = as.formula(paste("~mean-", rb)),
                     ymax = as.formula(paste("~mean+", rb)),
+                    text = as.formula("~info"),
+                    hoveron = "points", hoverinfo = 'text',
                     colors = cols,
                     color = as.formula("~as.factor(group)"),
                     opacity = 0.2,
@@ -1188,6 +1185,8 @@ plotView <- function(
                 data = df,
                 x = as.formula("~x"),
                 y = as.formula("~depth"),
+                text = as.formula("~info"),
+                hoveron = "points", hoverinfo = 'text',
                 colors = cols,
                 color = as.formula("~as.factor(group)"),
                 type = 'scatter', mode = 'lines',
@@ -1201,6 +1200,8 @@ plotView <- function(
                 data = dfJn_summa,
                 x = as.formula("~x"),
                 y = as.formula("~yarc"),
+                text = as.formula("~info"),
+                hoveron = "points", hoverinfo = 'text',
                 line = list(color = 'rgb(255, 100, 100)', width = 0.5),
                 type = 'scatter', mode = 'lines',
                     showlegend = FALSE
@@ -1211,14 +1212,30 @@ plotView <- function(
                 x = as.formula("~xlabel"),
                 y = as.formula("~ylabel"),
                 text = as.formula("~value"),
+                hoverinfo = 'text',
                 type = 'scatter', mode = 'text',
                 textposition = 'middle',
                     showlegend = FALSE
             )
         }
+
+        # what is yrange?
+        df_sub <- df[
+            df$x >= min(plotViewStart, plotViewEnd) & 
+            df$x <= max(plotViewStart, plotViewEnd),
+        ]
+        if("mean" %in% colnames(df_sub)) {
+            ymax <- max(df_sub$mean)
+        } else {
+            ymax <- max(df_sub$depth)
+        }
+
         p_list[[track]] <- fig %>%
             layout(
-                yaxis = list(title = track, fixedrange = TRUE)
+                yaxis = list(
+                    range = c(0, ymax * 1.2),
+                    title = track, fixedrange = TRUE
+                )
             )
     }
 
@@ -1293,7 +1310,19 @@ plotView <- function(
             showlegend = FALSE
         )
         
-        p_list[[track]] <- fig
+        df_sub <- df[
+            df$x >= min(plotViewStart, plotViewEnd) & 
+            df$x <= max(plotViewStart, plotViewEnd),
+        ]
+        ymax <- max(df_sub$stat)
+        
+        p_list[[track]] <- fig %>%
+            layout(
+                yaxis = list(
+                    range = c(0, ymax * 1.2),
+                    title = "-log10 P", fixedrange = TRUE
+                )
+            )
     }
 
     # knit subplot here
@@ -1600,6 +1629,121 @@ plotView <- function(
             
     return(out_p)
 }
+
+.pV_seed_plotly_annoTrack <- function(
+    plotViewStart, plotViewEnd, view_chr,
+    introns, exons, group.DT, condense_this, add_information
+) {
+    
+    col_highlights <- sort(unique(introns$highlight))
+    fill_highlights <- sort(unique(introns$highlight))
+    col_colors <- .pV_highlight_to_colors(col_highlights, usePlotly = TRUE)
+    fill_colors <- .pV_highlight_to_colors(fill_highlights, usePlotly = TRUE)
+    
+    anno <- NULL
+    if(add_information) {
+        if (condense_this == TRUE) {
+            anno <- list(
+                x = group.DT$disp_x,
+                y = group.DT$plot_level - 0.5 + 0.3 * 
+                    runif(rep(1, nrow(group.DT))),
+                text = group.DT$display_name,
+                xref = "x", yref = "y", showarrow = FALSE)
+        } else {
+            anno <- list(
+                x = group.DT$disp_x,
+                y = group.DT$plot_level - 0.4,
+                text = group.DT$display_name,
+                xref = "x", yref = "y", showarrow = FALSE)
+        }
+    }
+    if (nrow(group.DT) == 0) {
+        max_plot_level <- 1
+    } else {
+        max_plot_level <- max(group.DT$plot_level)
+    }
+    
+    # p <- ggplot()
+    fig <- plot_ly()
+    
+    if(nrow(introns) > 0) {
+        # p <- p + geom_line(data = introns,
+            # aes(x = get("start"), y = get("plot_level"),
+            # color = get("highlight"), group = get("Information"))
+        # )
+        for(i in seq_len(col_highlights)) {
+            hl <- col_highlights[i]
+            color <- col_colors[i]
+            introns_toPlot <- introns[introns$highlight == hl,] %>%
+                group_by("Information")
+            fig <- fig %>% add_trace(
+                data = introns_toPlot,
+                x = as.formula("~start"),
+                y = as.formula("~plot_level"),
+                text = as.formula("~Information"),
+                hoveron = "points", hoverinfo = 'text',
+                colors = color,
+                type = 'scatter', mode = 'lines',
+                showlegend = FALSE
+            )
+        }
+    }
+    if(nrow(exons) > 0) {
+        for(i in seq_len(fill_highlights)) {
+            hl <- fill_highlights[i]
+            color <- fill_colors[i]
+
+            exons_thin <- exons[!(exons$type %in% c("CDS", "start_codon", "stop_codon")), ]
+            exons_thick <- exons[!(exons$type %in% c("CDS", "start_codon", "stop_codon")), ]
+            exons_thin$ymin <- exons_thin$plot_level - 0.15
+            exons_thick$ymin <- exons_thin$plot_level - 0.3
+            exons_thin$ymax <- exons_thin$plot_level - 0.15
+            exons_thick$ymax <- exons_thin$plot_level - 0.3
+            exons_comb <- rbind(exons_thin, exons_thick)
+
+
+            exons_instr <- rbind(
+                data.frame(
+                    x = exons$xmin, y = exons$ymin
+                )
+    
+        p <- p + geom_rect(data = exons,
+            aes(xmin = get("start"), xmax = get("end"),
+                ymin = get("plot_level") - 0.1 -
+                    ifelse(get("type") %in%
+                        c("CDS", "start_codon", "stop_codon"), 0.1, 0),
+                ymax = get("plot_level") + 0.1 +
+                    ifelse(get("type") %in%
+                        c("CDS", "start_codon", "stop_codon"), 0.1, 0),
+                fill = get("highlight")
+            )
+        )
+    }
+
+    p <- p + 
+        scale_color_manual(values = col_highlights) +
+        scale_fill_manual(values = fill_highlights)    
+    
+    p <- p + theme_white_legend_plot_track +
+        theme(
+            axis.text.y = element_blank(), 
+            axis.title.y = element_blank(),
+            legend.title = element_blank()
+        )
+    
+    # ggplotly
+    out_p <- ggplotly(p, tooltip = "text") %>%
+        layout(
+            annotations = anno, dragmode = "pan",
+            xaxis = list(range = c(plotViewStart, plotViewEnd),
+                title = paste("Chromosome/Scaffold", view_chr)),
+            yaxis = list(range = c(0, 1 + max_plot_level),
+                fixedrange = TRUE)
+        )
+            
+    return(out_p)
+}
+
 
 ################################################################################
 

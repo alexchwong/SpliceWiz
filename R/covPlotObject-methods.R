@@ -1613,7 +1613,6 @@ plotView <- function(
     return(out_p)
 }
 
-
 ################################################################################
 
 
@@ -2185,11 +2184,14 @@ plotView <- function(
 
     # simple plot - don't muck around
     plotList <- lapply(inputList[doPlot], function(z) z[[1]])
-    finalPlot <- subplot(
-        plotList, nrows = length(vLnorm), 
-        shareX = TRUE, titleY = TRUE,
-        heights = vLnorm
-    )
+    
+    suppressWarnings({
+        finalPlot <- subplot(
+            plotList, nrows = length(vLnorm), 
+            shareX = TRUE, titleY = TRUE,
+            heights = vLnorm
+        )
+    })
     
     if(length(annoFullTrack) == 1) {
         fullAnnoPlotNumber <- length(annoFullTrack[[1]]$x$data)

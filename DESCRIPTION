@@ -22,7 +22,7 @@ Depends: NxtIRFdata
 Imports:
     ompBAM,
 	methods, stats, utils, tools, parallel, scales,
-	magrittr,
+	magrittr, dplyr,
 	Rcpp (>= 1.0.5),
 	data.table,
 	fst,

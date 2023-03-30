@@ -12,6 +12,7 @@
 #' @importFrom R.utils gzip
 #' @importFrom Rcpp evalCpp
 #' @import data.table
+#' @importFrom dplyr group_by
 #' @importFrom fst read.fst write.fst threads_fst
 #' @import ggplot2
 #' @importFrom AnnotationHub AnnotationHub cache query
@@ -42,6 +43,7 @@
 #' @importFrom plotly config layout plotlyOutput event_data ggplotly 
 #' @importFrom plotly plotlyProxy plotlyProxyInvoke renderPlotly subplot 
 #' @importFrom plotly highlight orca toWebGL
+#' @importFrom plotly plot_ly add_trace add_ribbons
 #' @importFrom rhdf5 h5createFile h5createDataset h5delete h5write h5createGroup
 #' @importFrom rtracklayer import export TwoBitFile track
 #' @importFrom S4Vectors mcols mcols<- metadata Rle metadata<- SimpleList 

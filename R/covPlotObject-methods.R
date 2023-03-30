@@ -1417,92 +1417,35 @@ plotView <- function(
             group.DT, condense_this, add_information
         )
     } else {
-        p <- .pV_seed_plotly_annoTrack(
+        p <- .pV_seed_ggplotly_annoTrack(
             plotViewStart, plotViewEnd, view_chr,
             reducedIntronsExpanded, nonIntrons,
             group.DT, condense_this, add_information
         )
     }
 
+    return(p)
+}
 
-    if(!interactive) {
-        out_p <- p
-        if(!is.null(anno)) {
-            out_p <- out_p + geom_text(
-                data = data.frame(
-                    x = anno[["x"]], y = anno[["y"]],
-                    Information = anno[["text"]]
-                ),
-                    aes(x = get("x"), y = get("y"), label = get("Information"))
-                )
-        }
-            
-        out_p <- out_p + theme(legend.position = "none") +
-            labs(x = paste("Chromosome", view_chr))
-        ref_ymin <- min(layer_scales(out_p)$y$range$range)
-        ref_ymax <- max(layer_scales(out_p)$y$range$range)
-        if(!reverseGenomeCoords) {
-            plotViewStart <- view_start
-            plotViewEnd <- view_end
-        } else {
-            plotViewStart <- view_end
-            plotViewEnd <- view_start     
-        }
-        out_p <- out_p + 
-            scale_x_continuous(labels = label_number(scale_cut = cut_si(""))) +
-            coord_cartesian(
-                xlim = c(plotViewStart, plotViewEnd),
-                ylim = c(ref_ymin - 1, ref_ymax + 1),
-                expand = FALSE
-            )
+.pV_highlight_to_colors <- function(highlights, usePlotly = FALSE) {
+    if(usePlotly) {
+        highlights <- sub("0", "#000000", highlights)
+        highlights <- sub("1", "#00FF00", highlights)
+        highlights <- sub("2", "#FF0000", highlights)
+        highlights <- sub("3", "#FFFF00", highlights)
     } else {
-        if(!reverseGenomeCoords) {
-            out_p <- ggplotly(p, tooltip = "text") %>%
-                layout(
-                    annotations = anno, dragmode = "pan",
-                    xaxis = list(range = c(view_start, view_end),
-                        title = paste("Chromosome/Scaffold", view_chr)),
-                    yaxis = list(range = c(0, 1 + max_plot_level),
-                        fixedrange = TRUE)
-                ) 
-        } else {
-            out_p <- ggplotly(p, tooltip = "text") %>%
-                layout(
-                    annotations = anno, dragmode = "pan",
-                    xaxis = list(
-                        range = c(view_end, view_start),
-                        title = paste("Chromosome/Scaffold", view_chr)
-                    ),
-                    yaxis = list(range = c(0, 1 + max_plot_level),
-                        fixedrange = TRUE)
-                )         
-        }
-        for (i in seq_len(length(out_p$pl$x$data))) {
-            out_p$pl$x$data[[i]]$showlegend <- FALSE
-        }
+        highlights <- sub("0", "black", highlights)
+        highlights <- sub("1", "blue", highlights)
+        highlights <- sub("2", "red", highlights)
+        highlights <- sub("3", "purple", highlights)
     }
-    
-    return(out_p)
-}
 
-.pV_highlight_to_colors <- function(highlights) {
-    highlights <- sub("0", "black", highlights)
-    highlights <- sub("1", "blue", highlights)
-    highlights <- sub("2", "red", highlights)
-    highlights <- sub("3", "purple", highlights)
     return(highlights)
 }
 
-.pV_highlight_to_colors_plotly <- function(highlights) {
-    highlights <- sub("0", "#000000", highlights)
-    highlights <- sub("1", "#00FF00", highlights)
-    highlights <- sub("2", "#FF0000", highlights)
-    highlights <- sub("3", "#FFFF00", highlights)
-    return(highlights)
-}
 
 .pV_seed_ggplot_annoTrack <- function(
-    plotViewStart, plotViewEnd, view_chr
+    plotViewStart, plotViewEnd, view_chr,
     introns, exons, group.DT, condense_this, add_information
 ) {
     col_highlights <- sort(unique(introns$highlight))
@@ -1510,6 +1453,28 @@ plotView <- function(
     col_highlights <- .pV_highlight_to_colors(col_highlights)
     fill_highlights <- .pV_highlight_to_colors(fill_highlights)
 
+    if(add_information) {
+        if (condense_this == TRUE) {
+            anno <- data.frame(
+                x = group.DT$disp_x,
+                y = group.DT$plot_level - 0.5 + 0.3 * 
+                    runif(rep(1, nrow(group.DT))),
+                Information = group.DT$display_name
+            )
+        } else {
+            anno <- data.frame(
+                x = group.DT$disp_x,
+                y = group.DT$plot_level - 0.4,
+                Information = group.DT$display_name
+            )
+        }
+    }
+    if (nrow(group.DT) == 0) {
+        max_plot_level <- 1
+    } else {
+        max_plot_level <- max(group.DT$plot_level)
+    }
+    
     p <- ggplot()
     
     if(nrow(introns) > 0) {
@@ -1542,42 +1507,19 @@ plotView <- function(
             axis.title.y = element_blank(),
             legend.title = element_blank()
         )
-        
-    if(add_information) {
-        if (condense_this == TRUE) {
-            anno <- data.frame(
-                x = group.DT$disp_x,
-                y = group.DT$plot_level - 0.5 + 0.3 * 
-                    runif(rep(1, nrow(group.DT))),
-                Information = group.DT$display_name
-            )
-        } else {
-            anno <- data.frame(
-                x = group.DT$disp_x,
-                y = group.DT$plot_level - 0.4,
-                Information = group.DT$display_name
-            )
-        }
-    }
 
-    if (nrow(group.DT) == 0) {
-        max_plot_level <- 1
-    } else {
-        max_plot_level <- max(group.DT$plot_level)
-    }
-    
     if(!is.null(anno)) {
-        out_p <- out_p + geom_text(
+        p <- p + geom_text(
             data = anno,
             aes(x = get("x"), y = get("y"), label = get("Information"))
         )
     }
-    out_p <- out_p + theme(legend.position = "none") +
+    p <- p + theme(legend.position = "none") +
         labs(x = paste("Chromosome", view_chr))
 
-    ref_ymin <- min(layer_scales(out_p)$y$range$range)
-    ref_ymax <- max(layer_scales(out_p)$y$range$range)
-    out_p <- out_p + 
+    ref_ymin <- min(layer_scales(p)$y$range$range)
+    ref_ymax <- max(layer_scales(p)$y$range$range)
+    p <- p + 
         scale_x_continuous(labels = label_number(scale_cut = cut_si(""))) +
         coord_cartesian(
             xlim = c(plotViewStart, plotViewEnd),
@@ -1585,18 +1527,18 @@ plotView <- function(
             expand = FALSE
         )
     
-    return(out_p)
+    return(p)
 }
 
-.pV_seed_plotly_annoTrack <- function(
-    plotViewStart, plotViewEnd, view_chr
+.pV_seed_ggplotly_annoTrack <- function(
+    plotViewStart, plotViewEnd, view_chr,
     introns, exons, group.DT, condense_this, add_information
 ) {
     
     col_highlights <- sort(unique(introns$highlight))
     fill_highlights <- sort(unique(introns$highlight))
-    col_highlights <- .pV_highlight_to_colors_plotly(col_highlights)
-    fill_highlights <- .pV_highlight_to_colors_plotly(fill_highlights)
+    col_highlights <- .pV_highlight_to_colors(col_highlights)
+    fill_highlights <- .pV_highlight_to_colors(fill_highlights)
     
     anno <- NULL
     if(add_information) {
@@ -1621,24 +1563,14 @@ plotView <- function(
         max_plot_level <- max(group.DT$plot_level)
     }
     
-    fig <- plot_ly()
-
+    p <- ggplot()
+    
     if(nrow(introns) > 0) {
-        HLtype <- sort(unique(introns$highlight))
-        
-        for(i in seq_len(length(HLtype))) {
-            intronLines <- introns %>% group_by("Information")
-            fig <- fig %>% add_trace(
-                data = intronLines,
-                x = as.formula("~start"),
-                y = as.formula("~plot_level"),
-                line = list(color = col_highlights[i], width = 0.5),
-                type = 'scatter', mode = 'lines',
-                    showlegend = FALSE
-            )
-        }
+        p <- p + geom_line(data = introns,
+            aes(x = get("start"), y = get("plot_level"),
+            color = get("highlight"), group = get("Information"))
+        )   
     }
-
     if(nrow(exons) > 0) {
         p <- p + geom_rect(data = exons,
             aes(xmin = get("start"), xmax = get("end"),
@@ -1652,6 +1584,7 @@ plotView <- function(
             )
         )
     }
+
     p <- p + 
         scale_color_manual(values = col_highlights) +
         scale_fill_manual(values = fill_highlights)    
@@ -1662,16 +1595,24 @@ plotView <- function(
             axis.title.y = element_blank(),
             legend.title = element_blank()
         )
-        
-    fig <- fig %>%
+    
+    # ggplotly
+    out_p <- ggplotly(p, tooltip = "text") %>%
         layout(
             annotations = anno, dragmode = "pan",
             xaxis = list(range = c(plotViewStart, plotViewEnd),
                 title = paste("Chromosome/Scaffold", view_chr)),
             yaxis = list(range = c(0, 1 + max_plot_level),
-                fixedrange = TRUE)
-        ) 
+                fixedrange = FALSE)
+        )
+        
+    for (i in seq_len(length(out_p$pl$x$data))) {
+        out_p$pl$x$data[[i]]$showlegend <- FALSE
+    }
+    
+    return(out_p)
 }
+
 
 ################################################################################
 
@@ -2249,6 +2190,17 @@ plotView <- function(
         shareX = TRUE, titleY = TRUE,
         heights = vLnorm
     )
+    
+    if(length(annoFullTrack) == 1) {
+        fullAnnoPlotNumber <- length(annoFullTrack[[1]]$x$data)
+        for(i in seq(
+            length(finalPlot$x$data) + 1 - fullAnnoPlotNumber, 
+            length(finalPlot$x$data)
+        )) {
+            finalPlot$x$data[[i]]$showlegend <- FALSE
+        }
+    }
+
     return(finalPlot)
 }
 

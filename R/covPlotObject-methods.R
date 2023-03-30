@@ -221,6 +221,8 @@ plotView <- function(
     EventZoomFactor = 0.2,
     EventBasesFlanking = 100,
     
+    resolution = 1e4,
+    
     # specify tracks
     trackList = list(),
     
@@ -367,8 +369,8 @@ plotView <- function(
     # Proportion all viewing frames
     widthSum <- sum(width(plotRanges))
     widthFrac <- width(plotRanges) / widthSum
-    if(widthSum > 1e4) {
-        allocPixels <- 3 * round(widthFrac * 1e4)
+    if(widthSum > resolution) {
+        allocPixels <- 3 * round(widthFrac * resolution)
     } else {
         allocPixels <- NULL
     }
@@ -508,9 +510,11 @@ plotView <- function(
         pl <- .pV_assemble_plotly(
             covTrack, diffTrack, annoFullTrack, verticalLayout
         )
-        pl <- pl  %>% layout(
+        pl <- pl %>% layout(
             dragmode = "pan",
-            xaxis = list(range = c(plotViewStart, plotViewEnd))
+            xaxis = list(
+                range = c(plotViewStart, plotViewEnd)
+            )
         )
         return(pl)
     } else {
@@ -912,24 +916,18 @@ plotView <- function(
     }
 
     if(!interactive) {
-        bench <- system.time({
-            p <- .pV_seed_ggplot_covTrack(
-                plotViewStart, plotViewEnd,
-                df_all, dfJn_all, dfJnSum_all,
-                plotJunctions, plotMeanCov, rb
-            )
-        })
-        print(bench)
+        p <- .pV_seed_ggplot_covTrack(
+            plotViewStart, plotViewEnd,
+            df_all, dfJn_all, dfJnSum_all,
+            plotJunctions, plotMeanCov, rb
+        )
         return(p)
     } else {
-        bench <- system.time({
-            p <- .pV_seed_plotly_covTrack(
-                plotViewStart, plotViewEnd,
-                df_all, dfJn_all, dfJnSum_all,
-                plotJunctions, plotMeanCov, rb
-            )
-        })
-        print(bench)
+        p <- .pV_seed_plotly_covTrack(
+            plotViewStart, plotViewEnd,
+            df_all, dfJn_all, dfJnSum_all,
+            plotJunctions, plotMeanCov, rb
+        )
         return(p)
     }
 }
@@ -1014,7 +1012,7 @@ plotView <- function(
         }
         if(!is.null(df)) {
             df$diffTrack <- diffName
-            df_list <- append(df_list, df)        
+            df_list[[diffName]] <- df        
         }
     }
     df_all <- as.data.frame(rbindlist(df_list))
@@ -1218,21 +1216,19 @@ plotView <- function(
                     showlegend = FALSE
             )
         }
-        p_list[[track]] <- fig
+        p_list[[track]] <- fig %>%
+            layout(
+                yaxis = list(title = track, fixedrange = TRUE)
+            )
     }
 
     # knit subplot here
-    pl_final <- subplot(
-        p_list, nrows = length(p_list), 
-        shareX = TRUE, titleY = TRUE
-    ) %>% layout(
-        dragmode = "pan",
-        xaxis = list(
-            range = c(plotViewStart, plotViewEnd)
-        ), 
-        yaxis = list(fixedrange = TRUE)
-    )
-    return(pl_final)
+    # pl_final <- subplot(
+        # p_list, nrows = length(p_list), 
+        # shareX = TRUE, titleY = TRUE
+    # )
+    # return(pl_final)
+    return(p_list)
 }
 
 .pV_seed_ggplot_diffTrack <- function(
@@ -1301,21 +1297,17 @@ plotView <- function(
     }
 
     # knit subplot here
-    pl_final <- subplot(
-        p_list, nrows = length(p_list), 
-        shareX = TRUE, titleY = TRUE
-    ) %>% layout(
-        dragmode = "pan",
-        xaxis = list(
-            range = c(plotViewStart, plotViewEnd)
-        ), 
-        yaxis = list(
-            title = "-log10 P",
-            fixedrange = TRUE
-        )
-    )
-    
-    return(p)
+    # pl_final <- subplot(
+        # p_list, nrows = length(p_list), 
+        # shareX = TRUE, titleY = TRUE
+    # ) %>% layout(
+        # yaxis = list(
+            # title = "-log10 P",
+            # fixedrange = TRUE
+        # )
+    # )
+    # return(pl_final)
+    return(p_list)
 }
 
 ################################################################################
@@ -1603,13 +1595,9 @@ plotView <- function(
             xaxis = list(range = c(plotViewStart, plotViewEnd),
                 title = paste("Chromosome/Scaffold", view_chr)),
             yaxis = list(range = c(0, 1 + max_plot_level),
-                fixedrange = FALSE)
+                fixedrange = TRUE)
         )
-        
-    for (i in seq_len(length(out_p$pl$x$data))) {
-        out_p$pl$x$data[[i]]$showlegend <- FALSE
-    }
-    
+            
     return(out_p)
 }
 
@@ -1896,7 +1884,12 @@ plotView <- function(
         as.matrix(cov1[cov1$x %in% coords, -1]),
         as.matrix(cov2[cov2$x %in% coords, -1])
     )
-    fac <- factor(rep(c("1", "2"), each = c(ncol(cov1) - 1, ncol(cov2) - 1)))
+    fac <- factor(
+        c(
+            rep("1", ncol(cov1) - 1),
+            rep("2", ncol(cov2) - 1)       
+        )
+    )
     
     t_test <- genefilter::rowttests(mat, fac)
     
@@ -2170,26 +2163,46 @@ plotView <- function(
 ) {
     vLnorm <- verticalLayout / sum(verticalLayout)
 
+    if(length(covTrack) == 0) covTrack[[1]] <- list()
+    if(length(diffTrack) == 0) diffTrack[[1]] <- list()
+
     inputList <- list(
-        covTrack = covTrack,
-        diffTrack = diffTrack,
+        covTrack = covTrack[[1]],
+        diffTrack = diffTrack[[1]],
         annoFullTrack = annoFullTrack
     )
     doPlot <- c(
-        length(covTrack) > 0, 
-        length(diffTrack) > 0, 
+        length(covTrack[[1]]) > 0, 
+        length(diffTrack[[1]]) > 0, 
         length(annoFullTrack) > 0
     )
     if(sum(doPlot) == 0) return(NULL)
 
+    nPlot <- c(length(covTrack[[1]]), length(diffTrack[[1]]), length(annoFullTrack))
+    nPlot <- nPlot[nPlot > 0]
+
+    vLnorm_final <- c()
+    for(i in seq_len(length(nPlot))) {
+        vLnorm_final <- c(vLnorm_final, rep(vLnorm[i] / nPlot[i], nPlot[i]))
+    }
+    
     # simple plot - don't muck around
-    plotList <- lapply(inputList[doPlot], function(z) z[[1]])
+    finalList <- list()
+    listCount <- 0
+    for(l in inputList) {
+        if(length(l) > 0) {
+            for(e in l) {
+                listCount <- listCount + 1
+                finalList[[listCount]] <- e
+            }
+        }
+    }
     
     suppressWarnings({
         finalPlot <- subplot(
-            plotList, nrows = length(vLnorm), 
+            finalList, nrows = sum(nPlot), 
             shareX = TRUE, titleY = TRUE,
-            heights = vLnorm
+            heights = vLnorm_final
         )
     })
     

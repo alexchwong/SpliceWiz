@@ -22,6 +22,7 @@ plotView(
   centerByEvent = FALSE,
   EventZoomFactor = 0.2,
   EventBasesFlanking = 100,
+  resolution = 10000,
   trackList = list(),
   diff_stat = c("none", "t-test"),
   diffList = list(),

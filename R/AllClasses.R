@@ -342,3 +342,14 @@ setClass("covPlotObject",
         annotation = "list"
     )
 )
+
+#' @export
+setClass("covPlotly",
+    slots = c(
+        fig = "list",
+        covTrack = "list",
+        diffTrack = "list",
+        annoTrack = "list",
+        vLayout = "numeric"
+    )
+)

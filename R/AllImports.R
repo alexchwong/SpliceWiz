@@ -42,7 +42,7 @@
 #' @importFrom patchwork area plot_layout wrap_plots
 #' @importFrom plotly config layout plotlyOutput event_data ggplotly 
 #' @importFrom plotly plotlyProxy plotlyProxyInvoke renderPlotly subplot 
-#' @importFrom plotly highlight orca toWebGL
+#' @importFrom plotly highlight orca toWebGL partial_bundle
 #' @importFrom plotly plot_ly add_trace add_ribbons plotly_build
 #' @importFrom rhdf5 h5createFile h5createDataset h5delete h5write h5createGroup
 #' @importFrom rtracklayer import export TwoBitFile track

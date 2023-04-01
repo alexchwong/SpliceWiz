@@ -7,6 +7,7 @@
 \alias{condition,covPlotObject-method}
 \alias{getExonRanges,covPlotObject-method}
 \alias{plotView}
+\alias{updatePlotly}
 \title{Container to hold ready-to-plot data for coverage plots}
 \usage{
 getPlotObject(obj, Event, strand = c("*", "+", "-"), tracks, condition)
@@ -44,9 +45,36 @@ plotView(
   junctionThreshold = 0.01,
   plotRanges = GRanges(),
   interactive = FALSE,
-  use_ggplotly = FALSE,
-  use_fastplotly = TRUE,
-  use_DT = FALSE,
+  ...
+)
+
+updatePlotly(
+  x,
+  view_start,
+  view_end,
+  p = NULL,
+  debug = FALSE,
+  centerByEvent = FALSE,
+  EventZoomFactor = 0.2,
+  EventBasesFlanking = 100,
+  resolution = 10000,
+  trackList = list(),
+  diff_stat = c("none", "t-test"),
+  diffList = list(),
+  reverseGenomeCoords = FALSE,
+  ribbon_mode = c("sd", "sem", "ci", "none"),
+  normalizeCoverage = FALSE,
+  plotAnnotations = TRUE,
+  plotAnnoSubTrack = TRUE,
+  verticalLayout = c(6, 1, 1, 2),
+  horizontalLayout = c(),
+  filterByTranscripts = "",
+  filterByEventTranscripts = FALSE,
+  filterByExpressedTranscripts = TRUE,
+  condenseTranscripts = FALSE,
+  plotJunctions = TRUE,
+  junctionThreshold = 0.01,
+  plotRanges = GRanges(),
   ...
 )
 }
@@ -69,6 +97,9 @@ covPlotObject object
 covPlotObject object
 
 \item \code{plotView()}: Creates a coverage plot using the stored
+data in the covPlotObject
+
+\item \code{updatePlotly()}: Creates a coverage plot using the stored
 data in the covPlotObject
 
 }}

@@ -310,73 +310,414 @@ plotView <- function(
 
     # ggplot or plotly object?
     interactive = FALSE,
-    use_ggplotly = FALSE,
-    use_fastplotly = TRUE,
-    use_DT = FALSE,
+    ...
+) {
+    use_ggplotly <- FALSE
+    use_fastplotly <- TRUE
+    use_DT <- TRUE
+
+    if(!is(x, "covPlotObject")) .log(paste(
+        "In plotView,", "x must be a covPlotObject"
+    ))
+
+    args <- x@args
+
+    # inject variables into args
+    if(!missing(view_start)) args[["view_start"]] <- view_start
+    if(!missing(view_end)) args[["view_end"]] <- view_end
+    args[["reverseGenomeCoords"]] <- reverseGenomeCoords
+    
+    ribbon_mode <- match.arg(ribbon_mode)
+    if(!is_valid(ribbon_mode)) ribbon_mode <- "none"
+    args[["ribbon_mode"]] <- ribbon_mode
+
+    if(
+            (missing(view_start) | missing(view_end)) &&
+            centerByEvent &
+            "EventRegion" %in% names(args)
+    ) {
+        args <- .pV_getEventCoords(x, args, EventZoomFactor, EventBasesFlanking)
+    }
+    
+    diff_stat <- match.arg(diff_stat)
+    if(!is_valid(diff_stat)) diff_stat <- "none"
+    
+    # plotRanges checking
+    
+    if(!is(plotRanges, "GRanges")) .log(paste(
+        "In plot() for class covPlotObject,",
+        "`plotRanges` must be a GRanges object"
+    ))
+    # Plot single window if no plotRanges given
+    if(length(plotRanges) == 0) plotRanges <- GRanges(
+        args[["view_chr"]],IRanges(args[["view_start"]], args[["view_end"]])
+    ) # strand is ignored
+    if(
+        any(as.character(seqnames(plotRanges)) != args[["view_chr"]])
+    ) {
+        seqs <- unique(as.character(seqnames(plotRanges)))
+        .log(paste(
+            "In plotView() for class covPlotObject,",
+            "Some elements in `plotRanges` have seqnames that do not match that",
+            "of covPlotObject", seqs[!(seqs %in% args[["view_chr"]])]
+        ))
+    }
+
+    # disable interactive if multi plot
+    if(interactive == TRUE & length(plotRanges) > 1) {
+        .log(paste(
+            "In plotView,",
+            "interactive plots are not supported for multi-view plotting"
+        ), "warning")
+        interactive <- FALSE
+    }
+
+    # What is the full range
+    fullRange <- range(plotRanges)
+    if(!missing(view_start) & !missing(view_end)) {
+        # whatever's larger
+        fullRange <- range(c(fullRange, 
+            GRanges(args[["view_chr"]], IRanges(view_start, view_end))
+        ))        
+    }
+    if(
+        start(fullRange) < args[["limit_start"]] |
+        end(fullRange) > args[["limit_end"]]
+    ) {
+        .log(paste(
+            "Given range is outside that supported by parent covPlotObject.",
+            "Suggest regenerating covPlotObject by calling getPlotObject()"
+        ))
+    }
+        
+    fetchRange <- fullRange
+    if(interactive) {
+        start(fetchRange) <- max(args[["limit_start"]], 
+            start(fullRange) - width(fullRange))
+        end(fetchRange) <- min(args[["limit_end"]],
+            end(fullRange) + width(fullRange))
+    }
+        
+    # Sort plotRanges
+    plotRanges <- sort(plotRanges, decreasing = args[["reverseGenomeCoords"]])
+    
+    # Track list checking - should be a list of indices
+    
+    # If no trackList given, plot all tracks individually
+    if(length(trackList) == 0) trackList <- lapply(
+        seq_len(length(args[["tracks"]])),
+        function(i) i
+    )
+    if(!is(trackList, "list")) {
+        args[["trackList"]] <- .pV_trackList_from_vector(trackList, args)
+    } else {
+        args[["trackList"]] <- .pV_trackList_from_list(trackList, args)
+    }
+    # })
+    # message("Prep time:")
+    # print(bench)
+
+    # Structure of plot
+    # | 1a || 1b || 1c |
+    # | 2a || 2b || 2c |
+    # | 3a || 3b || 3c |
+    # | pa || pb || pc | - diff track
+    # | A  || B  || C  | - annotation subtrack
+    # | annotation     | - annotation full track   
+
+    covTrack <- list()
+    diffTrack <- list()
+    annoSubTrack <- list()
+    annoFullTrack <- list() # list of 1
+    
+    # Proportion all viewing frames
+    widthSum <- sum(width(plotRanges))
+    widthFrac <- width(plotRanges) / widthSum
+    
+    if(use_DT && (!interactive | use_ggplotly)) use_DT <- FALSE
+    
+    # For filtering transcripts by expression later
+    aggJuncCoords <- c()
+    for(j in seq_len(length(plotRanges))) {
+        range_gr <- plotRanges[j]
+        
+        # Work out which coords to plot
+        juncCoords <- .cPO_getJuncCoords(
+            x, args, normalizeCoverage,
+            range_gr = range_gr, 
+            junctionThreshold
+        )
+        aggJuncCoords <- c(aggJuncCoords, juncCoords)
+
+        covTrack[[j]] <- .cPO_plotCoverage_multi(
+            x, args, normalizeCoverage,
+            range_gr = range_gr, 
+            plotJunctions = plotJunctions,
+            junctionThreshold = junctionThreshold,
+            interactive = interactive, 
+            use_fastplotly = use_fastplotly,
+            use_DT = use_DT
+        )
+        
+        if(diff_stat != "none" && length(diffList) > 0) {
+            diffTrack[[j]] <- .cPO_plotDiff_multi(
+                x, args, diffList,
+                diff_stat, range_gr,
+                sampleCoords,
+                interactive = interactive,
+                use_fastplotly = use_fastplotly
+            )
+        }
+    }
+    
+    DTlist <- .pV_filterTranscripts(
+        x, args,
+        filterByTranscripts = filterByTranscripts,
+        filterByEventTranscripts = filterByEventTranscripts,
+        filterByExpressedTranscripts = filterByExpressedTranscripts,
+        aggJuncCoords = aggJuncCoords,
+        plotRanges = plotRanges
+    )
+    DTplotlist <- .gCD_stack_anno(
+        DTlist,
+        start(fetchRange), end(fetchRange),
+        reverseGenomeCoords = args[["reverseGenomeCoords"]],
+        condensed = condenseTranscripts
+    )
+    DTplotlist[["exonRanges"]] <- plotRanges
+
+    if(plotAnnoSubTrack && length(plotRanges) > 1) {
+        for(j in seq_len(length(plotRanges))) {
+            range_gr <- plotRanges[j]
+            
+            annoSubTrack[[j]] <- .gCD_plotRef(
+                DTplotlist, range_gr,
+                reverseGenomeCoords = args[["reverseGenomeCoords"]],
+                add_information = FALSE,
+                interactive = interactive
+            )
+        }
+    }
+    
+    if(plotAnnotations) {
+        annoFullTrack[[1]] <- .gCD_plotRef(
+            DTplotlist, fullRange, 
+            reverseGenomeCoords = args[["reverseGenomeCoords"]],
+            add_information = TRUE,
+            interactive = interactive,
+            use_ggplotly = use_ggplotly,
+            use_fastplotly = use_fastplotly
+        )
+    }
+    keepVLayout <- c(
+        length(covTrack) > 0,
+        length(diffTrack) > 0,
+        length(annoSubTrack) > 0,
+        length(annoFullTrack) > 0
+    )
+    if(length(verticalLayout) == 4) {
+        verticalLayout <- verticalLayout[keepVLayout]
+    } else if(length(verticalLayout) == sum(keepVLayout)) {
+        # do nothing
+    } else {
+        # revert to default
+        verticalLayout <- c(6,1,1,2)
+        verticalLayout <- verticalLayout[keepVLayout]
+    }
+    
+    if(length(horizontalLayout) == 0) {
+        horizontalLayout <- ceiling(10 * widthFrac / sum(widthFrac))
+    } else if(length(horizontalLayout) == length(covTrack)) {
+        horizontalLayout <- ceiling(horizontalLayout)
+    } else {
+        horizontalLayout <- ceiling(10 * widthFrac / sum(widthFrac))
+    }
+    
+    if(!args[["reverseGenomeCoords"]]) {
+        plotViewStart <- start(fullRange)
+        plotViewEnd <- end(fullRange)
+    } else {
+        plotViewStart <- end(fullRange)
+        plotViewEnd <- start(fullRange)
+    }
+
+    if(debug) {
+        return(list(
+            plotViewStart = plotViewStart, plotViewEnd = plotViewEnd,
+            covTrack = covTrack,
+            diffTrack = diffTrack,
+            annoSubTrack = annoSubTrack,
+            annoFullTrack = annoFullTrack
+        ))
+    }
+    
+    if(interactive) {
+        p <- covPlotly(
+            fig = list(),
+            covTrack = covTrack,
+            diffTrack = diffTrack,
+            annoTrack = annoFullTrack,
+            vLayout = verticalLayout
+        )
+
+        p <- .pV_assemble_covPlotly(p)
+        
+        p@fig[[1]] <- p@fig[[1]] %>% layout(
+            dragmode = "pan",
+            xaxis = list(
+                range = c(plotViewStart, plotViewEnd)
+            )
+        )
+    } else {
+        p <- .pV_assemble_ggplot(
+            covTrack, diffTrack, annoSubTrack, annoFullTrack,
+                verticalLayout, horizontalLayout
+        )
+    }
+    return(p)
+}
+
+#' @describeIn covPlotObject-class Creates a coverage plot using the stored
+#'   data in the covPlotObject
+#' @export
+updatePlotly <- function(
+    x, 
+
+    # for single window view (to simplify things)
+    view_start,
+    view_end,
+    
+    p = NULL,
+    
+    debug = FALSE,
+    
+    # Event-centric plotting
+    centerByEvent = FALSE,
+    EventZoomFactor = 0.2,
+    EventBasesFlanking = 100,
+    
+    resolution = 1e4,
+    
+    # specify tracks
+    trackList = list(),
+    
+    # specify differential comparisons
+    diff_stat = c("none", "t-test"),
+    diffList = list(),
+
+    reverseGenomeCoords = FALSE,
+
+    ribbon_mode = c("sd", "sem", "ci", "none"),
+
+    # plot raw or normalized coverage (only works for sample tracks)
+    normalizeCoverage = FALSE,
+
+    # specify annotation track
+    plotAnnotations = TRUE,
+    plotAnnoSubTrack = TRUE,
+
+    # Plot layout
+    verticalLayout = c(6,1,1,2),
+    horizontalLayout = c(),
+
+    # filter annotations
+    filterByTranscripts = "",
+
+    # plot only by transcripts with highlights
+    filterByEventTranscripts = FALSE,
+
+    # filter annotations
+    filterByExpressedTranscripts = TRUE,
+    
+    # whether to condense transcripts by gene
+    condenseTranscripts = FALSE,
+
+    # whether to plot sashimi arcs
+    plotJunctions = TRUE,
+    junctionThreshold = 0.01,
+
+    # whether to plot by exon windows
+    plotRanges = GRanges(),
     ...
 ) {
     # bench <- system.time({
 
-        if(!is(x, "covPlotObject")) .log(paste(
-            "In plotView,", "x must be a covPlotObject"
+    if(!is(x, "covPlotObject")) .log(paste(
+        "In plotView,", "x must be a covPlotObject"
+    ))
+
+    if(!is.null(p) && !is(p, "covPlotly")) .log(paste(
+        "In updatePlotly,", "p must be a covPlotly object"
+    ))
+
+    args <- x@args
+
+    # inject variables into args
+    if(!missing(view_start)) args[["view_start"]] <- view_start
+    if(!missing(view_end)) args[["view_end"]] <- view_end
+    args[["reverseGenomeCoords"]] <- reverseGenomeCoords
+    
+    ribbon_mode <- match.arg(ribbon_mode)
+    if(!is_valid(ribbon_mode)) ribbon_mode <- "none"
+    args[["ribbon_mode"]] <- ribbon_mode
+
+    if(
+            (missing(view_start) | missing(view_end)) &&
+            centerByEvent &
+            "EventRegion" %in% names(args)
+    ) {
+        args <- .pV_getEventCoords(x, args, EventZoomFactor, EventBasesFlanking)
+    }
+    
+    diff_stat <- match.arg(diff_stat)
+    if(!is_valid(diff_stat)) diff_stat <- "none"
+    
+    # plotRanges checking
+        
+    if(!is(plotRanges, "GRanges")) .log(paste(
+        "In plot() for class covPlotObject,",
+        "`plotRanges` must be a GRanges object"
+    ))
+    # Plot single window if no plotRanges given
+    if(length(plotRanges) == 0) plotRanges <- GRanges(
+        args[["view_chr"]],IRanges(args[["view_start"]], args[["view_end"]])
+    ) # strand is ignored
+    if(
+        any(as.character(seqnames(plotRanges)) != args[["view_chr"]])
+    ) {
+        seqs <- unique(as.character(seqnames(plotRanges)))
+        .log(paste(
+            "In plotView() for class covPlotObject,",
+            "Some elements in `plotRanges` have seqnames that do not match that",
+            "of covPlotObject", seqs[!(seqs %in% args[["view_chr"]])]
         ))
-
-        args <- x@args
-
-        # inject variables into args
-        if(!missing(view_start)) args[["view_start"]] <- view_start
-        if(!missing(view_end)) args[["view_end"]] <- view_end
-        args[["reverseGenomeCoords"]] <- reverseGenomeCoords
-        
-        ribbon_mode <- match.arg(ribbon_mode)
-        if(!is_valid(ribbon_mode)) ribbon_mode <- "none"
-        args[["ribbon_mode"]] <- ribbon_mode
-
-        if(
-                (missing(view_start) | missing(view_end)) &&
-                centerByEvent &
-                "EventRegion" %in% names(args)
-        ) {
-            args <- .pV_getEventCoords(x, args, EventZoomFactor, EventBasesFlanking)
-        }
-        
-        diff_stat <- match.arg(diff_stat)
-        if(!is_valid(diff_stat)) diff_stat <- "none"
-        
-        # plotRanges checking
-        
-        if(!is(plotRanges, "GRanges")) .log(paste(
-            "In plot() for class covPlotObject,",
-            "`plotRanges` must be a GRanges object"
+    }
+    # What is the full range
+    fullRange <- range(plotRanges)
+    if(!missing(view_start) & !missing(view_end)) {
+        # whatever's larger
+        fullRange <- range(c(fullRange, 
+            GRanges(args[["view_chr"]], IRanges(view_start, view_end))
+        ))        
+    }
+    if(
+        start(fullRange) < args[["limit_start"]] |
+        end(fullRange) > args[["limit_end"]]
+    ) {
+        .log(paste(
+            "Given range is outside that supported by parent covPlotObject.",
+            "Suggest regenerating covPlotObject by calling getPlotObject()"
         ))
-        # Plot single window if no plotRanges given
-        if(length(plotRanges) == 0) plotRanges <- GRanges(
-            args[["view_chr"]],IRanges(args[["view_start"]], args[["view_end"]])
-        ) # strand is ignored
-        if(
-            any(as.character(seqnames(plotRanges)) != args[["view_chr"]])
-        ) {
-            seqs <- unique(as.character(seqnames(plotRanges)))
-            .log(paste(
-                "In plotView() for class covPlotObject,",
-                "Some elements in `plotRanges` have seqnames that do not match that",
-                "of covPlotObject", seqs[!(seqs %in% args[["view_chr"]])]
-            ))
-        }
-        # What is the full range
-        fullRange <- range(plotRanges)
-        if(!missing(view_start) & !missing(view_end)) {
-            # whatever's larger
-            fullRange <- range(c(fullRange, 
-                GRanges(args[["view_chr"]], IRanges(view_start, view_end))
-            ))        
-        }
-        fetchRange <- fullRange
-        if(interactive) {
-            start(fetchRange) <- max(1, start(fullRange) - width(fullRange))
-            end(fetchRange) <- end(fullRange) + width(fullRange)
-        }
-        
+    }
+    
+    fetchRange <- fullRange
+    if(interactive) {
+        start(fetchRange) <- max(args[["limit_start"]], 
+            start(fullRange) - width(fullRange))
+        end(fetchRange) <- min(args[["limit_end"]],
+            end(fullRange) + width(fullRange))
+    }
+    
         # disable interactive if multi plot
         if(interactive == TRUE & length(plotRanges) > 1) {
             .log(paste(
@@ -578,6 +919,8 @@ plotView <- function(
     # print(bench)
     return(pl)
 }
+
+
 ################################################################################
 
 .pV_getEventCoords <- function(
@@ -1307,7 +1650,7 @@ plotView <- function(
 }
 
 .plotly_store_info <- function(x, y, text = "") {
-    return(data.table(
+    return(list(
         x = x, y = y, text = text
     ))
 }
@@ -2963,6 +3306,64 @@ plotView <- function(
     
     return(finalPlot)
 }
+
+.pV_assemble_covPlotly <- function(p) {
+    vLnorm <- p@vLayout / sum(p@vLayout)
+
+    inputList <- list(
+        covTrack = p@covTrack,
+        diffTrack = p@diffTrack,
+        annoFullTrack = p@annoTrack
+    )
+    doPlot <- c(
+        length(p@covTrack) > 0, 
+        length(p@diffTrack) > 0, 
+        length(p@annoTrack) > 0
+    )
+    if(sum(doPlot) == 0 | sum(doPlot) != length(vLnorm)) return(NULL)
+    inputList <- inputList[doPlot]
+    
+    finalList <- list()
+    flCount <- 0
+    realvLnorm <- c()
+    for(i in seq_len(length(inputList))) {
+        realvLnorm <- c(realvLnorm, 
+            rep(vLnorm[i] / length(inputList[[i]]), length(inputList[[i]]) )
+        )
+        for(j in seq_len(length(inputList[[i]]))) {
+            flCount <- flCount + 1
+            finalList[[flCount]] <- inputList[[i]][[j]][["plot"]]
+        }
+    }
+    
+    finalPlot <- subplot(
+        finalList, nrows = length(realvLnorm), 
+        shareX = TRUE, titleY = TRUE,
+        heights = realvLnorm
+    )
+    
+    # combine data here
+    dataList <- list()
+    dataCount <- 0
+
+    for(i in seq_len(length(inputList))) {
+        for(j in seq_len(length(inputList[[i]]))) {
+            plotData <- inputList[[i]][[j]][["data"]]
+            for(k in seq_len(length(plotData))) {
+                if(!is.null(plotData[[k]])) {
+                    dataCount <- dataCount + 1
+                    finalPlot$x$data[[dataCount]]$x <- plotData[[k]]$x
+                    finalPlot$x$data[[dataCount]]$y <- plotData[[k]]$y
+                    finalPlot$x$data[[dataCount]]$text <- plotData[[k]]$text
+                }
+            }
+        }
+    }
+
+    p@fig[[1]] <- finalPlot
+    return(p)
+}
+
 
 .pV_assemble_ggplot <- function(
     covTrack, diffTrack, annoSubTrack, annoFullTrack,

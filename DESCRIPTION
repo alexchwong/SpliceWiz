@@ -83,6 +83,7 @@ Collate: AllImports.R
 	wrappers.R
 	make_plot_data.R
 	Coverage.R
+    covPlotly-methods.R
     covDataObject-methods.R
     covPlotObject-methods.R
 	utils.R

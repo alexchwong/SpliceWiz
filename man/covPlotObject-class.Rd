@@ -46,6 +46,7 @@ plotView(
   interactive = FALSE,
   use_ggplotly = FALSE,
   use_fastplotly = TRUE,
+  use_DT = FALSE,
   ...
 )
 }

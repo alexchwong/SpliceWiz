@@ -347,6 +347,7 @@ setClass("covPlotObject",
 setClass("covPlotly",
     slots = c(
         fig = "list",
+        args = "list",
         covTrack = "list",
         diffTrack = "list",
         annoTrack = "list",

@@ -153,26 +153,7 @@ getPlotObject <- function(
     DTlist$reduced.DT <- .gcd_highlight_anno(
         DTlist$reduced.DT, args[["highlight_gr"]]
     )
-    
-    # Filtering and stacking can be done as later steps
-    
-    # DTlist$reduced.DT <- .gcd_filter_anno(
-        # DTlist$reduced.DT, DTlist$transcripts.DT,
-        # selected_transcripts = selected_transcripts,
-        # gr_expressed_junctions = NULL,
-        # plot_key_isoforms = plot_key_isoforms
-    # )
 
-    # args[["condensed"]] <- condensed
-    # DTplotlist <- .gCD_stack_anno(
-        # DTlist, 
-        # args[["view_start"]], args[["view_end"]], 
-        # args[["reverseGenomeCoords"]],
-        # args[["condensed"]]
-    # )
-    # args[["condense_this"]] <- DTplotlist[["condense_this"]]
-
-    
     return(covPlotObject(
         args = args,
         cov = cov,
@@ -203,50 +184,109 @@ setMethod("condition", c(x = "covPlotObject"), function(
     return(x@args[["condition"]])
 })
 
-#' @describeIn covPlotObject-class Returns the condition specified in the 
-#'   covPlotObject object
+#' @describeIn covDataObject-class Directly plots the annotation from a 
+#'   covDataObject. 
 #' @export
-setMethod("getExonRanges", c(x = "covPlotObject"), function(
-    x, showInteractiveExons = TRUE, reverseGenomeCoords = FALSE
+plotAnnoTrack <- function(
+    obj, Event,
+    view_start, view_end,
+    reverseGenomeCoords = FALSE,
+    condensed = FALSE,
+    usePlotly = FALSE,
+    selected_transcripts = "",
+    plot_key_isoforms = FALSE
 ) {
-    args <- x@args
-    args[["reverseGenomeCoords"]] <- reverseGenomeCoords
+    if(missing(view_start)) view_start <- obj@args$view_start
+    if(missing(view_end)) view_end <- obj@args$view_end
+
+    if(view_start > view_end) {
+        reverseGenomeCoords <- !reverseGenomeCoords
+        view_start <- view_start + view_end
+        view_end <- view_start - view_end
+        view_start <- view_start - view_end
+    }
+
+    highlight_gr <- list()
     
-    fullRange <- GRanges(
-        args[["view_chr"]],IRanges(args[["view_start"]], args[["view_end"]])
-    )
-    
-    DTlist <- .pV_filterTranscripts(
-        x, args,
-        filterByTranscripts = "",
-        filterByEventTranscripts = FALSE,
-        filterByExpressedTranscripts = FALSE,
-        plotRanges = fullRange
-    )
-    
-    DTplotlist <- .gCD_stack_anno(
-        DTlist,
-        start(fullRange), end(fullRange),
-        reverseGenomeCoords = FALSE,
-        condensed = FALSE
-    )
-    
-    if(showInteractiveExons) {
-        p <- .gCD_plotRef(
-            DTplotlist, fullRange, 
-            reverseGenomeCoords = args[["reverseGenomeCoords"]],
-            add_information = TRUE,
-            interactive = showInteractiveExons,
-            use_ggplotly = use_ggplotly
-        )
-        print(p)
+    if(!missing(Event) && !("rowData" %in% names(obj@normData))) {
+        .log("Plotting ASE from a SpliceWiz reference is currently not supported.")
     }
     
-    reduced <- copy(DTplotlist$reduced.DT)
-    exons <- reduced[get("type") == "exon"]
+    if(!missing(Event) && Event %in% rownames(obj@normData$rowData)) {
+        row <- obj@normData$rowData[Event,]
+        if (row$EventType %in% c("MXE", "SE")) {
+            highlight_gr[[1]] <- coord2GR(c(row$Event1a, row$Event2a))
+        } else {
+            highlight_gr[[1]] <- coord2GR(row$Event1a)
+        }
+        if (row$EventType %in% c("MXE")) {
+            highlight_gr[[2]] <- coord2GR(c(row$Event1b, row$Event2b))
+        } else if (row$EventType %in%  c("SE", "A3SS", "A5SS", "ALE", "AFE")) {
+            highlight_gr[[2]] <- coord2GR(row$Event1b)
+        }    
+    }
     
-    return(.grDT(exons, keep.extra.columns=TRUE))
-})
+    DTlist <- obj@annotation
+    DTlist$reduced.DT <- .gcd_highlight_anno(
+        DTlist$reduced.DT, highlight_gr
+    )
+    
+    DTlist$reduced.DT <- .gcd_filter_anno(
+        DTlist$reduced.DT, DTlist$transcripts.DT,
+        selected_transcripts = selected_transcripts,
+        plot_key_isoforms = plot_key_isoforms
+    )
+
+    DTplotlist <- .gCD_stack_anno(
+        DTlist, view_start, view_end, reverseGenomeCoords
+    )
+    
+    view_gr <- GRanges(
+        obj@args[["view_chr"]],
+        IRanges(obj@args[["view_start"]], obj@args[["view_end"]])
+    )
+    
+    p <- .gCD_plotRef(
+        DTplotlist, view_gr,
+        reverseGenomeCoords,
+        add_information = TRUE,
+        usePlotly = usePlotly,
+        instantPlotly = usePlotly
+    )
+    
+    if(usePlotly) {
+        # Remove legend for p_ref; this causes trouble for plotly
+        # p <- plotly_build(p)
+        # for (i in seq_len(length(p$x$data))) {
+            # p$x$data[[i]]$showlegend <- FALSE
+        # }
+        return(p)
+    } else {
+        # out <- p + theme(legend.position = "none") +
+            # labs(x = paste("Chromosome", obj@args$view_chr))
+        
+        # ref_ymin <- min(layer_scales(out)$y$range$range)
+        # ref_ymax <- max(layer_scales(out)$y$range$range)
+        # if(!reverseGenomeCoords) {
+            # plotViewStart <- view_start
+            # plotViewEnd <- view_end
+        # } else {
+            # plotViewStart <- view_end
+            # plotViewEnd <- view_start     
+        # }
+
+        # out <- out + 
+            # scale_x_continuous(labels = label_number(scale_cut = cut_si(""))) +
+            # coord_cartesian(
+                # xlim = c(plotViewStart, plotViewEnd),
+                # ylim = c(ref_ymin - 1, ref_ymax + 1),
+                # expand = FALSE
+            # )
+        # return(out)
+        return(p)
+    }
+}
+
 
 #' @describeIn covPlotObject-class Creates a coverage plot using the stored
 #'   data in the covPlotObject
@@ -311,12 +351,9 @@ plotView <- function(
     plotRanges = GRanges(),
 
     # ggplot or plotly object?
-    interactive = FALSE,
-    interactive2 = FALSE,
+    usePlotly = FALSE,
     ...
 ) {
-    use_ggplotly <- FALSE
-    use_fastplotly <- TRUE
     use_DT <- TRUE
 
     if(!is(x, "covPlotObject")) .log(paste(
@@ -367,12 +404,12 @@ plotView <- function(
     }
 
     # disable interactive if multi plot
-    if(interactive == TRUE & length(plotRanges) > 1) {
+    if(usePlotly == TRUE & length(plotRanges) > 1) {
         .log(paste(
             "In plotView,",
             "interactive plots are not supported for multi-view plotting"
         ), "warning")
-        interactive <- FALSE
+        usePlotly <- FALSE
     }
 
     # What is the full range
@@ -394,7 +431,7 @@ plotView <- function(
     }
         
     fetchRange <- fullRange
-    if(interactive) {
+    if(usePlotly) {
         start(fetchRange) <- max(args[["limit_start"]], 
             start(fullRange) - width(fullRange))
         end(fetchRange) <- min(args[["limit_end"]],
@@ -434,54 +471,144 @@ plotView <- function(
     widthSum <- sum(width(plotRanges))
     widthFrac <- width(plotRanges) / widthSum
     
-    if(use_DT && (!interactive | use_ggplotly)) use_DT <- FALSE
+    if(use_DT && !usePlotly) use_DT <- FALSE
+
+    # For filtering transcripts by expression later
+    aggJuncCoords <- c()
+    reservedCoords <- c()
+    for(j in seq_len(length(plotRanges))) {
+        range_gr <- plotRanges[j]
+        
+        # Work out which coords to plot
+        juncCoords <- .cPO_getJuncCoords(
+            x, args, normalizeCoverage,
+            range_gr = range_gr, 
+            junctionThreshold
+        )
+        aggJuncCoords <- c(aggJuncCoords, juncCoords)
+    }
+    reservedCoords <- sort(unique(c(
+        aggJuncCoords[["jc_start"]] - 1,
+        aggJuncCoords[["jc_start"]],
+        aggJuncCoords[["jc_end"]],
+        aggJuncCoords[["jc_end"]] + 1
+    )))
     
-    # bench <- system.time({
-    
-        # For filtering transcripts by expression later
-        aggJuncCoords <- c()
-        reservedCoords <- c()
+    if(usePlotly) {
+        covTrack[[j]] <- .cPO_plotCoverage_multi(
+            x, args, normalizeCoverage,
+            range_gr = fullRange, 
+            plotJunctions = plotJunctions,
+            junctionThreshold = junctionThreshold,
+            usePlotly = TRUE,
+            use_DT = use_DT
+        )
+        if(diff_stat != "none" && length(diffList) > 0) {
+            diffTrack[[j]] <- .cPO_plotDiff_multi(
+                x, args, diffList,
+                diff_stat, fullRange,
+                usePlotly = usePlotly
+            )
+        }
+    } else {
+        # Generate full plotly first, then segment later
+        tmpCov <- .cPO_plotCoverage_multi(
+            x, args, normalizeCoverage,
+            range_gr = fullRange, 
+            plotJunctions = plotJunctions,
+            junctionThreshold = junctionThreshold,
+            usePlotly = FALSE,
+            use_DT = use_DT,
+            reservedCoords = reservedCoords,
+            resolution = resolution
+        )
+        tmpCovPlot <- tmpCov$ggplot
+        tmpCovJuncAnno <- as.data.table(tmpCov$dfJn_all)
+        
+        tmpDiff <- NULL
+        if(diff_stat != "none" && length(diffList) > 0) {
+            tmpDiff <- .cPO_plotDiff_multi(
+                x, args, diffList,
+                diff_stat, fullRange,
+                usePlotly = FALSE
+            )
+        }
+        
         for(j in seq_len(length(plotRanges))) {
+            covTrack[[j]] <- list()
+            if(!is.null(tmpDiff)) diffTrack[[j]] <- list()
+            
             range_gr <- plotRanges[j]
+            if(args[["reverseGenomeCoords"]]) {
+                plotViewStart <- end(range_gr)
+                plotViewEnd <- start(range_gr)
+            } else {
+                plotViewStart <- start(range_gr)
+                plotViewEnd <- end(range_gr)            
+            }
             
-            # Work out which coords to plot
-            juncCoords <- .cPO_getJuncCoords(
-                x, args, normalizeCoverage,
-                range_gr = range_gr, 
-                junctionThreshold
-            )
-            aggJuncCoords <- c(aggJuncCoords, juncCoords)
+            dfJnSum_list <- list()
+            if(plotJunctions) {
+                dtJn_all <- as.data.table(tmpCovJuncAnno)
+                allGroups <- unique(dtJn_all$group)
+                for(elem in allGroups) {
+                    dtJn <- copy(dtJn_all[get("group") == elem])
+
+                    dtJn <- dtJn[
+                        get("x") >= start(range_gr) &
+                        get("x") <= end(range_gr)
+                    ]
+                    dtJn[, c("xlabel", "ylabel") := list(
+                        mean(get("x")), mean(get("ytmp"))), 
+                        by = "info"
+                    ]
+                    dtJn <- unique(
+                        dtJn[, 
+                            c("info", "value", "xlabel", 
+                                "ylabel", "group", "covTrack"), 
+                            with = FALSE
+                        ]
+                    )
+                    dfJnSum_list[[elem]] <- dtJn
+                }
+            }
+            dfJnSum_all <- rbindlist(dfJnSum_list)
             
-            covTrack[[j]] <- .cPO_plotCoverage_multi(
-                x, args, normalizeCoverage,
-                range_gr = range_gr, 
-                plotJunctions = plotJunctions,
-                junctionThreshold = junctionThreshold,
-                interactive = interactive, interactive2 = interactive2,
-                use_fastplotly = use_fastplotly,
-                use_DT = use_DT
-            )
-            
-            if(diff_stat != "none" && length(diffList) > 0) {
-                diffTrack[[j]] <- .cPO_plotDiff_multi(
-                    x, args, diffList,
-                    diff_stat, range_gr,
-                    interactive = interactive,
-                    interactive2 = interactive2,
-                    use_fastplotly = use_fastplotly
+            for(i in seq_len(length(tmpCov))) {
+                curTrack <- names(args[["trackList"]])[i]
+                covTrack[[j]][[i]] <- tmpCovPlot[[i]]
+                if(nrow(tmpCovJuncAnno) > 0) {
+                    tmpCovSubset <- dfJnSum_all[get("covTrack") == curTrack]
+                    if(nrow(tmpCovSubset) > 0) {
+                        covTrack[[j]][[i]] <- covTrack[[j]][[i]] +
+                            geom_text(
+                                data = tmpCovSubset, 
+                                aes(
+                                    x = get("xlabel"), 
+                                    y = get("ylabel"), 
+                                    label = get("value")
+                                )
+                            )
+                    }
+                }
+                covTrack[[j]][[i]] <- covTrack[[j]][[i]] +
+                    coord_cartesian(
+                    xlim = c(plotViewStart, plotViewEnd),
+                    expand = FALSE
                 )
             }
+            
+            if(!is.null(tmpDiff)) {
+                for(i in seq_len(length(tmpDiff))) {
+                    diffTrack[[j]][[i]] <- diffTrack[[j]][[i]] +
+                        coord_cartesian(
+                        xlim = c(plotViewStart, plotViewEnd),
+                        expand = FALSE
+                    )
+                }
+            }
         }
-        reservedCoords <- sort(unique(c(
-            aggJuncCoords[["jc_start"]] - 1,
-            aggJuncCoords[["jc_start"]],
-            aggJuncCoords[["jc_end"]],
-            aggJuncCoords[["jc_end"]] + 1
-        )))
-    
-    # })
-    # message("Coverage data generation time:")
-    # print(bench)
+    }
     
     # bench <- system.time({
     
@@ -508,8 +635,7 @@ plotView <- function(
                     DTplotlist, range_gr,
                     reverseGenomeCoords = args[["reverseGenomeCoords"]],
                     add_information = FALSE,
-                    interactive = interactive,
-                    interactive2 = interactive2
+                    usePlotly = usePlotly
                 )
             }
         }
@@ -519,10 +645,7 @@ plotView <- function(
                 DTplotlist, fullRange, 
                 reverseGenomeCoords = args[["reverseGenomeCoords"]],
                 add_information = TRUE,
-                interactive = interactive,
-                interactive2 = interactive2,
-                use_ggplotly = use_ggplotly,
-                use_fastplotly = use_fastplotly
+                usePlotly = usePlotly
             )
         }
 
@@ -578,7 +701,7 @@ plotView <- function(
     
     # bench <- system.time({
     
-        if(interactive2) {
+        if(usePlotly) {
             if(is(oldP, "covPlotly")) {
                 p <- oldP
                 p@covTrack <- covTrack
@@ -598,23 +721,6 @@ plotView <- function(
             p <- .pV_assemble_covPlotly2(p, originalVerticalLayout)
 
             p@fig[[2]] <- p@fig[[2]] %>% layout(
-                dragmode = "pan",
-                xaxis = list(
-                    range = c(plotViewStart, plotViewEnd)
-                )
-            )
-        } else if(interactive) {
-            p <- covPlotly(
-                fig = list(),
-                covTrack = covTrack,
-                diffTrack = diffTrack,
-                annoTrack = annoFullTrack,
-                vLayout = verticalLayout
-            )
-
-            p <- .pV_assemble_covPlotly(p)
-            
-            p@fig[[1]] <- p@fig[[1]] %>% layout(
                 dragmode = "pan",
                 xaxis = list(
                     range = c(plotViewStart, plotViewEnd)
@@ -689,7 +795,8 @@ plotView <- function(
         if(
             all(filterByTranscripts %in% 
                 c(
-                    transcripts.DT$transcript_id, transcripts.DT$transcript_name
+                    transcripts.DT$transcript_id, 
+                    transcripts.DT$transcript_name
                 )
             )
         ) {
@@ -758,7 +865,6 @@ plotView <- function(
 }
 
 ################################################################################
-
 
 .cPO_getJuncCoords <- function(
     x, args, 
@@ -833,9 +939,10 @@ plotView <- function(
     range_gr,
     plotJunctions = TRUE,
     junctionThreshold = 0.01,
-    interactive = FALSE, interactive2 = FALSE,
-    use_fastplotly = FALSE,
-    use_DT = FALSE
+    usePlotly = FALSE,
+    use_DT = FALSE,
+    reservedCoords = NULL,
+    resolution = 0
 ) {
     plotMeanCov <- FALSE
     if("condition" %in% names(args)) plotMeanCov <- TRUE
@@ -870,6 +977,16 @@ plotView <- function(
         start(range_gr) - width(range_gr))
     end(fetch_gr) <- min(args[["limit_end"]],
         end(range_gr) + width(range_gr))  
+
+    okCoords <- NULL
+    if(resolution > 0 & !is.null(reservedCoords)) {
+        okCoords <- round(seq(
+            from = start(fetch_gr),
+            to = end(fetch_gr),
+            length.out = resolution - length(reservedCoords)
+        ))
+        okCoords <- sort(unique(c(okCoords, reservedCoords)))
+    }
 
     DT_list <- list()
     DTJn_list <- list()
@@ -938,48 +1055,17 @@ plotView <- function(
         }
     }
     
-    if(use_DT) {
-        df_all <- rbindlist(DT_list)
-        dfJn_all <- rbindlist(DTJn_list) 
-    } else {
-        df_all <- as.data.frame(rbindlist(DT_list))
-        dfJn_all <- as.data.frame(rbindlist(DTJn_list))    
+    df_all <- rbindlist(DT_list)
+    dfJn_all <- rbindlist(DTJn_list)
+    if(!is.null(okCoords)) df_all <- df_all[get("x") %in% okCoords]
+
+    if(!use_DT) {
+        df_all <- as.data.frame(df_all)
+        dfJn_all <- as.data.frame(dfJn_all)    
     }
 
     # group annotation
-    if(interactive2) {
-        df_all$info <- ""
-    } else if(interactive) {
-        if(plotMeanCov) {
-            if(rb %in% c("ci", "sd", "sem")) {
-                df_all$info <- paste(
-                    paste0(df_all$group, ":"),
-                    paste0("Coordinate: ", df_all$x), 
-                    paste0("Norm-Depth (mean): ", round(df_all$mean, 4)),
-                    paste0("Norm-Depth (", rb, "): ", 
-                        round(df_all[, rb], 4)),
-                    sep = "\n"
-                )
-            } else {
-                df_all$info <- paste(
-                    paste0(df_all$group, ":"),
-                    paste0("Coordinate: ", df_all$x), 
-                    paste0("Norm-Depth (mean): ", round(df_all$mean, 4)),
-                    sep = "\n"
-                )
-            }
-        } else {
-            df_all$info <- paste(
-                paste0(df_all$group, ":"),
-                paste0("Coordinate: ", df_all$x), 
-                paste0("Depth: ", df_all$depth),
-                sep = "\n"
-            )
-        }
-    } else {
-        # disable annotation for static plots
-        df_all$info <- ""
-    }
+    df_all$info <- ""
 
     # junc processing - common
     dfJnSum_list <- list()
@@ -1021,41 +1107,33 @@ plotView <- function(
         dfJnSum_all$covTrack <- factor(dfJnSum_all$covTrack, names(trackList))
     }
     
-    if(!interactive) {
+    if(!usePlotly) {
         p <- .pV_seed_ggplot_covTrack(
             plotViewStart, plotViewEnd,
             df_all, dfJn_all, dfJnSum_all,
             plotJunctions, plotMeanCov, rb
         )
-    } else if(interactive2) {
+        return(list(
+            ggplot = p,
+            dfJn_all = dfJn_all
+        ))
+    } else {
         p <- .pV_seed_fastplotly2_covTrack(
             plotViewStart, plotViewEnd,
             df_all, dfJn_all, dfJnSum_all,
             plotJunctions, plotMeanCov, rb
         )
-    } else if(use_fastplotly) {
-        p <- .pV_seed_fastplotly_covTrack(
-            plotViewStart, plotViewEnd,
-            df_all, dfJn_all, dfJnSum_all,
-            plotJunctions, plotMeanCov, rb
-        )
-    } else {
-        p <- .pV_seed_plotly_covTrack(
-            plotViewStart, plotViewEnd,
-            df_all, dfJn_all, dfJnSum_all,
-            plotJunctions, plotMeanCov, rb
-        )
+        return(p)
     }
-
-    return(p)
 }
+
+
 
 .cPO_plotDiff_multi <- function(
     x, args, diffList,
     diff_stat,
     range_gr,
-    interactive = FALSE, interactive2 = FALSE,
-    use_fastplotly = TRUE
+    usePlotly = FALSE
 ) {  
     # plot view x cartesian coordinates
     if(args[["reverseGenomeCoords"]]) {
@@ -1137,38 +1215,18 @@ plotView <- function(
     if(nrow(df_all) == 0) return(NULL)
 
     # group annotation
-    if(interactive) {
-        df_all$info <- paste(
-            paste0(df_all$diffTrack, ":"),
-            paste0("Coordinate: ", df_all$x), 
-            paste0(diff_stat, " (-log10 P): ", df_all$stat),
-            sep = "\n"
-        )
-    } else {
-        # disable annotation for static plots
-        df_all$info <- ""
-    }
+    df_all$info <- ""
 
 # factor covTrack
     df_all$diffTrack <- factor(df_all$diffTrack, names(diffList))
 
-    if(!interactive) {
+    if(!usePlotly) {
         p <- .pV_seed_ggplot_diffTrack(
             plotViewStart, plotViewEnd,
             df_all, diff_stat
         )
-    } else if (interactive2) {
-        p <- .pV_seed_fastplotly2_diffTrack(
-            plotViewStart, plotViewEnd,
-            df_all, diff_stat
-        )
-    } else if (use_fastplotly) {
-        p <- .pV_seed_fastplotly_diffTrack(
-            plotViewStart, plotViewEnd,
-            df_all, diff_stat
-        )
     } else {
-        p <- .pV_seed_plotly_diffTrack(
+        p <- .pV_seed_fastplotly2_diffTrack(
             plotViewStart, plotViewEnd,
             df_all, diff_stat
         )
@@ -1183,357 +1241,78 @@ plotView <- function(
     df_all, dfJn_all, dfJnSum_all,
     plotJunctions, plotMeanCov, rb
 ) {
-    suppressWarnings({
-        p <- ggplot(df_all, aes(
-            text = get("info")
-        )) + geom_hline(yintercept = 0)            
-    })
+    covTracks <- levels(df_all$covTrack)
 
-    # plot ribbon (group cov only)
-    if(plotMeanCov && rb %in% c("ci", "sd", "sem")) {
-        p <- p +
-            geom_ribbon(data = df_all, alpha = 0.2,
-                aes(
-                    x = get("x"), y = get("mean"),
-                    ymin = get("mean") - get(rb),
-                    ymax = get("mean") + get(rb),
-                    group = get("group"),
-                    fill = get("group")
-                )
-            )
-    }
-    
-    # plot line
-    if(plotMeanCov) {
-        p <- p + geom_line(aes(
-            x = get("x"), y = get("mean"), 
-            group = get("group"), color = get("group")
-        ))
-    } else {
-        p <- p + geom_line(aes(
-            x = get("x"), y = get("depth"), 
-            group = get("group"), color = get("group")
-        ))
-    }
+    plotList <- list()
 
-    # plot junctions
-    if(plotJunctions) {
-        p <- p +
-            geom_line(
-                data = dfJn_all, 
-                aes(x = get("x"), y = get("yarc"), group = get("info")), 
-                color = "darkred"
-            ) +
-            geom_text(
-                data = dfJnSum_all, 
-                aes(
-                    x = get("xlabel"), y = get("ylabel"), label = get("value")
-                )
-            )
-    }
-
-    p <- p + facet_grid(
-        rows = "covTrack", 
-        scales = "free_y", switch = "y"
-    )
-    
-    p <- p + theme_white_legend +
-        theme(axis.title.x = element_blank()) +
-        labs(x = "", y = "Coverage")
-
-    p <- p + coord_cartesian(
-        xlim = c(plotViewStart, plotViewEnd),
-        # ylim = yrange,
-        expand = FALSE
-    )
-    
-    return(p)
-}
-
-.pV_seed_plotly_covTrack <- function(
-    plotViewStart, plotViewEnd,
-    df_all, dfJn_all, dfJnSum_all,
-    plotJunctions, plotMeanCov, rb
-) {
-    covTrack <- levels(df_all$covTrack)
-
-    p_list <- list()
-    
-    for(i in seq_len(length(covTrack))) {
-        track <- covTrack[i]
-        df <- df_all[df_all$covTrack == track,]
-        dfJn <- dfJn_all[dfJn_all$covTrack == track,]
-        dfJnSum <- dfJnSum_all[dfJnSum_all$covTrack == track,]
+    for(i in seq_len(length(covTracks))) {
+        covTrack = covTracks[i]
+        df <- df_all[df_all$covTrack == covTrack,]
+        dfJn <- dfJn_all[dfJn_all$covTrack == covTrack,]
+        nGroups <- length(unique(df$group))
         
-        groupNames <- unique(df$group)
-        nGroups <- length(groupNames)
-        if(nrow(df) > 0) {
-            df$group <- factor(df$group, groupNames)
-        }
-        if(nrow(dfJn) > 0) {
-            dfJn$group <- factor(dfJn$group, groupNames)
-        }
-        if(nrow(dfJnSum) > 0) {
-            dfJnSum$group <- factor(dfJnSum$group, groupNames)
-        }
+        p <- ggplot(df) + geom_hline(yintercept = 0)   
 
-        fig <- plot_ly()
-        cols <- scales::hue_pal()(nGroups)
-        if(nGroups == 1) cols <- "#000000"
-        if("mean" %in% colnames(df)) {
-            fig <- fig %>% add_trace(
-                data = df,
-                x = as.formula("~x"),
-                y = as.formula("~mean"),
-                text = as.formula("~info"),
-                hoveron = "points", hoverinfo = 'text',
-                colors = cols,
-                color = as.formula("~as.factor(group)"),
-                type = 'scatter', mode = 'lines',
-                showlegend = (nGroups>1)
-            )
-            if(rb %in% c("ci", "sd", "sem")) {
-                fig <- fig %>% add_ribbons(
-                    data = df,
-                    x = as.formula("~x"),
-                    ymin = as.formula(paste("~mean-", rb)),
-                    ymax = as.formula(paste("~mean+", rb)),
-                    text = as.formula("~info"),
-                    hoveron = "points", hoverinfo = 'text',
-                    colors = cols,
-                    color = as.formula("~as.factor(group)"),
-                    opacity = 0.2,
-                    showlegend = FALSE
+        # plot ribbon (group cov only)
+        if(plotMeanCov && rb %in% c("ci", "sd", "sem")) {
+            p <- p +
+                geom_ribbon(data = df, alpha = 0.2,
+                    aes(
+                        x = get("x"), y = get("mean"),
+                        ymin = get("mean") - get(rb),
+                        ymax = get("mean") + get(rb),
+                        group = get("group"),
+                        fill = get("group")
+                    )
                 )
-            }
+        }
+
+        # plot line
+        if(plotMeanCov) {
+            p <- p + geom_line(aes(
+                x = get("x"), y = get("mean"), 
+                group = get("group"), color = get("group")
+            ))
         } else {
-            fig <- fig %>% add_trace(
-                data = df,
-                x = as.formula("~x"),
-                y = as.formula("~depth"),
-                text = as.formula("~info"),
-                hoveron = "points", hoverinfo = 'text',
-                colors = cols,
-                color = as.formula("~as.factor(group)"),
-                type = 'scatter', mode = 'lines',
-                showlegend = (nGroups>1)
-            )
+            p <- p + geom_line(aes(
+                x = get("x"), y = get("depth"), 
+                group = get("group"), color = get("group")
+            ))
+        }
+        if(nGroups == 1) {
+            p <- p + scale_color_manual(values = "black") +
+                scale_fill_manual(values = "black")
+        }
+        
+        # plot junctions
+        if(plotJunctions) {
+            p <- p +
+                geom_line(
+                    data = dfJn_all, 
+                    aes(x = get("x"), y = get("yarc"), group = get("info")), 
+                    color = "darkred"
+                ) # +
+                # geom_text(
+                    # data = dfJnSum_all, 
+                    # aes(
+                        # x = get("xlabel"), y = get("ylabel"), label = get("value")
+                    # )
+                # )
         }
 
-        if(plotJunctions & nGroups == 1) {
-            dfJn_summa <- dfJn %>% group_by("info")
-            fig <- fig %>% add_trace(
-                data = dfJn_summa,
-                x = as.formula("~x"),
-                y = as.formula("~yarc"),
-                text = as.formula("~info"),
-                hoveron = "points", hoverinfo = 'text',
-                line = list(color = 'rgb(255, 100, 100)', width = 0.5),
-                type = 'scatter', mode = 'lines',
-                    showlegend = FALSE
-            )
-
-            fig <- fig %>% add_trace(
-                data = dfJnSum,
-                x = as.formula("~xlabel"),
-                y = as.formula("~ylabel"),
-                text = as.formula("~value"),
-                hoverinfo = 'text',
-                type = 'scatter', mode = 'text',
-                textposition = 'middle',
-                    showlegend = FALSE
-            )
-        }
-
-        # what is yrange?
-        df_sub <- df[
-            df$x >= min(plotViewStart, plotViewEnd) & 
-            df$x <= max(plotViewStart, plotViewEnd),
-        ]
-        if("mean" %in% colnames(df_sub)) {
-            ymax <- max(df_sub$mean)
-        } else {
-            ymax <- max(df_sub$depth)
-        }
-        fig <- fig %>%
-            layout(
-                yaxis = list(
-                    range = c(0, ymax * 1.2),
-                    title = track, fixedrange = TRUE
-                )
-            )
-        p_list[[track]] <- fig
+        p <- p + theme_white_legend +
+            theme(axis.title.x = element_blank()) +
+            labs(x = "", y = covTrack)
+            
+        plotList[[i]] <- p
     }
-    return(p_list)
+
+    return(plotList)
 }
 
 .plotly_store_info <- function(x, y, text = "") {
     return(list(
         x = x, y = y, text = text
-    ))
-}
-
-.pV_seed_fastplotly_covTrack <- function(
-    plotViewStart, plotViewEnd,
-    df_all, dfJn_all, dfJnSum_all,
-    plotJunctions, plotMeanCov, rb
-) {
-    covTrack <- levels(df_all$covTrack)
-    
-    dataList <- list()
-    dataCount <- 0
-    
-    plotList <- list()   
-    
-    spoof_df <- data.frame(x = 1, y = 1, text = "a")
-    
-    for(i in seq_len(length(covTrack))) {
-        track <- covTrack[i]
-        df <- df_all[df_all$covTrack == track,]
-        dfJn <- dfJn_all[dfJn_all$covTrack == track,]
-        dfJnSum <- dfJnSum_all[dfJnSum_all$covTrack == track,]
-        
-        groupNames <- unique(df$group)
-        nGroups <- length(groupNames)
-        if(nrow(df) > 0) {
-            df$group <- factor(df$group, groupNames)
-        }
-        if(nrow(dfJn) > 0) {
-            dfJn$group <- factor(dfJn$group, groupNames)
-        }
-        if(nrow(dfJnSum) > 0) {
-            dfJnSum$group <- factor(dfJnSum$group, groupNames)
-        }
-
-        fig <- plot_ly()
-        cols <- scales::hue_pal()(nGroups)
-        if(nGroups == 1) cols <- "#000000"
-        for(j in seq_len(nGroups)) {
-            df_sub <- df[df$group == levels(df$group)[j],]
-            if("mean" %in% colnames(df)) {
-                dataCount <- dataCount + 1
-                dataList[[dataCount]] <- .plotly_store_info(
-                    x = df_sub$x, y = df_sub$mean, text = df_sub$info
-                )
-                fig <- fig %>% add_trace(
-                    data = spoof_df,
-                    x = as.formula("~x"),
-                    y = as.formula("~y"),
-                    text = as.formula("~text"),
-                    hoveron = "points", hoverinfo = 'text',
-                    line = list(color = cols[j]),
-                    type = 'scatter', mode = 'lines',
-                    showlegend = (nGroups>1)
-                )
-                if(rb %in% c("ci", "sd", "sem")) {
-                    dataCount <- dataCount + 1
-                    dataList[[dataCount]] <- .plotly_store_info(
-                        x = c(df_sub$x, rev(df_sub$x)), 
-                        y = c(
-                            df_sub$mean + unname(unlist(df_sub[,rb])),
-                            rev(df_sub$mean - unname(unlist(df_sub[,rb])))
-                        ), 
-                        text = c(df_sub$info, rev(df_sub$info))
-                    )
-                    fig <- fig %>% add_ribbons(
-                        data = spoof_df,
-                        x = as.formula("~x"),
-                        ymin = as.formula("~y"),
-                        ymax = as.formula("~y"),
-                        text = as.formula("~text"),
-                        hoveron = "points", hoverinfo = 'text',
-                        line = list(color = cols[j]),
-                        opacity = 0.2,
-                        showlegend = FALSE
-                    )
-                }
-            } else {
-                dataCount <- dataCount + 1
-                dataList[[dataCount]] <- .plotly_store_info(
-                    x = df_sub$x, y = df_sub$depth, text = df_sub$info
-                )
-                fig <- fig %>% add_trace(
-                    data = spoof_df,
-                    x = as.formula("~x"),
-                    y = as.formula("~y"),
-                    text = as.formula("~text"),
-                    hoveron = "points", hoverinfo = 'text',
-                    line = list(color = cols[j]),
-                    type = 'scatter', mode = 'lines',
-                    showlegend = (nGroups>1)
-                )
-            }
-        }
-
-        if(plotJunctions & nGroups == 1) {
-            # sashimi arcs
-            plotJuncData <- .plotly_makeJuncCurveData(
-                dfJn$x, dfJn$yarc, dfJn$info
-            )
-            dataCount <- dataCount + 1
-            dataList[[dataCount]] <- .plotly_store_info(
-                x = plotJuncData$x, y = plotJuncData$y, 
-                text = plotJuncData$text
-            )
-            fig <- fig %>% add_trace(
-                data = spoof_df,
-                x = as.formula("~x"),
-                y = as.formula("~y"),
-                text = as.formula("~text"),
-                hoveron = "points", hoverinfo = 'text',
-                line = list(color = 'rgb(255, 100, 100)', width = 0.5),
-                type = 'scatter', mode = 'lines',
-                showlegend = FALSE
-            )
-
-            # sashimi numbers
-            dataCount <- dataCount + 1
-            dataList[[dataCount]] <- .plotly_store_info(
-                x = dfJnSum$xlabel, y = dfJnSum$ylabel, 
-                text = dfJnSum$value
-            )
-            fig <- fig %>% add_trace(
-                data = spoof_df,
-                x = as.formula("~x"),
-                y = as.formula("~y"),
-                text = as.formula("~text"),
-                hoverinfo = 'text',
-                type = 'scatter', mode = 'text',
-                textposition = 'middle',
-                showlegend = FALSE
-            )
-        }
-
-        # what is yrange?
-        df_sub <- df[
-            df$x >= min(plotViewStart, plotViewEnd) & 
-            df$x <= max(plotViewStart, plotViewEnd),
-        ]
-        if("mean" %in% colnames(df_sub)) {
-            ymax <- max(df_sub$mean)
-        } else {
-            ymax <- max(df_sub$depth)
-        }
-        fig <- fig %>%
-            layout(
-                yaxis = list(
-                    range = c(0, ymax * 1.2),
-                    title = track, fixedrange = TRUE
-                )
-            )
-
-        plotList[[track]] <- fig
-    }
-
-    # knit subplot here
-    pl_final <- subplot(
-        plotList, nrows = length(plotList), 
-        shareX = TRUE, titleY = TRUE
-    )
-
-    return(list(
-        plot = pl_final,
-        data = dataList
     ))
 }
 
@@ -1594,7 +1373,7 @@ plotView <- function(
         }
 
         for(j in seq_len(nGroups)) {
-            df_sub <- df[df$group == levels(df$group)[j],]
+            df_sub <- as.data.frame(df[df$group == levels(df$group)[j],])
             if("mean" %in% colnames(df)) {
                 dataList[[i]][[2*j + 1]] <- .plotly_store_info(
                     x = df_sub$x, y = df_sub$mean, text = df_sub$info
@@ -1605,7 +1384,6 @@ plotView <- function(
                     "<i>Norm-Depth (mean):</i> %{y:.3f}<br>",
                     "<extra></extra>"
                 )
-                if(nGroups > 1) dataList[[i]][[2*j + 1]][["showlegend"]] <- TRUE
                 if(rb %in% c("ci", "sd", "sem")) {
                     dataList[[i]][[2*j + 2]] <- .plotly_store_info(
                         x = c(df_sub$x, rev(df_sub$x)), 
@@ -1619,7 +1397,7 @@ plotView <- function(
                         "<b>", levels(df$group)[j], "</b><br>",
                         "<i>Coordinate:</i> %{x}<br>",
                         "<i>Norm-Depth (", rb,"):</i> %{y:.3f}<br>",
-                    "<extra></extra>"
+                        "<extra></extra>"
                     )
                 } else {
                     dataList[[i]][[2*j + 2]] <- list()
@@ -1635,6 +1413,10 @@ plotView <- function(
                     "<extra></extra>"
                 )
                 dataList[[i]][[2*j + 2]] <- list()
+            }
+            if(nGroups > 1) {
+                dataList[[i]][[2*j + 1]][["showlegend"]] <- TRUE
+                dataList[[i]][[2*j + 1]][["name"]] <- levels(df$group)[j]
             }
         }
 
@@ -1663,140 +1445,33 @@ plotView <- function(
 .pV_seed_ggplot_diffTrack <- function(
     plotViewStart, plotViewEnd, df_all, diff_stat
 ) {
-    diffTrack <- levels(df_all$diffTrack)
-    
-    # plotting - common        
-    suppressWarnings({
-        p <- ggplot(df_all, aes(
-            text = get("info")
-        )) + geom_hline(yintercept = 0)            
-    })
-    
+    diffTracks <- levels(df_all$diffTrack)
+
+    plotList <- list()
+
+    for(i in seq_len(length(diffTracks))) {
+        diffTrack = diffTracks[i]
+        df <- df_all[df_all$diffTrack == diffTrack,]
+        
+        p <- ggplot(df_all) + geom_hline(yintercept = 0)
+
     # plot line
-    p <- p + geom_line(aes(
-        x = get("x"), y = get("stat"), 
-        group = get("diffTrack"), color = get("diffTrack")
-    ))
+        p <- p + geom_line(aes(x = get("x"), y = get("stat")), 
+            color = "black")
 
     # plot y axis and format
-    p <- p + theme_white_legend + labs(y = "-log10 P")
-
-    p <- p + facet_grid(
-        rows = "diffTrack", 
-        scales = "free_y", switch = "y"
-    )
-    
-    p <- p +
-        theme(axis.title.x = element_blank()) +
-        labs(
-            x = "", y = diff_stat
-        )
-
-    p <- p + coord_cartesian(
-        xlim = c(plotViewStart, plotViewEnd),
-        expand = FALSE
-    )     
-    
-    return(p)
-}
-
-.pV_seed_plotly_diffTrack <- function(
-    plotViewStart, plotViewEnd, df_all, diff_stat
-) {
-    diffTrack <- levels(df_all$diffTrack)
-
-    p_list <- list()
-    
-    for(i in seq_len(length(diffTrack))) {
-        track <- diffTrack[i]
-        df <- df_all[df_all$diffTrack == track,]
+        p <- p + theme_white_legend + labs(y = "-log10 P")
         
-        fig <- plot_ly()
-        
-        fig <- fig %>% add_trace(
-            data = df,
-            x = as.formula("~x"),
-            y = as.formula("~stat"),
-            colors = "#000000",
-            type = 'scatter', mode = 'lines',
-            showlegend = FALSE
-        )
-        
-        df_sub <- df[
-            df$x >= min(plotViewStart, plotViewEnd) & 
-            df$x <= max(plotViewStart, plotViewEnd),
-        ]
-        ymax <- max(df_sub$stat)
-        fig <- fig %>%
-            layout(
-                yaxis = list(
-                    range = c(0, ymax * 1.2),
-                    title = "-log10 P", fixedrange = TRUE
-                )
+        p <- p +
+            theme(axis.title.x = element_blank()) +
+            labs(
+                x = "", y = diffTrack
             )
-        p_list[[track]] <- fig
-    }
-    return(p_list)
-}
-
-.pV_seed_fastplotly_diffTrack <- function(
-    plotViewStart, plotViewEnd, df_all, diff_stat
-) {
-    diffTrack <- levels(df_all$diffTrack)
-
-    dataList <- list()
-    dataCount <- 0
     
-    plotList <- list()   
-    
-    spoof_df <- data.frame(x = 1, y = 1, text = "a")
-    
-    for(i in seq_len(length(diffTrack))) {
-        track <- diffTrack[i]
-        df <- df_all[df_all$diffTrack == track,]
-        
-        fig <- plot_ly()
-
-        dataCount <- dataCount + 1
-        dataList[[dataCount]] <- .plotly_store_info(
-            x = df$x, y = df$stat, text = df$info
-        )
-        fig <- fig %>% add_trace(
-            data = spoof_df,
-            x = as.formula("~x"),
-            y = as.formula("~y"),
-            text = as.formula("~text"),
-            hoveron = "points", hoverinfo = 'text',
-            line = list(color = "#000000"),
-            type = 'scatter', mode = 'lines',
-            showlegend = FALSE
-        )
-
-        df_sub <- df[
-            df$x >= min(plotViewStart, plotViewEnd) & 
-            df$x <= max(plotViewStart, plotViewEnd),
-        ]
-        ymax <- max(df_sub$stat)
-        fig <- fig %>%
-            layout(
-                yaxis = list(
-                    range = c(0, ymax * 1.2),
-                    title = "-log10 P", fixedrange = TRUE
-                )
-            )
-        plotList[[track]] <- fig
+        plotList[[i]] <- p
     }
     
-    # knit subplot here
-    pl_final <- subplot(
-        plotList, nrows = length(plotList), 
-        shareX = TRUE, titleY = TRUE
-    )
-
-    return(list(
-        plot = pl_final,
-        data = dataList
-    ))
+    return(plotList)
 }
 
 .pV_seed_fastplotly2_diffTrack <- function(
@@ -1849,10 +1524,8 @@ plotView <- function(
     DTplotlist, view_gr, 
     reverseGenomeCoords = FALSE,
     add_information = TRUE,
-    interactive = FALSE,
-    interactive2 = FALSE,
-    use_ggplotly = FALSE,
-    use_fastplotly = TRUE
+    usePlotly = FALSE,
+    instantPlotly = FALSE
 ) {
     view_chr <- as.character(seqnames(view_gr))
     view_start <- start(view_gr)
@@ -1938,38 +1611,25 @@ plotView <- function(
         plotViewEnd <- view_start     
     }
 
-    if(!interactive) {
+    if(!usePlotly) {
         p <- .pV_seed_ggplot_annoTrack(
             plotViewStart, plotViewEnd, view_chr,
             reducedIntronsExpanded, nonIntrons,
             group.DT, condense_this, add_information
         )
-    } else if(use_ggplotly) {
-        p <- .pV_seed_ggplotly_annoTrack(
-            plotViewStart, plotViewEnd, view_chr,
-            reducedIntronsExpanded, nonIntrons,
-            group.DT, condense_this, add_information
-        )
-    } else if(interactive2) {
-        p <- .pV_seed_fastplotly2_annoTrack(
-            plotViewStart, plotViewEnd, view_chr,
-            reducedIntrons, nonIntrons,
-            group.DT, condense_this, add_information
-        )
-    } else if(use_fastplotly) {
-        p <- .pV_seed_fastplotly_annoTrack(
-            plotViewStart, plotViewEnd, view_chr,
-            reducedIntrons, nonIntrons,
-            group.DT, condense_this, add_information
-        )
-    } else {
+    } else if(instantPlotly) {
         p <- .pV_seed_plotly_annoTrack(
             plotViewStart, plotViewEnd, view_chr,
             reducedIntrons, nonIntrons,
             group.DT, condense_this, add_information
         )
+    } else  {
+        p <- .pV_seed_fastplotly2_annoTrack(
+            plotViewStart, plotViewEnd, view_chr,
+            reducedIntrons, nonIntrons,
+            group.DT, condense_this, add_information
+        )
     }
-
     return(p)
 }
 
@@ -1988,7 +1648,6 @@ plotView <- function(
 
     return(highlights)
 }
-
 
 .pV_seed_ggplot_annoTrack <- function(
     plotViewStart, plotViewEnd, view_chr,
@@ -2074,85 +1733,6 @@ plotView <- function(
         )
     
     return(p)
-}
-
-.pV_seed_ggplotly_annoTrack <- function(
-    plotViewStart, plotViewEnd, view_chr,
-    introns, exons, group.DT, condense_this, add_information
-) {
-    
-    col_highlights <- sort(unique(introns$highlight))
-    fill_highlights <- sort(unique(introns$highlight))
-    col_highlights <- .pV_highlight_to_colors(col_highlights)
-    fill_highlights <- .pV_highlight_to_colors(fill_highlights)
-    
-    anno <- NULL
-    if(add_information) {
-        if (condense_this == TRUE) {
-            anno <- list(
-                x = group.DT$disp_x,
-                y = group.DT$plot_level - 0.5 + 0.3 * 
-                    runif(rep(1, nrow(group.DT))),
-                text = group.DT$display_name,
-                xref = "x", yref = "y", showarrow = FALSE)
-        } else {
-            anno <- list(
-                x = group.DT$disp_x,
-                y = group.DT$plot_level - 0.4,
-                text = group.DT$display_name,
-                xref = "x", yref = "y", showarrow = FALSE)
-        }
-    }
-    if (nrow(group.DT) == 0) {
-        max_plot_level <- 1
-    } else {
-        max_plot_level <- max(group.DT$plot_level)
-    }
-    
-    p <- ggplot()
-    
-    if(nrow(introns) > 0) {
-        p <- p + geom_line(data = introns,
-            aes(x = get("start"), y = get("plot_level"),
-            color = get("highlight"), group = get("Information"))
-        )   
-    }
-    if(nrow(exons) > 0) {
-        p <- p + geom_rect(data = exons,
-            aes(xmin = get("start"), xmax = get("end"),
-                ymin = get("plot_level") - 0.1 -
-                    ifelse(get("type") %in%
-                        c("CDS", "start_codon", "stop_codon"), 0.1, 0),
-                ymax = get("plot_level") + 0.1 +
-                    ifelse(get("type") %in%
-                        c("CDS", "start_codon", "stop_codon"), 0.1, 0),
-                fill = get("highlight")
-            )
-        )
-    }
-
-    p <- p + 
-        scale_color_manual(values = col_highlights) +
-        scale_fill_manual(values = fill_highlights)    
-    
-    p <- p + theme_white_legend_plot_track +
-        theme(
-            axis.text.y = element_blank(), 
-            axis.title.y = element_blank(),
-            legend.title = element_blank()
-        )
-    
-    # ggplotly
-    out_p <- ggplotly(p, tooltip = "text") %>%
-        layout(
-            annotations = anno, dragmode = "pan",
-            xaxis = list(range = c(plotViewStart, plotViewEnd),
-                title = paste("Chromosome/Scaffold", view_chr)),
-            yaxis = list(range = c(0, 1 + max_plot_level),
-                fixedrange = TRUE)
-        )
-            
-    return(out_p)
 }
 
 .pV_seed_plotly_annoTrack <- function(
@@ -2286,159 +1866,6 @@ plotView <- function(
     )
 
     return(fig)
-}
-
-.pV_seed_fastplotly_annoTrack <- function(
-    plotViewStart, plotViewEnd, view_chr,
-    introns, exons, group.DT, condense_this, add_information
-) {
-    dataList <- list()
-    dataCount <- 0
-
-    spoof_df <- data.frame(x = 1, y = 1, text = "a")
-    
-    col_highlights <- sort(unique(introns$highlight))
-    fill_highlights <- sort(unique(exons$highlight))
-    col_colors <- .pV_highlight_to_colors(col_highlights)
-    fill_colors <- .pV_highlight_to_colors(fill_highlights)
-    
-    anno <- NULL
-    if(add_information) {
-        if (condense_this == TRUE) {
-            anno <- data.frame(
-                x = group.DT$disp_x,
-                y = group.DT$plot_level - 0.5 + 0.3 * 
-                    runif(rep(1, nrow(group.DT))),
-                Information = group.DT$display_name
-            )
-        } else {
-            anno <- data.frame(
-                x = group.DT$disp_x,
-                y = group.DT$plot_level - 0.4,
-                Information = group.DT$display_name
-            )
-        }
-    }
-    if (nrow(group.DT) == 0) {
-        max_plot_level <- 1
-    } else {
-        max_plot_level <- max(group.DT$plot_level)
-    }
-    
-    fig <- plot_ly()
-    
-    if(nrow(introns) > 0) {
-        intronLineData <- .plotly_makeLineData(
-            introns$start, introns$plot_level, introns$end, introns$plot_level,
-            introns$Information, introns$highlight
-        )
-
-        for(i in seq_len(length(col_highlights))) {
-            hl <- col_highlights[i]
-            color <- col_colors[i]
-            data_df <- intronLineData[intronLineData$colorInfo == hl,]
-
-            dataCount <- dataCount + 1
-            dataList[[dataCount]] <- .plotly_store_info(
-                x = data_df$x, y = data_df$y, text = data_df$text
-            )
-
-            fig <- fig %>% add_trace(
-                data = spoof_df,
-                x = as.formula("~x"),
-                y = as.formula("~y"),
-                text = as.formula("~text"),
-                hoveron = "points", hoverinfo = 'text',
-                line = list(color = color, width = 1), # NB intron line width
-                type = 'scatter', mode = 'lines',
-                showlegend = FALSE
-            )
-        }
-    }
-    
-    typeThick <- c("CDS", "start_codon", "stop_codon")
-    if(nrow(exons) > 0) {
-        exons_thin <- exons[!(exons$type %in% typeThick), ]
-        exons_thick <- exons[exons$type %in% typeThick, ]
-        exons_thin$ymin <- exons_thin$plot_level - 0.15
-        exons_thin$ymax <- exons_thin$plot_level + 0.15
-        exons_thick$ymin <- exons_thick$plot_level - 0.3
-        exons_thick$ymax <- exons_thick$plot_level + 0.3
-        exons_comb <- rbind(exons_thin, exons_thick)
-
-        exons_instr <- .plotly_makeRectData(
-            exons_comb$start, exons_comb$end,
-            exons_comb$ymin, exons_comb$ymax,
-            exons_comb$Information,
-            exons_comb$highlight,
-            resolution = 10
-        )        
-
-        for(i in seq_len(length(fill_highlights))) {
-            rects <- exons_instr[
-                exons_instr$colorInfo == fill_highlights[i],
-            ]
-
-            dataCount <- dataCount + 1
-            dataList[[dataCount]] <- .plotly_store_info(
-                x = rects$x, y = rects$y, text = rects$text
-            )
-
-            fig <- fig %>% add_trace(
-                data = spoof_df,
-                x = as.formula("~x"),
-                y = as.formula("~y"),
-                text = as.formula("~text"),
-                hoveron = "points+fills", hoverinfo = 'text',
-                line = list(color = "transparent"),
-                type = 'scatter', mode = 'lines',
-                fill = "toself",
-                fillcolor = fill_colors[i],
-                showlegend = FALSE
-            )
-        }
-    }
-    
-    if(add_information) {
-        xtitle <- paste("Chromosome/Scaffold", view_chr)
-
-        dataCount <- dataCount + 1
-        dataList[[dataCount]] <- .plotly_store_info(
-            x = anno$x, y = anno$y, text = anno$Information
-        )
-
-        fig <- fig %>% add_trace(
-            data = spoof_df,
-            x = as.formula("~x"),
-            y = as.formula("~y"),
-            text = as.formula("~text"),
-            hoverinfo = 'text',
-            type = 'scatter', mode = 'text',
-            textposition = 'middle',
-            showlegend = FALSE
-        )
-    } else {
-        xtitle <- ""
-    }
-    
-    fig <- fig %>% layout(
-        dragmode = "pan",
-        xaxis = list(
-            range = c(plotViewStart, plotViewEnd),
-            title = xtitle
-        ),
-        yaxis = list(
-            title = "",
-            range = c(0, 1 + max_plot_level),
-            fixedrange = TRUE
-        )
-    )
-    fig <- fig
-
-    return(list(
-        plot = fig,
-        data = dataList
-    ))
 }
 
 .pV_seed_fastplotly2_annoTrack <- function(
@@ -2589,24 +2016,6 @@ plotView <- function(
     }
     
     DT <- DT[get("count") >= junctionThreshold]
-    
-    # final_list <- list()
-    # for(i in seq_len(nrow(DT))) {
-        # row <- DT[i]
-        
-        # outDT <- data.table(
-            # coord = row$juncName,
-            # value = row$value,
-            # info = row$info,
-            # x = seq(row$leftX, row$rightX, length.out = 90),
-            # y = seq(row$leftY, row$rightY, length.out = 90)
-        # )
-        # outDT[, c("yarc") := 
-            # get("y") + sinpi(seq(0,1,length.out = 90)) * arcHeight
-        # ]
-        # final_list[[i]] <- outDT
-    # }
-    # return(rbindlist(final_list))
 
     final_DT <- data.table(
         coord = rep(DT$juncName, each = 90),
@@ -2952,9 +2361,11 @@ plotView <- function(
         # Only do it if cov is a single track
         if(length(samples) == 1) {
             if(view_strand_jn == "*") {
-                junc <- obj@juncData$junc_counts_uns[hits, samples, drop = FALSE]
+                junc <- obj@juncData$junc_counts_uns[
+                    hits, samples, drop = FALSE]
             } else {
-                junc <- obj@juncData$junc_counts[hits, samples, drop = FALSE]            
+                junc <- obj@juncData$junc_counts[
+                    hits, samples, drop = FALSE]            
             }
           
             cov <- raw_cov[[track]]
@@ -3195,169 +2606,6 @@ plotView <- function(
     return(as.data.frame(rbindlist(df_list)))
 }
 
-.pV_assemble_plotly <- function(
-    covTrack, diffTrack, annoFullTrack, verticalLayout
-) {
-    vLnorm <- verticalLayout / sum(verticalLayout)
-
-    if(length(covTrack) == 0) covTrack[[1]] <- list()
-    if(length(diffTrack) == 0) diffTrack[[1]] <- list()
-
-    inputList <- list(
-        covTrack = covTrack[[1]],
-        diffTrack = diffTrack[[1]],
-        annoFullTrack = annoFullTrack
-    )
-    doPlot <- c(
-        length(covTrack[[1]]) > 0, 
-        length(diffTrack[[1]]) > 0, 
-        length(annoFullTrack) > 0
-    )
-    if(sum(doPlot) == 0) return(NULL)
-
-    nPlot <- c(length(covTrack[[1]]), length(diffTrack[[1]]), length(annoFullTrack))
-    nPlot <- nPlot[nPlot > 0]
-
-    vLnorm_final <- c()
-    for(i in seq_len(length(nPlot))) {
-        vLnorm_final <- c(vLnorm_final, rep(vLnorm[i] / nPlot[i], nPlot[i]))
-    }
-    
-    # simple plot - don't muck around
-    finalList <- list()
-    listCount <- 0
-    for(l in inputList) {
-        if(length(l) > 0) {
-            for(e in l) {
-                listCount <- listCount + 1
-                finalList[[listCount]] <- e
-            }
-        }
-    }
-    
-    suppressWarnings({
-        finalPlot <- subplot(
-            finalList, nrows = sum(nPlot), 
-            shareX = TRUE, titleY = TRUE,
-            heights = vLnorm_final
-        )
-    })
-    
-    if(length(annoFullTrack) == 1) {
-        fullAnnoPlotNumber <- length(annoFullTrack[[1]]$x$data)
-        if(fullAnnoPlotNumber > 1) {
-            for(i in seq(
-                length(finalPlot$x$data) + 1 - fullAnnoPlotNumber, 
-                length(finalPlot$x$data)
-            )) {
-                finalPlot$x$data[[i]]$showlegend <- FALSE
-            }        
-        }
-    }
-
-    return(finalPlot)
-}
-
-.pV_assemble_fastplotly <- function(
-    covTrack, diffTrack, annoFullTrack, verticalLayout
-) {
-    vLnorm <- verticalLayout / sum(verticalLayout)
-
-    inputList <- list(
-        covTrack = covTrack,
-        diffTrack = diffTrack,
-        annoFullTrack = annoFullTrack
-    )
-    doPlot <- c(
-        length(covTrack) > 0, 
-        length(diffTrack) > 0, 
-        length(annoFullTrack) > 0
-    )
-    if(sum(doPlot) == 0 | sum(doPlot) != length(vLnorm)) return(NULL)
-    inputList <- inputList[doPlot]
-    finalList <- lapply(inputList, function(x) x[[1]][["plot"]])
-    
-    finalPlot <- subplot(
-        finalList, nrows = length(vLnorm), 
-        shareX = TRUE, titleY = TRUE,
-        heights = vLnorm
-    )
-    
-    # combine data here
-    dataList <- list()
-    dataCount <- 0
-    for(plotElem in inputList) {
-        plotData <- plotElem[[1]][["data"]]
-        for(j in seq_len(length(plotData))) {
-            dataCount <- dataCount + 1
-            if(!is.null(plotData[[j]])) {
-                finalPlot$x$data[[dataCount]]$x <- plotData[[j]]$x
-                finalPlot$x$data[[dataCount]]$y <- plotData[[j]]$y
-                finalPlot$x$data[[dataCount]]$text <- plotData[[j]]$text
-            }
-        }
-    }
-    
-    return(finalPlot)
-}
-
-.pV_assemble_covPlotly <- function(p) {
-    vLnorm <- p@vLayout / sum(p@vLayout)
-
-    inputList <- list(
-        covTrack = p@covTrack,
-        diffTrack = p@diffTrack,
-        annoFullTrack = p@annoTrack
-    )
-    doPlot <- c(
-        length(p@covTrack) > 0, 
-        length(p@diffTrack) > 0, 
-        length(p@annoTrack) > 0
-    )
-    if(sum(doPlot) == 0 | sum(doPlot) != length(vLnorm)) return(NULL)
-    inputList <- inputList[doPlot]
-    
-    finalList <- list()
-    flCount <- 0
-    realvLnorm <- c()
-    for(i in seq_len(length(inputList))) {
-        realvLnorm <- c(realvLnorm, 
-            rep(vLnorm[i] / length(inputList[[i]]), length(inputList[[i]]) )
-        )
-        for(j in seq_len(length(inputList[[i]]))) {
-            flCount <- flCount + 1
-            finalList[[flCount]] <- inputList[[i]][[j]][["plot"]]
-        }
-    }
-    
-    finalPlot <- subplot(
-        finalList, nrows = length(realvLnorm), 
-        shareX = TRUE, titleY = TRUE,
-        heights = realvLnorm
-    )
-    
-    # combine data here
-    dataList <- list()
-    dataCount <- 0
-
-    for(i in seq_len(length(inputList))) {
-        for(j in seq_len(length(inputList[[i]]))) {
-            plotData <- inputList[[i]][[j]][["data"]]
-            for(k in seq_len(length(plotData))) {
-                if(!is.null(plotData[[k]])) {
-                    dataCount <- dataCount + 1
-                    finalPlot$x$data[[dataCount]]$x <- plotData[[k]]$x
-                    finalPlot$x$data[[dataCount]]$y <- plotData[[k]]$y
-                    finalPlot$x$data[[dataCount]]$text <- plotData[[k]]$text
-                }
-            }
-        }
-    }
-
-    p@fig[[1]] <- finalPlot
-    return(p)
-}
-
 .pV_assemble_covPlotly2 <- function(p, vLayout) {
     numCovTraces <- numDiffTraces <- c()
     if(length(p@covTrack) > 0) {
@@ -3442,16 +2690,53 @@ plotView <- function(
     return(p)
 }
 
-
 .pV_assemble_ggplot <- function(
     covTrack, diffTrack, annoSubTrack, annoFullTrack,
     verticalLayout, horizontalLayout
 ) {
-    hCount <- length(horizontalLayout)
-    vCount <- length(verticalLayout)
     
-    bVec <- cumsum(verticalLayout)
-    rVec <- cumsum(horizontalLayout)
+    # Correct vertical layout for multiple cov/diff tracks
+    nCovV <- nDiffV <- 0
+    if(length(covTrack) > 0) nCovV <- length(covTrack[[1]])
+    if(length(diffTrack) > 0) nDiffV <- length(diffTrack[[1]])
+    
+    realVL <- c()
+    Vcursor <- 0
+    if(nCovV > 0) {
+        Vcursor <- Vcursor + 1
+        realVL <- c(realVL, 
+            rep(
+                verticalLayout[Vcursor] / nCovV,
+                nCovV
+            )
+        )
+    }
+    if(nDiffV > 0) {
+        Vcursor <- Vcursor + 1
+        realVL <- c(realVL, 
+            rep(
+                verticalLayout[Vcursor] / nDiffV,
+                nDiffV
+            )
+        )
+    }
+    if(length(annoSubTrack) > 0) {
+        Vcursor <- Vcursor + 1
+        realVL <- c(realVL, verticalLayout[Vcursor])
+    }
+    if(length(annoFullTrack) > 0) {
+        Vcursor <- Vcursor + 1
+        realVL <- c(realVL, verticalLayout[Vcursor])
+    }
+
+    realVL <- round(realVL * 1000) # round to nearest integer
+    realHL <- horizontalLayout
+    
+    hCount <- length(realHL)
+    vCount <- length(realVL)
+    
+    bVec <- cumsum(realVL)
+    rVec <- cumsum(realHL)
     if(vCount > 1){
         tVec <- c(1, 1 + bVec[-vCount])
     } else {
@@ -3466,13 +2751,13 @@ plotView <- function(
     # Set up patchwork
     hasAnnoFT <- length(annoFullTrack) == 1
     
-    for(v in seq_len(length(verticalLayout))) {
+    for(v in seq_len(length(realVL))) {
         if(v == vCount & hasAnnoFT) {
             layout_instr <- c(layout_instr, patchwork::area(
-                t = tVec[v], b = bVec[v], l = 1, r = sum(horizontalLayout)
+                t = tVec[v], b = bVec[v], l = 1, r = sum(realHL)
             ))
         }
-        for(h in seq_len(length(horizontalLayout))) {
+        for(h in seq_len(length(realHL))) {
             if(v == 1 & h == 1) {
                 # initialize
                 layout_instr <- patchwork::area(
@@ -3492,32 +2777,38 @@ plotView <- function(
     plotCount <- 0
     rowCount <- 0
     if(length(covTrack) > 0) {
-        rowCount <- rowCount + 1
-        for(i in seq_len(length(covTrack))) {
-            plotCount <- plotCount + 1
-            fullPlotList[[plotCount]] <- .pV_mod_ggplot(
-                covTrack[[i]], rowCount, i, hCount, length(covTrack)
-            )
+        for(j in seq_len(nCovV)) {
+            rowCount <- rowCount + 1
+            for(i in seq_len(length(covTrack))) {
+                plotCount <- plotCount + 1
+                fullPlotList[[plotCount]] <- .pV_mod_ggplot(
+                    covTrack[[i]][[j]], i, rowCount, hCount, length(realVL)
+                )
+            }
         }
     }
     if(length(diffTrack) > 0) {
-        rowCount <- rowCount + 1
-        for(i in seq_len(length(diffTrack))) {
-            plotCount <- plotCount + 1
-            fullPlotList[[plotCount]] <- .pV_mod_ggplot(
-                diffTrack[[i]], rowCount, i, hCount, length(diffTrack)
-            )
+        for(j in seq_len(nDiffV)) {
+            rowCount <- rowCount + 1
+            for(i in seq_len(length(diffTrack))) {
+                plotCount <- plotCount + 1
+                fullPlotList[[plotCount]] <- .pV_mod_ggplot(
+                    diffTrack[[i]][[j]], i, rowCount, hCount, length(realVL)
+                )
+            }
         }
     }
+    
     if(length(annoSubTrack) > 0) {
         rowCount <- rowCount + 1
         for(i in seq_len(length(annoSubTrack))) {
             plotCount <- plotCount + 1
             fullPlotList[[plotCount]] <- .pV_mod_ggplot(
-                annoSubTrack[[i]], rowCount, i, hCount, length(annoSubTrack)
+                annoSubTrack[[i]], i, rowCount, hCount, length(realVL)
             )
         }
-    } 
+    }
+    
     if(hasAnnoFT) {
         plotCount <- plotCount + 1
         fullPlotList[[plotCount]] <- annoFullTrack[[1]]
@@ -3536,7 +2827,9 @@ plotView <- function(
     theme_nonleft <- theme(
         axis.text.y = element_blank(),
         axis.title.y = element_blank(),
-        axis.ticks.y = element_blank()
+        axis.ticks.y = element_blank(),
+        strip.background = element_blank(),
+        strip.text.x = element_blank()
     )
     theme_nonbottom <- theme(
         axis.text.x = element_blank(),

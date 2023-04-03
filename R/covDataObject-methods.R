@@ -213,104 +213,6 @@ getGenomeData <- function(
     ))
 }
 
-#' @describeIn covDataObject-class Directly plots the annotation from a 
-#'   covDataObject. 
-#' @export
-plotAnnoTrack <- function(
-    obj, Event,
-    view_start, view_end,
-    reverseGenomeCoords = FALSE,
-    condensed = FALSE,
-    interactive = FALSE,
-    filterByIntronsGR = NULL,
-    selected_transcripts = "",
-    plot_key_isoforms = FALSE
-) {
-    if(missing(view_start)) view_start <- obj@args$view_start
-    if(missing(view_end)) view_end <- obj@args$view_end
-
-    if(view_start > view_end) {
-        reverseGenomeCoords <- !reverseGenomeCoords
-        view_start <- view_start + view_end
-        view_end <- view_start - view_end
-        view_start <- view_start - view_end
-    }
-
-    highlight_gr <- list()
-    
-    if(!missing(Event) && !("rowData" %in% names(obj@normData))) {
-        .log("Plotting ASE from a SpliceWiz reference is currently not supported.")
-    }
-    
-    if(!missing(Event) && Event %in% rownames(obj@normData$rowData)) {
-        row <- obj@normData$rowData[Event,]
-        if (row$EventType %in% c("MXE", "SE")) {
-            highlight_gr[[1]] <- coord2GR(c(row$Event1a, row$Event2a))
-        } else {
-            highlight_gr[[1]] <- coord2GR(row$Event1a)
-        }
-        if (row$EventType %in% c("MXE")) {
-            highlight_gr[[2]] <- coord2GR(c(row$Event1b, row$Event2b))
-        } else if (row$EventType %in%  c("SE", "A3SS", "A5SS", "ALE", "AFE")) {
-            highlight_gr[[2]] <- coord2GR(row$Event1b)
-        }    
-    }
-    
-    DTlist <- obj@annotation
-    DTlist$reduced.DT <- .gcd_highlight_anno(
-        DTlist$reduced.DT, highlight_gr
-    )
-    
-    DTlist$reduced.DT <- .gcd_filter_anno(
-        DTlist$reduced.DT, DTlist$transcripts.DT,
-        selected_transcripts = selected_transcripts,
-        gr_expressed_junctions = filterByIntronsGR,
-        plot_key_isoforms = FALSE
-    )
-
-    DTplotlist <- .gCD_stack_anno(
-        DTlist, view_start, view_end, reverseGenomeCoords
-    )
-    
-    p <- .plot_view_ref_fn_plotDTlist(
-        DTplotlist,
-        obj@args$view_chr, view_start, view_end,
-        highlight_gr, reverseGenomeCoords
-    )
-    
-    if(interactive) {
-        # Remove legend for p_ref; this causes trouble for plotly
-        for (i in seq_len(length(p$pl$x$data))) {
-            p$pl$x$data[[i]]$showlegend <- FALSE
-        }
-        return(p$pl)
-    } else {
-        out <- p$gp + theme(legend.position = "none") +
-            labs(x = paste("Chromosome", obj@args$view_chr))
-        
-        ref_ymin <- min(layer_scales(out)$y$range$range)
-        ref_ymax <- max(layer_scales(out)$y$range$range)
-        if(!reverseGenomeCoords) {
-            plotViewStart <- view_start
-            plotViewEnd <- view_end
-        } else {
-            plotViewStart <- view_end
-            plotViewEnd <- view_start     
-        }
-
-        out <- out + 
-            scale_x_continuous(labels = label_number(scale_cut = cut_si(""))) +
-            coord_cartesian(
-                xlim = c(plotViewStart, plotViewEnd),
-                ylim = c(ref_ymin - 1, ref_ymax + 1),
-                expand = FALSE
-            )
-        return(out)
-    }
-}
-
-
-
 ################################################################################
 
 # Internals
@@ -874,120 +776,49 @@ plotAnnoTrack <- function(
 .gcd_filter_anno <- function(
         reduced.DT, transcripts.DT,
         selected_transcripts = "",
-        gr_expressed_junctions = NULL,
         plot_key_isoforms = FALSE
 ) {
     # Remove by named transcripts only
     if(is_valid(selected_transcripts)) {
         if (
-                any(selected_transcripts %in% transcripts.DT$transcript_id) |
-                any(selected_transcripts %in% transcripts.DT$transcript_name)  
+            all(selected_transcripts %in% 
+                c(
+                    transcripts.DT$transcript_id, 
+                    transcripts.DT$transcript_name
+                )
+            )
         ) {
-            # filter transcripts if applicable
             transcripts.DT <- transcripts.DT[
-                get("transcript_id") %in% selected_transcripts |
-                get("transcript_name") %in% selected_transcripts
+                get("transcript_name") %in% selected_transcripts |
+                get("transcript_id") %in% selected_transcripts
             ]
-            
-            
-        } 
-        
-        reduced.DT <- reduced.DT[
-            get("transcript_id") %in% transcripts.DT$transcript_id]
-        
-        return(reduced.DT)
+            reduced.DT <- reduced.DT[
+                get("transcript_id") %in% transcripts.DT$transcript_id
+            ]
+            return(reduced.DT)
+        }
     }
 
     if(plot_key_isoforms) {
-        introns <- reduced.DT[get("type") == "intron"]
-        
-        # Filter by transcripts where all elements exist
-        introns_HL1 <- unique(introns[get("highlight") == "1", 
-            c("seqnames", "start", "end", "strand", "transcript_id")])
-        introns_HL1_reduced <- unique(introns[get("highlight") == "1", 
-            c("seqnames", "start", "end", "strand")])
-        introns_HL2 <- unique(introns[get("highlight") == "2", 
-            c("seqnames", "start", "end", "strand", "transcript_id")])
-        introns_HL2_reduced <- unique(introns[get("highlight") == "2", 
-            c("seqnames", "start", "end", "strand")])
-            
-        filterByTrID <- c()
-        if(nrow(introns_HL1_reduced) > 0 & nrow(introns_HL2_reduced) > 0) {
-            HL1_sum <- introns_HL1[, .(count = .N), by = "transcript_id"]
-            HL2_sum <- introns_HL2[, .(count = .N), by = "transcript_id"]
-            
-            HL1_sum <- HL1_sum[get("count") == nrow(introns_HL1_reduced)]
-            HL2_sum <- HL2_sum[get("count") == nrow(introns_HL2_reduced)]
-            
-            filterByTrID <- c(
-                HL1_sum$transcript_id,
-                HL2_sum$transcript_id
-            )
-            reduced.DT <- reduced.DT[get("transcript_id") %in% filterByTrID]
-            return(reduced.DT)
-        } else {
-            # TODO: highlight IR events
-        }
-        
-    }
-
-    if(!is.null(gr_expressed_junctions)) {
-        introns <- reduced.DT[get("type") == "intron"]
-        exons <- reduced.DT[get("type") == "exon"]
-        misc <- reduced.DT[get("type") == "CDS"]
-
-        # filter vectors
-        novelTrID <- preservePut <- InTrID <- c()
-        intronlessID <- exons[
-            !(get("transcript_id") %in% introns$transcript_id)
-        ]$transcript_id
-        
-        filterByDT <- as.data.table(gr_expressed_junctions)
-        filterByDT <- filterByDT[, c("seqnames", "start", "end"), with = FALSE]
-
-        # Remove novel transcripts if at least 1 junction not represented
-        intronsOut <- introns[!filterByDT, on = c("seqnames", "start", "end")]
-        if(nrow(intronsOut) > 0) {
-            novelTrID <- intronsOut$transcript_id
-            novelTrID <- novelTrID[grepl("novel", novelTrID)]
-        }
-        
-        intronsIn <- introns[filterByDT, on = c("seqnames", "start", "end")]
-        InTrID <- intronsIn$transcript_id
-        InTrID <- InTrID[!(InTrID %in% novelTrID)]
-
-        # Remove all novel putative tandem transcripts unless both introns
-        #   in viewing frame
-        intronsPut <- intronsIn[grepl("novelPutTrID", get("transcript_id"))]
-        if(nrow(intronsPut) > 0) {
-            preservePut <- intronsPut$transcript_id[
-                duplicated(intronsPut$transcript_id)]
-        }
-
-        introns <- introns[
-            # Retain if not a novel junction with no in-view junctions expressed
-            !(get("transcript_id") %in% novelTrID) & (
-
-                # Retain if important
-                (get("transcript_id") %in% tr_filter) |            
-
-                # Retain if annotated and any in-view junctions expressed
-                (get("transcript_id") %in% InTrID) |
+        reduced.DT.HL <- reduced.DT[get("highlight") != "0"]
+        reduced.DT.nonHL <- reduced.DT[get("highlight") == "0"]
+        reduced.DT.nonHL <- reduced.DT.nonHL[
+            grepl("novel", get("transcript_id"))
+        ]
+        if(nrow(reduced.DT.HL) != 0) {
+            transcripts.DT <- transcripts.DT[
+                get("transcript_id") %in% reduced.DT.HL$transcript_id &
                 
-                # Retain if both junctions of TJ-Puts are expressed
-                (get("transcript_id") %in% preservePut)
-            )
-        ]
-        exons <- exons[
-            get("transcript_id") %in% c(introns$transcript_id, intronlessID)
-        ]
-        misc <- misc[
-            get("transcript_id") %in% c(introns$transcript_id, intronlessID)
-        ]
-        
-        return(rbind(introns, exons, misc))
+                # remove non-highlighted novel elements
+                !(get("transcript_id") %in% reduced.DT.nonHL$transcript_id)
+            ]
+            reduced.DT <- reduced.DT[
+                get("transcript_id") %in% transcripts.DT$transcript_id
+            ]
+            return(reduced.DT)
+        }
     }
-    
+
     # Otherwise - do nothing
     return(reduced.DT)
 }

@@ -104,7 +104,8 @@ addRibbonTrace <- function(fig, colorCode = "#000000") {
         x = c(1,2), ymin = c(1,2) - 0.2, ymax = c(1,2) + 0.2, 
         text = rep("test", 2),
         hoveron = "points", hoverinfo = I("text"),
-        colors = colorCode, opacity = 0.2,
+        line = list(color = colorCode),
+        color = I(colorCode), opacity = 0.2,
         visible = FALSE,
         showlegend = FALSE
     )
@@ -306,10 +307,12 @@ injectPlotData <- function(p, trackPos, dataList, trackName = "trackN") {
             if("showlegend" %in% names(dataList[[i]])) {
                 fig$x$data[[curTrack]]$showlegend <- 
                     dataList[[i]]$showlegend
+                fig$x$data[[curTrack]]$name <- dataList[[i]]$name
             } else {
                 fig$x$data[[curTrack]]$showlegend <- FALSE
+                fig$x$data[[curTrack]]$name <- trackName
             }
-            fig$x$data[[curTrack]]$name <- trackName
+            
             fig$x$data[[curTrack]]$hoverinfo <- "text"
         } else {
             fig$x$data[[curTrack]]$x <- c(1,2)

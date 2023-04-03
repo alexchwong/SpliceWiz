@@ -5,7 +5,6 @@
 \alias{getPlotObject}
 \alias{tracks,covPlotObject-method}
 \alias{condition,covPlotObject-method}
-\alias{getExonRanges,covPlotObject-method}
 \alias{plotView}
 \title{Container to hold ready-to-plot data for coverage plots}
 \usage{
@@ -14,8 +13,6 @@ getPlotObject(obj, Event, strand = c("*", "+", "-"), tracks, condition)
 \S4method{tracks}{covPlotObject}(x)
 
 \S4method{condition}{covPlotObject}(x)
-
-\S4method{getExonRanges}{covPlotObject}(x, showInteractiveExons = TRUE, reverseGenomeCoords = FALSE)
 
 plotView(
   x,
@@ -44,8 +41,7 @@ plotView(
   plotJunctions = TRUE,
   junctionThreshold = 0.01,
   plotRanges = GRanges(),
-  interactive = FALSE,
-  interactive2 = FALSE,
+  usePlotly = FALSE,
   ...
 )
 }
@@ -62,9 +58,6 @@ conditions, tracks, and other parameters, for customizing plot parameters
 covPlotObject object
 
 \item \code{condition(covPlotObject)}: Returns the condition specified in the
-covPlotObject object
-
-\item \code{getExonRanges(covPlotObject)}: Returns the condition specified in the
 covPlotObject object
 
 \item \code{plotView()}: Creates a coverage plot using the stored

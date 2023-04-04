@@ -45,6 +45,8 @@
 #'    used in conjunction with zoom_factor == 0. E.g. for a given region of
 #'    chr1:10000-11000, if `zoom_factor = 0` and `bases_flanking = 100`, the
 #'    region chr1:9900-11100 will be displayed.
+#' @param obj For `plotAnnoTrack()`, the `covDataObject` created by
+#'    `getCoverageData()` or `getGenomeData()`
 #' @param view_start,view_end Start and end coordinates of plotting function.
 #'    Note that plot coordinates may be different from retrieval coordinates
 #'    and is useful for zooming in.
@@ -54,6 +56,10 @@
 #'    Whether the genomic track should be condensed to plot whole
 #'    genes, rather than transcripts. Preferred if multiple genes are plotted
 #'    on a zoomed-out plot
+#' @param selected_transcripts (default `""`) One or more transcript names or 
+#'    ID's to be displayed on the annotation track.
+#' @param plot_key_isoforms (default `FALSE`) If `TRUE`, plots only transcripts
+#'    involved in the given splicing `Event`.
 #' @param usePlotly (default `FALSE`)
 #'    Whether to return a plotly or ggplot object.
 #' @return 

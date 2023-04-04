@@ -391,6 +391,7 @@ setMethod("junc_counts", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
 setMethod("junc_counts_uns", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     x@metadata[["junc_counts_uns"]]
 })
+
 #' @describeIn NxtSE-class Getter for junction GenomicRanges coordinates; 
 #' primarily used in plotCoverage()
 #' @export

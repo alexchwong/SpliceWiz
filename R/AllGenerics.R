@@ -137,6 +137,8 @@ setGeneric("condition", signature="x", function(
     ...
 ) standardGeneric("condition"))
 
+# covPlotly specific functions:
+
 setGeneric("showExons", signature="object", function(
     object, 
     ...
@@ -146,3 +148,8 @@ setGeneric("getExonRanges", signature="object", function(
     object, 
     ...
 ) standardGeneric("getExonRanges"))
+
+setGeneric("setResolution", signature="object", function(
+    object, 
+    ...
+) standardGeneric("setResolution"))

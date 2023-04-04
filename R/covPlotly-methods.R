@@ -1,3 +1,14 @@
+#' Container for plotly-based coverage plots
+#'
+#' @name covPlotly-class
+#' @aliases
+#' show show,covPlotly-method
+#' getExonRanges getExonRanges,covPlotly-method
+#' setResolution setResolution,covPlotly-method
+#' showExons showExons,covPlotly-method
+#' @seealso [plotView]
+NULL
+
 covPlotly <- function(
         fig = list(),
         args = list(),
@@ -19,6 +30,8 @@ covPlotly <- function(
     obj
 }
 
+#' @describeIn covPlotly-class Displays the generated plotly object
+#' @export
 setMethod("show", "covPlotly", function(object) {
     if(length(object@fig) < 1) return(NULL)
     if(!is(object@fig[[1]], "plotly")) return(NULL)
@@ -37,12 +50,7 @@ setMethod("show", "covPlotly", function(object) {
             rangeStart <- min(object@args[["xrange"]])
             rangeEnd <- max(object@args[["xrange"]])
             rangeWidth <- rangeEnd - rangeStart
-            # okCoords <- round(seq(
-                # from = rangeStart - rangeWidth,
-                # to = rangeEnd + rangeWidth,
-                # length.out = resolution - length(object@args[["reservedCoords"]])
-            # ))
-            # okCoords <- sort(unique(c(okCoords, object@args[["reservedCoords"]])))
+
             okCoords <- .pV_getAllowedCoords(
                 rangeStart - rangeWidth, rangeEnd + rangeWidth,
                 object@args[["reservedCoords"]], resolution
@@ -88,11 +96,28 @@ setMethod("show", "covPlotly", function(object) {
     }
 })
 
+#' @describeIn covPlotly-class Returns a named GRanges object containing exon
+#' ranges, without showing the associated plotly object
 #' @export
 setMethod("getExonRanges", "covPlotly", function(object) {
     return(object@args[["exonRanges"]])
 })
 
+#' @describeIn covPlotly-class Returns a covPlotly object after setting
+#' the output resolution of the plotly-based coverage plots.
+#' @param resolution How many horizontal pixels of resolution should be shown
+#'   in the final plotly object. Set to `0` to disable.
+#' @export
+setMethod("setResolution", "covPlotly", function(object, resolution) {
+    if(is.numeric(resolution)) {
+        object@args[["resolution"]] <- resolution
+    }
+    return(object)
+})
+
+#' @describeIn covPlotly-class Returns a named GRanges object containing exon
+#' ranges, and shows the plotly object with the annotation track showing the
+#' named exons
 #' @export
 setMethod("showExons", "covPlotly", function(object) {
     if(length(object@fig) < 1) return(NULL)

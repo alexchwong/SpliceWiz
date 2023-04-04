@@ -150,6 +150,7 @@
 #' junc_counts junc_counts,NxtSE-method
 #' junc_counts_uns junc_counts_uns,NxtSE-method
 #' junc_gr junc_gr,NxtSE-method
+#' update_NxtSE update_NxtSE,NxtSE-method
 #' realize_NxtSE realize_NxtSE,NxtSE-method
 #' coerce,SummarizedExperiment,NxtSE-method
 #' @md

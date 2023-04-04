@@ -95,6 +95,9 @@ names of individual samples.}
 \link{Build-Reference-methods}. Required by \code{plotGenome} if a
 \linkS4class{NxtSE} object is not specified.}
 
+\item{obj}{For \code{plotAnnoTrack()}, the \code{covDataObject} created by
+\code{getCoverageData()} or \code{getGenomeData()}}
+
 \item{view_start, view_end}{Start and end coordinates of plotting function.
 Note that plot coordinates may be different from retrieval coordinates
 and is useful for zooming in.}
@@ -109,6 +112,12 @@ on a zoomed-out plot}
 
 \item{usePlotly}{(default \code{FALSE})
 Whether to return a plotly or ggplot object.}
+
+\item{selected_transcripts}{(default \code{""}) One or more transcript names or
+ID's to be displayed on the annotation track.}
+
+\item{plot_key_isoforms}{(default \code{FALSE}) If \code{TRUE}, plots only transcripts
+involved in the given splicing \code{Event}.}
 
 \item{norm_event}{Whether to normalise by an event different to that given
 in "Event". The difference between this and Event is that the genomic

@@ -55,6 +55,98 @@
 #'   the `plotRanges` parameter as a GRanges object. This will generate a static
 #'   plot showing coverage plots segmented by exons.
 #' 
+#' @param obj For `getPlotObject()`, a `covDataObject` created using 
+#'   `getCoverageData`
+#' @param Event The EventName of the alternative splicing event
+#'   which will be highlighted and used for normalization
+#' @param strand The strand for coverage / junction plotting. Options are `"+"`,
+#'   `"-"`, or `"*"` (unstranded - default)
+#' @param tracks Sample names or condition categories
+#' @param condition For condition-based group plots, the name of the condition.
+#' @param x For `plotView()`, a `covPlotObject` created using `getPlotObject()`
+#' @param view_start,view_end The start and end coordinates for plotting
+#' @param oldP (Optional) If plotting the same tracks and track-widths,
+#'   supplying the old `covPlotly` object (returned from a previous call to
+#'   `plotView()`) results in faster run-time (as plotly::subplot is a time-
+#'   consuming function)
+#' @param centerByEvent (default `FALSE`) If true, centers the view to the
+#'   specified `Event`
+#' @param EventZoomFactor If `centerByEvent = TRUE`, the zoom-out factor to plot
+#'   the view. Zooms out in exponents of 3 
+#'   (i.e., zoom of 1 means 3x, 2 means 9x, and 0 means 1x)
+#' @param EventBasesFlanking (default `100`)
+#'   If `centerByEvent = TRUE`, includes how many bases flanking the event.
+#' @param resolution The number of horizontal "pixels" or data-points to plot.
+#'   This is calculated per sub-plot. Smaller numbers lead to lower resolution
+#'   but faster plots. Default is `5000`
+#' @param trackList A list, with each element being a vector of 1 or more track
+#'   names or indices to plot. If a vector is supplied it will be coerced to a
+#'   list
+#' @param diffList A list, with each element being a vector of size 2, 
+#'   containing names or indices of which tracks to contrast.
+#' @param diff_stat (default "t-test") Which statistical method to perform
+#'   differential comparisons.
+#' @param reverseGenomeCoords If `TRUE`, the genomic coordinate axis will be
+#'   reversed to plot negative stranded genes
+#' @param ribbon_mode The statistic to represent variance. Options are "sd" -
+#'   standard deviation, "sem" - standard error of the mean, "ci" -
+#'   95% confidence interval, or "none"
+#' @param normalizeCoverage If `TRUE`, coverages and junctions of individual
+#'   samples will be normalized by the given `Event`.
+#' @param plotAnnotations Whether the main annotation track should be plotted
+#' @param plotAnnoSubTrack If plotting by exon ranges (using `plotRanges`),
+#'   whether a separate sub-track showing zoomed-in exons should be shown
+#'   above the main annotation track (and below the coverage plots)
+#' @param showExonRanges (only applies if `usePlotly = FALSE`) Whether the
+#'   main annotation track should be replaced by labeled exon names. If `TRUE`
+#'   the returned value of `plotView()` is a named GRanges object containing
+#'   the exon ranges
+#' @param verticalLayout A vector (of length 4) containing relative heights of 
+#'   the following elements: (1) main block of coverage tracks, (2) differential
+#'   track, (3) annotation sub-track, and (4) main annotation track. Default
+#'   `c(6,1,1,2)`
+#' @param horizontalLayout A vector containing relative widths of coverage
+#'   tracks. Only used alongside `plotRanges` with more than 1 range to plot.
+#'   If omitted, `plotView` will attempt to scale widths to the widths of the
+#'   exon ranges.
+#' @param filterByTranscripts (default `""`) One or more named transcripts to
+#'   filter the annotation track.
+#' @param filterByEventTranscripts (default `FALSE`) If `TRUE`, only transcripts
+#'   involved in the given `Event` will be plotted, if any
+#' @param filterByExpressedTranscripts (default `TRUE`) Only transcripts with
+#'   supported junctions will be plotted on the annotation axis. An expressed
+#'   junction is that which contains more than the minimum `junctionThreshold`
+#'   in at least 1 track
+#' @param condenseTranscripts Whether to plot by genes `TRUE` or transcripts
+#'   `FALSE`
+#' @param plotJunctions Whether to plot junction counts as numbered arcs. Plots
+#'   normalized junctions if `normalizeCoverage = TRUE`.
+#' @param plotJuncPSI If plotting group coverage plots, whether to plot
+#'   mean +/- sd of normalized junction counts `FALSE`, or estimated junction
+#'   PSI based on SpliceOver metric applied to each junction `TRUE`.
+#' @param junctionThreshold (default `0.01`) Junctions with expressions below
+#'   this threshold will not be plotted. For raw counts, this is a fraction of
+#'   maximum coverage value of the track.
+#' @param plotRanges A GRanges object containing one or more exon ranges to 
+#'   plot. If given, `view_start` and `view_end` will be ignored. Typical use
+#'   is to use the output of the `plotView(..., usePlotly = FALSE)`, which
+#'   returns a named GRanges object, then subset this output by exon name.
+#' @param rangesBasesFlanking (default `100`) How many flanking bases to add to
+#'   each of `plotRanges`
+#' @param usePlotly If `TRUE`, returns a `covPlotly` object containing the
+#'   plotly-based interactive plot. If `FALSE`, returns a ggplot object.
+#' @param ... Not currently used
+#' @return
+#'   For `getPlotObject()`: A `covPlotObject` object containing Event-based
+#'     data to create coverage plots using `plotView()`.
+#'
+#'   For `plotView()`:
+#'
+#' * If `usePlotly = TRUE`, returns a `covPlotly` object containing plotly-based
+#'   interactive plot
+#' * If `usePlotly = FALSE`, returns a patchwork-assembled static plot, unless
+#'   `showExonRanges = TRUE` in which it shows the plot and returns a named
+#'   GRanges object containing exon ranges.
 #' @examples
 #' se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
 #'
@@ -141,7 +233,7 @@
 #' )
 #' 
 #' @name covPlotObject-class
-#' @seealso [getCoverageData]
+#' @seealso [getCoverageData] [covPlotly-class]
 #' @md
 NULL
 
@@ -177,11 +269,9 @@ covPlotObject <- function(
 getPlotObject <- function(
     obj, 
     Event, # To specify normalization event
-    # view_start, view_end, # remove to preserve scroll flexibility
     strand = c("*", "+", "-"),
     tracks, # can be a list of iterables
     condition
-    # ribbon_mode = c("sd", "ci", "sem", "none"),
 ) {
     args <- obj@args
 
@@ -277,7 +367,7 @@ getPlotObject <- function(
     ))
 }
 
-#' @describeIn covPlotObject-class Returns the tracks specified in the 
+#' @describeIn covPlotObject-class Returns the tracks contained in the 
 #'   covPlotObject object
 #' @export
 setMethod("tracks", c(x = "covPlotObject"), function(
@@ -286,7 +376,7 @@ setMethod("tracks", c(x = "covPlotObject"), function(
     return(x@args[["tracks"]])
 })
 
-#' @describeIn covPlotObject-class Returns the condition specified in the 
+#' @describeIn covPlotObject-class Returns the condition value set in the 
 #'   covPlotObject object
 #' @export
 setMethod("condition", c(x = "covPlotObject"), function(
@@ -394,7 +484,7 @@ plotView <- function(
     trackList = list(),
     
     # specify differential comparisons
-    diff_stat = c("none", "t-test"),
+    diff_stat = c("t-test"),
     diffList = list(),
 
     reverseGenomeCoords = FALSE,

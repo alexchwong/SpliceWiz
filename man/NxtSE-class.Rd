@@ -42,11 +42,12 @@
 \alias{junc_counts_uns,NxtSE-method}
 \alias{junc_gr}
 \alias{junc_gr,NxtSE-method}
+\alias{update_NxtSE}
+\alias{update_NxtSE,NxtSE-method}
 \alias{realize_NxtSE}
 \alias{realize_NxtSE,NxtSE-method}
 \alias{coerce,SummarizedExperiment,NxtSE-method}
 \alias{NxtSE}
-\alias{update_NxtSE,NxtSE-method}
 \alias{[,NxtSE,ANY,ANY,ANY-method}
 \alias{[<-,NxtSE,ANY,ANY,NxtSE-method}
 \alias{cbind,NxtSE-method}

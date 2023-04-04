@@ -25,7 +25,7 @@ plotView(
   EventBasesFlanking = 100,
   resolution = 5000,
   trackList = list(),
-  diff_stat = c("none", "t-test"),
+  diff_stat = c("t-test"),
   diffList = list(),
   reverseGenomeCoords = FALSE,
   ribbon_mode = c("sd", "sem", "ci", "none"),
@@ -47,6 +47,135 @@ plotView(
   usePlotly = FALSE,
   ...
 )
+}
+\arguments{
+\item{obj}{For \code{getPlotObject()}, a \code{covDataObject} created using
+\code{getCoverageData}}
+
+\item{Event}{The EventName of the alternative splicing event
+which will be highlighted and used for normalization}
+
+\item{strand}{The strand for coverage / junction plotting. Options are \code{"+"},
+\code{"-"}, or \code{"*"} (unstranded - default)}
+
+\item{tracks}{Sample names or condition categories}
+
+\item{condition}{For condition-based group plots, the name of the condition.}
+
+\item{x}{For \code{plotView()}, a \code{covPlotObject} created using \code{getPlotObject()}}
+
+\item{view_start, view_end}{The start and end coordinates for plotting}
+
+\item{oldP}{(Optional) If plotting the same tracks and track-widths,
+supplying the old \code{covPlotly} object (returned from a previous call to
+\code{plotView()}) results in faster run-time (as plotly::subplot is a time-
+consuming function)}
+
+\item{centerByEvent}{(default \code{FALSE}) If true, centers the view to the
+specified \code{Event}}
+
+\item{EventZoomFactor}{If \code{centerByEvent = TRUE}, the zoom-out factor to plot
+the view. Zooms out in exponents of 3
+(i.e., zoom of 1 means 3x, 2 means 9x, and 0 means 1x)}
+
+\item{EventBasesFlanking}{(default \code{100})
+If \code{centerByEvent = TRUE}, includes how many bases flanking the event.}
+
+\item{resolution}{The number of horizontal "pixels" or data-points to plot.
+This is calculated per sub-plot. Smaller numbers lead to lower resolution
+but faster plots. Default is \code{5000}}
+
+\item{trackList}{A list, with each element being a vector of 1 or more track
+names or indices to plot. If a vector is supplied it will be coerced to a
+list}
+
+\item{diff_stat}{(default "t-test") Which statistical method to perform
+differential comparisons.}
+
+\item{diffList}{A list, with each element being a vector of size 2,
+containing names or indices of which tracks to contrast.}
+
+\item{reverseGenomeCoords}{If \code{TRUE}, the genomic coordinate axis will be
+reversed to plot negative stranded genes}
+
+\item{ribbon_mode}{The statistic to represent variance. Options are "sd" -
+standard deviation, "sem" - standard error of the mean, "ci" -
+95\% confidence interval, or "none"}
+
+\item{normalizeCoverage}{If \code{TRUE}, coverages and junctions of individual
+samples will be normalized by the given \code{Event}.}
+
+\item{plotAnnotations}{Whether the main annotation track should be plotted}
+
+\item{plotAnnoSubTrack}{If plotting by exon ranges (using \code{plotRanges}),
+whether a separate sub-track showing zoomed-in exons should be shown
+above the main annotation track (and below the coverage plots)}
+
+\item{showExonRanges}{(only applies if \code{usePlotly = FALSE}) Whether the
+main annotation track should be replaced by labeled exon names. If \code{TRUE}
+the returned value of \code{plotView()} is a named GRanges object containing
+the exon ranges}
+
+\item{verticalLayout}{A vector (of length 4) containing relative heights of
+the following elements: (1) main block of coverage tracks, (2) differential
+track, (3) annotation sub-track, and (4) main annotation track. Default
+\code{c(6,1,1,2)}}
+
+\item{horizontalLayout}{A vector containing relative widths of coverage
+tracks. Only used alongside \code{plotRanges} with more than 1 range to plot.
+If omitted, \code{plotView} will attempt to scale widths to the widths of the
+exon ranges.}
+
+\item{filterByTranscripts}{(default \code{""}) One or more named transcripts to
+filter the annotation track.}
+
+\item{filterByEventTranscripts}{(default \code{FALSE}) If \code{TRUE}, only transcripts
+involved in the given \code{Event} will be plotted, if any}
+
+\item{filterByExpressedTranscripts}{(default \code{TRUE}) Only transcripts with
+supported junctions will be plotted on the annotation axis. An expressed
+junction is that which contains more than the minimum \code{junctionThreshold}
+in at least 1 track}
+
+\item{condenseTranscripts}{Whether to plot by genes \code{TRUE} or transcripts
+\code{FALSE}}
+
+\item{plotJunctions}{Whether to plot junction counts as numbered arcs. Plots
+normalized junctions if \code{normalizeCoverage = TRUE}.}
+
+\item{plotJuncPSI}{If plotting group coverage plots, whether to plot
+mean +/- sd of normalized junction counts \code{FALSE}, or estimated junction
+PSI based on SpliceOver metric applied to each junction \code{TRUE}.}
+
+\item{junctionThreshold}{(default \code{0.01}) Junctions with expressions below
+this threshold will not be plotted. For raw counts, this is a fraction of
+maximum coverage value of the track.}
+
+\item{plotRanges}{A GRanges object containing one or more exon ranges to
+plot. If given, \code{view_start} and \code{view_end} will be ignored. Typical use
+is to use the output of the \code{plotView(..., usePlotly = FALSE)}, which
+returns a named GRanges object, then subset this output by exon name.}
+
+\item{rangesBasesFlanking}{(default \code{100}) How many flanking bases to add to
+each of \code{plotRanges}}
+
+\item{usePlotly}{If \code{TRUE}, returns a \code{covPlotly} object containing the
+plotly-based interactive plot. If \code{FALSE}, returns a ggplot object.}
+
+\item{...}{Not currently used}
+}
+\value{
+For \code{getPlotObject()}: A \code{covPlotObject} object containing Event-based
+data to create coverage plots using \code{plotView()}.
+
+For \code{plotView()}:
+\itemize{
+\item If \code{usePlotly = TRUE}, returns a \code{covPlotly} object containing plotly-based
+interactive plot
+\item If \code{usePlotly = FALSE}, returns a patchwork-assembled static plot, unless
+\code{showExonRanges = TRUE} in which it shows the plot and returns a named
+GRanges object containing exon ranges.
+}
 }
 \description{
 Here, we implement fast and versatile ggplot and plotly based
@@ -113,10 +242,10 @@ plot showing coverage plots segmented by exons.
 covDataObject. Allows users to change parameters such as viewing window,
 conditions, tracks, and other parameters, for customizing plot parameters
 
-\item \code{tracks(covPlotObject)}: Returns the tracks specified in the
+\item \code{tracks(covPlotObject)}: Returns the tracks contained in the
 covPlotObject object
 
-\item \code{condition(covPlotObject)}: Returns the condition specified in the
+\item \code{condition(covPlotObject)}: Returns the condition value set in the
 covPlotObject object
 
 \item \code{plotView()}: Creates a coverage plot using the stored
@@ -210,5 +339,5 @@ p <- plotView(plotObj_samples,
 
 }
 \seealso{
-\link{getCoverageData}
+\link{getCoverageData} \linkS4class{covPlotly}
 }

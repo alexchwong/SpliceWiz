@@ -54,10 +54,12 @@
 #'    Whether the genomic track should be condensed to plot whole
 #'    genes, rather than transcripts. Preferred if multiple genes are plotted
 #'    on a zoomed-out plot
-#' @param interactive (default `FALSE)
+#' @param usePlotly (default `FALSE`)
 #'    Whether to return a plotly or ggplot object.
-#' @return A covDataObject containing required data used to generate downstream 
-#'   plots.
+#' @return 
+#'   For getCoverageData(): A covDataObject containing required data used to
+#'     generate downstream 
+#'   For plotAnnoTrack(): A ggplot or plotly object
 #' @examples
 #' se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
 #'
@@ -83,6 +85,13 @@
 #'     reference_path = file.path(tempdir(), "Reference"),
 #'     Gene = "SRSF3"
 #' )
+#'
+#' # Plot reference track directly from the covDataObject
+#'
+#' # NB: Event plotting is not supported for reference-derived `covDataObject`s
+#' plotAnnoTrack(genomeObj) 
+#'
+#' plotAnnoTrack(dataObj, Event = "SE:SRSF3-203-exon4;SRSF3-202-int3") 
 #'
 #' @name covDataObject-class
 #' @seealso [covPlotObject-class]

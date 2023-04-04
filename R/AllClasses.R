@@ -338,6 +338,7 @@ setClass("covPlotObject",
         junc = "list",
         norm_junc = "list",
         junc_PSI = "list",
+        junc_stats = "list",
         cov_stats = "list",
         annotation = "list"
     )

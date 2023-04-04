@@ -107,6 +107,9 @@ Whether the genomic track should be condensed to plot whole
 genes, rather than transcripts. Preferred if multiple genes are plotted
 on a zoomed-out plot}
 
+\item{usePlotly}{(default \code{FALSE})
+Whether to return a plotly or ggplot object.}
+
 \item{norm_event}{Whether to normalise by an event different to that given
 in "Event". The difference between this and Event is that the genomic
 coordinates can be centered around a different \code{Event}, \code{Gene} or region
@@ -114,13 +117,11 @@ as given in \code{seqname/start/end}. If \code{norm_event} is different to
 \code{Event}, \code{norm_event} will be used for normalisation and \code{Event} will be
 used to define the genomic coordinates of the viewing window. \code{norm_event}
 is required if \code{Event} is not set and \code{condition} is set.}
-
-\item{interactive}{(default `FALSE)
-Whether to return a plotly or ggplot object.}
 }
 \value{
-A covDataObject containing required data used to generate downstream
-plots.
+For getCoverageData(): A covDataObject containing required data used to
+generate downstream
+For plotAnnoTrack(): A ggplot or plotly object
 }
 \description{
 This object is generated using getCoverageData or getGenomeData methods, and
@@ -163,6 +164,13 @@ genomeObj <- getGenomeData(
     reference_path = file.path(tempdir(), "Reference"),
     Gene = "SRSF3"
 )
+
+# Plot reference track directly from the covDataObject
+
+# NB: Event plotting is not supported for reference-derived `covDataObject`s
+plotAnnoTrack(genomeObj) 
+
+plotAnnoTrack(dataObj, Event = "SE:SRSF3-203-exon4;SRSF3-202-int3") 
 
 }
 \seealso{

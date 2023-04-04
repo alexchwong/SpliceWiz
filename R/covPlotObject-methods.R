@@ -1732,7 +1732,7 @@ plotView <- function(
         diffTrack = diffTracks[i]
         df <- df_all[df_all$diffTrack == diffTrack,]
         
-        p <- ggplot(df_all) + geom_hline(yintercept = 0)
+        p <- ggplot(df) + geom_hline(yintercept = 0)
 
     # plot line
         p <- p + geom_line(aes(x = get("x"), y = get("stat")), 

@@ -55,8 +55,9 @@
 #'   the `plotRanges` parameter as a GRanges object. This will generate a static
 #'   plot showing coverage plots segmented by exons.
 #' 
-#' @param obj For `getPlotObject()`, a `covDataObject` created using 
-#'   `getCoverageData`
+#' @param object For `getPlotObject()`, a `covDataObject` created using 
+#'   `getCoverageData`. For `plotView()`, a `covPlotObject` created using
+#'   `getPlotObject()`.
 #' @param Event The EventName of the alternative splicing event
 #'   which will be highlighted and used for normalization
 #' @param strand The strand for coverage / junction plotting. Options are `"+"`,
@@ -270,13 +271,13 @@ covPlotObject <- function(
 #'   conditions, tracks, and other parameters, for customizing plot parameters
 #' @export
 getPlotObject <- function(
-    obj, 
+    object, 
     Event, # To specify normalization event
     strand = c("*", "+", "-"),
     tracks, # can be a list of iterables
     condition
 ) {
-    args <- obj@args
+    args <- object@args
 
     if(!missing(tracks)) args[["tracks"]] <- tracks
     if(!missing(condition)) {
@@ -293,7 +294,7 @@ getPlotObject <- function(
     }
     
     # Check tracks and conditions in args are legit, modify as necessary
-    args <- .gPO_check_tracks(obj, args)
+    args <- .gPO_check_tracks(object, args)
     
     # Junction strand is always same as requested strand
     # But need to check strandedness of RNA-seq data before deciding coverage
@@ -308,36 +309,36 @@ getPlotObject <- function(
     }
 
     # Check strand against stranded-ness of RNA-seq
-    args <- .gPO_check_strand(obj, args)
+    args <- .gPO_check_strand(object, args)
 
     # Always get these
-    cov <- .gCD_getCoverage(obj, args)
-    junc <- .gCD_getJunc(obj, args, cov)
+    cov <- .gCD_getCoverage(object, args)
+    junc <- .gCD_getJunc(object, args, cov)
 
     norm_cov <- norm_junc <- list()
     if("Event" %in% names(args)) {
-         norm_cov <- .gCD_getCoverage(obj, args, normalize = TRUE)
+         norm_cov <- .gCD_getCoverage(object, args, normalize = TRUE)
          
          # if single sample
-         norm_junc <- .gCD_getJunc(obj, args, norm_cov, normalized = TRUE)
+         norm_junc <- .gCD_getJunc(object, args, norm_cov, normalized = TRUE)
     }
 
     # Plot stats if applicable
     cov_stats <- junc_PSI <- junc_stats <- list()
     if("condition" %in% names(args)) {
         # compile junction data
-        junc_PSI <- .gCD_getPSI(obj, args, norm_cov)
+        junc_PSI <- .gCD_getPSI(object, args, norm_cov)
         cov_stats <- .gCD_covStats(norm_cov)
-        junc_stats <- .gCD_getJuncStats(obj, args, cov_stats)
+        junc_stats <- .gCD_getJuncStats(object, args, cov_stats)
     }
 
     # plot relevant annotations
     highlight_gr <- list()
     if(
             "Event" %in% names(args) && 
-            args[["Event"]] %in% rownames(obj@normData$rowData)
+            args[["Event"]] %in% rownames(object@normData$rowData)
     ) {
-        row <- obj@normData$rowData[args[["Event"]],]
+        row <- object@normData$rowData[args[["Event"]],]
         args[["EventRegion"]] <- row$EventRegion
         if (row$EventType %in% c("MXE", "SE")) {
             highlight_gr[[1]] <- coord2GR(c(row$Event1a, row$Event2a))
@@ -352,7 +353,7 @@ getPlotObject <- function(
     }
     args[["highlight_gr"]] <- highlight_gr
 
-    DTlist <- obj@annotation
+    DTlist <- object@annotation
     DTlist$reduced.DT <- .gcd_highlight_anno(
         DTlist$reduced.DT, args[["highlight_gr"]]
     )
@@ -373,26 +374,26 @@ getPlotObject <- function(
 #' @describeIn covPlotObject-class Returns the tracks contained in the 
 #'   covPlotObject object
 #' @export
-setMethod("tracks", c(x = "covPlotObject"), function(
-    x
+setMethod("tracks", c(object = "covPlotObject"), function(
+    object
 ) {
-    return(x@args[["tracks"]])
+    return(object@args[["tracks"]])
 })
 
 #' @describeIn covPlotObject-class Returns the condition value set in the 
 #'   covPlotObject object
 #' @export
-setMethod("condition", c(x = "covPlotObject"), function(
-    x
+setMethod("condition", c(object = "covPlotObject"), function(
+    object
 ) {
-    return(x@args[["condition"]])
+    return(object@args[["condition"]])
 })
 
 #' @describeIn covDataObject-class Directly plots the annotation from a 
 #'   covDataObject. 
 #' @export
 plotAnnoTrack <- function(
-    obj, Event,
+    object, Event,
     view_start, view_end,
     reverseGenomeCoords = FALSE,
     condensed = FALSE,
@@ -400,8 +401,8 @@ plotAnnoTrack <- function(
     selected_transcripts = "",
     plot_key_isoforms = FALSE
 ) {
-    if(missing(view_start)) view_start <- obj@args$view_start
-    if(missing(view_end)) view_end <- obj@args$view_end
+    if(missing(view_start)) view_start <- object@args$view_start
+    if(missing(view_end)) view_end <- object@args$view_end
 
     if(view_start > view_end) {
         reverseGenomeCoords <- !reverseGenomeCoords
@@ -412,12 +413,12 @@ plotAnnoTrack <- function(
 
     highlight_gr <- list()
     
-    if(!missing(Event) && !("rowData" %in% names(obj@normData))) {
+    if(!missing(Event) && !("rowData" %in% names(object@normData))) {
         .log("Plotting ASE from a SpliceWiz reference is currently not supported.")
     }
     
-    if(!missing(Event) && Event %in% rownames(obj@normData$rowData)) {
-        row <- obj@normData$rowData[Event,]
+    if(!missing(Event) && Event %in% rownames(object@normData$rowData)) {
+        row <- object@normData$rowData[Event,]
         if (row$EventType %in% c("MXE", "SE")) {
             highlight_gr[[1]] <- coord2GR(c(row$Event1a, row$Event2a))
         } else {
@@ -430,7 +431,7 @@ plotAnnoTrack <- function(
         }    
     }
     
-    DTlist <- obj@annotation
+    DTlist <- object@annotation
     DTlist$reduced.DT <- .gcd_highlight_anno(
         DTlist$reduced.DT, highlight_gr
     )
@@ -446,8 +447,8 @@ plotAnnoTrack <- function(
     )
     
     view_gr <- GRanges(
-        obj@args[["view_chr"]],
-        IRanges(obj@args[["view_start"]], obj@args[["view_end"]])
+        object@args[["view_chr"]],
+        IRanges(object@args[["view_start"]], object@args[["view_end"]])
     )
     
     p <- .gCD_plotRef(
@@ -466,7 +467,7 @@ plotAnnoTrack <- function(
 #'   data in the covPlotObject
 #' @export
 plotView <- function(
-    x, 
+    object, 
 
     # for single window view (to simplify things)
     view_start,
@@ -534,11 +535,11 @@ plotView <- function(
 ) {
     use_DT <- TRUE
 
-    if(!is(x, "covPlotObject")) .log(paste(
-        "In plotView,", "x must be a covPlotObject"
+    if(!is(object, "covPlotObject")) .log(paste(
+        "In plotView,", "object must be a covPlotObject"
     ))
 
-    args <- x@args
+    args <- object@args
 
     # inject variables into args
     if(!missing(view_start)) args[["view_start"]] <- view_start
@@ -554,7 +555,10 @@ plotView <- function(
             centerByEvent &
             "EventRegion" %in% names(args)
     ) {
-        args <- .pV_getEventCoords(x, args, EventZoomFactor, EventBasesFlanking)
+        args <- .pV_getEventCoords(
+            object, args, EventZoomFactor, 
+            EventBasesFlanking
+        )
     }
     
     diff_stat <- match.arg(diff_stat)
@@ -674,7 +678,7 @@ plotView <- function(
         
         # Work out which coords to plot
         juncCoords <- .cPO_getJuncCoords(
-            x, args, normalizeCoverage,
+            object, args, normalizeCoverage,
             range_gr = range_gr, 
             junctionThreshold
         )
@@ -689,7 +693,7 @@ plotView <- function(
     
     if(usePlotly) {
         covTrack[[j]] <- .cPO_plotCoverage_multi(
-            x, args, normalizeCoverage,
+            object, args, normalizeCoverage,
             range_gr = fullRange, 
             plotJunctions = plotJunctions, plotJuncPSI = plotJuncPSI,
             junctionThreshold = junctionThreshold,
@@ -698,7 +702,7 @@ plotView <- function(
         )
         if(diff_stat != "none" && length(diffList) > 0) {
             diffTrack[[j]] <- .cPO_plotDiff_multi(
-                x, args, diffList,
+                object, args, diffList,
                 diff_stat, fullRange,
                 usePlotly = usePlotly
             )
@@ -706,7 +710,7 @@ plotView <- function(
     } else {
         # Generate full plotly first, then segment later
         tmpCov <- .cPO_plotCoverage_multi(
-            x, args, normalizeCoverage,
+            object, args, normalizeCoverage,
             range_gr = fullRange, 
             plotJunctions = plotJunctions, plotJuncPSI = plotJuncPSI,
             junctionThreshold = junctionThreshold,
@@ -719,7 +723,7 @@ plotView <- function(
         tmpDiffPlot <- NULL
         if(diff_stat != "none" && length(diffList) > 0) {
             tmpDiffPlot <- .cPO_plotDiff_multi(
-                x, args, diffList,
+                object, args, diffList,
                 diff_stat, fullRange,
                 usePlotly = FALSE
             )
@@ -821,7 +825,7 @@ plotView <- function(
     # bench <- system.time({
     
     DTlist <- .pV_filterTranscripts(
-        x, args,
+        object, args,
         filterByTranscripts = filterByTranscripts,
         filterByEventTranscripts = filterByEventTranscripts,
         filterByExpressedTranscripts = filterByExpressedTranscripts,

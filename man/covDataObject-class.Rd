@@ -3,11 +3,14 @@
 %   R/covPlotObject-methods.R
 \name{covDataObject-class}
 \alias{covDataObject-class}
+\alias{showEvents,covDataObject-method}
 \alias{getCoverageData}
 \alias{getGenomeData}
 \alias{plotAnnoTrack}
 \title{Container to hold raw data for SpliceWiz coverage plots}
 \usage{
+\S4method{showEvents}{covDataObject}(object)
+
 getCoverageData(
   se,
   Event,
@@ -36,7 +39,7 @@ getGenomeData(
 )
 
 plotAnnoTrack(
-  obj,
+  object,
   Event,
   view_start,
   view_end,
@@ -95,9 +98,6 @@ names of individual samples.}
 \link{Build-Reference-methods}. Required by \code{plotGenome} if a
 \linkS4class{NxtSE} object is not specified.}
 
-\item{obj}{For \code{plotAnnoTrack()}, the \code{covDataObject} created by
-\code{getCoverageData()} or \code{getGenomeData()}}
-
 \item{view_start, view_end}{Start and end coordinates of plotting function.
 Note that plot coordinates may be different from retrieval coordinates
 and is useful for zooming in.}
@@ -119,13 +119,8 @@ ID's to be displayed on the annotation track.}
 \item{plot_key_isoforms}{(default \code{FALSE}) If \code{TRUE}, plots only transcripts
 involved in the given splicing \code{Event}.}
 
-\item{norm_event}{Whether to normalise by an event different to that given
-in "Event". The difference between this and Event is that the genomic
-coordinates can be centered around a different \code{Event}, \code{Gene} or region
-as given in \code{seqname/start/end}. If \code{norm_event} is different to
-\code{Event}, \code{norm_event} will be used for normalisation and \code{Event} will be
-used to define the genomic coordinates of the viewing window. \code{norm_event}
-is required if \code{Event} is not set and \code{condition} is set.}
+\item{obj}{For \code{plotAnnoTrack()}, the \code{covDataObject} created by
+\code{getCoverageData()} or \code{getGenomeData()}}
 }
 \value{
 For getCoverageData(): A covDataObject containing required data used to
@@ -138,6 +133,9 @@ is used as input for generating coverage plots.
 }
 \section{Functions}{
 \itemize{
+\item \code{showEvents(covDataObject)}: Returns the EventNames for which events can
+be normalized using the given covDataObject
+
 \item \code{getCoverageData()}: Get coverage / genome data for plotting
 coverage plots
 

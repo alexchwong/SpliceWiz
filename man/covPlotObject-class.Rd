@@ -2,23 +2,24 @@
 % Please edit documentation in R/covPlotObject-methods.R
 \name{covPlotObject-class}
 \alias{covPlotObject-class}
-\alias{getPlotObject}
+\alias{tracks}
 \alias{tracks,covPlotObject-method}
+\alias{condition}
 \alias{condition,covPlotObject-method}
+\alias{getPlotObject}
 \alias{plotView}
 \title{Versatile coverage plots for SpliceWiz}
 \usage{
-getPlotObject(obj, Event, strand = c("*", "+", "-"), tracks, condition)
+getPlotObject(object, Event, strand = c("*", "+", "-"), tracks, condition)
 
-\S4method{tracks}{covPlotObject}(x)
+\S4method{tracks}{covPlotObject}(object)
 
-\S4method{condition}{covPlotObject}(x)
+\S4method{condition}{covPlotObject}(object)
 
 plotView(
-  x,
+  object,
   view_start,
   view_end,
-  debug = FALSE,
   oldP = covPlotly(),
   centerByEvent = FALSE,
   EventZoomFactor = 0.2,
@@ -49,8 +50,9 @@ plotView(
 )
 }
 \arguments{
-\item{obj}{For \code{getPlotObject()}, a \code{covDataObject} created using
-\code{getCoverageData}}
+\item{object}{For \code{getPlotObject()}, a \code{covDataObject} created using
+\code{getCoverageData}. For \code{plotView()}, a \code{covPlotObject} created using
+\code{getPlotObject()}.}
 
 \item{Event}{The EventName of the alternative splicing event
 which will be highlighted and used for normalization}
@@ -61,8 +63,6 @@ which will be highlighted and used for normalization}
 \item{tracks}{Sample names or condition categories}
 
 \item{condition}{For condition-based group plots, the name of the condition.}
-
-\item{x}{For \code{plotView()}, a \code{covPlotObject} created using \code{getPlotObject()}}
 
 \item{view_start, view_end}{The start and end coordinates for plotting}
 
@@ -163,6 +163,8 @@ each of \code{plotRanges}}
 plotly-based interactive plot. If \code{FALSE}, returns a ggplot object.}
 
 \item{...}{Not currently used}
+
+\item{x}{For \code{plotView()}, a \code{covPlotObject} created using \code{getPlotObject()}}
 }
 \value{
 For \code{getPlotObject()}: A \code{covPlotObject} object containing Event-based

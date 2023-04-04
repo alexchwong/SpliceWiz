@@ -134,13 +134,13 @@ setGeneric("showEvents", signature="object", function(
     
 # covPlotObject specific functions:
 
-setGeneric("tracks", signature="x", function(
-    x, 
+setGeneric("tracks", signature="object", function(
+    object, 
     ...
 ) standardGeneric("tracks"))
 
-setGeneric("condition", signature="x", function(
-    x, 
+setGeneric("condition", signature="object", function(
+    object, 
     ...
 ) standardGeneric("condition"))
 

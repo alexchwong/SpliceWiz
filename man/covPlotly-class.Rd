@@ -2,8 +2,6 @@
 % Please edit documentation in R/covPlotly-methods.R
 \name{covPlotly-class}
 \alias{covPlotly-class}
-\alias{show}
-\alias{show,covPlotly-method}
 \alias{getExonRanges}
 \alias{getExonRanges,covPlotly-method}
 \alias{setResolution}
@@ -12,8 +10,6 @@
 \alias{showExons,covPlotly-method}
 \title{Container for plotly-based coverage plots}
 \usage{
-\S4method{show}{covPlotly}(object)
-
 \S4method{getExonRanges}{covPlotly}(object)
 
 \S4method{setResolution}{covPlotly}(object, resolution)
@@ -21,6 +17,8 @@
 \S4method{showExons}{covPlotly}(object)
 }
 \arguments{
+\item{object}{A covPlotly object}
+
 \item{resolution}{How many horizontal pixels of resolution should be shown
 in the final plotly object. Set to \code{0} to disable.}
 }
@@ -29,8 +27,6 @@ Container for plotly-based coverage plots
 }
 \section{Functions}{
 \itemize{
-\item \code{show(covPlotly)}: Displays the generated plotly object
-
 \item \code{getExonRanges(covPlotly)}: Returns a named GRanges object containing exon
 ranges, without showing the associated plotly object
 

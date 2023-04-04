@@ -118,10 +118,10 @@ covDataObject <- function(
 #' @describeIn covDataObject-class Returns the EventNames for which events can
 #'   be normalized using the given covDataObject 
 #' @export
-setMethod("showEvents", c(x = "covDataObject"), function(
-    x
+setMethod("showEvents", c(object = "covDataObject"), function(
+    object
 ) {
-    return(x@normData$rowData$EventName)
+    return(object@normData$rowData$EventName)
 })
 
 #' @describeIn covDataObject-class Get coverage / genome data for plotting

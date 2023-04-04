@@ -602,10 +602,11 @@ getGenomeData <- function(
     event_gr <- row_gr(args[["se"]])[unique(from(OL))]
     names(event_gr) <- rownames(args[["se"]])[unique(from(OL))]
     
-    norms <- assay(args[["se"]], "Depth")[
+    norms <- as.matrix(assay(args[["se"]], "Depth")[
         names(event_gr),
-        rownames(colData)
-    ]
+        rownames(colData),
+        drop = FALSE
+    ])
 
     rowData <- rowData(args[["se"]])[unique(from(OL)), ]
     rowData <- as.data.frame(rowData)

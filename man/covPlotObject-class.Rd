@@ -283,6 +283,11 @@ plotObj_group <- getPlotObject(
     tracks = c("A", "B")
 )
 
+# Display tracks and conditions of covPlotObject
+
+tracks(plotObj_group)
+condition(plotObj_group)
+
 # Show static ggplots
 
 plotView(plotObj_samples)

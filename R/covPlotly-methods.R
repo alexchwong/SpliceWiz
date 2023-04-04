@@ -1,6 +1,54 @@
 #' Container for plotly-based coverage plots
 #'
 #' @param object A covPlotly object
+#' @param resolution The number of horizontal "pixels" or data-points to plot.
+#'   This is calculated per sub-plot. Smaller numbers lead to lower resolution
+#'   but faster plots.
+#' @return
+#'   For `show()`: A plotly object synthesised by `plotView()`
+#'   For `getExonRanges()`: A named GRanges object containing exon ranges
+#'   For `showExons()`: A named GRanges object containing exon ranges, and
+#'     additionally "shows" the plotly coverage plot with annotation replaced
+#'     by named exons
+#'   For `setResolution()` Returns the `covPlotly` object with addition of
+#'     resolution set by the corresponding parameter. When `show()` is called,
+#'     the plotly object with the new coverage resolution will be displayed.
+#' @examples
+#' se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
+#'
+#' # Assign annotation of the experimental conditions
+#' colData(se)$treatment <- rep(c("A", "B"), each = 3)
+#'
+#' # Retrieve coverage data for all samples for the gene "SRSF3" (and surrounds)
+#' 
+#' dataObj <- getCoverageData(
+#'     se,
+#'     Gene = "SRSF3",
+#'     tracks = colnames(se)
+#' )
+#'
+#' plotObj_samples <- getPlotObject(
+#'     dataObj,
+#'     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3"
+#' )
+#' 
+#' if(interactive()) {
+#'
+#'     # Create covPlotly object by setting `usePlotly = TRUE`
+#'     p <- plotView(plotObj_samples, usePlotly = TRUE)
+#'
+#'     # Display plotly plot
+#'     show(p)
+#'
+#'     # Set resolution to 2000; display new plot
+#'     p <- setResolution(p, resolution = 2000)
+#'     show(p)
+#'
+#'     # Display exon annotation along with generated plot;
+#'     # - also returns GRanges object
+#'     gr <- showExons(p)
+#' }
+#' 
 #' @name covPlotly-class
 #' @aliases
 #' getExonRanges getExonRanges,covPlotly-method

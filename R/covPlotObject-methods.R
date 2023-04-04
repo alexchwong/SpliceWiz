@@ -326,6 +326,7 @@ plotView <- function(
     # specify annotation track
     plotAnnotations = TRUE,
     plotAnnoSubTrack = TRUE,
+    showExonRanges = FALSE,
 
     # Plot layout
     verticalLayout = c(6,1,1,2),
@@ -349,6 +350,7 @@ plotView <- function(
 
     # whether to plot by exon windows
     plotRanges = GRanges(),
+    rangesBasesFlanking = 100,
 
     # ggplot or plotly object?
     usePlotly = FALSE,
@@ -412,6 +414,20 @@ plotView <- function(
         usePlotly <- FALSE
     }
 
+    # Expand plotRanges using rangesBasesFlanking
+    for(i in seq_len(length(plotRanges))) {
+        if(start(plotRanges[i]) - rangesBasesFlanking > args[["limit_start"]]) {
+            start(plotRanges[i]) <- start(plotRanges[i]) - rangesBasesFlanking
+        } else {
+            start(plotRanges[i]) <- args[["limit_start"]]
+        }
+        if(end(plotRanges[i]) - rangesBasesFlanking < args[["limit_end"]]) {
+            end(plotRanges[i]) <- end(plotRanges[i]) + rangesBasesFlanking
+        } else {
+            end(plotRanges[i]) <- args[["limit_end"]]
+        }
+    }
+
     # What is the full range
     fullRange <- range(plotRanges)
     if(!missing(view_start) & !missing(view_end)) {
@@ -466,6 +482,7 @@ plotView <- function(
     diffTrack <- list()
     annoSubTrack <- list()
     annoFullTrack <- list() # list of 1
+    exonFullTrack <- list() # list of 1
     
     # Proportion all viewing frames
     widthSum <- sum(width(plotRanges))
@@ -518,13 +535,11 @@ plotView <- function(
             plotJunctions = plotJunctions,
             junctionThreshold = junctionThreshold,
             usePlotly = FALSE,
-            use_DT = use_DT,
-            reservedCoords = reservedCoords,
-            resolution = resolution
+            use_DT = use_DT
         )
         tmpCovPlot <- tmpCov$ggplot
         tmpCovJuncAnno <- as.data.table(tmpCov$dfJn_all)
-        
+
         tmpDiff <- NULL
         if(diff_stat != "none" && length(diffList) > 0) {
             tmpDiff <- .cPO_plotDiff_multi(
@@ -533,12 +548,13 @@ plotView <- function(
                 usePlotly = FALSE
             )
         }
-        
+
         for(j in seq_len(length(plotRanges))) {
-            covTrack[[j]] <- list()
-            if(!is.null(tmpDiff)) diffTrack[[j]] <- list()
-            
             range_gr <- plotRanges[j]
+            okCoords <- .pV_getAllowedCoords(
+                start(range_gr), end(range_gr),
+                reservedCoords, resolution
+            )
             if(args[["reverseGenomeCoords"]]) {
                 plotViewStart <- end(range_gr)
                 plotViewEnd <- start(range_gr)
@@ -547,6 +563,7 @@ plotView <- function(
                 plotViewEnd <- end(range_gr)            
             }
             
+            covTrack[[j]] <- list()
             dfJnSum_list <- list()
             if(plotJunctions) {
                 dtJn_all <- as.data.table(tmpCovJuncAnno)
@@ -574,10 +591,10 @@ plotView <- function(
             }
             dfJnSum_all <- rbindlist(dfJnSum_list)
             
-            for(i in seq_len(length(tmpCov))) {
+            for(i in seq_len(length(tmpCovPlot))) {
                 curTrack <- names(args[["trackList"]])[i]
                 covTrack[[j]][[i]] <- tmpCovPlot[[i]]
-                if(nrow(tmpCovJuncAnno) > 0) {
+                if(nrow(dfJnSum_all) > 0) {
                     tmpCovSubset <- dfJnSum_all[get("covTrack") == curTrack]
                     if(nrow(tmpCovSubset) > 0) {
                         covTrack[[j]][[i]] <- covTrack[[j]][[i]] +
@@ -591,6 +608,11 @@ plotView <- function(
                             )
                     }
                 }
+                if(!is.null(okCoords)) {
+                    covTrack[[j]][[i]]$data <- covTrack[[j]][[i]]$data[
+                        covTrack[[j]][[i]]$data$x %in% okCoords,]
+                }
+
                 covTrack[[j]][[i]] <- covTrack[[j]][[i]] +
                     coord_cartesian(
                     xlim = c(plotViewStart, plotViewEnd),
@@ -599,7 +621,13 @@ plotView <- function(
             }
             
             if(!is.null(tmpDiff)) {
+                diffTrack[[j]] <- list()
                 for(i in seq_len(length(tmpDiff))) {
+
+                    if(!is.null(okCoords)) {
+                        diffTrack[[j]][[i]]$data <- diffTrack[[j]][[i]]$data[
+                            diffTrack[[j]][[i]]$data$x %in% okCoords,]
+                    }
                     diffTrack[[j]][[i]] <- diffTrack[[j]][[i]] +
                         coord_cartesian(
                         xlim = c(plotViewStart, plotViewEnd),
@@ -612,22 +640,24 @@ plotView <- function(
     
     # bench <- system.time({
     
-        DTlist <- .pV_filterTranscripts(
-            x, args,
-            filterByTranscripts = filterByTranscripts,
-            filterByEventTranscripts = filterByEventTranscripts,
-            filterByExpressedTranscripts = filterByExpressedTranscripts,
-            aggJuncCoords = aggJuncCoords
-        )
-        DTplotlist <- .gCD_stack_anno(
-            DTlist,
-            start(fetchRange), end(fetchRange),
-            reverseGenomeCoords = args[["reverseGenomeCoords"]],
-            condensed = condenseTranscripts
-        )
-        DTplotlist[["exonRanges"]] <- plotRanges
-
-        if(plotAnnoSubTrack && length(plotRanges) > 1) {
+    DTlist <- .pV_filterTranscripts(
+        x, args,
+        filterByTranscripts = filterByTranscripts,
+        filterByEventTranscripts = filterByEventTranscripts,
+        filterByExpressedTranscripts = filterByExpressedTranscripts,
+        aggJuncCoords = aggJuncCoords
+    )
+    DTplotlist <- .gCD_stack_anno(
+        DTlist,
+        start(fetchRange), end(fetchRange),
+        reverseGenomeCoords = args[["reverseGenomeCoords"]],
+        condensed = condenseTranscripts
+    )
+    DTplotlist[["exonRanges"]] <- plotRanges
+    
+    exons_gr <- GRanges()
+    if(length(plotRanges) > 1) {
+        if(plotAnnoSubTrack) {
             for(j in seq_len(length(plotRanges))) {
                 range_gr <- plotRanges[j]
                 
@@ -638,9 +668,47 @@ plotView <- function(
                     usePlotly = usePlotly
                 )
             }
+            if(plotAnnotations) {
+                annoFullTrack[[1]] <- .gCD_plotRef(
+                    DTplotlist, fullRange,
+                    showPlotRanges = plotRanges,
+                    reverseGenomeCoords = args[["reverseGenomeCoords"]],
+                    add_information = TRUE,
+                    usePlotly = usePlotly
+                )
+            }
+        } else if(plotAnnotations) {
+            annoFullTrack[[1]] <- .gCD_plotRef(
+                DTplotlist, fullRange,
+                reverseGenomeCoords = args[["reverseGenomeCoords"]],
+                add_information = TRUE,
+                usePlotly = usePlotly
+            )
         }
-        
+    } else {
+        # Annotate and highlight exon regions
+        transcripts <- copy(DTlist$transcripts.DT)
+        reduced <- copy(DTplotlist$reduced.DT)
+        reduced <- reduced[!is.na(reduced$plot_level)]
+        exonsOnly <- reduced[get("type") == "exon"]
+        exonsOnly$transcript_name <- transcripts$transcript_name[match(
+            exonsOnly$transcript_id, transcripts$transcript_id)]
+        exonsOnly[, c("exon_name") := paste0(
+            get("transcript_name"), "-E", get("aux_id")
+        )]
+        exonsOnly[, c("feature_id") := NULL]
+
+        exons_gr <- .grDT(exonsOnly, keep.extra.columns = TRUE)
+        names(exons_gr) <- exons_gr$exon_name
+
+        if(!plotAnnotations & showExonRanges) showExonRanges <- FALSE
         if(plotAnnotations) {
+            exonFullTrack[[1]] <- .gCD_plotExons(
+                DTplotlist, fullRange, exons_gr,
+                reverseGenomeCoords = args[["reverseGenomeCoords"]],
+                add_information = TRUE,
+                usePlotly = usePlotly
+            )
             annoFullTrack[[1]] <- .gCD_plotRef(
                 DTplotlist, fullRange, 
                 reverseGenomeCoords = args[["reverseGenomeCoords"]],
@@ -648,7 +716,8 @@ plotView <- function(
                 usePlotly = usePlotly
             )
         }
-
+    }
+    
     # })
     # message("Annotation data generation time:")
     # print(bench)
@@ -695,7 +764,8 @@ plotView <- function(
             covTrack = covTrack,
             diffTrack = diffTrack,
             annoSubTrack = annoSubTrack,
-            annoFullTrack = annoFullTrack
+            annoFullTrack = annoFullTrack,
+            exonFullTrack = exonFullTrack
         ))
     }
     
@@ -707,6 +777,7 @@ plotView <- function(
                 p@covTrack <- covTrack
                 p@diffTrack <- diffTrack
                 p@annoTrack <- annoFullTrack
+                p@exonTrack <- exonFullTrack
             } else {
                 p <- covPlotly(
                     covTrack = covTrack,
@@ -717,6 +788,7 @@ plotView <- function(
 
             p@args[["resolution"]] <- resolution
             p@args[["reservedCoords"]] <- reservedCoords
+            p@args[["exonRanges"]] <- exons_gr
 
             p <- .pV_assemble_covPlotly2(p, originalVerticalLayout)
 
@@ -726,11 +798,23 @@ plotView <- function(
                     range = c(plotViewStart, plotViewEnd)
                 )
             )
-        } else {
-            p <- .pV_assemble_ggplot(
-                covTrack, diffTrack, annoSubTrack, annoFullTrack,
-                    verticalLayout, horizontalLayout
-            )
+            
+            return(p)
+        } else {            
+            if(showExonRanges) {
+                p <- .pV_assemble_ggplot(
+                    covTrack, diffTrack, annoSubTrack, exonFullTrack,
+                        verticalLayout, horizontalLayout
+                )
+                show(p)
+                return(exons_gr)
+            } else {
+                p <- .pV_assemble_ggplot(
+                    covTrack, diffTrack, annoSubTrack, annoFullTrack,
+                        verticalLayout, horizontalLayout
+                )
+                return(p)
+            }
         }
         
     # })
@@ -740,6 +824,22 @@ plotView <- function(
 }
 
 ################################################################################
+
+.pV_getAllowedCoords <- function(
+        viewStart, viewEnd, reservedCoords, resolution
+) {
+    rC <- reservedCoords[reservedCoords %in% seq(viewStart, viewEnd)]
+    okCoords <- NULL
+    if(resolution > 0 & !is.null(rC)) {
+        okCoords <- round(seq(
+            from = min(viewStart, viewEnd),
+            to = max(viewStart, viewEnd),
+            length.out = max(2, resolution - length(rC))
+        ))
+        okCoords <- sort(unique(c(okCoords, rC)))
+    }
+    return(okCoords)
+}
 
 .pV_getEventCoords <- function(
     x, args,
@@ -940,9 +1040,7 @@ plotView <- function(
     plotJunctions = TRUE,
     junctionThreshold = 0.01,
     usePlotly = FALSE,
-    use_DT = FALSE,
-    reservedCoords = NULL,
-    resolution = 0
+    use_DT = FALSE
 ) {
     plotMeanCov <- FALSE
     if("condition" %in% names(args)) plotMeanCov <- TRUE
@@ -977,16 +1075,6 @@ plotView <- function(
         start(range_gr) - width(range_gr))
     end(fetch_gr) <- min(args[["limit_end"]],
         end(range_gr) + width(range_gr))  
-
-    okCoords <- NULL
-    if(resolution > 0 & !is.null(reservedCoords)) {
-        okCoords <- round(seq(
-            from = start(fetch_gr),
-            to = end(fetch_gr),
-            length.out = resolution - length(reservedCoords)
-        ))
-        okCoords <- sort(unique(c(okCoords, reservedCoords)))
-    }
 
     DT_list <- list()
     DTJn_list <- list()
@@ -1057,7 +1145,6 @@ plotView <- function(
     
     df_all <- rbindlist(DT_list)
     dfJn_all <- rbindlist(DTJn_list)
-    if(!is.null(okCoords)) df_all <- df_all[get("x") %in% okCoords]
 
     if(!use_DT) {
         df_all <- as.data.frame(df_all)
@@ -1286,23 +1373,27 @@ plotView <- function(
         
         # plot junctions
         if(plotJunctions) {
+            dfJn <- dfJn_all[dfJn_all$covTrack == covTrack,]
             p <- p +
                 geom_line(
-                    data = dfJn_all, 
+                    data = dfJn, 
                     aes(x = get("x"), y = get("yarc"), group = get("info")), 
                     color = "darkred"
-                ) # +
-                # geom_text(
-                    # data = dfJnSum_all, 
-                    # aes(
-                        # x = get("xlabel"), y = get("ylabel"), label = get("value")
-                    # )
-                # )
+                )
         }
 
-        p <- p + theme_white_legend +
-            theme(axis.title.x = element_blank()) +
-            labs(x = "", y = covTrack)
+        if(nGroups > 1) {
+            p <- p + theme_white_legend +
+                theme(
+                    axis.title.x = element_blank(),
+                    legend.title = element_blank()
+                ) +
+                labs(x = "", y = covTrack)        
+        } else {
+            p <- p + theme_white +
+                theme(axis.title.x = element_blank()) +
+                labs(x = "", y = covTrack)                
+        }
             
         plotList[[i]] <- p
     }
@@ -1521,7 +1612,7 @@ plotView <- function(
 ################################################################################
 
 .gCD_plotRef <- function(
-    DTplotlist, view_gr, 
+    DTplotlist, view_gr, showPlotRanges = GRanges(),
     reverseGenomeCoords = FALSE,
     add_information = TRUE,
     usePlotly = FALSE,
@@ -1615,7 +1706,8 @@ plotView <- function(
         p <- .pV_seed_ggplot_annoTrack(
             plotViewStart, plotViewEnd, view_chr,
             reducedIntronsExpanded, nonIntrons,
-            group.DT, condense_this, add_information
+            group.DT, condense_this, add_information,
+            showPlotRanges
         )
     } else if(instantPlotly) {
         p <- .pV_seed_plotly_annoTrack(
@@ -1628,6 +1720,43 @@ plotView <- function(
             plotViewStart, plotViewEnd, view_chr,
             reducedIntrons, nonIntrons,
             group.DT, condense_this, add_information
+        )
+    }
+    return(p)
+}
+
+.gCD_plotExons <- function(
+    DTplotlist, view_gr, exons_gr,
+    reverseGenomeCoords = FALSE,
+    add_information = TRUE,
+    usePlotly = FALSE,
+    instantPlotly = FALSE
+) {
+    view_chr <- as.character(seqnames(view_gr))
+    view_start <- start(view_gr)
+    view_end <- end(view_gr)
+
+    exons <- as.data.frame(exons_gr)
+
+    if(!reverseGenomeCoords) {
+        plotViewStart <- view_start
+        plotViewEnd <- view_end
+    } else {
+        plotViewStart <- view_end
+        plotViewEnd <- view_start     
+    }
+
+    if(!usePlotly) {
+        p <- .pV_seed_ggplot_HLexons(
+            plotViewStart, plotViewEnd, view_chr, exons
+        )
+    } else if(instantPlotly) {
+        p <- .pV_seed_plotly_HLexons(
+            plotViewStart, plotViewEnd, view_chr, exons
+        )
+    } else  {
+        p <- .pV_seed_fastplotly2_HLexons(
+            plotViewStart, plotViewEnd, view_chr, exons
         )
     }
     return(p)
@@ -1651,13 +1780,15 @@ plotView <- function(
 
 .pV_seed_ggplot_annoTrack <- function(
     plotViewStart, plotViewEnd, view_chr,
-    introns, exons, group.DT, condense_this, add_information
+    introns, exons, group.DT, condense_this, add_information,
+    showPlotRanges
 ) {
     col_highlights <- sort(unique(introns$highlight))
-    fill_highlights <- sort(unique(introns$highlight))
+    fill_highlights <- sort(unique(exons$highlight))
     col_highlights <- .pV_highlight_to_colors(col_highlights)
     fill_highlights <- .pV_highlight_to_colors(fill_highlights)
 
+    anno <- NULL
     if(add_information) {
         if (condense_this == TRUE) {
             anno <- data.frame(
@@ -1701,6 +1832,24 @@ plotView <- function(
             )
         )
     }
+    if(length(showPlotRanges) > 0) {
+        ref_ymin <- min(layer_scales(p)$y$range$range)
+        ref_ymax <- max(layer_scales(p)$y$range$range)
+
+        dfRanges <- as.data.frame(showPlotRanges)
+        dfRanges$rangeName <- as.character(seq_len(length(showPlotRanges)))
+
+        p <- p + geom_rect(data = dfRanges,
+            mapping = aes(xmin = get("start"), xmax = get("end"),
+                ymin = ref_ymin - 0.5, ymax = ref_ymax + 0.5
+            ), fill = NA, color = "red"
+        ) + geom_text(data = dfRanges,
+            aes(
+                x = 0.5 * (get("start") + get("end")),
+                y = ref_ymin - 1, label = get("rangeName")
+            )
+        )
+    }
 
     p <- p + 
         scale_color_manual(values = col_highlights) +
@@ -1735,11 +1884,72 @@ plotView <- function(
     return(p)
 }
 
+.pV_seed_ggplot_HLexons <- function(
+    plotViewStart, plotViewEnd, view_chr, exons
+) {
+    fill_highlights <- sort(unique(exons$highlight))
+    fill_highlights <- .pV_highlight_to_colors(fill_highlights)
+
+    if (nrow(exons) == 0) {
+        max_plot_level <- 1
+    } else {
+        max_plot_level <- max(exons$plot_level)
+    }
+    
+    p <- ggplot()
+
+    if(nrow(exons) > 0) {
+        p <- p + geom_rect(data = exons,
+            aes(xmin = get("start"), xmax = get("end"),
+                ymin = get("plot_level") - 0.1 -
+                    ifelse(get("type") %in%
+                        c("CDS", "start_codon", "stop_codon"), 0.1, 0),
+                ymax = get("plot_level") + 0.1 +
+                    ifelse(get("type") %in%
+                        c("CDS", "start_codon", "stop_codon"), 0.1, 0),
+                fill = get("highlight")
+            )
+        ) + geom_text(
+            data = exons,
+            aes(
+                x = 0.5 * (get("start") + get("end")), 
+                y = get("plot_level") - 0.4, 
+                label = get("exon_name")
+            )# ,
+            # hjust=1, angle=45
+        )
+    }
+
+    p <- p + 
+        scale_fill_manual(values = fill_highlights)    
+    
+    p <- p + theme_white_legend_plot_track +
+        theme(
+            axis.text.y = element_blank(), 
+            axis.title.y = element_blank(),
+            legend.title = element_blank()
+        )
+
+    p <- p + theme(legend.position = "none") +
+        labs(x = paste("Chromosome", view_chr))
+
+    ref_ymin <- min(layer_scales(p)$y$range$range)
+    ref_ymax <- max(layer_scales(p)$y$range$range)
+    p <- p + 
+        scale_x_continuous(labels = label_number(scale_cut = cut_si(""))) +
+        coord_cartesian(
+            xlim = c(plotViewStart, plotViewEnd),
+            ylim = c(ref_ymin - 1, ref_ymax + 1),
+            expand = FALSE
+        )
+    
+    return(p)
+}
+
 .pV_seed_plotly_annoTrack <- function(
     plotViewStart, plotViewEnd, view_chr,
     introns, exons, group.DT, condense_this, add_information
 ) {
-    
     col_highlights <- sort(unique(introns$highlight))
     fill_highlights <- sort(unique(exons$highlight))
     col_colors <- .pV_highlight_to_colors(col_highlights)
@@ -1868,6 +2078,86 @@ plotView <- function(
     return(fig)
 }
 
+.pV_seed_plotly_HLexons <- function(
+    plotViewStart, plotViewEnd, view_chr, exons
+) {    
+    fill_highlights <- sort(unique(exons$highlight))
+    fill_colors <- .pV_highlight_to_colors(fill_highlights)
+
+    if (nrow(exons) == 0) {
+        max_plot_level <- 1
+    } else {
+        max_plot_level <- max(exons$plot_level)
+    }
+    
+    fig <- plot_ly()
+
+    if(nrow(exons) > 0) {
+        exons$ymin <- exons$plot_level - 0.15
+        exons$ymax <- exons$plot_level + 0.15
+        exons$xdisp <- 0.5 * (exons$start + exons$end)
+        exons$ydisp <- exons$plot_level - 0.4       
+        
+        exons_instr <- .plotly_makeRectData(
+            exons$start, exons$end,
+            exons$ymin, exons$ymax,
+            exons$exon_name,
+            exons$highlight,
+            resolution = 10
+        )        
+
+        for(i in seq_len(length(fill_highlights))) {
+            rects <- exons_instr[
+                exons_instr$colorInfo == fill_highlights[i],
+            ]
+
+            fig <- fig %>% add_trace(
+                    data = rects,
+                    x = as.formula("~x"),
+                    y = as.formula("~y"),
+                    text = as.formula("~text"),
+                    type = 'scatter', mode = 'lines',
+                    hoveron = "points+fills", hoverinfo = 'text',
+                    line = list(
+                        color = "transparent"
+                    ),
+                    fill = "toself",
+                    fillcolor = fill_colors[i],
+                    
+                    showlegend = FALSE
+                )
+
+            fig <- fig %>% add_trace(
+                data = exons,
+                x = as.formula("~xdisp"),
+                y = as.formula("~ydisp"),
+                text = as.formula("~exon_name"),
+                hoverinfo = 'text',
+                type = 'scatter', mode = 'text',
+                textposition = 'middle',
+                showlegend = FALSE
+            )
+        }
+    }
+    
+    xtitle <- paste("Chromosome/Scaffold", view_chr)
+
+    fig <- fig %>% layout(
+        dragmode = "pan",
+        xaxis = list(
+            range = c(plotViewStart, plotViewEnd),
+            title = xtitle
+        ),
+        yaxis = list(
+            title = "",
+            range = c(0, 1 + max_plot_level),
+            fixedrange = TRUE
+        )
+    )
+
+    return(fig)
+}
+
 .pV_seed_fastplotly2_annoTrack <- function(
     plotViewStart, plotViewEnd, view_chr,
     introns, exons, group.DT, condense_this, add_information
@@ -1894,6 +2184,10 @@ plotView <- function(
                     x = data_df$x, y = data_df$y, text = data_df$text
                 )
             }
+        }
+    } else {
+        for(i in seq_len(length(col_highlights))) {
+            dataList[[i]] <- list()
         }
     }
     
@@ -1926,6 +2220,10 @@ plotView <- function(
                 )
             }
         }
+    } else {
+        for(i in seq_len(length(col_highlights))) {
+            dataList[[i + 4]] <- list()
+        }
     }
 
     if(add_information) {
@@ -1957,6 +2255,77 @@ plotView <- function(
         max_plot_level <- 1
     } else {
         max_plot_level <- max(group.DT$plot_level)
+    }
+    layoutList <- list(
+        xrange = c(plotViewStart, plotViewEnd),
+        xtitle = xtitle,
+        yrange = c(0, 1 + max_plot_level)
+    )
+
+    return(list(
+        dataList = dataList,
+        layoutList = layoutList
+    ))
+}
+
+.pV_seed_fastplotly2_HLexons <- function(
+    plotViewStart, plotViewEnd, view_chr, exons
+) {
+    dataList <- list()
+
+    # x,y axis range, title
+    layoutList <- list()
+       
+    col_highlights <- fill_highlights <- c("0", "1", "2", "3")
+     
+    for(i in seq_len(length(col_highlights))) {
+        dataList[[i]] <- list()
+    }
+    
+    typeThick <- c("CDS", "start_codon", "stop_codon")
+    if(nrow(exons) > 0) {
+        exons$ymin <- exons$plot_level - 0.15
+        exons$ymax <- exons$plot_level + 0.15
+        exons$xdisp <- 0.5 * (exons$start + exons$end)
+        exons$ydisp <- exons$plot_level - 0.4       
+        
+        exons_instr <- .plotly_makeRectData(
+            exons$start, exons$end,
+            exons$ymin, exons$ymax,
+            exons$exon_name,
+            exons$highlight,
+            resolution = 10
+        )
+
+        for(i in seq_len(length(fill_highlights))) {
+            rects <- exons_instr[
+                exons_instr$colorInfo == fill_highlights[i],
+            ]
+
+            if(nrow(rects) > 0) {
+                dataList[[i + 4]] <- .plotly_store_info(
+                    x = rects$x, y = rects$y, text = rects$text
+                )
+            }
+        }
+    } else {
+        for(i in seq_len(length(col_highlights))) {
+            dataList[[i + 4]] <- list()
+        }
+    }
+
+    dataList[[9]] <- list(
+        x = exons$xdisp,
+        y = exons$ydisp,
+        text = exons$exon_name
+    )
+    
+    xtitle <- paste("Chromosome/Scaffold", view_chr)
+
+    if (nrow(exons) == 0) {
+        max_plot_level <- 1
+    } else {
+        max_plot_level <- max(exons$plot_level)
     }
     layoutList <- list(
         xrange = c(plotViewStart, plotViewEnd),
@@ -2735,8 +3104,8 @@ plotView <- function(
     hCount <- length(realHL)
     vCount <- length(realVL)
     
-    bVec <- cumsum(realVL)
-    rVec <- cumsum(realHL)
+    bVec <- seq_len(length(realVL))
+    rVec <- seq_len(length(realHL))
     if(vCount > 1){
         tVec <- c(1, 1 + bVec[-vCount])
     } else {
@@ -2754,7 +3123,7 @@ plotView <- function(
     for(v in seq_len(length(realVL))) {
         if(v == vCount & hasAnnoFT) {
             layout_instr <- c(layout_instr, patchwork::area(
-                t = tVec[v], b = bVec[v], l = 1, r = sum(realHL)
+                t = tVec[v], b = bVec[v], l = 1, r = hCount
             ))
         }
         for(h in seq_len(length(realHL))) {
@@ -2816,7 +3185,11 @@ plotView <- function(
 
     return(
         patchwork::wrap_plots(fullPlotList) +
-            patchwork::plot_layout(design = layout_instr)
+            patchwork::plot_layout(
+                design = layout_instr,
+                widths = realHL,
+                heights = realVL
+            )
     )
 }
 

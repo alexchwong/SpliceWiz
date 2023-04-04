@@ -4,6 +4,7 @@ covPlotly <- function(
         covTrack = list(),
         diffTrack = list(),
         annoTrack = list(),
+        exonTrack = list(),
         vLayout = c(6,1,2)
 ) {
     obj <- new("covPlotly",
@@ -12,6 +13,7 @@ covPlotly <- function(
         covTrack = covTrack,
         diffTrack = diffTrack,
         annoTrack = annoTrack,
+        exonTrack = exonTrack,
         vLayout = vLayout
     )
     obj
@@ -35,12 +37,16 @@ setMethod("show", "covPlotly", function(object) {
             rangeStart <- min(object@args[["xrange"]])
             rangeEnd <- max(object@args[["xrange"]])
             rangeWidth <- rangeEnd - rangeStart
-            okCoords <- round(seq(
-                from = rangeStart - rangeWidth,
-                to = rangeEnd + rangeWidth,
-                length.out = resolution - length(object@args[["reservedCoords"]])
-            ))
-            okCoords <- sort(unique(c(okCoords, object@args[["reservedCoords"]])))
+            # okCoords <- round(seq(
+                # from = rangeStart - rangeWidth,
+                # to = rangeEnd + rangeWidth,
+                # length.out = resolution - length(object@args[["reservedCoords"]])
+            # ))
+            # okCoords <- sort(unique(c(okCoords, object@args[["reservedCoords"]])))
+            okCoords <- .pV_getAllowedCoords(
+                rangeStart - rangeWidth, rangeEnd + rangeWidth,
+                object@args[["reservedCoords"]], resolution
+            )
             
             # cull x-coordinates that are not reserved
             if("covTrackPos" %in% names(object@args)) {
@@ -54,7 +60,7 @@ setMethod("show", "covPlotly", function(object) {
                             y = p$x$data[[curTrack + k]]$y,
                             text = p$x$data[[curTrack + k]]$text
                         )
-                        DT <- DT[get("x") %in% okCoords]
+                        if(!is.null(okCoords)) DT <- DT[get("x") %in% okCoords]
                         p$x$data[[curTrack + k]]$x <- DT$x
                         p$x$data[[curTrack + k]]$y <- DT$y
                         p$x$data[[curTrack + k]]$text <- DT$text
@@ -70,7 +76,7 @@ setMethod("show", "covPlotly", function(object) {
                         y = p$x$data[[curTrack + 1]]$y,
                         text = p$x$data[[curTrack + 1]]$text
                     )
-                    DT <- DT[get("x") %in% okCoords]
+                    if(!is.null(okCoords)) DT <- DT[get("x") %in% okCoords]
                     p$x$data[[curTrack + 1]]$x <- DT$x
                     p$x$data[[curTrack + 1]]$y <- DT$y
                     p$x$data[[curTrack + 1]]$text <- DT$text
@@ -79,6 +85,87 @@ setMethod("show", "covPlotly", function(object) {
         }
 
         show(p)
+    }
+})
+
+#' @export
+setMethod("getExonRanges", "covPlotly", function(object) {
+    return(object@args[["exonRanges"]])
+})
+
+#' @export
+setMethod("showExons", "covPlotly", function(object) {
+    if(length(object@fig) < 1) return(NULL)
+    if(!is(object@fig[[1]], "plotly")) return(NULL)
+    if(length(object@annoTrack) < 1) return(NULL)
+    if(length(object@fig) == 1) {
+        show(object@fig[[1]])
+    } else {
+        # Inject exon ranges
+        p <- object
+
+        p <- injectPlotData(p, p@args[["annoTrackPos"]], 
+            p@exonTrack[[1]][["dataList"]],
+            p@exonTrack[[1]][["layoutList"]][["xtitle"]]
+        )
+
+        fig <- p@fig[[2]]
+        
+        if("resolution" %in% names(p@args)) {
+            resolution <- p@args[["resolution"]]
+        } else {
+            resolution <- 5000
+        }
+        
+        if("xrange" %in% names(p@args)) {
+            rangeStart <- min(p@args[["xrange"]])
+            rangeEnd <- max(p@args[["xrange"]])
+            rangeWidth <- rangeEnd - rangeStart
+            okCoords <- round(seq(
+                from = rangeStart - rangeWidth,
+                to = rangeEnd + rangeWidth,
+                length.out = resolution - length(p@args[["reservedCoords"]])
+            ))
+            okCoords <- sort(unique(c(okCoords, p@args[["reservedCoords"]])))
+            
+            # cull x-coordinates that are not reserved
+            if("covTrackPos" %in% names(p@args)) {
+                for(j in seq_len(length(p@args[["covTrackPos"]]))) {
+                    curTrack <- p@args[["covTrackPos"]][[j]] - 1
+                    nTracks <- p@args[["numCovTraces"]][[j]]
+                    
+                    for(k in seq(3, 2 + nTracks * 2)) {
+                        DT <- data.table(
+                            x = fig$x$data[[curTrack + k]]$x,
+                            y = fig$x$data[[curTrack + k]]$y,
+                            text = fig$x$data[[curTrack + k]]$text
+                        )
+                        DT <- DT[get("x") %in% okCoords]
+                        fig$x$data[[curTrack + k]]$x <- DT$x
+                        fig$x$data[[curTrack + k]]$y <- DT$y
+                        fig$x$data[[curTrack + k]]$text <- DT$text
+                    }
+                }
+            }
+            if("diffTrackPos" %in% names(p@args)) {
+                for(j in seq_len(length(p@args[["diffTrackPos"]]))) {
+                    curTrack <- p@args[["diffTrackPos"]][[j]] - 1
+                    nTracks <- p@args[["numDiffTraces"]][[j]]
+                    DT <- data.table(
+                        x = fig$x$data[[curTrack + 1]]$x,
+                        y = fig$x$data[[curTrack + 1]]$y,
+                        text = fig$x$data[[curTrack + 1]]$text
+                    )
+                    DT <- DT[get("x") %in% okCoords]
+                    fig$x$data[[curTrack + 1]]$x <- DT$x
+                    fig$x$data[[curTrack + 1]]$y <- DT$y
+                    fig$x$data[[curTrack + 1]]$text <- DT$text
+                }
+            }
+  
+            show(fig)
+            return(object@args[["exonRanges"]])
+        }       
     }
 })
 

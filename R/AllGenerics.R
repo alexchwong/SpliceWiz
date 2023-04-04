@@ -137,7 +137,12 @@ setGeneric("condition", signature="x", function(
     ...
 ) standardGeneric("condition"))
 
-setGeneric("getExonRanges", signature="x", function(
-    x, 
+setGeneric("showExons", signature="object", function(
+    object, 
+    ...
+) standardGeneric("showExons"))
+
+setGeneric("getExonRanges", signature="object", function(
+    object, 
     ...
 ) standardGeneric("getExonRanges"))

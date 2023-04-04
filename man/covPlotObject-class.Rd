@@ -32,6 +32,7 @@ plotView(
   normalizeCoverage = FALSE,
   plotAnnotations = TRUE,
   plotAnnoSubTrack = TRUE,
+  showExonRanges = FALSE,
   verticalLayout = c(6, 1, 1, 2),
   horizontalLayout = c(),
   filterByTranscripts = "",
@@ -41,6 +42,7 @@ plotView(
   plotJunctions = TRUE,
   junctionThreshold = 0.01,
   plotRanges = GRanges(),
+  rangesBasesFlanking = 100,
   usePlotly = FALSE,
   ...
 )

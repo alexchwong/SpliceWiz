@@ -351,6 +351,7 @@ setClass("covPlotly",
         covTrack = "list",
         diffTrack = "list",
         annoTrack = "list",
+        exonTrack = "list",
         vLayout = "numeric"
     )
 )

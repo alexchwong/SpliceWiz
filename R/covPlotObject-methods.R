@@ -233,6 +233,9 @@
 #' )
 #' 
 #' @name covPlotObject-class
+#' @aliases
+#' tracks tracks,covPlotObject-method
+#' condition condition,covPlotObject-method
 #' @seealso [getCoverageData] [covPlotly-class]
 #' @md
 NULL
@@ -469,7 +472,7 @@ plotView <- function(
     view_start,
     view_end,
     
-    debug = FALSE,
+    # debug = FALSE,
     
     oldP = covPlotly(),
     
@@ -935,16 +938,16 @@ plotView <- function(
         plotViewEnd <- start(fullRange)
     }
 
-    if(debug) {
-        return(list(
-            plotViewStart = plotViewStart, plotViewEnd = plotViewEnd,
-            covTrack = covTrack,
-            diffTrack = diffTrack,
-            annoSubTrack = annoSubTrack,
-            annoFullTrack = annoFullTrack,
-            exonFullTrack = exonFullTrack
-        ))
-    }
+    # if(debug) {
+        # return(list(
+            # plotViewStart = plotViewStart, plotViewEnd = plotViewEnd,
+            # covTrack = covTrack,
+            # diffTrack = diffTrack,
+            # annoSubTrack = annoSubTrack,
+            # annoFullTrack = annoFullTrack,
+            # exonFullTrack = exonFullTrack
+        # ))
+    # }
     
     # bench <- system.time({
     

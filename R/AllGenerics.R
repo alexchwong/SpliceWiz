@@ -124,6 +124,13 @@ setGeneric("junc_counts_uns<-",
 setGeneric("junc_gr<-",
     function(x, withDimnames=TRUE, ..., value) standardGeneric("junc_gr<-"))
     
+
+# covDataObject specific functions:
+
+setGeneric("showEvents", signature="object", function(
+    object, 
+    ...
+) standardGeneric("showEvents"))
     
 # covPlotObject specific functions:
 

@@ -1,8 +1,8 @@
 #' Container for plotly-based coverage plots
 #'
+#' @param object A covPlotly object
 #' @name covPlotly-class
 #' @aliases
-#' show show,covPlotly-method
 #' getExonRanges getExonRanges,covPlotly-method
 #' setResolution setResolution,covPlotly-method
 #' showExons showExons,covPlotly-method
@@ -30,8 +30,6 @@ covPlotly <- function(
     obj
 }
 
-#' @describeIn covPlotly-class Displays the generated plotly object
-#' @export
 setMethod("show", "covPlotly", function(object) {
     if(length(object@fig) < 1) return(NULL)
     if(!is(object@fig[[1]], "plotly")) return(NULL)

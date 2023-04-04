@@ -33,13 +33,6 @@
 #' @param condition To display normalised coverage per condition, set this to
 #'   the condition category. If omitted, `tracks` are assumed to refer to the
 #'   names of individual samples.
-#' @param norm_event Whether to normalise by an event different to that given
-#'   in "Event". The difference between this and Event is that the genomic
-#'   coordinates can be centered around a different `Event`, `Gene` or region
-#'   as given in `seqname/start/end`. If `norm_event` is different to
-#'   `Event`, `norm_event` will be used for normalisation and `Event` will be
-#'   used to define the genomic coordinates of the viewing window. `norm_event`
-#'   is required if `Event` is not set and `condition` is set.
 #' @param bases_flanking (Default = `100`) How many bases flanking the zoomed
 #'    window. Useful when
 #'    used in conjunction with zoom_factor == 0. E.g. for a given region of
@@ -121,6 +114,15 @@ covDataObject <- function(
     )
     newCovObj
 }
+
+#' @describeIn covDataObject-class Returns the EventNames for which events can
+#'   be normalized using the given covDataObject 
+#' @export
+setMethod("showEvents", c(x = "covDataObject"), function(
+    x
+) {
+    return(x@normData$rowData$EventName)
+})
 
 #' @describeIn covDataObject-class Get coverage / genome data for plotting
 #' coverage plots

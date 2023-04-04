@@ -38,7 +38,7 @@
 #'    used in conjunction with zoom_factor == 0. E.g. for a given region of
 #'    chr1:10000-11000, if `zoom_factor = 0` and `bases_flanking = 100`, the
 #'    region chr1:9900-11100 will be displayed.
-#' @param obj For `plotAnnoTrack()`, the `covDataObject` created by
+#' @param object For `plotAnnoTrack()`, the `covDataObject` created by
 #'    `getCoverageData()` or `getGenomeData()`
 #' @param view_start,view_end Start and end coordinates of plotting function.
 #'    Note that plot coordinates may be different from retrieval coordinates
@@ -71,6 +71,11 @@
 #'     tracks = colnames(se)
 #' )
 #'
+#' # Show `EventName`s of supported splicing events 
+#' # contained within covDataObject
+#'
+#' showEvents(dataObj)
+#'
 #' # A limited covDataObject containing only the reference can be generated
 #' # from the SpliceWiz reference
 #'
@@ -93,6 +98,8 @@
 #' plotAnnoTrack(dataObj, Event = "SE:SRSF3-203-exon4;SRSF3-202-int3") 
 #'
 #' @name covDataObject-class
+#' @aliases
+#' showEvents showEvents,covDataObject-method
 #' @seealso [covPlotObject-class]
 #' @md
 NULL

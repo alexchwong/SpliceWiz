@@ -163,8 +163,6 @@ each of \code{plotRanges}}
 plotly-based interactive plot. If \code{FALSE}, returns a ggplot object.}
 
 \item{...}{Not currently used}
-
-\item{x}{For \code{plotView()}, a \code{covPlotObject} created using \code{getPlotObject()}}
 }
 \value{
 For \code{getPlotObject()}: A \code{covPlotObject} object containing Event-based

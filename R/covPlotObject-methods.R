@@ -55,7 +55,8 @@
 #'   the `plotRanges` parameter as a GRanges object. This will generate a static
 #'   plot showing coverage plots segmented by exons.
 #' 
-#' @param object For `getPlotObject()`, a `covDataObject` created using 
+#' @param object 
+#'   For `getPlotObject()`, a `covDataObject` created using 
 #'   `getCoverageData`. For `plotView()`, a `covPlotObject` created using
 #'   `getPlotObject()`.
 #' @param Event The EventName of the alternative splicing event
@@ -64,7 +65,6 @@
 #'   `"-"`, or `"*"` (unstranded - default)
 #' @param tracks Sample names or condition categories
 #' @param condition For condition-based group plots, the name of the condition.
-#' @param x For `plotView()`, a `covPlotObject` created using `getPlotObject()`
 #' @param view_start,view_end The start and end coordinates for plotting
 #' @param oldP (Optional) If plotting the same tracks and track-widths,
 #'   supplying the old `covPlotly` object (returned from a previous call to

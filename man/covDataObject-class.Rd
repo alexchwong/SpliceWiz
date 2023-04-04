@@ -3,6 +3,7 @@
 %   R/covPlotObject-methods.R
 \name{covDataObject-class}
 \alias{covDataObject-class}
+\alias{showEvents}
 \alias{showEvents,covDataObject-method}
 \alias{getCoverageData}
 \alias{getGenomeData}
@@ -51,6 +52,9 @@ plotAnnoTrack(
 )
 }
 \arguments{
+\item{object}{For \code{plotAnnoTrack()}, the \code{covDataObject} created by
+\code{getCoverageData()} or \code{getGenomeData()}}
+
 \item{se}{A \linkS4class{NxtSE} object, created by \link{makeSE}.
 COV files must be linked to the NxtSE object. To do this, see the example
 in \link{makeSE}. Required by \code{plotCoverage}. Not required by \code{plotGenome} if
@@ -118,9 +122,6 @@ ID's to be displayed on the annotation track.}
 
 \item{plot_key_isoforms}{(default \code{FALSE}) If \code{TRUE}, plots only transcripts
 involved in the given splicing \code{Event}.}
-
-\item{obj}{For \code{plotAnnoTrack()}, the \code{covDataObject} created by
-\code{getCoverageData()} or \code{getGenomeData()}}
 }
 \value{
 For getCoverageData(): A covDataObject containing required data used to
@@ -157,6 +158,11 @@ dataObj <- getCoverageData(
     Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
     tracks = colnames(se)
 )
+
+# Show `EventName`s of supported splicing events 
+# contained within covDataObject
+
+showEvents(dataObj)
 
 # A limited covDataObject containing only the reference can be generated
 # from the SpliceWiz reference

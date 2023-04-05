@@ -537,13 +537,6 @@ server_cov2 <- function(
             if(length(trackList) == 0) refreshPlotly <- FALSE
 
             if(refreshPlotly) {
-                if(
-                        is(settings_Cov$plotlyFig, "plotly") &&
-                        settings_Cov$plotlyFig$x$source == "plotly_ViewRef"
-                ) {
-                    event_unregister(settings_Cov$plotlyFig, event = "plotly_relayout")
-                    settings_Cov$plotlyFig$x$source <- "plotly_oldPlot"
-                }
                 plotlyObj <- plotView(
                     plotObj, oldP = isolate(settings_Cov$plotlyObj),
                     view_start = tmpStart, view_end = tmpEnd,
@@ -565,32 +558,23 @@ server_cov2 <- function(
 
             req(is(plotlyObj, "covPlotly"))
             settings_Cov$plotlyObj <- plotlyObj
-
             fig <- .covPlotlyMake(plotlyObj)
             req(fig)
             
-            fig$x$source <- "plotly_ViewRef"
-            if(packageVersion("plotly") >= "4.9.0") {
-                event_register(fig, "plotly_relayout")
-            }
-            
-            settings_Cov$plotlyFig <- fig
-        })
-        
-        observe({
             output$plot_cov <- renderPlotly({
-                req("x" %in% names(settings_Cov$plotlyFig))
-                req("data" %in% names(settings_Cov$plotlyFig$x))
-                settings_Cov$plot_ini <- TRUE
-                settings_Cov$plotlyFig
-            })        
+                req(fig)
+                
+                fig$x$source <- "plotly_ViewRef"
+                if(packageVersion("plotly") >= "4.9.0") {
+                    event_register(fig, "plotly_relayout")
+                }
+                print(fig)
+            })
         })
         
         # Allow update locale on zoom / pan
         settings_Cov$plotly_relayout <- reactive({
-            req(settings_Cov$plot_ini == TRUE)
-            req(is(settings_Cov$plotlyFig, "plotly"))
-            req(settings_Cov$plotlyFig$x$source == "plotly_ViewRef")
+            req(length(newSettings) > 0)
             event_data("plotly_relayout", source = "plotly_ViewRef")
         })
         observeEvent(settings_Cov$plotly_relayout(), {

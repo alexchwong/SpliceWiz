@@ -34,7 +34,7 @@ plotView(
   plotAnnotations = TRUE,
   plotAnnoSubTrack = TRUE,
   showExonRanges = FALSE,
-  verticalLayout = c(6, 1, 1, 2),
+  verticalLayout = c(4, 1, 1, 2),
   horizontalLayout = c(),
   filterByTranscripts = "",
   filterByEventTranscripts = FALSE,
@@ -119,7 +119,7 @@ the exon ranges}
 \item{verticalLayout}{A vector (of length 4) containing relative heights of
 the following elements: (1) main block of coverage tracks, (2) differential
 track, (3) annotation sub-track, and (4) main annotation track. Default
-\code{c(6,1,1,2)}}
+\code{c(4,1,1,2)}}
 
 \item{horizontalLayout}{A vector containing relative widths of coverage
 tracks. Only used alongside \code{plotRanges} with more than 1 range to plot.

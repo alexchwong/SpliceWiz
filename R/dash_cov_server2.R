@@ -590,6 +590,7 @@ server_cov2 <- function(
         settings_Cov$plotly_relayout <- reactive({
             req(settings_Cov$plot_ini == TRUE)
             req(is(settings_Cov$plotlyFig, "plotly"))
+            req(settings_Cov$plotlyFig$x$source == "plotly_ViewRef")
             event_data("plotly_relayout", source = "plotly_ViewRef")
         })
         observeEvent(settings_Cov$plotly_relayout(), {

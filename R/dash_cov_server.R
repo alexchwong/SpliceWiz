@@ -300,8 +300,8 @@ server_cov <- function(
             seqInfo <- get_ref()$seqInfo[chr_rd()]
             seqmax <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
             req(seqmax > 50)
-            .server_cov_change_start_end(input, session, output, seqmax)
-            # settings_Cov$trigger <- runif(1)
+            output <- .server_cov_change_start_end()
+                input, session, output, seqmax)
         })
         observeEvent(list(start_rd(), end_rd()), {
             req(input$chr_cov, input$chr_cov %in% names(get_ref()$seqInfo))

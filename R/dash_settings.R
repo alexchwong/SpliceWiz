@@ -159,3 +159,36 @@ setreactive_Cov <- function() {
         plot_params = NULL
     )
 }
+
+# Settings for Coverage plots (NEW)
+setreactive_Cov2 <- function() {
+    reactiveValues(
+        geneList = NULL,
+        useDE = NULL,
+        
+        trackTable = data.frame(),
+        
+        dataObj = covDataObject(),
+        plotObj = covPlotObject(),
+        covPlotlyObj = covPlotly(),
+
+        view_chr = "",
+        view_start = "",
+        view_end = "",
+        data_start = 0,
+        data_end = 0,
+
+        view_strand = "*",
+
+        event.ranges = NULL,
+
+        plotly_relayout = NULL,
+        plot_ini = FALSE,
+        
+        localeTrigger = NULL,
+        optionsTrigger = NULL,
+        tracksTrigger = NULL,
+        
+        plot_params = NULL
+    )
+}

@@ -537,6 +537,8 @@ server_cov2 <- function(
             if(length(trackList) == 0) refreshPlotly <- FALSE
 
             if(refreshPlotly) {
+                # remove old plot
+                output$plot_cov <- renderPlotly({plot_ly()})
                 plotlyObj <- plotView(
                     plotObj, oldP = isolate(settings_Cov$plotlyObj),
                     view_start = tmpStart, view_end = tmpEnd,

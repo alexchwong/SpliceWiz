@@ -38,7 +38,7 @@ ui_GO <- function(id) {
             ),
             shinyWidgets::radioGroupButtons(ns("direction_GO"), 
                 label = "Regulation direction", justified = FALSE,
-                choices = c("Up", "Down", "Both"), 
+                choices = c("Up+Down", "Up", "Down"), 
                 checkIcon = list(yes = icon("ok", lib = "glyphicon"))
             ),
             selectInput(ns('universe_GO'), 'Background Genes based on', 

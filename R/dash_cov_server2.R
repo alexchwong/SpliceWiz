@@ -538,7 +538,8 @@ server_cov2 <- function(
 
             if(refreshPlotly) {
                 # remove old plot
-                output$plot_cov <- renderPlotly({plot_ly()})
+                # output$plot_cov <- renderPlotly({plot_ly()})
+                settings_Cov$plot_ini <- FALSE
                 plotlyObj <- plotView(
                     plotObj, oldP = isolate(settings_Cov$plotlyObj),
                     view_start = tmpStart, view_end = tmpEnd,
@@ -570,6 +571,7 @@ server_cov2 <- function(
                 if(packageVersion("plotly") >= "4.9.0") {
                     event_register(fig, "plotly_relayout")
                 }
+                settings_Cov$plot_ini <- TRUE
                 print(fig)
             })
         })
@@ -577,6 +579,7 @@ server_cov2 <- function(
         # Allow update locale on zoom / pan
         settings_Cov$plotly_relayout <- reactive({
             req(length(settings_Cov$oldPlotSettings) > 0)
+            req(settings_Cov$plot_ini == TRUE)
             event_data("plotly_relayout", source = "plotly_ViewRef")
         })
         observeEvent(settings_Cov$plotly_relayout(), {

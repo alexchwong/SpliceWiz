@@ -44,6 +44,7 @@
 #' @importFrom plotly plotlyProxy plotlyProxyInvoke renderPlotly subplot 
 #' @importFrom plotly highlight orca toWebGL partial_bundle
 #' @importFrom plotly plot_ly add_trace add_ribbons plotly_build
+#' @importFrom plotly plot_ly event_register event_unregister
 #' @importFrom rhdf5 h5createFile h5createDataset h5delete h5write h5createGroup
 #' @importFrom rtracklayer import export TwoBitFile track
 #' @importFrom S4Vectors mcols mcols<- metadata Rle metadata<- SimpleList 

@@ -537,7 +537,10 @@ server_cov2 <- function(
             if(length(trackList) == 0) refreshPlotly <- FALSE
 
             if(refreshPlotly) {
-                if(is(settings_Cov$plotlyFig, "plotly")) {
+                if(
+                        is(settings_Cov$plotlyFig, "plotly") &&
+                        settings_Cov$plotlyFig$x$source == "plotly_ViewRef"
+                ) {
                     event_unregister(settings_Cov$plotlyFig, event = "plotly_relayout")
                     settings_Cov$plotlyFig$x$source <- "plotly_oldPlot"
                 }
@@ -568,7 +571,7 @@ server_cov2 <- function(
             
             fig$x$source <- "plotly_ViewRef"
             if(packageVersion("plotly") >= "4.9.0") {
-                plotly::event_register(fig, "plotly_relayout")
+                event_register(fig, "plotly_relayout")
             }
             
             settings_Cov$plotlyFig <- fig

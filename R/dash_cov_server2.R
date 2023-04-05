@@ -529,7 +529,7 @@ server_cov2 <- function(
                 plotJunctions = isolate(input$plot_Jn_cov),
                 normalizeCoverage = isolate(input$normalizeCov),
                 filterByEventTranscripts = isolate(input$plot_key_iso),
-                condenseTranscripts = isolate(input$condense_cov),            
+                condenseTranscripts = isolate(input$condense_cov)
             )
             if(!identical(newSettings, settings_Cov$oldPlotSettings)) {
                 refreshPlotly <- TRUE

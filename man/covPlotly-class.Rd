@@ -33,7 +33,10 @@ resolution set by the corresponding parameter. When \code{show()} is called,
 the plotly object with the new coverage resolution will be displayed.
 }
 \description{
-Container for plotly-based coverage plots
+A \code{covPlotly} object is created when \link{plotView} is called using
+a \code{covPlotObject} as input. It stores metadata alongside the plotly object,
+which allows it to be drawn at various resolutions. Smaller resolutions lead
+to faster draws at expense of more jagged plots.
 }
 \section{Functions}{
 \itemize{

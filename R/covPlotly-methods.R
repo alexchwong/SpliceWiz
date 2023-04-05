@@ -1,5 +1,10 @@
 #' Container for plotly-based coverage plots
 #'
+#' A `covPlotly` object is created when [plotView] is called using
+#' a `covPlotObject` as input. It stores metadata alongside the plotly object,
+#' which allows it to be drawn at various resolutions. Smaller resolutions lead
+#' to faster draws at expense of more jagged plots.
+#'
 #' @param object A covPlotly object
 #' @param resolution The number of horizontal "pixels" or data-points to plot.
 #'   This is calculated per sub-plot. Smaller numbers lead to lower resolution

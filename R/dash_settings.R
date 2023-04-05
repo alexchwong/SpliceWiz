@@ -183,6 +183,6 @@ setreactive_Cov2 <- function() {
 
         plotly_relayout = NULL,
         plot_ini = FALSE,
-        
+        oldPlotSettings = list()
     )
 }

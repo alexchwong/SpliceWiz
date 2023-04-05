@@ -521,7 +521,22 @@ server_cov2 <- function(
             trackList <- isolate(tracks_r())
             diffList <- isolate(diff_r())
 
-            if(length(trackList) > 0) {
+            refreshPlotly <- refreshCPO
+            newSettings <- list(
+                view_start = tmpStart, view_end = tmpEnd,
+                trackList = trackList, diffList = diffList,
+                ribbon_mode = isolate(input$plot_ribbon),
+                plotJunctions = isolate(input$plot_Jn_cov),
+                normalizeCoverage = isolate(input$normalizeCov),
+                filterByEventTranscripts = isolate(input$plot_key_iso),
+                condenseTranscripts = isolate(input$condense_cov),            
+            )
+            if(!identical(newSettings, settings_Cov$oldPlotSettings)) {
+                refreshPlotly <- TRUE
+            }
+            if(length(trackList) == 0) refreshPlotly <- FALSE
+
+            if(refreshPlotly) {
                 if(is(settings_Cov$plotlyFig, "plotly")) {
                     event_unregister(settings_Cov$plotlyFig, event = "plotly_relayout")
                     settings_Cov$plotlyFig$x$source <- "plotly_oldPlot"
@@ -539,6 +554,7 @@ server_cov2 <- function(
                     condenseTranscripts = isolate(input$condense_cov),
                     usePlotly = TRUE
                 )
+                settings_Cov$oldPlotSettings <- newSettings
                 # message("covPlotly retrieved")
             } else {
                 plotlyObj <- covPlotly()

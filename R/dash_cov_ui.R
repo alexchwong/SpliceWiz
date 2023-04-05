@@ -199,7 +199,7 @@ ui_cov_new <- function(id) {
                     ),
                     
                     conditionalPanel(ns = ns,
-                        condition = "['By Condition'].indexOf(input.condition_cov) >= 0",
+                        condition = "['(Individual Samples)'].indexOf(input.condition_cov) < 0",
                         selectInput(ns('diff_stat'), 
                             'Differential coverage track', 
                             width = '100%', choices = c("t-test")),                        

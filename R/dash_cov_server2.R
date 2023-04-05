@@ -169,7 +169,7 @@ server_cov2 <- function(
         tracks_rd <- tracks_r %>% debounce(3000)
         
         diff_r <- reactive({
-            if(!is_valid(input$diffA) | is_valid(input$diffB)) {
+            if(!is_valid(input$diffA) | !is_valid(input$diffB)) {
                 return(list())
             }
             return(list(c(input$diffA, input$diffB)))
@@ -286,8 +286,8 @@ server_cov2 <- function(
                 }
                 settings_Cov$trackTable <- df
             } else if(input$condition_cov %in% colnames(colData)) {
-                condOptions <- unique(unname(unlist(
-                    colData[, input$condition_cov])))
+                condOptions <- unique(as.character(unname(unlist(
+                    colData[, input$condition_cov]))))
                 df <- data.frame(
                     sample = condOptions,
                     id = "", stringsAsFactors = FALSE
@@ -592,8 +592,8 @@ server_cov2 <- function(
         })
         observeEvent(settings_Cov$plotly_relayout(), {
             layoutData <- isolate(settings_Cov$plotly_relayout())
-            print(layoutData)
-            req(length(layoutData) == 2)
+            # print(layoutData)
+            # req(length(layoutData) == 2)
             req(all(c("xaxis.range[0]", "xaxis.range[1]") %in% 
                 names(layoutData)))
             

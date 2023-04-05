@@ -110,7 +110,7 @@
 #' @param verticalLayout A vector (of length 4) containing relative heights of 
 #'   the following elements: (1) main block of coverage tracks, (2) differential
 #'   track, (3) annotation sub-track, and (4) main annotation track. Default
-#'   `c(6,1,1,2)`
+#'   `c(4,1,1,2)`
 #' @param horizontalLayout A vector containing relative widths of coverage
 #'   tracks. Only used alongside `plotRanges` with more than 1 range to plot.
 #'   If omitted, `plotView` will attempt to scale widths to the widths of the
@@ -515,7 +515,7 @@ plotView <- function(
     showExonRanges = FALSE,
 
     # Plot layout
-    verticalLayout = c(6,1,1,2),
+    verticalLayout = c(4,1,1,2),
     horizontalLayout = c(),
 
     # filter annotations
@@ -937,7 +937,7 @@ plotView <- function(
         # do nothing
     } else {
         # revert to default
-        verticalLayout <- c(6,1,1,2)
+        verticalLayout <- c(4,1,1,2)
         verticalLayout <- verticalLayout[keepVLayout]
     }
     

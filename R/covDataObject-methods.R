@@ -177,8 +177,8 @@ getCoverageData <- function(
     # Evaluate view_chr, view_start, view_end, and check arguments
     args <- .gCD_validate_args(args)
 
-    print(args[["limit_start"]])
-    print(args[["limit_end"]])
+    # print(args[["limit_start"]])
+    # print(args[["limit_end"]])
     
     # Retrieve colData
     colData <- .gCD_retrieve_colData(args)

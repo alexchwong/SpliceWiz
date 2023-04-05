@@ -177,6 +177,9 @@ getCoverageData <- function(
     # Evaluate view_chr, view_start, view_end, and check arguments
     args <- .gCD_validate_args(args)
 
+    print(args[["limit_start"]])
+    print(args[["limit_end"]])
+    
     # Retrieve colData
     colData <- .gCD_retrieve_colData(args)
     
@@ -469,7 +472,7 @@ getGenomeData <- function(
     limit_start <- view_start - 2 * (view_end - view_start)
     limit_end <- view_end + 2 * (view_end - view_start)
     
-    limit_span <- limit_start - limit_end
+    limit_span <- limit_end - limit_start 
     
     if(limit_span > seqmax - 1) limit_span <- seqmax - 2
     

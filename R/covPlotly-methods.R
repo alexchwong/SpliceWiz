@@ -79,10 +79,16 @@ covPlotly <- function(
 }
 
 setMethod("show", "covPlotly", function(object) {
+    p <- .covPlotlyMake(object)
+    show(p)
+})
+
+.covPlotlyMake <- function(object) {
+    if(!is(object, "covPlotly")) return(NULL)
     if(length(object@fig) < 1) return(NULL)
     if(!is(object@fig[[1]], "plotly")) return(NULL)
     if(length(object@fig) == 1) {
-        show(object@fig[[1]])
+        return(object@fig[[1]])
     } else {
         p <- object@fig[[2]]
         
@@ -138,9 +144,9 @@ setMethod("show", "covPlotly", function(object) {
             }
         }
 
-        show(p)
+        return(p)
     }
-})
+}
 
 #' @describeIn covPlotly-class Returns a named GRanges object containing exon
 #' ranges, without showing the associated plotly object

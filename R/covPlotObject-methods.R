@@ -133,7 +133,8 @@
 #'   is to use the output of the `plotView(..., usePlotly = FALSE)`, which
 #'   returns a named GRanges object, then subset this output by exon name.
 #' @param rangesBasesFlanking (default `100`) How many flanking bases to add to
-#'   each of `plotRanges`
+#'   each of `plotRanges`. Ignored if only 1 range given (or using
+#'   `view_start` and `view_end`)
 #' @param usePlotly If `TRUE`, returns a `covPlotly` object containing the
 #'   plotly-based interactive plot. If `FALSE`, returns a ggplot object.
 #' @param ... Not currently used
@@ -599,18 +600,22 @@ plotView <- function(
         usePlotly <- FALSE
     }
 
-    # Expand plotRanges using rangesBasesFlanking
-    for(i in seq_len(length(plotRanges))) {
-        if(start(plotRanges[i]) - rangesBasesFlanking > args[["limit_start"]]) {
-            start(plotRanges[i]) <- start(plotRanges[i]) - rangesBasesFlanking
-        } else {
-            start(plotRanges[i]) <- args[["limit_start"]]
-        }
-        if(end(plotRanges[i]) - rangesBasesFlanking < args[["limit_end"]]) {
-            end(plotRanges[i]) <- end(plotRanges[i]) + rangesBasesFlanking
-        } else {
-            end(plotRanges[i]) <- args[["limit_end"]]
-        }
+    # Expand plotRanges using rangesBasesFlanking 
+    # - only used if more than 1 range
+    rbf <- rangesBasesFlanking
+    if(length(plotRanges) > 1) {
+        for(i in seq_len(length(plotRanges))) {
+            if(start(plotRanges[i]) - rbf > args[["limit_start"]]) {
+                start(plotRanges[i]) <- start(plotRanges[i]) - rbf
+            } else {
+                start(plotRanges[i]) <- args[["limit_start"]]
+            }
+            if(end(plotRanges[i]) - rbf < args[["limit_end"]]) {
+                end(plotRanges[i]) <- end(plotRanges[i]) + rbf
+            } else {
+                end(plotRanges[i]) <- args[["limit_end"]]
+            }
+        }    
     }
 
     # What is the full range

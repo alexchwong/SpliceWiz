@@ -98,7 +98,7 @@ dash_server <- function(input, output, session) {
     settings_Heat <- server_vis_heatmap("heatmap", refresh_heat, volumes, 
         get_filtered_se_reactive, get_de_reactive, get_go_reactive,
         get_rows_all, get_rows_selected)
-    settings_Cov <- server_cov("cov", refresh_cov, volumes, 
+    settings_Cov <- server_cov2("cov", refresh_cov, volumes, 
         get_filtered_se_reactive, get_de_reactive, get_go_reactive,
         get_rows_all, get_rows_selected)
 

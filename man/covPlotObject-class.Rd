@@ -157,7 +157,8 @@ is to use the output of the \code{plotView(..., usePlotly = FALSE)}, which
 returns a named GRanges object, then subset this output by exon name.}
 
 \item{rangesBasesFlanking}{(default \code{100}) How many flanking bases to add to
-each of \code{plotRanges}}
+each of \code{plotRanges}. Ignored if only 1 range given (or using
+\code{view_start} and \code{view_end})}
 
 \item{usePlotly}{If \code{TRUE}, returns a \code{covPlotly} object containing the
 plotly-based interactive plot. If \code{FALSE}, returns a ggplot object.}

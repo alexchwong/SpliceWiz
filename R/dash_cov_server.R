@@ -175,7 +175,7 @@ server_cov <- function(
                 input$end_cov, tracks, 
                 settings_Cov$plot_params, input
             )
-            print(settings_Cov$plot_params)
+            # print(settings_Cov$plot_params)
         })
         
         observeEvent(settings_Cov$plot_params, {
@@ -300,7 +300,7 @@ server_cov <- function(
             seqInfo <- get_ref()$seqInfo[chr_rd()]
             seqmax <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
             req(seqmax > 50)
-            output <- .server_cov_change_start_end()
+            output <- .server_cov_change_start_end(
                 input, session, output, seqmax)
         })
         observeEvent(list(start_rd(), end_rd()), {

@@ -170,25 +170,19 @@ setreactive_Cov2 <- function() {
         
         dataObj = covDataObject(),
         plotObj = covPlotObject(),
-        covPlotlyObj = covPlotly(),
+        plotlyObj = covPlotly(),
+        plotlyFig = plot_ly(),
 
-        view_chr = "",
-        view_start = "",
-        view_end = "",
-        data_start = 0,
-        data_end = 0,
+        # These are used to trigger plot refresh
+        new_range = IRanges(),
 
-        view_strand = "*",
+        # This is used to trigger plot refresh in absence of locale change
+        trigger = NULL,
 
         event.ranges = NULL,
 
         plotly_relayout = NULL,
         plot_ini = FALSE,
         
-        localeTrigger = NULL,
-        optionsTrigger = NULL,
-        tracksTrigger = NULL,
-        
-        plot_params = NULL
     )
 }

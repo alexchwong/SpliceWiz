@@ -194,12 +194,12 @@ ui_cov_new <- function(id) {
                     # ),
                     selectInput(ns('condition_cov'), 'Condition variable:', 
                         width = '100%', choices = c("(Individual Samples)")),
-                    wellPanel(style = "overflow-y:scroll; max-height: 300px"
+                    wellPanel(style = "overflow-y:scroll; max-height: 300px",
                         rHandsontableOutput(ns("track_table"))
                     ),
                     
                     conditionalPanel(ns = ns,
-                        condition = "['By Condition'].indexOf(input.mode_cov) >= 0",
+                        condition = "['By Condition'].indexOf(input.condition_cov) >= 0",
                         selectInput(ns('diff_stat'), 
                             'Differential coverage track', 
                             width = '100%', choices = c("t-test")),                        
@@ -208,17 +208,30 @@ ui_cov_new <- function(id) {
                         selectInput(ns('diffB'), 'Contrasting category B', 
                             width = '100%', choices = c("(none)")),
                     ),
-
+                    shinyWidgets::prettyRadioButtons(
+                        inputId = ns("plot_ribbon"),
+                        label = "Variance by:", 
+                        choiceNames = c("SD", "SEM", "95% CI", "none"),
+                        choiceValues = c("sd", "sem", "ci", "none"),
+                        inline = TRUE, 
+                        status = "danger",
+                        fill = TRUE
+                    ),
                     shinyWidgets::materialSwitch(
                        inputId = ns("plot_Jn_cov"),
                        label = "Plot Junctions", right = TRUE,
                        value = FALSE, status = "success"
-                    )
+                    ),
+                    shinyWidgets::materialSwitch(
+                       inputId = ns("normalizeCov"),
+                       label = "Normalize Coverage", right = TRUE,
+                       value = FALSE, status = "success"
+                    ),
                     shinyWidgets::materialSwitch(
                        inputId = ns("plot_key_iso"),
                        label = "Display Event Isoforms only", right = TRUE,
                        value = FALSE, status = "success"
-                    )
+                    ),
                     shinyWidgets::materialSwitch(
                        inputId = ns("condense_cov"),
                        label = "Condense Annotation by Gene", right = TRUE,

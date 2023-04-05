@@ -143,7 +143,8 @@ ui_tab_heatmap <- function() {
 
 ui_tab_coverage <- function() {
     tabItem(tabName = "navCoverage",
-        ui_cov("cov")
+        # ui_cov("cov")
+        ui_cov_new("cov")
     )
 }
 

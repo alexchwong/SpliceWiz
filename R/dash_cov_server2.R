@@ -307,27 +307,6 @@ server_cov2 <- function(
             }
         })
 
-############################  Event Normalization options ######################
-
-        observeEvent(settings_Cov$dataObj, {
-            req(all(
-                c("limit_start", "limit_end") %in% 
-                names(settings_Cov$dataObj@args)
-            ))
-            
-            req("rowData" %in% names(settings_Cov$dataObj@normData))
-            normData <- isolate(settings_Cov$dataObj@normData$rowData)
-
-            if(nrow(normData) == 0) {
-                updateSelectInput(session = session, inputId = "event_norm_cov", 
-                    choices = c("(none)"))
-            } else {
-                req("EventName" %in% colnames(normData))            
-                updateSelectInput(session = session, inputId = "event_norm_cov", 
-                    choices = c("(none)", normData$EventName))
-            }
-        })
-
 ############################  trigger ####################################
 
         observeEvent(list(
@@ -543,6 +522,7 @@ server_cov2 <- function(
             diffList <- isolate(diff_r())
 
             if(length(trackList) > 0) {
+                settings_Cov$plotlyFig <- plot_ly()
                 plotlyObj <- plotView(
                     plotObj, oldP = isolate(settings_Cov$plotlyObj),
                     view_start = tmpStart, view_end = tmpEnd,
@@ -592,8 +572,8 @@ server_cov2 <- function(
         })
         observeEvent(settings_Cov$plotly_relayout(), {
             layoutData <- isolate(settings_Cov$plotly_relayout())
-            # print(layoutData)
-            # req(length(layoutData) == 2)
+            print(layoutData)
+            req(length(layoutData) == 2)
             req(all(c("xaxis.range[0]", "xaxis.range[1]") %in% 
                 names(layoutData)))
             
@@ -617,8 +597,7 @@ server_cov2 <- function(
                     new_end <- new_start + 50
                 }
             }
-            
-            # Directly input into args for quick refresh:            
+          
             updateTextInput(session = session, inputId = "start_cov", 
                 value = new_start)
             updateTextInput(session = session, inputId = "end_cov", 

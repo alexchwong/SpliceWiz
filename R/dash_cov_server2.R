@@ -522,7 +522,10 @@ server_cov2 <- function(
             diffList <- isolate(diff_r())
 
             if(length(trackList) > 0) {
-                settings_Cov$plotlyFig <- plot_ly()
+                if(is(settings_Cov$plotlyFig, "plotly")) {
+                    event_unregister(settings_Cov$plotlyFig, event = "plotly_relayout")
+                    settings_Cov$plotlyFig$x$source <- "plotly_oldPlot"
+                }
                 plotlyObj <- plotView(
                     plotObj, oldP = isolate(settings_Cov$plotlyObj),
                     view_start = tmpStart, view_end = tmpEnd,

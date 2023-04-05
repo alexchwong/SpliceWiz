@@ -574,7 +574,7 @@ server_cov2 <- function(
         
         # Allow update locale on zoom / pan
         settings_Cov$plotly_relayout <- reactive({
-            req(length(newSettings) > 0)
+            req(length(settings_Cov$oldPlotSettings) > 0)
             event_data("plotly_relayout", source = "plotly_ViewRef")
         })
         observeEvent(settings_Cov$plotly_relayout(), {

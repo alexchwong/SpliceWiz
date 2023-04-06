@@ -571,9 +571,9 @@ server_cov2 <- function(
                 if(packageVersion("plotly") >= "4.9.0") {
                     event_register(fig, "plotly_relayout")
                 }
-                settings_Cov$plot_ini <- TRUE
                 print(fig)
             })
+            settings_Cov$plot_ini <- TRUE
         })
         
         # Allow update locale on zoom / pan

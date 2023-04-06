@@ -541,7 +541,7 @@ server_cov2 <- function(
                 # output$plot_cov <- renderPlotly({plot_ly()})
                 settings_Cov$plot_ini <- FALSE
                 plotlyObj <- plotView(
-                    plotObj, oldP = isolate(settings_Cov$plotlyObj),
+                    plotObj, # oldP = isolate(settings_Cov$plotlyObj),
                     view_start = tmpStart, view_end = tmpEnd,
                     trackList = trackList,
                     diffList = diffList,

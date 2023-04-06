@@ -539,41 +539,39 @@ server_cov2 <- function(
             if(refreshPlotly) {
                 # remove old plot
                 # output$plot_cov <- renderPlotly({plot_ly()})
-                settings_Cov$plot_ini <- FALSE
-                plotlyObj <- plotView(
-                    plotObj, # oldP = isolate(settings_Cov$plotlyObj),
-                    view_start = tmpStart, view_end = tmpEnd,
-                    trackList = trackList,
-                    diffList = diffList,
-                    diff_stat = "t-test",
-                    ribbon_mode = isolate(input$plot_ribbon),
-                    plotJunctions = isolate(input$plot_Jn_cov),
-                    normalizeCoverage = isolate(input$normalizeCov),
-                    filterByEventTranscripts = isolate(input$plot_key_iso),
-                    condenseTranscripts = isolate(input$condense_cov),
-                    usePlotly = TRUE
-                )
-                settings_Cov$oldPlotSettings <- newSettings
+                output$plot_cov <- renderPlotly({
+                    settings_Cov$plot_ini <- FALSE
+                    plotlyObj <- plotView(
+                        plotObj, # oldP = isolate(settings_Cov$plotlyObj),
+                        view_start = tmpStart, view_end = tmpEnd,
+                        trackList = trackList,
+                        diffList = diffList,
+                        diff_stat = "t-test",
+                        ribbon_mode = isolate(input$plot_ribbon),
+                        plotJunctions = isolate(input$plot_Jn_cov),
+                        normalizeCoverage = isolate(input$normalizeCov),
+                        filterByEventTranscripts = isolate(input$plot_key_iso),
+                        condenseTranscripts = isolate(input$condense_cov),
+                        usePlotly = TRUE
+                    )
+                    settings_Cov$oldPlotSettings <- newSettings
+
+                    req(is(plotlyObj, "covPlotly"))
+                    settings_Cov$plotlyObj <- plotlyObj
+                    fig <- .covPlotlyMake(plotlyObj)
+                    req(fig)
+                    
+                    fig$x$source <- "plotly_ViewRef"
+                    if(packageVersion("plotly") >= "4.9.0") {
+                        event_register(fig, "plotly_relayout")
+                    }
+                    settings_Cov$plot_ini <- TRUE
+                    print(fig)
+                })
                 # message("covPlotly retrieved")
             } else {
                 plotlyObj <- NULL
             }
-
-            req(is(plotlyObj, "covPlotly"))
-            settings_Cov$plotlyObj <- plotlyObj
-            fig <- .covPlotlyMake(plotlyObj)
-            req(fig)
-            
-            output$plot_cov <- renderPlotly({
-                req(fig)
-                
-                fig$x$source <- "plotly_ViewRef"
-                if(packageVersion("plotly") >= "4.9.0") {
-                    event_register(fig, "plotly_relayout")
-                }
-                print(fig)
-            })
-            settings_Cov$plot_ini <- TRUE
         })
         
         # Allow update locale on zoom / pan

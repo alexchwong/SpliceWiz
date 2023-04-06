@@ -555,8 +555,6 @@ server_cov2 <- function(
                     usePlotly = TRUE
                 )
                 settings_Cov$oldPlotSettings <- newSettings
-
-                })
                 # message("covPlotly retrieved")
             } else {
                 plotlyObj <- NULL

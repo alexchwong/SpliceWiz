@@ -167,17 +167,17 @@ setreactive_Cov2 <- function() {
         useDE = NULL,
         
         trackTable = data.frame(),
+
+    # New ranges can be triggered from different sources
+        newGR = GRanges(), # aggregate GRanges
+    # This is used to trigger plot refresh in absence of locale change
+        plotTrigger = NULL,
         
         dataObj = covDataObject(),
         plotObj = covPlotObject(),
         plotlyObj = covPlotly(),
         plotlyFig = plot_ly(),
 
-        # These are used to trigger plot refresh
-        new_range = IRanges(),
-
-        # This is used to trigger plot refresh in absence of locale change
-        trigger = NULL,
 
         event.ranges = NULL,
 

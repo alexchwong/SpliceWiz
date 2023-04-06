@@ -131,18 +131,21 @@ server_cov2 <- function(
         start_rd <- start_r %>% debounce(1000)
         end_rd <- end_r %>% debounce(1000)
 
-        observeEvent(list(
-            start_rd(), end_rd()
+        typedGR <- eventReactive(list(
+                chr_rd(), start_rd(), end_rd()
         ), {
-            settings_Cov$new_range <- IRanges(start_r(), end_r())
-        })
-
-# Plot options triggers
-        observeEvent(list(
-            input$plot_ribbon, input$plot_Jn_cov, input$normalizeCov,
-            input$plot_key_iso, input$condense_cov
-        ), {
-            settings_Cov$trigger <- runif(1)
+            req(input$chr_cov)
+            req(input$chr_cov %in% names(get_ref()$seqInfo))
+            
+            seqInfo <- get_ref()$seqInfo[input$chr_cov]
+            seqmax <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
+            req(seqmax > 50)
+            
+            iR <- .server_cov2_getNewIRanges(
+                input$start_cov, input$end_cov, seqmax)
+            
+            if(length(iR) == 0) return(GRanges())
+            return(GRanges(input$chr_cov, iR))
         })
 
 # Tracks selection trigger
@@ -186,64 +189,185 @@ server_cov2 <- function(
             input$strand_cov
         })
         strand_rd <- strand_r %>% debounce(1000)
-        
-        observeEvent(list(
+
+# Aggregate non-range trigger
+        trigger <- eventReactive(list(
+            input$plot_ribbon, input$plot_Jn_cov, input$normalizeCov,
+            input$plot_key_iso, input$condense_cov,
             tracks_rd(), diff_rd(), eventNorm_rd(), strand_rd()
         ), {
-            settings_Cov$trigger <- runif(1)
-        })
-
-# Start/End sanity check when these values are changed; also updates zoom
-        observeEvent(chr_rd(), {
-            seqInfo <- get_ref()$seqInfo[chr_rd()]
-            seqmax <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
-            req(seqmax > 50)
-            output <- .server_cov2_check_start_end(
-                input, session, output, seqmax)
-        })
-        observeEvent(list(start_rd(), end_rd()), {
-            req(input$chr_cov, input$chr_cov %in% names(get_ref()$seqInfo))
-            seqInfo <- get_ref()$seqInfo[input$chr_cov]
-            seqmax <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
-            req(seqmax > 50)
-            output <- .server_cov2_check_start_end(
-                input, session, output, seqmax)
+            runif(1)
         })
 
 # Locate by Gene or Event triggers change in chr/start/end
-        observeEvent(input$events_cov, {
+        eventGR <- eventReactive(input$events_cov, {
             req(input$events_cov)
             req(input$events_cov != "(none)")
             
             events_id_view <- settings_Cov$event.ranges[
                 get("EventName") == input$events_cov]
-            .server_cov2_locate_events(input, session, events_id_view)
+            
+            span        <- events_id_view$end[1] - events_id_view$start[1]
+            view_start  <- max(1, events_id_view$start[1] - span)
+            view_end    <- view_start + 3 * span
+            
+            GRanges(events_id_view$seqnames[1], IRanges(
+                view_start, view_end
+            ))
         })
-        observeEvent(input$genes_cov, {
+
+        genesGR <- eventReactive(input$genes_cov, {
             req(input$genes_cov)
             req(input$genes_cov != "(none)")
             
             gene_id_view <- get_ref()$geneList[
                 get("gene_display_name") == input$genes_cov]
-            .server_cov2_locate_genes(input, session, gene_id_view)
+
+            GRanges(gene_id_view$seqnames[1], IRanges(
+                gene_id_view$start[1], gene_id_view$end[1]
+            ))
         })
 
-# Sets start and end when zooming in / out
-        observeEvent(input$zoom_out_cov, {
-            req(input$zoom_out_cov, input$chr_cov) 
+        zoomOutGR <- eventReactive(input$zoom_out_cov, {
+            req(input$zoom_out_cov)
+            req(input$chr_cov) 
             req(input$chr_cov %in% names(get_ref()$seqInfo))
-            
+
+            view_start  <- input$start_cov
+            view_end    <- input$end_cov
+            req(view_start, view_end, view_end - view_start >= 50)
+
+
             seqInfo <- get_ref()$seqInfo[input$chr_cov]
-            output <- .server_cov2_zoom_out(
-                input, output, session, seqInfo, settings_Cov)
-        })
-        observeEvent(input$zoom_in_cov, {
-            req(input$zoom_in_cov)
+            seqInfo <- get_ref()$seqInfo[input$chr_cov]
+            seqmax <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
+            req(seqmax > 50)
+
+            center      <- round((view_start + view_end) / 2)
+            span        <- view_end - view_start
+            # zoom range is 50 * 3^z
+            cur_zoom    <- floor(log(span/50) / log(3))
+
+            new_span <- round(span * 3)
+            # if(new_span > seqmax - 1) new_span = seqmax - 1
+            new_start <- max(1, center - round(new_span / 2))
             
-            output <- .server_cov2_zoom_in(input, output, session, settings_Cov)
+            cur_zoom <- floor(log(new_span/50) / log(3))
+
+            GRanges(input$chr_cov, IRanges(
+                new_start, new_start + new_span
+            ))
         })
 
+        zoomInGR <- eventReactive(input$zoom_out_cov, {
+            req(input$zoom_in_cov)
+
+            view_start  <- input$start_cov
+            view_end    <- input$end_cov
+            req(view_start, view_end, view_end - view_start >= 50)
+            
+            # get center of current range
+            center      <- round((view_start + view_end) / 2)
+            span        <- view_end - view_start
+            # zoom range is 50 * 3^z
+            cur_zoom    <- floor(log(span/50) / log(3))
+
+            new_span <- round(span / 3)
+            if(new_span < 50) new_span <- 50
+            new_zoom <- floor(log(new_span / 50) / log(3))
+            new_start <- max(1, center - round(new_span / 2))
+
+            cur_zoom <- floor(log(new_span/50) / log(3))
+            # output$label_zoom_cov <- renderText({16 - cur_zoom})
+            
+            GRanges(input$chr_cov, IRanges(
+                new_start, new_start + new_span
+            ))
+        })
+
+        plotly_relayout <- reactive({
+            req(length(settings_Cov$oldPlotSettings) > 0)
+            req(settings_Cov$plot_ini == TRUE)
+            event_data("plotly_relayout", source = "plotly_ViewRef")
+        })
+
+        plotUpdateGR <- eventReactive(plotly_relayout(), {
+            layoutData <- isolate(plotly_relayout())
+
+            print(layoutData)
+            req(length(layoutData) == 2)
+            req(all(c("xaxis.range[0]", "xaxis.range[1]") %in% 
+                names(layoutData)))
+            
+            new_start <- max(1, round(layoutData[["xaxis.range[0]"]]))
+            new_end <- round(layoutData[["xaxis.range[1]"]])
+            
+            # Enforce chromosome boundary
+            seqInfo <- get_ref()$seqInfo[input$chr_cov]
+            seqmax  <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
+            if(new_end > seqmax) {
+                new_end <- seqmax
+                if(new_end - new_start < 50) {
+                    new_start <- new_end - 50
+                }
+            }
+            # Enforce min width > 50
+            if(new_end - new_start < 50) {
+                if(new_end >= 50) {
+                    new_start <- new_end - 50
+                } else {
+                    new_end <- new_start + 50
+                }
+            }
+
+            GRanges(input$chr_cov, IRanges(
+                new_start, new_end
+            ))
+        })
+
+############################### Aggregate GRanges refresher ####################
+
+        observeEvent(eventGR(), {
+            settings_Cov$newGR <- eventGR()
+        })
+        observeEvent(genesGR(), {
+            settings_Cov$newGR <- genesGR()
+        })
+        observeEvent(zoomInGR(), {
+            settings_Cov$newGR <- zoomInGR()
+        })
+        observeEvent(zoomOutGR(), {
+            settings_Cov$newGR <- zoomOutGR()
+        })
+        observeEvent(plotUpdateGR(), {
+            settings_Cov$newGR <- plotUpdateGR()
+        })
+        observeEvent(typedGR(), {
+            settings_Cov$newGR <- typedGR()
+        })
+
+############################### Aggregate Triggers ####################
+        
+        observeEvent(settings_Cov$newGR, {
+            gr <- isolate(settings_Cov$newGR)
+            chrList <- names(get_ref()$seqInfo)
+            updateSelectInput(session = session, inputId = "chr_cov", 
+                choices = c("(none)", chrList),
+                selected = seqnames(gr))
+            
+            updateTextInput(session = session, inputId = "start_cov", 
+                value = start(gr))
+            updateTextInput(session = session, inputId = "end_cov", 
+                value = start(gr))
+                
+            settings_Cov$plotTrigger <- runif(1)
+        })
+        
+        observeEvent(trigger(), {
+            settings_Cov$plotTrigger <- runif(1)
+        })
 ######################### Tracks management ####################################
+        
         output$track_table <- renderRHandsontable({
             .server_expr_gen_HOT(settings_Cov$trackTable, enable_select = TRUE)
         })
@@ -274,70 +398,52 @@ server_cov2 <- function(
             req(get_se())
             colData <- as.data.frame(isolate(colData(get_se())))
 
+            trackOptions <- c()
+            condOptions <- c()
+
             if(input$condition_cov == "(Individual Samples)") {
-                df <- data.frame(
-                    sample = colnames(get_se()),
-                    id = "", stringsAsFactors = FALSE
-                )
-                if(nrow(df) > 1) {
-                    df$id[1:2] <- c("1","2")
-                } else if(nrow(df) == 1) {
-                    df$id <- "1"
-                }
-                settings_Cov$trackTable <- df
+                trackOptions <- colnames(get_se())
             } else if(input$condition_cov %in% colnames(colData)) {
-                condOptions <- unique(as.character(unname(unlist(
+                trackOptions <- unique(as.character(unname(unlist(
                     colData[, input$condition_cov]))))
-                df <- data.frame(
-                    sample = condOptions,
-                    id = "", stringsAsFactors = FALSE
-                )
-                if(nrow(df) > 1) {
-                    df$id[1:2] <- c("1","2")
-                } else if(nrow(df) == 1) {
-                    df$id <- "1"
-                }
-                settings_Cov$trackTable <- df
-                updateSelectInput(session = session, inputId = "diffA", 
-                    choices = c("(none)", condOptions)
-                )
-                updateSelectInput(session = session, inputId = "diffB", 
-                    choices = c("(none)", condOptions)
-                )
+                condOptions <- trackOptions
             }
+
+            updateSelectInput(session = session, inputId = "diffA", 
+                choices = c("(none)", trackOptions)
+            )
+            updateSelectInput(session = session, inputId = "diffB", 
+                choices = c("(none)", trackOptions)
+            )
+            
+            df <- data.frame(
+                sample = trackOptions,
+                id = "", stringsAsFactors = FALSE
+            )
+            if(nrow(df) > 1) {
+                df$id[1:2] <- c("1","2")
+            } else if(nrow(df) == 1) {
+                df$id <- "1"
+            }
+            settings_Cov$trackTable <- df
         })
 
 ############################  trigger ####################################
 
-        observeEvent(list(
-                settings_Cov$trigger, 
-                settings_Cov$new_range
-        ), {
-            # message("New cDO/CPO event triggered")
-            req(length(settings_Cov$new_range) > 0)
-            req(start(settings_Cov$new_range) > 0)
-            req(end(settings_Cov$new_range) > start(settings_Cov$new_range))
+        makePlot <- eventReactive(settings_Cov$plotTrigger, {
+            req(length(settings_Cov$newGR) > 0)
 
-            tmpStart <- start(settings_Cov$new_range)
-            tmpEnd <- end(settings_Cov$new_range)
-            updateTextInput(session = session, inputId = "start_cov", 
-                value = tmpStart)
-            updateTextInput(session = session, inputId = "end_cov", 
-                value = tmpEnd)
+            tmpChr <- as.character(seqnames(settings_Cov$newGR))
+            tmpStart <- start(settings_Cov$newGR)
+            tmpEnd <- end(settings_Cov$newGR)
 
-            # - Locale-based trigger
-            req(input$chr_cov)
-            # Check validity of chr/start/end call
-            tmpChr <- isolate(input$chr_cov)
+            req(get_se())
+            req(input$condition_cov)
+            req(is_valid(settings_Cov$trackTable))
 
-            req(isolate(get_se()))
-            req(isolate(input$condition_cov))
-            req(is_valid(isolate(settings_Cov$trackTable)))
-
-            args <- isolate(settings_Cov$dataObj@args)
-            
             # Do we need to update cDO?
             refreshCDO <- FALSE
+            args <- settings_Cov$dataObj@args
             if(!all(c("limit_start", "limit_end") %in% names(args))) {
                 # Likely not a valid cDO, regenerate it
                 refreshCDO <- TRUE
@@ -363,7 +469,6 @@ server_cov2 <- function(
                         tracks = colnames(isolate(get_se()))
                     )
                 })
-                # message("cDO retrieved")
             } else {
                 dataObj <- isolate(settings_Cov$dataObj)
             }
@@ -379,14 +484,11 @@ server_cov2 <- function(
             req(all(c("limit_start", "limit_end") %in% names(args)))
             settings_Cov$dataObj <- dataObj
 
-
         # Update Norm Event options
             normData <- isolate(settings_Cov$dataObj@normData$rowData)
-            if(nrow(normData) == 0) {
-                updateSelectInput(session = session, inputId = "event_norm_cov", 
-                    choices = c("(none)"))
-                normEvent <- "(none)"
-            } else {
+            normEvent <- "(none)"
+            availEvents <- c()
+            if(nrow(normData) > 0) {
                 availEvents <- normData$EventName
                 requestedEvent <- isolate(input$events_cov)
                 normEvent <- isolate(eventNorm_rd())
@@ -395,26 +497,15 @@ server_cov2 <- function(
                         requestedEvent %in% availEvents &
                         !(normEvent %in% availEvents)
                 ) {
-                    updateSelectInput(
-                        session = session, inputId = "event_norm_cov", 
-                        choices = c("(none)", normData$EventName),
-                        selected = requestedEvent
-                    )
                     normEvent <- requestedEvent
-                } else if(normEvent %in% availEvents) {
-                    updateSelectInput(
-                        session = session, inputId = "event_norm_cov", 
-                        choices = c("(none)", normData$EventName),
-                        selected = normEvent
-                    )
-                } else {
-                    updateSelectInput(
-                        session = session, inputId = "event_norm_cov", 
-                        choices = c("(none)", normData$EventName)
-                    )
+                } else if(!(normEvent %in% availEvents)) {
                     normEvent <- "(none)"
                 }
             }
+            updateSelectInput(session = session, inputId = "event_norm_cov", 
+                choices = c("(none)", availEvents),
+                selected = normEvent
+            )
 
             # Do we need to update cPO?
             # - change in condition (which affects tracks), 
@@ -423,7 +514,6 @@ server_cov2 <- function(
             refreshCPO <- refreshCDO            
 
             args <- isolate(settings_Cov$plotObj@args)
-
             colData <- isolate(as.data.frame(colData(get_se())))
             condName <- isolate(input$condition_cov)
             trackOptions <- NULL
@@ -434,7 +524,6 @@ server_cov2 <- function(
                 trackOptions <- unique(as.character(
                     unname(unlist(colData[,condName]))))
             }
-            event <- NULL
             strand <- isolate(input$strand_cov)
             
             # Only update if there is a valid trackList
@@ -473,34 +562,17 @@ server_cov2 <- function(
                     message = 'Calculating track coverages...', 
                     value = 0, 
                 {
-                    if(is_valid(normEvent) & is_valid(condName)) {
-                        plotObj <- getPlotObject(
-                            dataObj,
-                            Event = normEvent,
-                            strand = strand,
-                            tracks = trackOptions,
-                            condition = condName
-                        )
-                        # message("cPO retrieved")
-                    } else if(is_valid(normEvent) & !is_valid(condName)) {
-                        plotObj <- getPlotObject(
-                            dataObj, 
-                            Event = normEvent,
-                            strand = strand,
-                            tracks = trackOptions
-                        )
-                        # message("cPO retrieved")
-                    } else if(!is_valid(normEvent) & is_valid(condName)) {
-                        # condition is selected before event name
-                        # fire a warning and fail to get valid covPlotObject
+                    cPOargList <- list(
+                        object = dataObj,
+                        strand = strand,
+                        tracks = trackOptions
+                    )
+                    if(is_valid(condName)) cPOargList[["condition"]] <- condName
+                    if(is_valid(normEvent)) cPOargList[["Event"]] <- normEvent
+                    if(!is_valid(normEvent) & is_valid(condName)) {
                         plotObj <- covPlotObject()
                     } else {
-                        plotObj <- getPlotObject(
-                            dataObj,
-                            strand = strand,
-                            tracks = trackOptions
-                        )
-                        # message("cPO retrieved")
+                        plotObj <- do.call(getPlotObject, cPOargList)
                     }
                 })
             } else {
@@ -537,12 +609,9 @@ server_cov2 <- function(
             if(length(trackList) == 0) refreshPlotly <- FALSE
 
             if(refreshPlotly) {
-                observer$suspend()
-                # remove old plot
-                # output$plot_cov <- renderPlotly({plot_ly()})
                 settings_Cov$plot_ini <- FALSE
                 plotlyObj <- plotView(
-                    plotObj, # oldP = isolate(settings_Cov$plotlyObj),
+                    plotObj, oldP = isolate(settings_Cov$plotlyObj),
                     view_start = tmpStart, view_end = tmpEnd,
                     trackList = trackList,
                     diffList = diffList,
@@ -555,67 +624,29 @@ server_cov2 <- function(
                     usePlotly = TRUE
                 )
                 settings_Cov$oldPlotSettings <- newSettings
-                # message("covPlotly retrieved")
             } else {
                 plotlyObj <- NULL
             }
             
             req(is(plotlyObj, "covPlotly"))
-            output$plot_cov <- renderPlotly({
-                settings_Cov$plotlyObj <- plotlyObj
-                fig <- .covPlotlyMake(plotlyObj)
-                req(fig)
-                
-                fig$x$source <- "plotly_ViewRef"
-                if(packageVersion("plotly") >= "4.9.0") {
-                    event_register(fig, "plotly_relayout")
-                }
-                settings_Cov$plot_ini <- TRUE
-                print(fig)
-            })
-            observer$resume()
+            settings_Cov$plotlyObj <- plotlyObj
+            fig <- .covPlotlyMake(plotlyObj)
+            req(fig)
+            
+            fig$x$source <- "plotly_ViewRef"
+            if(packageVersion("plotly") >= "4.9.0") {
+                event_register(fig, "plotly_relayout")
+            }
+            settings_Cov$plot_ini <- TRUE
+            return(fig)
         })
         
-        # Allow update locale on zoom / pan
-        settings_Cov$plotly_relayout <- reactive({
-            req(length(settings_Cov$oldPlotSettings) > 0)
-            req(settings_Cov$plot_ini == TRUE)
-            event_data("plotly_relayout", source = "plotly_ViewRef")
+        output$plot_cov <- renderPlotly({
+            fig <- makePlot()
+            req(fig)
+            fig
         })
-        observer <- observeEvent(settings_Cov$plotly_relayout(), {
-            layoutData <- isolate(settings_Cov$plotly_relayout())
-            print(layoutData)
-            req(length(layoutData) == 2)
-            req(all(c("xaxis.range[0]", "xaxis.range[1]") %in% 
-                names(layoutData)))
-            
-            new_start <- max(1, round(layoutData[["xaxis.range[0]"]]))
-            new_end <- round(layoutData[["xaxis.range[1]"]])
-            
-            # Enforce chromosome boundary
-            seqInfo <- get_ref()$seqInfo[input$chr_cov]
-            seqmax  <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
-            if(new_end > seqmax) {
-                new_end <- seqmax
-                if(new_end - new_start < 50) {
-                    new_start <- new_end - 50
-                }
-            }
-            # Enforce min width > 50
-            if(new_end - new_start < 50) {
-                if(new_end >= 50) {
-                    new_start <- new_end - 50
-                } else {
-                    new_end <- new_start + 50
-                }
-            }
-          
-            updateTextInput(session = session, inputId = "start_cov", 
-                value = new_start)
-            updateTextInput(session = session, inputId = "end_cov", 
-                value = new_end)
-        })
-        
+
         return(settings_Cov)
     })
 }
@@ -666,15 +697,13 @@ server_cov2 <- function(
 
 # Changes start and end coordinates, if over seqmax
 # also if changing to shorter chromosome and prev end > chrom length
-.server_cov2_check_start_end <- function(input, session, output, seqmax) {
-    target_start    <- isolate(input$start_cov)
-    target_end      <- isolate(input$end_cov)
+.server_cov2_getNewIRanges <- function(target_start, target_end, seqmax) {
     # do nothing if empty 
-    if(!is_valid(target_start) | !is_valid(target_end)) return(output)
+    if(!is_valid(target_start) | !is_valid(target_end)) return(IRanges())
     
     # do nothing if not numeric
-    if(is_valid(target_start) && !is.numeric(target_start))  return(output)
-    if(is_valid(target_end) && !is.numeric(target_end))  return(output)
+    if(is_valid(target_start) && !is.numeric(target_start))  return(IRanges())
+    if(is_valid(target_end) && !is.numeric(target_end))  return(IRanges())
     
     # Cap target_end at seqmax
     if(target_end > seqmax) target_end <- seqmax
@@ -682,104 +711,8 @@ server_cov2 <- function(
     # Cap min width at 50 - this assumes seqlength > 50
     if(target_end < 50) target_end <- 50
     if(target_end - target_start < 50) target_start <- target_end - 50
-    
-    # Work out the zoom-factor
-    span <- target_end - target_start
-    cur_zoom <- floor(log(span/50) / log(3))
-    
-    output$label_zoom_cov <- renderText({16 - cur_zoom})
-    if(target_end != input$end_cov)
-        updateTextInput(session = session, inputId = "end_cov", 
-            value = target_end)
-    if(target_start != input$start_cov)
-    updateTextInput(session = session, inputId = "start_cov", 
-        value = target_start)
-    return(output)
-}
 
-# Sets start and end given an Event
-.server_cov2_locate_events <- function(input, session, events_id_view) {
-        
-    span        <- events_id_view$end[1] - events_id_view$start[1]
-    view_start  <- max(1, events_id_view$start[1] - span)
-    view_end    <- view_start + 3 * span
-    
-    updateSelectInput(session = session, inputId = "chr_cov", 
-        selected = events_id_view$seqnames[1])
-    updateTextInput(session = session, inputId = "start_cov", 
-        value = view_start)
-    updateTextInput(session = session, inputId = "end_cov", 
-        value = view_end)
-}
-
-# Sets start and end given a Gene
-.server_cov2_locate_genes <- function(input, session, gene_id_view) {
-    updateSelectInput(session = session, inputId = "chr_cov", 
-        selected = gene_id_view$seqnames[1])
-    updateTextInput(session = session, inputId = "start_cov", 
-        value = gene_id_view$start[1])
-    updateTextInput(session = session, inputId = "end_cov", 
-        value = gene_id_view$end[1])
-}
-
-# Zoom out
-.server_cov2_zoom_out <- function(
-        input, output, session, seqInfo, settings_Cov
-) {
-    view_start  <- input$start_cov
-    view_end    <- input$end_cov
-    req(view_start, view_end, view_end - view_start >= 50)
-    
-    seqmax      <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
-    # get center of current range
-    center      <- round((view_start + view_end) / 2)
-    span        <- view_end - view_start
-    # zoom range is 50 * 3^z
-    cur_zoom    <- floor(log(span/50) / log(3))
-
-    new_span <- round(span * 3)
-    # if(new_span > seqmax - 1) new_span = seqmax - 1
-    new_start <- max(1, center - round(new_span / 2))
-    
-    settings_Cov$plot_params$start <- new_start
-    settings_Cov$plot_params$end <- new_start + new_span
-    cur_zoom <- floor(log(new_span/50) / log(3))
-    output$label_zoom_cov <- renderText({16 - cur_zoom})
-    
-    updateTextInput(session = session, inputId = "start_cov", 
-        value = new_start)
-    updateTextInput(session = session, inputId = "end_cov", 
-        value = new_start + new_span)
-    return(output)
-}
-
-# Zoom in
-.server_cov2_zoom_in <- function(input, output, session, settings_Cov) {
-    view_start  <- input$start_cov
-    view_end    <- input$end_cov
-    req(view_start, view_end, view_end - view_start >= 50)
-    
-    # get center of current range
-    center      <- round((view_start + view_end) / 2)
-    span        <- view_end - view_start
-    # zoom range is 50 * 3^z
-    cur_zoom    <- floor(log(span/50) / log(3))
-
-    new_span <- round(span / 3)
-    if(new_span < 50) new_span <- 50
-    new_zoom <- floor(log(new_span / 50) / log(3))
-    new_start <- max(1, center - round(new_span / 2))
-
-    settings_Cov$plot_params$start <- new_start
-    settings_Cov$plot_params$end <- new_start + new_span
-    cur_zoom <- floor(log(new_span/50) / log(3))
-    output$label_zoom_cov <- renderText({16 - cur_zoom})
-    
-    updateTextInput(session = session, inputId = "start_cov", 
-        value = new_start)
-    updateTextInput(session = session, inputId = "end_cov", 
-        value = new_start + new_span)
-    return(output)
+    return(IRanges(target_start, target_end))
 }
 
 .server_cov2_trackList_names2ID <- function(trackList, args) {

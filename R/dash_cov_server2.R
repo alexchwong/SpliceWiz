@@ -559,8 +559,9 @@ server_cov2 <- function(
             } else {
                 plotlyObj <- NULL
             }
+            
+            req(is(plotlyObj, "covPlotly"))
             output$plot_cov <- renderPlotly({
-                req(is(plotlyObj, "covPlotly"))
                 settings_Cov$plotlyObj <- plotlyObj
                 fig <- .covPlotlyMake(plotlyObj)
                 req(fig)

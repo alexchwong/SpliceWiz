@@ -471,7 +471,7 @@ server_cov2 <- function(
 
 ############################  trigger ####################################
 
-        makePlot <- eventReactive(settings_Cov$plotTrigger, {
+        observeEvent(settings_Cov$plotTrigger, {
             req(get_se())
             req(all(is_valid(covfile(get_se()))))
 
@@ -639,21 +639,27 @@ server_cov2 <- function(
             if(length(trackList) == 0) refreshPlotly <- FALSE
 
             if(refreshPlotly) {
-                plotlyObj <- plotView(
-                    plotObj, oldP = isolate(settings_Cov$plotlyObj),
-                    view_start = tmpStart, view_end = tmpEnd,
-                    trackList = trackList,
-                    diffList = diffList,
-                    diff_stat = "t-test",
-                    ribbon_mode = isolate(input$plot_ribbon),
-                    plotJunctions = isolate(input$plot_Jn_cov),
-                    normalizeCoverage = isolate(input$normalizeCov),
-                    filterByEventTranscripts = isolate(input$plot_key_iso),
-                    condenseTranscripts = isolate(input$condense_cov),
-                    usePlotly = TRUE
-                )
+                withProgress(
+                    message = 'Generating plot...', 
+                    value = 0, 
+                {
+                    plotlyObj <- plotView(
+                        plotObj, oldP = isolate(settings_Cov$plotlyObj),
+                        view_start = tmpStart, view_end = tmpEnd,
+                        trackList = trackList,
+                        diffList = diffList,
+                        diff_stat = "t-test",
+                        ribbon_mode = isolate(input$plot_ribbon),
+                        plotJunctions = isolate(input$plot_Jn_cov),
+                        normalizeCoverage = isolate(input$normalizeCov),
+                        filterByEventTranscripts = isolate(input$plot_key_iso),
+                        condenseTranscripts = isolate(input$condense_cov),
+                        usePlotly = TRUE
+                    )
+                })
             } else {
-                return(settings_Cov$plotlyFig)
+                # return(settings_Cov$plotlyFig)
+                plotlyObj <- NULL
             }
             
             req(is(plotlyObj, "covPlotly"))
@@ -670,11 +676,12 @@ server_cov2 <- function(
             settings_Cov$plotCount <- settings_Cov$plotCount + 1
             settings_Cov$oldPlotSettings <- newSettings
             settings_Cov$plotlyFig <- fig
-            return(fig)
+            # return(fig)
         })
         
         output$plot_cov <- renderPlotly({
-            fig <- makePlot()
+            # fig <- makePlot()
+            fig <- settings_Cov$plotlyFig
             req(fig)
             req(length(fig$x$data) > 0)
             fig

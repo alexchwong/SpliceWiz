@@ -177,7 +177,7 @@ setreactive_Cov2 <- function() {
         plotObj = covPlotObject(),
         plotlyObj = covPlotly(),
         plotlyFig = plot_ly(),
-
+        plotCount = 0,
 
         event.ranges = NULL,
 

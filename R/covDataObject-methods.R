@@ -173,24 +173,28 @@ getCoverageData <- function(
     strand <- match.arg(strand)
     if(!is_valid(strand)) strand <- "*"
     args[["strand"]] <- strand
+
+    N_steps <- 5
+    dash_progress("Validating arguments", N_steps)
     
     # Evaluate view_chr, view_start, view_end, and check arguments
     args <- .gCD_validate_args(args)
 
-    # print(args[["limit_start"]])
-    # print(args[["limit_end"]])
-    
     # Retrieve colData
     colData <- .gCD_retrieve_colData(args)
     
+    dash_progress("Retrieving ASE normalization values", N_steps)
     # Retrieve in-range events and corresponding normalization values
     normData <- .gCD_retrieve_norms(args, colData)
 
+    dash_progress("Retrieving gene annotations", N_steps)
     # Retrieve genome annotations
     annotation <- .gCD_retrieve_annotations(args)
     
+    dash_progress("Retrieving coverage data", N_steps)
     raw_cov <- .gCD_retrieve_raw_cov(args, colData)
 
+    dash_progress("Retrieving junction counts", N_steps)
     juncData <- .gCD_retrieve_junc(args, colData)
 
     # Remove large objects prior to returning
@@ -519,14 +523,26 @@ getGenomeData <- function(
 
 # Retrieve relevant raw coverage
 .gCD_retrieve_raw_cov <- function(args, colData) {
-
     samples <- rownames(colData)
     covfiles <- covfile(args[["se"]])[samples]
     
+    session <- shiny::getDefaultReactiveDomain()
+    if(!is.null(session)) {
+        shiny::withProgress(message = "Reading COV files", {
+            raw_cov <- .gCD_retrieve_raw_cov_helper(args, covfiles, samples)
+        })
+    } else {
+        raw_cov <- .gCD_retrieve_raw_cov_helper(args, covfiles, samples)
+    }
+    return(raw_cov)
+}
+
+.gCD_retrieve_raw_cov_helper <- function(args, covfiles, samples) {
     pos <- list()
     neg <- list()
     uns <- list()
     for(i in seq_len(length(samples))) {
+        dash_progress("Reading COV files", length(samples))
         pos[[i]] <- getCoverage(
             file = covfiles[i], 
             seqname = args[["view_chr"]], 
@@ -553,6 +569,7 @@ getGenomeData <- function(
         uns = uns
     ))
 }
+
 
 # Retrieve relevant raw coverage
 .gCD_retrieve_junc <- function(args, colData) {

@@ -1,11 +1,17 @@
 dash_server <- function(input, output, session) {
     addResourcePath('localImages', system.file('extdata', package='SpliceWiz'))
     
-    # Volumes / storage drives
-    default_volumes <- c("Working Directory" = getwd(), 
-        "Home" = "~", "Temporary Directory" = tempdir(),
-        getVolumes()())
-    volumes <- reactive(default_volumes)
+    # Paths / Volumes / Drives
+    volumes <- reactive({
+        c(
+            "Working Directory" = getwd(),
+            "Current Parent Dir" = normalizePath(dirname(getwd())),
+            "Home" = "~",
+            "Temporary Directory" = tempdir(),
+            getVolumes()()
+        )
+    })
+
     # Defines for Reactives
     settings_expr <- settings_expr_load <- settings_filtered_SE <- 
         settings_DE <- settings_Diag <- settings_Volc <- c()

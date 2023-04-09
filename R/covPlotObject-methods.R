@@ -595,6 +595,8 @@ plotView <- function(
             "of covPlotObject", seqs[!(seqs %in% args[["view_chr"]])]
         ))
     }
+    # Make all plotRanges strand-agnostic
+    strand(plotRanges) <- "*"
 
     # disable interactive if multi plot
     if(usePlotly == TRUE & length(plotRanges) > 1) {
@@ -625,7 +627,6 @@ plotView <- function(
 
     # What is the full range
     fullRange <- range(plotRanges)
-    strand(fullRange) <- "*"
     if(!missing(view_start) & !missing(view_end)) {
         # whatever's larger
         fullRange <- range(c(fullRange, 

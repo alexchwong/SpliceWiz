@@ -779,7 +779,6 @@ server_cov2 <- function(
 
             gr <- isolate(settings_Cov$exons_gr)
             newSettings <- isolate(settings_Cov$oldPlotSettings)
-            # print(gr[exonsNames])
             ggp <- plotView(
                 isolate(settings_Cov$plotObj), 
                 # view_start = newSettings[["view_start"]], 
@@ -793,6 +792,7 @@ server_cov2 <- function(
                 filterByEventTranscripts = newSettings[["filterByEventTranscripts"]],
                 condenseTranscripts = newSettings[["condenseTranscripts"]],
                 plotRanges = gr[exonsNames],
+                horizontalLayout = rep(1, length(exonsNames)),
                 usePlotly = FALSE
             )
 

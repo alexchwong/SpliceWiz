@@ -105,7 +105,7 @@ setMethod("show", "covPlotly", function(object) {
 
         p <- object
         if(showExons) {
-            p <- injectPlotData(p, p@args[["annoTrackPos"]], 
+            p <- .injectPlotData(p, p@args[["annoTrackPos"]], 
                 p@exonTrack[[1]][["dataList"]],
                 p@exonTrack[[1]][["layoutList"]][["xtitle"]]
             )        
@@ -205,7 +205,7 @@ setMethod("showExons", "covPlotly", function(object) {
 })
 
 # for coverage, and also for introns
-addLineTrace <- function(fig, colorCode = "#000000") {
+.addLineTrace <- function(fig, colorCode = "#000000") {
     if(!is(fig, "plotly")) return(fig)
     
     fig %>% add_trace(
@@ -218,7 +218,7 @@ addLineTrace <- function(fig, colorCode = "#000000") {
     )
 }
 
-addRibbonTrace <- function(fig, colorCode = "#000000") {
+.addRibbonTrace <- function(fig, colorCode = "#000000") {
     if(!is(fig, "plotly")) return(fig)
     
     fig %>% add_ribbons(
@@ -233,7 +233,7 @@ addRibbonTrace <- function(fig, colorCode = "#000000") {
     )
 }
 
-addJuncTrace <- function(fig, colorCode = "rgb(255, 100, 100)") {
+.addJuncTrace <- function(fig, colorCode = "rgb(255, 100, 100)") {
     if(!is(fig, "plotly")) return(fig)
     
     fig %>% add_trace(
@@ -246,7 +246,7 @@ addJuncTrace <- function(fig, colorCode = "rgb(255, 100, 100)") {
     )
 }
 
-addTextTrace <- function(fig) {
+.addTextTrace <- function(fig) {
     if(!is(fig, "plotly")) return(fig)
     
     fig %>% add_trace(
@@ -258,7 +258,7 @@ addTextTrace <- function(fig) {
     )
 }
 
-addExonTrace <- function(fig, colorCode = "rgb(255, 100, 100)") {
+.addExonTrace <- function(fig, colorCode = "rgb(255, 100, 100)") {
     if(!is(fig, "plotly")) return(fig)
     
     fig %>% add_trace(
@@ -277,32 +277,32 @@ addExonTrace <- function(fig, colorCode = "rgb(255, 100, 100)") {
     )
 }
 
-addCovTrack <- function(n_traces) {
+.addCovTrack <- function(n_traces) {
     fig <- plot_ly() 
     cols <- scales::hue_pal()(n_traces)
     if(n_traces == 1) cols <- "#000000"
     
     # always junctions first
     fig <- fig %>%
-        addJuncTrace() %>% addTextTrace()
+        .addJuncTrace() %>% .addTextTrace()
 
     for(colorCode in cols) {
         fig <- fig %>%
-            addLineTrace(colorCode) %>%
-            addRibbonTrace(colorCode)
+            .addLineTrace(colorCode) %>%
+            .addRibbonTrace(colorCode)
     }
     return(fig)
 }
 
 
-addDiffTrack <- function(n_traces) {
+.addDiffTrack <- function(n_traces) {
     fig <- plot_ly()
     cols <- scales::hue_pal()(n_traces)
     if(n_traces == 1) cols <- "#000000"
     
     for(colorCode in cols) {
         fig <- fig %>%
-            addLineTrace(colorCode)
+            .addLineTrace(colorCode)
     }
     return(fig)
 }
@@ -310,23 +310,23 @@ addDiffTrack <- function(n_traces) {
 # traces
 # line: black, blue, red, purple
 # exons: black, blue, red, purple
-addAnnoTrack <- function() {
+.addAnnoTrack <- function() {
     fig <- plot_ly()
     colors <- c(
         "rgba(0,0,0,1)", "rgba(0,0,255,1)",
         "rgba(255,0,0,1)", "rgba(255,0,255,1)"
     )
     for(col in colors) {
-        fig <- fig %>% addLineTrace(col)
+        fig <- fig %>% .addLineTrace(col)
     }
     for(col in colors) {
-        fig <- fig %>% addExonTrace(col)
+        fig <- fig %>% .addExonTrace(col)
     }
-    fig <- fig %>% addTextTrace()
+    fig <- fig %>% .addTextTrace()
     return(fig)
 }
 
-knitPlotly <- function(
+.knitPlotly <- function(
     p,
     numCovTraces = c(1,1),
     numDiffTraces = c(1),
@@ -357,19 +357,19 @@ knitPlotly <- function(
     traceCount <- 0
     for(n in numCovTraces) {
         figCount <- figCount + 1
-        figList[[figCount]] <- addCovTrack(n)
+        figList[[figCount]] <- .addCovTrack(n)
         p@args[["covTrackPos"]] <- c(p@args[["covTrackPos"]], traceCount + 1)
         traceCount <- traceCount + (2 + 2*n)
     }
     for(n in numDiffTraces) {
         figCount <- figCount + 1
-        figList[[figCount]] <- addDiffTrack(n)
+        figList[[figCount]] <- .addDiffTrack(n)
         p@args[["diffTrackPos"]] <- c(p@args[["diffTrackPos"]], traceCount + 1)
         traceCount <- traceCount + (n)
     }
     # Always one annotation track
     figCount <- figCount + 1
-    figList[[figCount]] <- addAnnoTrack()
+    figList[[figCount]] <- .addAnnoTrack()
     p@args[["annoTrackPos"]] <- traceCount + 1
 
     vHeights <- vLayout
@@ -403,7 +403,7 @@ knitPlotly <- function(
     return(p)
 }
 
-injectPlotData <- function(p, trackPos, dataList, trackName = "trackN") {
+.injectPlotData <- function(p, trackPos, dataList, trackName = "trackN") {
     if(!is(p, "covPlotly")) return(p)
     if(length(p@fig) != 2) return(p)
     if(!is(p@fig[[2]], "plotly")) return(p)
@@ -448,7 +448,7 @@ injectPlotData <- function(p, trackPos, dataList, trackName = "trackN") {
     return(p)
 }
 
-adjustXrange <- function(p, rangeX) {
+.adjustXrange <- function(p, rangeX) {
     if(!is(p, "covPlotly")) return(p)
     if(length(p@fig) != 2) return(p)
     if(!is(p@fig[[2]], "plotly")) return(p)
@@ -458,7 +458,7 @@ adjustXrange <- function(p, rangeX) {
     return(p)
 }
 
-adjustXtitle <- function(p, titleName) {
+.adjustXtitle <- function(p, titleName) {
     if(!is(p, "covPlotly")) return(p)
     if(length(p@fig) != 2) return(p)
     if(!is(p@fig[[2]], "plotly")) return(p)
@@ -467,7 +467,7 @@ adjustXtitle <- function(p, titleName) {
     return(p)
 }
 
-adjustYrange <- function(p, rangeY, trackNum) {
+.adjustYrange <- function(p, rangeY, trackNum) {
     if(!is(p, "covPlotly")) return(p)
     if(length(p@fig) != 2) return(p)
     if(!is(p@fig[[2]], "plotly")) return(p)
@@ -482,7 +482,7 @@ adjustYrange <- function(p, rangeY, trackNum) {
     return(p)
 }
 
-adjustYtitle <- function(p, titleName, trackNum) {
+.adjustYtitle <- function(p, titleName, trackNum) {
     if(!is(p, "covPlotly")) return(p)
     if(length(p@fig) != 2) return(p)
     if(!is(p@fig[[2]], "plotly")) return(p)
@@ -497,7 +497,7 @@ adjustYtitle <- function(p, titleName, trackNum) {
     return(p)
 }
 
-fixYrange <- function(p, trackNum) {
+.fixYrange <- function(p, trackNum) {
     if(!is(p, "covPlotly")) return(p)
     if(length(p@fig) != 2) return(p)
     if(!is(p@fig[[2]], "plotly")) return(p)

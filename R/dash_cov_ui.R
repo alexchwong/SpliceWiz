@@ -208,6 +208,10 @@ ui_cov_new <- function(id) {
                         selectInput(ns('diffB'), 'Contrasting category B', 
                             width = '100%', choices = c("(none)")),
                     ),
+                    shinyWidgets::sliderTextInput(ns("slider_num_plotRes"), 
+                        "Plot resolution", 
+                        choices = c(250, 500, 1000, 2000, 5000, 10000),
+                        selected = 1000),
                     shinyWidgets::prettyRadioButtons(
                         inputId = ns("plot_ribbon"),
                         label = "Variance by:", 
@@ -236,10 +240,27 @@ ui_cov_new <- function(id) {
                        inputId = ns("condense_cov"),
                        label = "Condense Annotation by Gene", right = TRUE,
                        value = FALSE, status = "success"
+                    ),
+                    shinyWidgets::materialSwitch(
+                       inputId = ns("exonMode_cov"),
+                       label = "Exon Plot Mode", right = TRUE,
+                       value = FALSE, status = "success"
+                    )
+                ),
+                conditionalPanel(ns = ns,
+                    condition = "input.exonMode_cov == true",                
+                    wellPanel(style = "overflow-y:scroll; max-height: 400px",
+                        rHandsontableOutput(ns("exons_lookup"))
                     )
                 )
             ),
-            column(9, plotlyOutput(ns("plot_cov"), height = "800px"))
+            column(9, 
+                plotlyOutput(ns("plot_cov"), height = "800px"),
+                conditionalPanel(ns = ns,
+                    condition = "input.exonMode_cov == true",
+                    plotOutput(ns("stillplot_cov"), height = "800px")
+                )
+            )
         )    
     )
 }

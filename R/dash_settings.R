@@ -167,6 +167,8 @@ setreactive_Cov2 <- function() {
         useDE = NULL,
         
         trackTable = data.frame(),
+        exonsTable = data.frame(),
+        exons_gr = GRanges(),
 
     # New ranges can be triggered from different sources
         newGR = GRanges(), # aggregate GRanges

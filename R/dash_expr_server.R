@@ -622,12 +622,17 @@ server_expr <- function(
 }
 
 # Generate rHOT from df (used for df.files and df.anno)
-.server_expr_gen_HOT <- function(df, enable_select = FALSE) {
+.server_expr_gen_HOT <- function(
+        df, enable_select = FALSE,
+        lockedColumns = "sample"
+) {
     if(is_valid(df) && is(df, "data.frame")) {
         r <- rhandsontable(df, useTypes = TRUE, stretchH = "all",
             selectCallback = enable_select)
-        if("sample" %in% colnames(df)) {
-            r <- r %>% hot_col("sample", readOnly = TRUE)
+        for(columnName in lockedColumns) {
+            if(columnName %in% colnames(df)) {
+                r <- r %>% hot_col(columnName, readOnly = TRUE)
+            }
         }
         return(r)
     } else {

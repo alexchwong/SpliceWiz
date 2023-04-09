@@ -340,7 +340,7 @@ server_cov2 <- function(
             layoutData <- isolate(plotly_relayout())
             chrName <- isolate(input$chr_cov)
             
-            print(layoutData)
+            # print(layoutData)
             req(length(layoutData) == 2)
             req(all(c("xaxis.range[0]", "xaxis.range[1]") %in% 
                 names(layoutData)))
@@ -380,27 +380,27 @@ server_cov2 <- function(
         }
 
         observeEvent(eventGR(), {
-            message("Updating event GRanges")
+            # message("Updating event GRanges")
             updateGR(eventGR())
         })
         observeEvent(genesGR(), {
-            message("Updating gene GRanges")
+            # message("Updating gene GRanges")
             updateGR(genesGR())
         })
         observeEvent(zoomInGR(), {
-            message("Updating zoom-in GRanges")
+            # message("Updating zoom-in GRanges")
             updateGR(zoomInGR())
         })
         observeEvent(zoomOutGR(), {
-            message("Updating zoom-out GRanges")
+            # message("Updating zoom-out GRanges")
             updateGR(zoomOutGR())
         })
         observeEvent(plotUpdateGR(), {
-            message("Updating plot event GRanges")
+            # message("Updating plot event GRanges")
             updateGR(plotUpdateGR())
         })
         observeEvent(typedGR(), {
-            message("Updating typed-in GRanges")
+            # message("Updating typed-in GRanges")
             updateGR(typedGR())
         })
 
@@ -645,46 +645,162 @@ server_cov2 <- function(
                 {
                     plotlyObj <- plotView(
                         plotObj, oldP = isolate(settings_Cov$plotlyObj),
-                        view_start = tmpStart, view_end = tmpEnd,
-                        trackList = trackList,
-                        diffList = diffList,
+                        view_start = newSettings[["view_start"]], 
+                        view_end = newSettings[["view_end"]],
+                        trackList = newSettings[["trackList"]],
+                        diffList = newSettings[["diffList"]],
                         diff_stat = "t-test",
-                        ribbon_mode = isolate(input$plot_ribbon),
-                        plotJunctions = isolate(input$plot_Jn_cov),
-                        normalizeCoverage = isolate(input$normalizeCov),
-                        filterByEventTranscripts = isolate(input$plot_key_iso),
-                        condenseTranscripts = isolate(input$condense_cov),
+                        ribbon_mode = newSettings[["ribbon_mode"]],
+                        plotJunctions = newSettings[["plotJunctions"]],
+                        normalizeCoverage = newSettings[["normalizeCoverage"]],
+                        filterByEventTranscripts = newSettings[["filterByEventTranscripts"]],
+                        condenseTranscripts = newSettings[["condenseTranscripts"]],
                         usePlotly = TRUE
                     )
                 })
             } else {
-                # return(settings_Cov$plotlyFig)
                 plotlyObj <- NULL
             }
             
             req(is(plotlyObj, "covPlotly"))
-            settings_Cov$plotlyObj <- plotlyObj
-            fig <- .covPlotlyMake(plotlyObj)
-            
-            req(fig)
+            settings_Cov$oldPlotSettings <- newSettings
+            settings_Cov$exons_gr <- getExonRanges(plotlyObj)            
+            settings_Cov$plotlyObj <- setResolution(plotlyObj, 
+                isolate(input$slider_num_plotRes))
+                
+            # Increment plot count to trigger synthFig()
+            settings_Cov$plotCount <- isolate(settings_Cov$plotCount) + 1
+        })
+
+        # Trigger new plotlyFig every time this increments
+        synthFig <- eventReactive(settings_Cov$plotCount, {
+            req(settings_Cov$plotlyObj)
+            req(all(
+                c("xrange", "resolution") %in% 
+                names(settings_Cov$plotlyObj@args)
+            ))
             plotCount <- isolate(settings_Cov$plotCount)
+
+            doExons <- isolate(input$exonMode_cov)
+            if(doExons) {
+                fig <- .covPlotlyMake(settings_Cov$plotlyObj, showExons = TRUE)            
+            } else {
+                fig <- .covPlotlyMake(settings_Cov$plotlyObj)
+            }
+
             fig$x$source <- paste0("plotly_ViewRef_",
-                as.character(plotCount + 1))
+                as.character(plotCount))
             if(packageVersion("plotly") >= "4.9.0") {
                 event_register(fig, "plotly_relayout")
             }
-            settings_Cov$plotCount <- settings_Cov$plotCount + 1
-            settings_Cov$oldPlotSettings <- newSettings
-            settings_Cov$plotlyFig <- fig
-            # return(fig)
+            
+            return(fig)
+        })
+
+        # If this changes and plotlyObj is a valid covPlotly, increment by 1
+        observeEvent(input$exonMode_cov, {
+            req(settings_Cov$plotlyObj)
+            req(all(
+                c("xrange", "resolution") %in% 
+                names(settings_Cov$plotlyObj@args)
+            ))
+            settings_Cov$plotCount <- isolate(settings_Cov$plotCount) + 1
+        })
+
+        observeEvent(input$slider_num_plotRes, {
+            req(settings_Cov$plotlyObj)
+            req(all(
+                c("xrange", "resolution") %in% 
+                names(settings_Cov$plotlyObj@args)
+            ))
+            req(
+                settings_Cov$plotlyObj@args[["resolution"]] !=
+                input$slider_num_plotRes
+            )
+            settings_Cov$plotlyObj <- setResolution(
+                settings_Cov$plotlyObj, input$slider_num_plotRes
+            )
+            
+            settings_Cov$plotCount <- isolate(settings_Cov$plotCount) + 1
         })
         
         output$plot_cov <- renderPlotly({
-            # fig <- makePlot()
-            fig <- settings_Cov$plotlyFig
-            req(fig)
-            req(length(fig$x$data) > 0)
-            fig
+            synthFig()
+        })
+
+        observeEvent(settings_Cov$exons_gr, {
+            gr <- isolate(settings_Cov$exons_gr)
+            if(length(gr) > 0) {
+                df <- data.frame(
+                    exon = sort(names(gr)),
+                    selected = FALSE
+                )
+            } else {
+                df <- data.frame()
+            }
+            settings_Cov$exonsTable <- df
+        })
+
+        output$exons_lookup <- renderRHandsontable({
+            .server_expr_gen_HOT(
+                settings_Cov$exonsTable, 
+                enable_select = TRUE,
+                lockedColumns = "exon"
+            )
+        })
+
+        observeEvent(input$exons_lookup,{
+            req(input$exons_lookup)
+            settings_Cov$exonsTable <- hot_to_r(input$exons_lookup) 
+        })
+
+        exonsSelected_r <- reactive({
+            df_exons <- settings_Cov$exonsTable
+            req(df_exons)
+            req(nrow(df_exons) > 0)
+            
+            if(sum(df_exons$selected) < 2) return(NULL)
+            return(df_exons$exon[df_exons$selected == TRUE])
+        })
+        exonsSelected_rd <- exonsSelected_r %>% debounce(1000)
+
+        synthExonsFig <- eventReactive(exonsSelected_rd(), {
+            req(settings_Cov$plotlyObj)
+            req(all(
+                c("xrange", "resolution") %in% 
+                names(settings_Cov$plotlyObj@args)
+            ))
+        
+            exonsNames <- exonsSelected_r()
+        
+            validate(need(exonsNames,
+                "Select two or more exons to plot exon-centric coverage plot"
+            ))
+
+            gr <- isolate(settings_Cov$exons_gr)
+            newSettings <- isolate(settings_Cov$oldPlotSettings)
+            # print(gr[exonsNames])
+            ggp <- plotView(
+                isolate(settings_Cov$plotObj), 
+                # view_start = newSettings[["view_start"]], 
+                # view_end = newSettings[["view_end"]],
+                trackList = newSettings[["trackList"]],
+                diffList = newSettings[["diffList"]],
+                diff_stat = "t-test",
+                ribbon_mode = newSettings[["ribbon_mode"]],
+                plotJunctions = newSettings[["plotJunctions"]],
+                normalizeCoverage = newSettings[["normalizeCoverage"]],
+                filterByEventTranscripts = newSettings[["filterByEventTranscripts"]],
+                condenseTranscripts = newSettings[["condenseTranscripts"]],
+                plotRanges = gr[exonsNames],
+                usePlotly = FALSE
+            )
+
+            return(ggp)
+        })
+
+        output$stillplot_cov <- renderPlot({
+            synthExonsFig()
         })
 
         return(settings_Cov)

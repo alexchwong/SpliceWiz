@@ -445,7 +445,7 @@ getAvailableGO <- function(
 
     ah_orgList <- subset(ah, ah$rdataclass == "OrgDb")
     ah_orgListEns <- query(ah_orgList, "Ensembl")
-    ah_orgDb <- subset(ah_orgListEns, ah_orgList$species == species)
+    ah_orgDb <- subset(ah_orgListEns, ah_orgListEns$species == species)
     cache_loc <- AnnotationHub::cache(ah_orgDb[1])
     return(cache_loc)
 }

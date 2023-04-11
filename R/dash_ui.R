@@ -190,5 +190,134 @@ ui_toggle_wellPanel_modular <- function(
     )
 }
 
+shinyDirAttnButton <- function(
+    id, label, title,
+    icon = NULL,
+    style = "gradient",
+    color = "default",
+    size = "md",
+    block = FALSE,
+    no_outline = TRUE,
+  ...
+) {
+    value <- restoreInput(id = id, default = NULL)
+    style <- match.arg(
+        arg = style,
+        choices = c(
+            "simple", "bordered", "minimal", "stretch", "jelly",
+            "gradient", "fill", "material-circle", "material-flat",
+            "pill", "float", "unite"
+        )
+    )
+    color <- match.arg(
+        arg = color,
+        choices = c(
+            "default", "primary", "warning", "danger", "success", "royal"
+        )
+    )
+    size <- match.arg(arg = size, choices = c("xs", "sm", "md", "lg"))
+  
+    tagList(
+        singleton(
+            tags$head(
+                tags$script(src = "sF/shinyFiles.js"),
+                tags$link(
+                    rel = "stylesheet",
+                    type = "text/css",
+                    href = "sF/styles.css"
+                ),
+                tags$link(
+                    rel = "stylesheet",
+                    type = "text/css",
+                    href = "sF/fileIcons.css"
+                )
+            )
+        ),
+        sWidgets_attachDep(
+            tags$button(
+                id = id,
+                type = "button",
+                class = "shinyDirectories action-button bttn",
+                class = paste0("bttn-", style),
+                class = paste0("bttn-", size),
+                class = paste0("bttn-", color),
+                class = if (block) "bttn-block",
+                class = if (no_outline) "bttn-no-outline",
+                style = style,
+                "data-title" = title,
+                "data-val" = value,
+                icon, label, ...
+            ), "bttn"
+        )
+    )
+}
 
-
+shinyFilesAttnButton <- function(
+    id, label, title, 
+    multiple = FALSE, 
+    buttonType="default", 
+    icon = NULL,
+    style = "gradient",
+    color = "default",
+    size = "md",
+    block = FALSE,
+    no_outline = TRUE,
+    viewtype = c("detail", "list", "icon"), 
+    ...
+) {
+    value <- restoreInput(id = id, default = NULL)
+    viewtype <- match.arg(viewtype)
+    if(!is_valid(viewtype)) viewtype <- "detail"
+    style <- match.arg(
+        arg = style,
+        choices = c(
+            "simple", "bordered", "minimal", "stretch", "jelly",
+            "gradient", "fill", "material-circle", "material-flat",
+            "pill", "float", "unite"
+        )
+    )
+    color <- match.arg(
+        arg = color,
+        choices = c(
+            "default", "primary", "warning", "danger", "success", "royal"
+        )
+    )
+    size <- match.arg(arg = size, choices = c("xs", "sm", "md", "lg"))
+    
+    tagList(
+        singleton(
+            tags$head(
+                tags$script(src = "sF/shinyFiles.js"),
+                tags$link(
+                    rel = "stylesheet",
+                    type = "text/css",
+                    href = "sF/styles.css"
+                ),
+                tags$link(
+                    rel = "stylesheet",
+                    type = "text/css",
+                    href = "sF/fileIcons.css"
+                )
+            )
+        ),
+        sWidgets_attachDep(
+            tags$button(
+                id = id,
+                type = "button",
+                class = "shinyFiles action-button bttn",
+                class = paste0("bttn-", style),
+                class = paste0("bttn-", size),
+                class = paste0("bttn-", color),
+                class = if (block) "bttn-block",
+                class = if (no_outline) "bttn-no-outline",
+                style = style,
+                "data-title" = title,
+                "data-selecttype" = ifelse(multiple, "multiple", "single"),
+                "data-val" = value,
+                "data-view" = paste0("sF-btn-", viewtype),
+                list(icon, label),
+                icon, label, ...
+            ), "bttn"
+        )
+    )
+}

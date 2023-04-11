@@ -13,11 +13,11 @@ ui_DE <- function(id) {
     if(.check_package_installed("DESeq2", "1.30.0", "silent")) {
         DE_opts <- c(DE_opts, "DESeq2")
     }
-    if(.check_package_installed("satuRn", "1.4.2", "silent")) {
-        DE_opts <- c(DE_opts, "satuRn")
-    }
+    # if(.check_package_installed("satuRn", "1.4.2", "silent")) {
+        # DE_opts <- c(DE_opts, "satuRn")
+    # }
     if(is.null(DE_opts)) {
-        DE_opts <- ("(none) - please install limma, DESeq2, edgeR, DoubleExpSeq, or satuRn")
+        DE_opts <- ("(none) - please install limma, DESeq2, edgeR, DoubleExpSeq")
     }
     fluidRow(
         .ui_notice(),

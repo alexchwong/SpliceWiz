@@ -8,7 +8,8 @@
 #' We highly recommend using the default filters, which are as follows:
 #' * (1) Depth filter of 20,
 #' * (2) Participation filter requiring 70% coverage in IR events.
-#' * (3) Participation filter requiring 40% coverage in SE, A5SS and A3SS events
+#' * (3) Participation filter requiring 40% coverage in MXE, SE, A5SS and A3SS 
+#'        events
 #'   (i.e. Included + Excluded isoforms must cover at least 40% of all junction
 #'   events across the given region)
 #' * (4) Consistency filter requring log difference of 2 (for skipped exon and
@@ -93,7 +94,7 @@ getDefaultFilters <- function() {
         minimum = 70, minDepth = 5, EventTypes = c("IR", "RI"))
     f3 <- ASEFilter("Data", "Participation", pcTRUE = 80,
         minimum = 40, minDepth = 20,
-        EventTypes = c("SE", "A5SS", "A3SS"))
+        EventTypes = c("SE", "A5SS", "A3SS", "MXE"))
     f4 <- ASEFilter("Data", "Consistency", pcTRUE = 80,
         maximum = 2, minDepth = 20, EventTypes = c("MXE", "SE", "RI"))
     f5 <- ASEFilter("Annotation", "Terminus")

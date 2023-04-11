@@ -1,6 +1,6 @@
 #' Differential Alternative Splicing Event analysis
 #'
-#' Use Limma, DESeq2, DoubleExpSeq, edgeR, and satuRn wrapper functions 
+#' Use Limma, DESeq2, DoubleExpSeq, and edgeR wrapper functions 
 #' to test for differential Alternative Splice Events (ASEs)
 #'
 #' @details
@@ -43,12 +43,6 @@
 #' Using **DoubleExpSeq**, included and excluded counts are modeled using
 #' the generalized beta prime distribution, using empirical Bayes shrinkage
 #' to estimate dispersion.
-#'
-#' Using **satuRn**, included and excluded counts are modeled using
-#' the quasi-binomial distribution in a generalised linear model. Rows with
-#' all-zero included / excluded counts are automatically filtered. To reduce
-#' computation time, users can also use the `filterByMinCPM` parameter to
-#' perform further filtering (performed internally via `edgeR::filterByExpr`).
 #'
 #' **EventType** are as follow:
 #' * `IR` = intron retention (IR-ratio) - all introns are considered
@@ -130,10 +124,6 @@
 #'   modeled by `ASE_limma_timeseries`. E.g., `1` will only model linear trends,
 #'   whereas `2` extends the capacity for quadratic trends, `3` for cubic
 #'   trends, etc.
-#' @param filterByMinCPM (default `0`) In `ASE_satuRn()`, Included/Excluded
-#'   counts will be filtered using this value as the threshold prior to satuRn
-#'   analysis. Filtering is performed using `edgeR::filterByExpr()` parsing
-#'   this parameter into its `min.count` parameter.
 #' @param useQL (default `TRUE`) Whether to use edgeR's quasi-likelihood method
 #'   to help reduce false positives from near-zero junction / intron counts.
 #' @return For all methods, a data.table containing the following:
@@ -177,14 +167,6 @@
 #'     DESeq2 results for differential testing for
 #'     raw included / excluded counts only
 #'
-#'   **satuRn specific output**
-#'   * estimates, se, df, t, pval, regular_FDR:
-#'     estimated log-odds ratio, standard error, degrees of freedom, (Wald) t
-#'     statistic, nominal p-value and associated false discovery rate
-#'   * empirical_pval, empirical_FDR: nominal p value and associated FDR
-#'     computed by estimating the null distribution of the test statistic
-#'     empirically (by satuRn).
-#'
 #'   **DoubleExp specific output**
 #'   * MLE_nom, MLE_denom: Maximum likelihood expectation of PSI values for the 
 #"     two groups. `nom` and
@@ -220,14 +202,6 @@
 #' require("DoubleExpSeq")
 #' res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
 #'
-#' # satuRn analysis (quasi binomial), 
-#' #   Filtering counts using 1 count per million as threshold prior to analysis
-#'
-#' require("satuRn")
-#' require("edgeR")
-#'
-#' res_sat <- ASE_satuRn(se, "treatment", "A", "B", filterByMinCPM = 1)
-#' 
 #' # DESeq2 analysis (counts modeled using negative binomial distribution)
 #'
 #' require("DESeq2")
@@ -631,64 +605,6 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
 
     res.ASE <- res.ASE[!is.na(get("P.Value"))]
     setorderv(res.ASE, "P.Value")
-    res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
-        test_nom, test_denom)
-    return(res.ASE)
-}
-
-#' @describeIn ASE-methods Use satuRn to perform differential ASE analysis of
-#'   a filtered NxtSE object
-#' @export
-ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
-        batch1 = "", batch2 = "",
-        n_threads = 1,
-        IRmode = c("all", "annotated", "annotated_binary"),
-        filter_antiover = TRUE, filter_antinear = FALSE,
-        filterByMinCPM = 0
-        # ...
-) {
-
-    .check_package_installed("satuRn", "1.4.2")
-    # .check_package_installed("edgeR", "3.28.1")
-    
-    .ASE_check_args(colData(se), test_factor,
-        test_nom, test_denom, batch1, batch2)
-    BPPARAM_mod <- .validate_threads(n_threads)
-
-    IRmode <- match.arg(IRmode)
-    se_use <- .ASE_filter(
-        se, filter_antiover, filter_antinear, IRmode)
-
-    # Further filtering step using filterByExpr
-    if(filterByMinCPM > 0) {
-        .check_package_installed("edgeR", "3.28.1")
-        countData <- as.matrix(cbind(assay(se_use, "Included"),
-            assay(se_use, "Excluded")))
-        se_use <- se_use[edgeR::filterByExpr(
-            countData, min.count = filterByMinCPM
-        ),]
-    } else {
-        countData <- as.matrix(cbind(assay(se_use, "Included"),
-            assay(se_use, "Excluded")))
-        if(any(rowSums(countData) == 0)) {
-            .log(paste(
-                "Events (rows) with all zero counts are removed from analysis."
-            ), "warning")
-            se_use <- se_use[rowSums(countData) > 0,]
-            countData <- as.matrix(cbind(assay(se_use, "Included"),
-                assay(se_use, "Excluded")))
-        }
-    }
-    
-    if(nrow(se_use) == 0)
-        .log("No events for ASE analysis after filtering")
-    
-    .log("Performing satuRn contrast for included / excluded counts",
-        "message")
-    rowData <- as.data.frame(rowData(se_use))
-    res.ASE <- .ASE_satuRn_contrast(se_use,
-        test_factor, test_nom, test_denom,
-        batch1, batch2, BPPARAM_mod)
     res.ASE <- .ASE_add_diag(res.ASE, se_use, test_factor, 
         test_nom, test_denom)
     return(res.ASE)
@@ -1137,92 +1053,6 @@ ASE_satuRn <- function(se, test_factor, test_nom, test_denom,
     gc()
     return(cbind(data.table(EventName = rownames(res$All)),
         as.data.table(res$All)))
-}
-
-.ASE_satuRn_contrast <- function(se, test_factor, test_nom, test_denom,
-        batch1, batch2, BPPARAM) {
-    countData <- as.matrix(rbind(assay(se, "Included"),
-        assay(se, "Excluded")))
-    rowData <- as.data.frame(rowData(se))
-    colData <- colData(se)
-    rownames(colData) <- colnames(se)
-    colnames(countData) <- rownames(colData)
-    
-    txInfo <- as.data.frame(matrix(data = NA, nrow = 2 * nrow(se), ncol = 2))
-    colnames(txInfo) <- c("isoform_id", "gene_id")
-    txInfo$isoform_id <- c(
-        paste("Inc", rowData$EventName, sep=":"), 
-        paste("Exc", rowData$EventName, sep=":")
-    )
-    txInfo$gene_id <- rep(rowData$EventName, 2)
-    
-    rownames(countData) <- txInfo$isoform_id
-
-    condition_factor <- factor(colData[, test_factor])
-    if(batch2 != "") {
-        batch2_factor <- colData[, batch2]
-        batch1_factor <- colData[, batch1]
-        formula1 <- ~0 + batch1_factor + batch2_factor +
-            condition_factor
-    } else if(batch1 != "") {
-        batch1_factor <- colData[, batch1]
-        formula1 <- ~0 + batch1_factor + condition_factor
-    } else {
-        formula1 <- ~0 + condition_factor
-    }
-    design1 <- model.matrix(formula1)
-    contrast <- rep(0, ncol(design1))
-    contrast_a <- paste0("condition_factor", test_nom)
-    contrast_b <- paste0("condition_factor", test_denom)
-    contrast[which(colnames(design1) == contrast_b)] <- -1
-    contrast[which(colnames(design1) == contrast_a)] <- 1
-
-    contrast <- matrix(contrast, ncol = 1)
-    colnames(contrast) <- "Contrast1"
-
-    sumExp <- SummarizedExperiment(
-        assays = list(counts = countData),
-        colData = colData,
-        rowData = txInfo
-    )
-    if(BPPARAM$workers > 1) {
-        sumExp <- satuRn::fitDTU(
-            object = sumExp,
-            formula = formula1,
-            verbose = FALSE,
-            parallel = TRUE,
-            BPPARAM = BPPARAM
-        )    
-    } else {
-        sumExp <- satuRn::fitDTU(
-            object = sumExp,
-            formula = formula1,
-            verbose = FALSE,
-            parallel = FALSE
-        )
-    }
-    sumExp <- satuRn::testDTU(
-        object = sumExp,
-        contrasts = contrast,
-        diagplot1 = FALSE,
-        diagplot2 = FALSE,
-        sort = FALSE
-    )
-
-    res <- as.data.frame(rowData(sumExp)[["fitDTUResult_Contrast1"]])
-    res <- res[substr(rownames(res), 1, 4) == "Inc:",]
-    rownames(res) <- substr(rownames(res), 5, nchar(rownames(res)))
-    res.ASE <- as.data.table(cbind(
-        data.frame(EventName = rownames(res), stringsAsFactors = FALSE),
-        res
-    ))
-    setorderv(res.ASE, "pval")
-    res.ASE <- res.ASE[!is.na(get("estimates"))]
-    res.ASE[, c("log2estimates") := list(get("estimates") / log(2))]
-
-    rm(res, sumExp, countData)
-    gc()
-    return(res.ASE)
 }
 
 # Adds human-readable labels

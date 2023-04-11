@@ -300,25 +300,25 @@ server_DE <- function(
                         setorderv(res.ASE, "adj.P.Val")
                     }
                 })
-            } else if(settings_DE$method == "satuRn") {
-                withProgress(message = 'Running satuRn...', value = 0, {
-                    res.ASE <- ASE_satuRn(
-                        se = get_se(), 
-                        test_factor = settings_DE$DE_Var, 
-                        test_nom = settings_DE$nom_DE, 
-                        test_denom = settings_DE$denom_DE,
-                        batch1 = settings_DE$batchVar1, 
-                        batch2 = settings_DE$batchVar2,
-                        IRmode = settings_DE$IRmode_DE,
-                        n_threads = get_threads()
-                    )
-                    if(!input$adjP_DE) {
-                        setorderv(res.ASE, "pval")
-                    } else {
-                        setorderv(res.ASE, "regular_FDR")
-                    }
-                })
-            }
+            } #else if(settings_DE$method == "satuRn") {
+                # withProgress(message = 'Running satuRn...', value = 0, {
+                    # res.ASE <- ASE_satuRn(
+                        # se = get_se(), 
+                        # test_factor = settings_DE$DE_Var, 
+                        # test_nom = settings_DE$nom_DE, 
+                        # test_denom = settings_DE$denom_DE,
+                        # batch1 = settings_DE$batchVar1, 
+                        # batch2 = settings_DE$batchVar2,
+                        # IRmode = settings_DE$IRmode_DE,
+                        # n_threads = get_threads()
+                    # )
+                    # if(!input$adjP_DE) {
+                        # setorderv(res.ASE, "pval")
+                    # } else {
+                        # setorderv(res.ASE, "regular_FDR")
+                    # }
+                # })
+            # }
             
             # Allow filtering by EventType: factorize it
             if(
@@ -441,7 +441,7 @@ server_DE <- function(
             req(any(unlist(colData[,load_DE$settings$DE_Var]) == 
                 load_DE$settings$denom_DE))
             req(load_DE$settings$method %in% 
-                c("DESeq2", "limma", "DoubleExpSeq", "edgeR", "satuRn"))
+                c("DESeq2", "limma", "DoubleExpSeq", "edgeR"))
             req(load_DE$settings$IRmode_DE %in% 
                 c("all", "annotated", "annotated_binary"))
             req("dof" %in% names(load_DE$settings))

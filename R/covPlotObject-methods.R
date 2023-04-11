@@ -142,7 +142,7 @@
 #'   `view_start` and `view_end`)
 #' @param usePlotly If `TRUE`, returns a `covPlotly` object containing the
 #'   plotly-based interactive plot. If `FALSE`, returns a ggplot object.
-#' @param ... Not currently used
+#' @param ... Ignored / not used
 #' @return
 #'   For `getPlotObject()`: A `covPlotObject` object containing Event-based
 #'     data to create coverage plots using `plotView()`.
@@ -286,16 +286,13 @@ getPlotObject <- function(
     Event, # To specify normalization event
     strand = c("*", "+", "-"),
     tracks, # can be a list of iterables
-    condition
+    condition,
+    ...
 ) {
     args <- object@args
 
     if(!missing(tracks)) args[["tracks"]] <- tracks
-    if(!missing(condition)) {
-        args[["condition"]] <- condition
-    } else if(missing(tracks)) {
-        args[["condition"]] <- NULL
-    }
+    if(!missing(condition)) args[["condition"]] <- condition
 
     if(!missing(Event)) args[["Event"]] <- Event
     if(!("Event" %in% names(args)) && "condition" %in% names(args)) {
@@ -408,9 +405,10 @@ plotAnnoTrack <- function(
     view_start, view_end,
     reverseGenomeCoords = FALSE,
     condensed = FALSE,
-    usePlotly = FALSE,
     selected_transcripts = "",
-    plot_key_isoforms = FALSE
+    plot_key_isoforms = FALSE,
+    usePlotly = FALSE,
+    ...
 ) {
     if(missing(view_start)) view_start <- object@args$view_start
     if(missing(view_end)) view_end <- object@args$view_end
@@ -425,7 +423,10 @@ plotAnnoTrack <- function(
     highlight_gr <- list()
     
     if(!missing(Event) && !("rowData" %in% names(object@normData))) {
-        .log("Plotting ASE from a SpliceWiz reference is currently not supported.")
+        .log(paste(
+            "In plotAnnoTrack(),", 
+            "Plotting ASE from a SpliceWiz reference is currently not supported"
+        ))
     }
     
     if(!missing(Event) && Event %in% rownames(object@normData$rowData)) {
@@ -499,7 +500,7 @@ plotView <- function(
     trackList = list(),
     
     # specify differential comparisons
-    diff_stat = c("t-test"),
+    diff_stat = c("t-test", "none"),
     diffList = list(),
 
     reverseGenomeCoords = FALSE,

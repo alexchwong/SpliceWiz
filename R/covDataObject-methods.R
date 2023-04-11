@@ -55,6 +55,7 @@
 #'    involved in the given splicing `Event`.
 #' @param usePlotly (default `FALSE`)
 #'    Whether to return a plotly or ggplot object.
+#' @param ... Ignored / not used
 #' @return 
 #'   For getCoverageData(): A covDataObject containing required data used to
 #'     generate downstream 
@@ -146,15 +147,26 @@ getCoverageData <- function(
         bases_flanking = 100,
 # Samples to retrieve
         tracks,
-        condition
-) {    
+        condition,
+        ...
+) {
+    # Validate mandatory arguments:
+    if(!is(se, "NxtSE")) .log(paste(
+        "In getCoverageData(),",
+        "`se` must be a NxtSE object"
+    ))
+    
     args <- as.list(match.call())
+    args[[1]] <- NULL
     args[["se"]] <- NULL
     for(argname in names(args)) {
         args[[argname]] <- eval(args[[argname]], parent.frame())
     }
     args[["se"]] <- se
     args[["cov_data"]] <- ref(se)
+    
+    args[["zoom_factor"]] <- zoom_factor
+    args[["bases_flanking"]] <- bases_flanking
     
     # Interpret coordinates
     if (
@@ -217,14 +229,15 @@ getGenomeData <- function(
         Gene,
         seqname, start, end,
         coordinates,
-        strand = c("*", "+", "-"),
         zoom_factor = 0.2, 
-        bases_flanking = 100
+        bases_flanking = 100,
+        ...
 ) {
     if (!file.exists(file.path(reference_path, "cov_data.Rds")))
         .log("Given reference_path is not a valid SpliceWiz reference")
 
     args <- as.list(match.call())
+    args[[1]] <- NULL
     for(argname in names(args)) {
         args[[argname]] <- eval(args[[argname]], parent.frame())
     }

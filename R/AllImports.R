@@ -12,7 +12,6 @@
 #' @importFrom R.utils gzip
 #' @importFrom Rcpp evalCpp
 #' @import data.table
-#' @importFrom dplyr group_by
 #' @importFrom fst read.fst write.fst threads_fst
 #' @import ggplot2
 #' @importFrom AnnotationHub AnnotationHub cache query

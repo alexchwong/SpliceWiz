@@ -2,7 +2,7 @@
 
     # Detect optional dependencies, prompt to install if missing:
     CRAN_deps <- c("DoubleExpSeq", "egg", "DBI", "crayon")
-    Bioc_deps <- c("DESeq2", "limma", "satuRn", "edgeR", 
+    Bioc_deps <- c("DESeq2", "limma", "edgeR", 
         "GO.db", "fgsea", "Rsubread")
 
     CRAN_deps_inst <- vapply(CRAN_deps, .check_package_installed,

@@ -10,7 +10,7 @@
 \alias{plotView}
 \title{Versatile coverage plots for SpliceWiz}
 \usage{
-getPlotObject(object, Event, strand = c("*", "+", "-"), tracks, condition)
+getPlotObject(object, Event, strand = c("*", "+", "-"), tracks, condition, ...)
 
 \S4method{tracks}{covPlotObject}(object)
 
@@ -26,7 +26,7 @@ plotView(
   EventBasesFlanking = 100,
   resolution = 5000,
   trackList = list(),
-  diff_stat = c("t-test"),
+  diff_stat = c("t-test", "none"),
   diffList = list(),
   reverseGenomeCoords = FALSE,
   ribbon_mode = c("sd", "sem", "ci", "none"),
@@ -63,6 +63,8 @@ which will be highlighted and used for normalization}
 \item{tracks}{Sample names or condition categories}
 
 \item{condition}{For condition-based group plots, the name of the condition.}
+
+\item{...}{Ignored / not used}
 
 \item{view_start, view_end}{The start and end coordinates for plotting}
 
@@ -162,8 +164,6 @@ each of \code{plotRanges}. Ignored if only 1 range given (or using
 
 \item{usePlotly}{If \code{TRUE}, returns a \code{covPlotly} object containing the
 plotly-based interactive plot. If \code{FALSE}, returns a ggplot object.}
-
-\item{...}{Not currently used}
 }
 \value{
 For \code{getPlotObject()}: A \code{covPlotObject} object containing Event-based

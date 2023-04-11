@@ -22,7 +22,7 @@ Depends: NxtIRFdata
 Imports:
     ompBAM,
 	methods, stats, utils, tools, parallel, scales,
-	magrittr, dplyr,
+	magrittr,
 	Rcpp (>= 1.0.5),
 	data.table,
 	fst,
@@ -62,7 +62,7 @@ Imports:
 	rvest
 Suggests: 
     knitr, rmarkdown, openssl, crayon, splines, testthat (>= 3.0.0), pheatmap,
-    DESeq2, limma, DoubleExpSeq, satuRn, edgeR, DBI, GO.db, fgsea, Rsubread 
+    DESeq2, limma, DoubleExpSeq, edgeR, DBI, GO.db, fgsea, Rsubread 
 LinkingTo: 
     ompBAM,
     Rcpp,
@@ -86,6 +86,7 @@ Collate: AllImports.R
     covPlotly-methods.R
     covDataObject-methods.R
     covPlotObject-methods.R
+	plotCoverage.R
 	utils.R
 	File_finders.R
     BuildRef_GO.R

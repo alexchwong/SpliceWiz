@@ -38,7 +38,8 @@ We highly recommend using the default filters, which are as follows:
 \itemize{
 \item (1) Depth filter of 20,
 \item (2) Participation filter requiring 70\% coverage in IR events.
-\item (3) Participation filter requiring 40\% coverage in SE, A5SS and A3SS events
+\item (3) Participation filter requiring 40\% coverage in MXE, SE, A5SS and A3SS
+events
 (i.e. Included + Excluded isoforms must cover at least 40\% of all junction
 events across the given region)
 \item (4) Consistency filter requring log difference of 2 (for skipped exon and

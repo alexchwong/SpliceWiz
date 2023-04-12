@@ -39,6 +39,7 @@ Imports:
 	GenomeInfoDb,
 	GenomicRanges,
 	HDF5Array,
+    htmltools,
 	IRanges,
     patchwork,
 	progress,
@@ -118,7 +119,6 @@ Collate: AllImports.R
 	dash_vis_server.R
 	dash_cov_ui.R
 	dash_cov_server.R
-    dash_cov_server2.R
 	dash_GO_ui.R
 	dash_GO_server.R
 	dash_ui.R

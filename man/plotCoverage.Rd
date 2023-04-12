@@ -153,8 +153,8 @@ plotly-based interactive plot. If \code{FALSE}, returns a ggplot object.}
 For \code{plotCoverage} and \code{plotGenome}:
 \itemize{
 \item If \code{usePlotly = FALSE} returns a patchwork-assembled static plot
-\item If \code{usePlotly = TRUE} returns a \link{covPlotly} object, which generates
-a plotly interactive plot when shown using \code{show()}
+\item If \code{usePlotly = TRUE} returns a \linkS4class{covPlotly} object,
+which generates a plotly interactive plot when shown using \code{show()}
 }
 }
 \description{
@@ -239,7 +239,7 @@ if(interactive()) {
     p <- plotCoverage(
         se = se,
         Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
-        tracks = colnames(se)[1:4], plotJunctions = TRUE
+        tracks = colnames(se)[1:4], plotJunctions = TRUE,
         usePlotly = TRUE
     )
     show(p)

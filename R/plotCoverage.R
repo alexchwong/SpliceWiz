@@ -126,8 +126,8 @@
 #' For `plotCoverage` and `plotGenome`:
 #'
 #' * If `usePlotly = FALSE` returns a patchwork-assembled static plot
-#' * If `usePlotly = TRUE` returns a [covPlotly] object, which generates
-#'   a plotly interactive plot when shown using `show()`
+#' * If `usePlotly = TRUE` returns a \linkS4class{covPlotly} object, 
+#'   which generates a plotly interactive plot when shown using `show()`
 #' 
 #' @examples
 #' se <- SpliceWiz_example_NxtSE(novelSplicing = TRUE)
@@ -157,7 +157,7 @@
 #'     p <- plotCoverage(
 #'         se = se,
 #'         Event = "SE:SRSF3-203-exon4;SRSF3-202-int3",
-#'         tracks = colnames(se)[1:4], plotJunctions = TRUE
+#'         tracks = colnames(se)[1:4], plotJunctions = TRUE,
 #'         usePlotly = TRUE
 #'     )
 #'     show(p)

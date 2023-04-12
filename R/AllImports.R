@@ -66,6 +66,7 @@
 #' @importFrom shinyWidgets sendSweetAlert ask_confirmation
 #' @importFrom rhandsontable rhandsontable hot_to_r hot_col
 #' @importFrom rhandsontable renderRHandsontable rHandsontableOutput
+#' @importFrom htmltools tagList singleton
 #' @importFrom stats runif na.omit prcomp complete.cases p.adjust
 #' @importFrom DT datatable selectRows dataTableProxy  
 #' @importFrom grDevices colorRampPalette

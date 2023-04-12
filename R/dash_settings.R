@@ -34,6 +34,7 @@ setreactive_expr <- function() {
         collate_path = "",
         collate_path_prompt = "",
 
+        df.bams = c(),
         df.files = c(),
         df.anno = c(),
         disallow_df_update = FALSE,
@@ -43,7 +44,8 @@ setreactive_expr <- function() {
 
         ref_settings = c(),
         expr_path = "",
-        selected_rows = c(),
+        selected_bams = c(),
+        collateData_args = c(),
         df = c(),
         se = NULL
     )

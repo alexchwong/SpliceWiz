@@ -83,6 +83,7 @@ S4_disableValidity <- getFromNamespace("disableValidity", "S4Vectors")
 S4_selectSome <- getFromNamespace("selectSome", "S4Vectors")
 
 sWidgets_attachDep <- getFromNamespace("attachShinyWidgetsDep", "shinyWidgets")
+sFiles_formatFiletype <- getFromNamespace("formatFiletype", "shinyFiles")
 
 # Checks character indices on NxtSE object
 SE_charbound <- function(idx, txt, fmt) {

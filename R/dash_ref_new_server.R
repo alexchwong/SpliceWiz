@@ -258,8 +258,9 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 
     # Output displays
         output$txt_reference_path <- renderText({
-            validate(need(input$dir_reference_path, 
+            validate(need(settings_newref$newref_path, 
                 "Please select reference path"))
+            settings_newref$newref_path
         })
         output$txt_genome <- renderText(settings_newref$newref_fasta)
         output$txt_gtf <- renderText(settings_newref$newref_gtf)

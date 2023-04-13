@@ -47,7 +47,9 @@ setreactive_expr <- function() {
         selected_bams = c(),
         collateData_args = c(),
         df = c(),
-        se = NULL
+        se = NULL,
+        
+        se_expr_infobox_state = -1
     )
 }
 
@@ -92,6 +94,8 @@ setreactive_GO <- function() {
     reactiveValues(
         res = NULL,
 
+        errorMsg = "",
+
         # gene_ids that can optionally be saved to file by user
         gene_ids = NULL,
         univ_ids = NULL,
@@ -101,7 +105,8 @@ setreactive_GO <- function() {
         
         resGO = NULL,
 
-        final_plot = NULL
+        final_plot = NULL,
+        ggplot = NULL
     )
 }
 
@@ -125,6 +130,8 @@ setreactive_Diag <- function() {
 setreactive_Heat <- function() {
     reactiveValues(
         useDE = NULL,
+        eventsGO = NULL,
+        mat = NULL,
         
         ggplot = NULL,
         final_plot = NULL
@@ -165,6 +172,7 @@ setreactive_Cov2 <- function() {
         
         trackTable = data.frame(),
         exonsTable = data.frame(),
+        transcripts = data.frame(),
         exons_gr = GRanges(),
 
     # New ranges can be triggered from different sources
@@ -182,6 +190,9 @@ setreactive_Cov2 <- function() {
 
         plotly_relayout = NULL,
         plot_ini = FALSE,
-        oldPlotSettings = list()
+        oldPlotSettings = list(),
+        
+        ggplot = ggplot(),
+        exonsplot = ggplot()
     )
 }

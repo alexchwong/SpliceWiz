@@ -362,7 +362,7 @@ buildRef <- function(
         setSWthreads(1) # try this to prevent memory leak
 
         session <- shiny::getDefaultReactiveDomain()
-        N_steps <- 8
+        N_steps <- 9
 
         dash_progress("Reading Reference Files", N_steps)
         
@@ -383,6 +383,7 @@ buildRef <- function(
         
         .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
         
+        dash_progress("Processing gene ontology", N_steps)
         if(ontologySpecies == "" & genome_type != "") {
             ontologySpecies <- .getOntologySpecies(genome_type)
         }

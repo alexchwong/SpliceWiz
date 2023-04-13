@@ -248,7 +248,7 @@ server_cov2 <- function(
         trigger <- eventReactive(list(
             input$plot_ribbon, input$plot_Jn_cov, input$normalizeCov,
             input$plot_key_iso, input$condense_cov,
-            tracks_rd(), diff_rd(), eventNorm_rd(), strand_rd()
+            tracks_rd(), diff_rd(), eventNorm_rd(), strand_rd(), trSelected_rd()
         ), {
             runif(1)
         })
@@ -623,13 +623,26 @@ server_cov2 <- function(
 
             refreshPlotly <- refreshCPO
             oldPlotSettings <- isolate(settings_Cov$oldPlotSettings)
+            
+            filterByTranscripts <- trSelected_r()
+            filterByEventTranscripts <- isolate(input$plot_key_iso)
+            filterByExpressedTranscripts <- TRUE
+            
+            if(!is_valid(filterByTranscripts)) {
+                filterByTranscripts <- ""
+                filterByEventTranscripts <- FALSE
+                filterByExpressedTranscripts <- FALSE
+            }
+            
             newSettings <- list(
                 view_start = tmpStart, view_end = tmpEnd,
                 trackList = trackList, diffList = diffList,
                 ribbon_mode = isolate(input$plot_ribbon),
                 plotJunctions = isolate(input$plot_Jn_cov),
                 normalizeCoverage = isolate(input$normalizeCov),
-                filterByEventTranscripts = isolate(input$plot_key_iso),
+                filterByTranscripts = filterByTranscripts,
+                filterByEventTranscripts = filterByEventTranscripts,
+                filterByExpressedTranscripts = filterByExpressedTranscripts,
                 condenseTranscripts = isolate(input$condense_cov)
             )
             if(!identical(newSettings, oldPlotSettings)) {
@@ -653,7 +666,9 @@ server_cov2 <- function(
                         ribbon_mode = newSettings[["ribbon_mode"]],
                         plotJunctions = newSettings[["plotJunctions"]],
                         normalizeCoverage = newSettings[["normalizeCoverage"]],
+                        filterByTranscripts = newSettings[["filterByTranscripts"]],
                         filterByEventTranscripts = newSettings[["filterByEventTranscripts"]],
+                        filterByExpressedTranscripts = newSettings[["filterByExpressedTranscripts"]],
                         condenseTranscripts = newSettings[["condenseTranscripts"]],
                         usePlotly = TRUE
                     )
@@ -665,6 +680,8 @@ server_cov2 <- function(
             req(is(plotlyObj, "covPlotly"))
             settings_Cov$oldPlotSettings <- newSettings
             settings_Cov$exons_gr <- getExonRanges(plotlyObj)            
+            settings_Cov$transcripts <- 
+                plotObj@annotation[["transcripts.DT"]]
             settings_Cov$plotlyObj <- setResolution(plotlyObj, 
                 isolate(input$slider_num_plotRes))
                 
@@ -741,6 +758,21 @@ server_cov2 <- function(
             settings_Cov$exonsTable <- df
         })
 
+        observeEvent(settings_Cov$transcripts, {
+            tr <- isolate(settings_Cov$transcripts)
+            if(nrow(tr) > 0) {
+                DT <- data.table(
+                    transcript_id = tr$transcript_id,
+                    transcript_name = tr$transcript_name,
+                    selected = FALSE
+                )
+            } else {
+                DT <- data.frame()
+            }
+            setorderv(DT, "transcript_name")
+            settings_Cov$TrTable <- as.data.frame(DT)
+        })
+
         output$exons_lookup <- renderRHandsontable({
             .server_expr_gen_HOT(
                 settings_Cov$exonsTable, 
@@ -748,10 +780,21 @@ server_cov2 <- function(
                 lockedColumns = "exon"
             )
         })
-
         observeEvent(input$exons_lookup,{
             req(input$exons_lookup)
             settings_Cov$exonsTable <- hot_to_r(input$exons_lookup) 
+        })
+
+        output$transcripts_lookup <- renderRHandsontable({
+            .server_expr_gen_HOT(
+                settings_Cov$TrTable, 
+                enable_select = TRUE,
+                lockedColumns = c("transcript_id", "transcript_name")
+            )
+        })
+        observeEvent(input$transcripts_lookup,{
+            req(input$transcripts_lookup)
+            settings_Cov$TrTable <- hot_to_r(input$transcripts_lookup) 
         })
 
         exonsSelected_r <- reactive({
@@ -762,7 +805,20 @@ server_cov2 <- function(
             if(sum(df_exons$selected) < 2) return(NULL)
             return(df_exons$exon[df_exons$selected == TRUE])
         })
-        exonsSelected_rd <- exonsSelected_r %>% debounce(1000)
+        exonsSelected_rd <- exonsSelected_r %>% debounce(3000)
+
+        trSelected_r <- reactive({
+            if(!is_valid(input$selTr_cov)) return(NULL)
+            if(!input$selTr_cov) return(NULL)
+            
+            df_tr <- settings_Cov$TrTable
+            if(!is_valid(df_tr)) return(NULL)
+            if(nrow(df_tr) == 0) return(NULL)
+            
+            if(sum(df_tr$selected) < 1) return(NULL)
+            return(df_tr$transcript_id[df_tr$selected == TRUE])
+        })
+        trSelected_rd <- trSelected_r %>% debounce(3000)
 
         synthExonsFig <- eventReactive(exonsSelected_rd(), {
             req(settings_Cov$plotlyObj)
@@ -789,7 +845,9 @@ server_cov2 <- function(
                 ribbon_mode = newSettings[["ribbon_mode"]],
                 plotJunctions = newSettings[["plotJunctions"]],
                 normalizeCoverage = newSettings[["normalizeCoverage"]],
+                filterByTranscripts = newSettings[["filterByTranscripts"]],
                 filterByEventTranscripts = newSettings[["filterByEventTranscripts"]],
+                filterByExpressedTranscripts = newSettings[["filterByExpressedTranscripts"]],
                 condenseTranscripts = newSettings[["condenseTranscripts"]],
                 plotRanges = gr[exonsNames],
                 horizontalLayout = rep(1, length(exonsNames)),
@@ -799,9 +857,51 @@ server_cov2 <- function(
             return(ggp)
         })
 
-        output$stillplot_cov <- renderPlot({
-            synthExonsFig()
+        get_ggplot_whole <- reactive({
+            req(settings_Cov$plotlyObj)
+            req(all(
+                c("xrange", "resolution") %in% 
+                names(settings_Cov$plotlyObj@args)
+            ))
+
+            newSettings <- isolate(settings_Cov$oldPlotSettings)
+            req(newSettings)
+            
+            ggp <- plotView(
+                isolate(settings_Cov$plotObj), 
+                view_start = newSettings[["view_start"]], 
+                view_end = newSettings[["view_end"]],
+                trackList = newSettings[["trackList"]],
+                diffList = newSettings[["diffList"]],
+                diff_stat = "t-test",
+                ribbon_mode = newSettings[["ribbon_mode"]],
+                plotJunctions = newSettings[["plotJunctions"]],
+                normalizeCoverage = newSettings[["normalizeCoverage"]],
+                filterByTranscripts = newSettings[["filterByTranscripts"]],
+                filterByEventTranscripts = newSettings[["filterByEventTranscripts"]],
+                filterByExpressedTranscripts = newSettings[["filterByExpressedTranscripts"]],
+                condenseTranscripts = newSettings[["condenseTranscripts"]],
+                usePlotly = FALSE
+            )
+
+            return(ggp)
         })
+        
+        get_ggplot_exons <- reactive({
+            req(settings_Cov$exonsplot)
+            settings_Cov$exonsplot
+        })
+
+        observe({
+            settings_Cov$exonsplot <- synthExonsFig()
+        })
+
+        output$stillplot_cov <- renderPlot({
+            settings_Cov$exonsplot
+        })
+
+        spModule1 <- vis_ggplot_server("covSave", get_ggplot_whole, volumes)
+        spModule2 <- vis_ggplot_server("covExonSave", get_ggplot_exons, volumes)
 
         return(settings_Cov)
     })

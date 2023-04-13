@@ -84,22 +84,22 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 
             gt <- input$newref_genome_type
             valid_gt_options <- c("hg38", "hg19", "mm10", "mm9")
-            withProgress(message = "Retrieving Mappability resource", value = 0,
-            {
-                if(gt %in% valid_gt_options) {
+            if(gt %in% valid_gt_options) {
+                withProgress(
+                        message = "Retrieving Mappability resource", value = 0,
+                {
                     settings_newref$newref_NPA <- getNonPolyARef(gt)
-                    settings_newref$newref_mappa <- 
-                        .sw_dash_get_mappa(gt)
-                }
-            })
+                    settings_newref$newref_mappa <- .sw_dash_get_mappa(gt)
+                })
+            }
 
-            if(input$newref_genome_type %in% c("hg38", "hg19")) {
+            if(gt %in% c("hg38", "hg19")) {
                 updateSelectInput(session = session, 
                     inputId = "newref_species_GO", 
                     choices = c("(none)", "Homo sapiens", "Mus musculus"),
                     selected = "Homo sapiens"
                 )            
-            } else if(input$newref_genome_type %in% c("mm10", "mm9")) {
+            } else if(gt %in% c("mm10", "mm9")) {
                 updateSelectInput(session = session, 
                     inputId = "newref_species_GO", 
                     choices = c("(none)", "Homo sapiens", "Mus musculus"),
@@ -251,6 +251,11 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         observeEvent(input$load_ref_example, {
             if(!dir.exists(file.path(tempdir(), "Reference")))
                 dir.create(file.path(tempdir(), "Reference"))
+            updateSelectInput(session = session, 
+                inputId = "newref_species_GO", 
+                choices = c("(none)", "Homo sapiens", "Mus musculus"),
+                selected = "Homo sapiens"
+            )
             settings_newref$newref_path <- file.path(tempdir(), "Reference")
             settings_newref$newref_fasta <- NxtIRFdata::chrZ_genome()
             settings_newref$newref_gtf <- NxtIRFdata::chrZ_gtf()

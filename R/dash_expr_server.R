@@ -371,7 +371,7 @@ server_expr <- function(
             if(is_valid(ref_path)) {
                 ref_settings_file <- file.path(ref_path, "settings.Rds")
             }
-            renderUI(ui_infobox_ref(ref_settings_file))
+            ui_infobox_ref(ref_settings_file)
         })
         
         allBAMpaths_r <- reactive({
@@ -389,18 +389,51 @@ server_expr <- function(
                 is_valid(settings_expr$df.files) &&
                 all(allBAMnames_r() %in% settings_expr$df.files$sample)
             ) {
-                renderUI(ui_infobox_bam(escape = TRUE))
+                ui_infobox_bam(escape = TRUE)
             } else if(!is.null(allBAMpaths_r())) {
-                renderUI(ui_infobox_bam(settings_expr$bam_path,
-                    allBAMpaths_r()))
+                ui_infobox_bam(settings_expr$bam_path,
+                    allBAMpaths_r())
             } else {
-                renderUI(ui_infobox_bam(settings_expr$bam_path))
+                ui_infobox_bam(settings_expr$bam_path)
             }
         })
 
-        output$se_expr_infobox <- renderUI({
-        
-            # this will trigger checking for seed.Rds
+        anno_nCol <- reactive({
+            if(!is_valid(settings_expr$df.anno)) return(0)
+            return(ncol(settings_expr$df.anno))
+        })
+        isExprReadyToCollate <- reactive({
+            if(!is_valid(settings_expr$NxtSE_path)) return(FALSE)
+            if(!is_valid(settings_expr$df.files)) return(FALSE)
+            if(!all(file.exists(settings_expr$df.files$sw_file))) return(FALSE)
+            if(!is_valid(settings_expr$df.bams)) return(TRUE)
+            if(
+                "sampleName" %in% colnames(settings_expr$df.bams) &&
+                all(
+                    settings_expr$df.bams$sampleName %in%
+                        settings_expr$df.files$sample
+                )
+            ) return(TRUE)
+            return(FALSE)
+        })
+        anyBAMsNeedProcessing <- reactive({
+            if(!is_valid(settings_expr$NxtSE_path)) return(FALSE)
+            if(!is_valid(settings_expr$df.files)) return(FALSE)
+            if(!is_valid(settings_expr$df.bams)) return(FALSE)
+            if(!("sample" %in% colnames(settings_expr$df.files))) return(FALSE)
+            if(!("sampleName" %in% colnames(settings_expr$df.bams))) return(FALSE)
+            if(all(
+                settings_expr$df.bams$sampleName %in% 
+                settings_expr$df.files$sample
+            )) return(FALSE)
+            return(TRUE)
+        })
+        allBAMsNeedProcessing <- reactive({
+            if(!is_valid(settings_expr$NxtSE_path)) return(FALSE)
+            if(is_valid(settings_expr$df.files)) return(FALSE)
+            return(TRUE)
+        })
+        infoboxSE_decision <- reactive({
             tmp <- settings_expr$collateData_args
             
             if(
@@ -409,69 +442,41 @@ server_expr <- function(
             ) {
                 if(limited) {
                     if(is(settings_expr$se, "NxtSE")) {
-                        renderUI(ui_infobox_expr(3, "NxtSE ready to analyse", 
-                            ""))
-                    } else if(
-                        is_valid(settings_expr$df.anno) && 
-                        ncol(settings_expr$df.anno) > 1
-                    ) {
-                        renderUI(ui_infobox_expr(2, "NxtSE ready to load", 
-                            "Click `Load NxtSE from folder`"))
+                        return(ui_infobox_expr(3, "NxtSE ready to analyse", ""))
+                    } else if(anno_nCol() > 1) {
+                        return(ui_infobox_expr(2, "NxtSE ready to load", 
+                    "Click `Load NxtSE from folder`"))
                     } else {
-                        renderUI(ui_infobox_expr(1, "NxtSE missing annotations", 
-                            "Consider adding annotations to your experiment"))
+                        return(ui_infobox_expr(1, "NxtSE missing annotations", 
+                    "Consider adding annotations to your experiment"))
                     }
                 } else {
                     savedNxtSE <- .server_expr_check_savestate(settings_expr)
                     if(savedNxtSE) {
-                        renderUI(ui_infobox_expr(3, "NxtSE ready to load", 
-                            "Load via Analysis -> Load Experiment"))
+                        return(ui_infobox_expr(3, "NxtSE ready to load", 
+                    "Load via Analysis -> Load Experiment"))
                     } else {
-                        renderUI(ui_infobox_expr(2, "NxtSE ready to load", 
-                            "Don't forget to save your annotations"))
+                        return(ui_infobox_expr(2, "NxtSE ready to load", 
+                    "Don't forget to save your annotations"))
                     }                
                 }
-            } else if(
-                is_valid(settings_expr$NxtSE_path) &&
-                is_valid(settings_expr$df.files) &&
-                all(file.exists(settings_expr$df.files$sw_file)) &&
-                (
-                    !is_valid(settings_expr$df.bams) ||
-                    (
-                        "sampleName" %in% colnames(settings_expr$df.bams) &&
-                        all(
-                            settings_expr$df.bams$sampleName %in%
-                                settings_expr$df.files$sample
-                        )
-                    )
-                )
-            ) {
-                renderUI(ui_infobox_expr(2, "Ready to collate experiment"))
-            } else if(
-                    is_valid(settings_expr$NxtSE_path) &&
-                    is_valid(settings_expr$df.files) &&
-                    is_valid(settings_expr$df.bams) &&
-                    "sample" %in% colnames(settings_expr$df.files) &&
-                    "sampleName" %in% colnames(settings_expr$df.bams) &&
-                    !all(
-                        settings_expr$df.bams$sampleName %in% 
-                        settings_expr$df.files$sample
-                    )
-            ) {
-                renderUI(ui_infobox_expr(1,
+            } else if(isExprReadyToCollate()) {
+                return(ui_infobox_expr(2, "Ready to collate experiment"))
+            } else if(anyBAMsNeedProcessing()) {
+                return(ui_infobox_expr(1,
                     "Some BAM files need to be processed"))
-            } else if(
-                    is_valid(settings_expr$NxtSE_path) &&
-                    !is_valid(settings_expr$df.files)
-            ) {
-                renderUI(ui_infobox_expr(1,
+            } else if(allBAMsNeedProcessing()) {
+                return(ui_infobox_expr(1,
                     "BAM files need to be processed"))
             } else if(is_valid(settings_expr$NxtSE_path)) {
-                renderUI(ui_infobox_expr(0,
+                return(ui_infobox_expr(0,
                     paste("Selected path:", settings_expr$NxtSE_path)))
             } else {
-                renderUI(ui_infobox_expr(0, "Select path for NxtSE output"))
+                return(ui_infobox_expr(0, "Select path for NxtSE output"))
             }
+        })
+        output$se_expr_infobox <- renderUI({
+            infoboxSE_decision()
         })
         
         

@@ -42,6 +42,7 @@ Imports:
     htmltools,
 	IRanges,
     patchwork,
+    pheatmap,
 	progress,
 	plotly,
 	R.utils,
@@ -62,7 +63,7 @@ Imports:
 	RColorBrewer,
 	rvest
 Suggests: 
-    knitr, rmarkdown, openssl, crayon, splines, testthat (>= 3.0.0), pheatmap,
+    knitr, rmarkdown, openssl, crayon, splines, testthat (>= 3.0.0), 
     DESeq2, limma, DoubleExpSeq, edgeR, DBI, GO.db, fgsea, Rsubread 
 LinkingTo: 
     ompBAM,

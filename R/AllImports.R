@@ -61,6 +61,7 @@
 #' @importFrom shinyFiles shinyDirButton shinyDirChoose shinyFileChoose
 #' @importFrom shinyFiles shinyFilesButton shinyFileSave shinySaveButton
 #' @importFrom shinyWidgets sliderTextInput updateSliderTextInput
+#' @importFrom shinyWidgets prettyRadioButtons materialSwitch
 #' @importFrom shinyWidgets radioGroupButtons updateRadioGroupButtons
 #' @importFrom shinyWidgets switchInput actionBttn
 #' @importFrom shinyWidgets sendSweetAlert ask_confirmation
@@ -71,6 +72,7 @@
 #' @importFrom DT datatable selectRows dataTableProxy  
 #' @importFrom grDevices colorRampPalette
 #' @importFrom heatmaply heatmaply
+#' @importFrom pheatmap pheatmap
 #' @importFrom matrixStats colVars
 #' @importFrom RColorBrewer brewer.pal.info
 #' @importFrom rvest read_html html_nodes html_attr

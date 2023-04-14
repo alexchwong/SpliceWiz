@@ -259,6 +259,12 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
             settings_newref$newref_path <- file.path(tempdir(), "Reference")
             settings_newref$newref_fasta <- NxtIRFdata::chrZ_genome()
             settings_newref$newref_gtf <- NxtIRFdata::chrZ_gtf()
+            output$txt_demo <- renderText({
+                paste(
+                    "Demo reference settings loaded.",
+                    "Click `Build Reference` to build demo SpliceWiz reference"
+                )
+            })
         })
 
     # Output displays

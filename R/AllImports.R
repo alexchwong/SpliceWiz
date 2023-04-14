@@ -63,7 +63,7 @@
 #' @importFrom shinyWidgets sliderTextInput updateSliderTextInput
 #' @importFrom shinyWidgets prettyRadioButtons materialSwitch
 #' @importFrom shinyWidgets radioGroupButtons updateRadioGroupButtons
-#' @importFrom shinyWidgets switchInput actionBttn
+#' @importFrom shinyWidgets switchInput actionBttn updateSwitchInput
 #' @importFrom shinyWidgets sendSweetAlert ask_confirmation
 #' @importFrom rhandsontable rhandsontable hot_to_r hot_col
 #' @importFrom rhandsontable renderRHandsontable rHandsontableOutput

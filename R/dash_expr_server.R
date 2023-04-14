@@ -11,20 +11,25 @@ server_expr <- function(
 
         # Directory and file handling
         observe({
+            # Folder select
             shinyDirChoose(input, "dir_reference_path_load", 
                 roots = volumes(), session = session)
             shinyDirChoose(input, "dir_bam_path_load", 
                 roots = volumes(), session = session)
             shinyDirChoose(input, "dir_NxtSE_path_load", 
                 roots = volumes(), session = session)
+
+            # Anno i/o from csv / tables
             shinyFileChoose(input, "file_expr_anno_load", 
                 roots = volumes(), session = session)
+            shinyFileSave(input, "anno_as_csv", 
+                roots = volumes(), session = session, filetypes = c("csv"))
+
+            # NxtSE as RDS
             shinyFileChoose(input, "loadNxtSE_RDS", 
                 roots = volumes(), session = session, filetype = c("Rds"))
-            shinyFileChoose(input, "file_expr_anno_load_coldata", 
-                roots = volumes(), session = session, filetype = c("Rds"))
-            shinyFileSave(input, "file_expr_anno_save_coldata", 
-                roots = volumes(), session = session, filetypes = c("rds")) 
+            shinyFileSave(input, "saveNxtSE_RDS", roots = volumes(), 
+                session = session, filetypes = c("rds"))    
         })
         
         # Directory path getters
@@ -49,14 +54,6 @@ server_expr <- function(
             if(!dir.exists(pbPath)) dir.create(pbPath)
             settings_expr$df.files <- Expr_Load_SW(
                 settings_expr$df.files, pbPath)
-        })
-        # Open / merge annotation file with current annotations
-        observeEvent(input$file_expr_anno_load, {
-            req(input$file_expr_anno_load)
-            file_selected <- parseFilePaths(volumes(),
-                input$file_expr_anno_load)
-            req(file_selected$datapath)
-            settings_expr$anno_file <- as.character(file_selected$datapath)
         })
         
         # Experiment I/O - sync between files and anno
@@ -89,6 +86,10 @@ server_expr <- function(
         })
         
         # Experiment I/O - sync between user input and data frames
+        observeEvent(input$hot_ref_expr,{
+            req(input$hot_ref_expr)
+            settings_expr$ref_table <- hot_to_r(input$hot_ref_expr) 
+        })
         observeEvent(input$hot_bams_expr,{
             req(input$hot_bams_expr)
             settings_expr$df.bams <- hot_to_r(input$hot_bams_expr) 
@@ -101,63 +102,65 @@ server_expr <- function(
             req(input$hot_anno_expr)
             settings_expr$df.anno <- hot_to_r(input$hot_anno_expr)
         })
+        
         output$hot_files_expr <- renderRHandsontable({
-            .server_expr_gen_HOT(settings_expr$df.files, enable_select = TRUE)
+            .server_expr_gen_HOT(settings_expr$df.files)
         })
         output$hot_anno_expr <- renderRHandsontable({
             .server_expr_gen_HOT(settings_expr$df.anno)
         })
         output$hot_bams_expr <- renderRHandsontable({
-            .server_expr_gen_HOT(settings_expr$df.bams, enable_select = TRUE,
+            .server_expr_gen_HOT(settings_expr$df.bams,
                 lockedColumns = "path")
         })
+        output$hot_ref_expr <- renderRHandsontable({
+            .server_expr_gen_HOT(settings_expr$ref_table,
+                lockedColumns = c("parameter", "value"))
+        })
 
-    # Save and load annotations to colData.Rds
-        observeEvent(input$file_expr_anno_save_coldata, {
-            selectedfile <- parseSavePath(volumes(), 
-                input$file_expr_anno_save_coldata)
-            req(selectedfile$datapath)
-            .server_expr_save_expr(reactiveValuesToList(settings_expr), 
-                selectedfile$datapath, session)
+        observeEvent(input$anno_to_NxtSE, {
+            req(input$anno_to_NxtSE)
+            req(settings_expr$NxtSE_path)
+
+            outFile <- file.path(settings_expr$NxtSE_path, "colData.Rds")
+            req(file.exists(outFile))
+
+            colData.Rds <- list(
+                df.anno = settings_expr$df.anno,
+                df.files = settings_expr$df.files
+            )
+            saveRDS(colData.Rds, outFile)
             settings_expr$df.files_savestate <- settings_expr$df.files
             settings_expr$df.anno_savestate <- settings_expr$df.anno
         })
         
-        observeEvent(input$file_expr_anno_load_coldata, {
-            req(input$file_expr_anno_load_coldata)
-            file_selected <- parseFilePaths(volumes(),
-                input$file_expr_anno_load_coldata)
-            req(file_selected$datapath)
+        observeEvent(input$anno_from_NxtSE, {
+            req(input$anno_from_NxtSE)
+            req(settings_expr$NxtSE_path)
 
-            colData_file <- as.character(file_selected$datapath)
-            if(
-                    is_valid(settings_expr$collate_path) &&
-                    file.exists(colData_file)
-            ) {
-                colData.Rds <- readRDS(colData_file)
-                req_columns <- c("df.anno", "df.files")
-                if(all(req_columns %in% names(colData.Rds))) {
-                    settings_expr$disallow_df_update <- TRUE
-                    settings_expr$df.files <- colData.Rds$df.files
-                    settings_expr$df.files_savestate <- settings_expr$df.files
-                    settings_expr$df.anno <- colData.Rds$df.anno
-                    settings_expr$df.anno_savestate <- settings_expr$df.anno
-                    .server_expr_load_alert_success(session, colData_file)
-                } else {
-                    .server_expr_load_alert_fail(session, colData_file)
-                }
-            } else {
-                .server_expr_load_alert_fail(session, colData_file)
+            inFile <- file.path(settings_expr$NxtSE_path, "colData.Rds")
+            req(file.exists(inFile))
+
+            colData.Rds <- readRDS(inFile)
+            req_columns <- c("df.anno", "df.files")
+            if(all(req_columns %in% names(colData.Rds))) {
+                settings_expr$disallow_df_update <- TRUE
+                settings_expr$df.files <- colData.Rds$df.files
+                settings_expr$df.files_savestate <- settings_expr$df.files
+                settings_expr$df.anno <- colData.Rds$df.anno
+                settings_expr$df.anno_savestate <- settings_expr$df.anno
             }
         })
 
+
     # Edit Annotations
         observeEvent(input$add_anno, {
+            req(input$add_anno)
             updateRadioGroupButtons(session, inputId = "hot_switch_expr", 
                 selected = "Annotations")
         })
         output$newcol_expr <- renderUI({
-            textInput(ns("newcolumnname_expr"), "New Column Name (to add)", 
+            textInput(ns("newcolumnname_expr"), "Column Name (to add / remove)", 
                 sprintf("newcol%s", 1 + ncol(settings_expr$df.anno))
             )
         })
@@ -200,23 +203,39 @@ server_expr <- function(
         
         # Event when reference directory is set
         observeEvent(settings_expr$ref_path, {
-            path_selected           <- is_valid(settings_expr$ref_path)
-            path                    <- settings_expr$ref_path
-            settings_expr$ref_path  <- .server_expr_check_ref_path(
-                                        settings_expr$ref_path)
-            output                  <- .server_expr_parse_ref_path(
-                                        settings_expr$ref_path, output)
-            
-            if(is_valid(settings_expr$ref_path)) {
-                settings_expr$ref_settings <- readRDS(
-                    file.path(settings_expr$ref_path, "settings.Rds"))
-                .server_expr_ref_load_success(session, settings_expr$ref_path)
-            } else if(path_selected) {
+            if(
+                is_valid(settings_expr$ref_path)
+            ) {
+                settingsFile <- file.path(
+                    settings_expr$ref_path, "settings.Rds")
+                if(file.exists(settingsFile)) {
+                    settings_expr$ref_settings <- readRDS(settingsFile)
+                } else {
+                    settings_expr$ref_settings <- NULL
+                }
+            } else {
                 settings_expr$ref_settings <- NULL
-                .server_expr_ref_load_fail(session, path)      
             }
         })
+        output$txt_reference_path_load <- renderText(settings_expr$ref_path)
 
+        # Load settings values if ref_settings is filled
+        observeEvent(settings_expr$ref_settings, {
+            df <- data.frame()
+            rsList <- settings_expr$ref_settings
+            if(is_valid(rsList) && is.list(rsList)) {
+                df <- data.frame(
+                    parameter = names(rsList),
+                    value = ""
+                )
+                for(i in seq_len(nrow(df))) {
+                    df$value[i] <- rsList[[df$parameter[i]]]
+                }
+            }
+            settings_expr$ref_table <- df
+            updateRadioGroupButtons(session, inputId = "hot_switch_expr", 
+                selected = "ref")
+        })
         # Event when BAM directory is set
         observeEvent(settings_expr$bam_path,{
             settings_expr$df.bams <- .addBAMfiles(
@@ -238,7 +257,7 @@ server_expr <- function(
             
             req(is_valid(settings_expr$NxtSE_path))
 
-            # Check if NxtSE files exist
+            # Load NxtSE if colData.Rds exists
             colData_path <- file.path(settings_expr$NxtSE_path, "colData.Rds")
             if(file.exists(colData_path)) {
                 colData.Rds <- readRDS(colData_path)
@@ -257,8 +276,14 @@ server_expr <- function(
         })
         output$txt_NxtSE_path_load <- renderText(settings_expr$NxtSE_path)
 
-
-        # Event when Annotation file is set
+        # Open / merge annotation file with current annotations
+        observeEvent(input$file_expr_anno_load, {
+            req(input$file_expr_anno_load)
+            file_selected <- parseFilePaths(volumes(),
+                input$file_expr_anno_load)
+            req(file_selected$datapath)
+            settings_expr$anno_file <- as.character(file_selected$datapath)
+        })
         observeEvent(settings_expr$anno_file,{
             req(settings_expr$anno_file)
             req(file.exists(settings_expr$anno_file))
@@ -267,13 +292,22 @@ server_expr <- function(
             updateRadioGroupButtons(session, inputId = "hot_switch_expr", 
                 selected = "Annotations")
         })
+        
+        # Export annotations as csv
+        observeEvent(input$anno_as_csv, {
+            selectedfile <- parseSavePath(volumes(), input$anno_as_csv)
+            req(selectedfile$datapath)
+            req(settings_expr$df.anno)
+            
+            fwrite(settings_expr$df.anno, selectedfile$datapath)
+        })
 
         # Running processBAM
         observeEvent(input$run_pb_expr,{
             req(input$run_pb_expr)
             settings_expr$selected_bams <- Expr_PB_initiate_run(
                 input, session, 
-                get_threads_reactive(), 
+                input$pbam_threads, # get_threads_reactive(), 
                 isolate(reactiveValuesToList(settings_expr))
             )
         })
@@ -282,7 +316,8 @@ server_expr <- function(
                 settings_expr$selected_bams <- c()
             } else {
                 Expr_PB_actually_run(
-                    input, session, get_threads_reactive(), 
+                    input, session, 
+                    input$pbam_threads, # get_threads_reactive(),
                     isolate(reactiveValuesToList(settings_expr))
                 )
                 settings_expr$selected_bams <- c()
@@ -312,7 +347,7 @@ server_expr <- function(
                     Experiment = Experiment,
                     reference_path = reference_path,
                     output_path = output_path,
-                    lowMemoryMode = get_memmode_reactive(),
+                    lowMemoryMode = input$mem_mode,
                     novelSplicing = input$novel_splicing_on,
                     novelSplicing_requireOneAnnotatedSJ = 
                         input$novel_splicing_sameJunc,
@@ -320,11 +355,12 @@ server_expr <- function(
                     novelSplicing_minSamplesAboveThreshold = 
                         input$nsOpt_minSamplesThreshold,
                     novelSplicing_countThreshold  = input$nsOpt_Threshold,
-                    novelSplicing_useTJ = input$nsOpt_TJ                    
+                    novelSplicing_useTJ = input$nsOpt_TJ,
+                    overwrite = input$NxtSE_overwrite
                 )
                 settings_expr$collateData_args <- Expr_cD_initiate_run(
                     input, session, 
-                    get_threads_reactive(),
+                    input$cd_threads, # get_threads_reactive(),
                     args
                 )
             }
@@ -334,36 +370,30 @@ server_expr <- function(
                 settings_expr$collateData_args <- NULL
             } else {
                 Expr_cD_actually_run(
-                    input, session, get_threads_reactive(), 
+                    input, session, 
+                    input$cd_threads, # get_threads_reactive(),
                     isolate(reactiveValuesToList(settings_expr))
                 )
                 settings_expr$collateData_args <- NULL
+
+                # Synch is collateData run is successful
+                colData_path <- file.path(
+                    settings_expr$NxtSE_path, "colData.Rds")
+                if(file.exists(colData_path)) {
+                    colData.Rds <- readRDS(colData_path)
+                    if(all(c("df.anno", "df.files") %in% names(colData.Rds))) {
+                        # settings_expr$df.files <- colData.Rds$df.files
+                        # settings_expr$df.anno <- colData.Rds$df.anno
+                        settings_expr$df.files_savestate <- settings_expr$df.files
+                        settings_expr$df.anno_savestate <- settings_expr$df.anno
+                    }
+                }
+
             }
         })
 
-        # Place demo BAM files in tempdir
-        observeEvent(input$makeDemoBAMS, {
-            if(!dir.exists(file.path(tempdir(), "bams")))
-                dir.create(file.path(tempdir(), "bams"))
-            if(!dir.exists(file.path(tempdir(), "NxtSE")))
-                dir.create(file.path(tempdir(), "NxtSE"))
-            if(!dir.exists(file.path(tempdir(), "NxtSE/pbOutput")))
-                dir.create(file.path(tempdir(), "NxtSE/pbOutput"))
-            ret <- example_bams(path = file.path(tempdir(), "bams"))
-            if(is.null(ret)) {
-                sendSweetAlert(
-                    session = session,
-                    title = "Error creating demo BAM files", type = "error"
-                )
-            } else {
-                sendSweetAlert(
-                    session = session,
-                    title = paste("BAM files downloaded to", 
-                        file.path(tempdir(), "bams")
-                    ), type = "success"
-                )
-            }
-        })
+
+    ## Status boxes
 
         output$ref_expr_infobox <- renderUI({
             ref_path <- settings_expr$ref_path
@@ -433,6 +463,17 @@ server_expr <- function(
             if(is_valid(settings_expr$df.files)) return(FALSE)
             return(TRUE)
         })
+        isAnnoSavedToNxtSE <- reactive({
+            if(!is_valid(settings_expr$NxtSE_path)) return(FALSE)
+            if(!is_valid(settings_expr$df.files)) return(FALSE)
+            if(!is_valid(settings_expr$df.anno)) return(FALSE)
+            if(!is_valid(settings_expr$df.files_savestate)) return(FALSE)
+            if(!is_valid(settings_expr$df.anno_savestate)) return(FALSE)
+            return(
+                identical(settings_expr$df.anno_savestate, settings_expr$df.anno) &&
+                identical(settings_expr$df.files_savestate, settings_expr$df.files)
+            )            
+        })
         infoboxSE_decision <- reactive({
             tmp <- settings_expr$collateData_args
             
@@ -442,37 +483,38 @@ server_expr <- function(
             ) {
                 if(limited) {
                     if(is(settings_expr$se, "NxtSE")) {
-                        return(ui_infobox_expr(3, "NxtSE ready to analyse", ""))
+                        return(ui_infobox_expr(3, "NxtSE ready to analyse", 
+                            "", limited))
                     } else if(anno_nCol() > 1) {
                         return(ui_infobox_expr(2, "NxtSE ready to load", 
-                    "Click `Load NxtSE from folder`"))
+                    "Click `Load NxtSE from folder`", limited))
                     } else {
                         return(ui_infobox_expr(1, "NxtSE missing annotations", 
-                    "Consider adding annotations to your experiment"))
+                    "Consider adding annotations to your experiment", limited))
                     }
                 } else {
-                    savedNxtSE <- .server_expr_check_savestate(settings_expr)
+                    savedNxtSE <- isAnnoSavedToNxtSE()
                     if(savedNxtSE) {
                         return(ui_infobox_expr(3, "NxtSE ready to load", 
-                    "Load via Analysis -> Load Experiment"))
+                    "Load via Analysis -> Load Experiment", limited))
                     } else {
                         return(ui_infobox_expr(2, "NxtSE ready to load", 
-                    "Don't forget to save your annotations"))
+                    "Don't forget to save your annotations", limited))
                     }                
                 }
             } else if(isExprReadyToCollate()) {
-                return(ui_infobox_expr(2, "Ready to collate experiment"))
+                return(ui_infobox_expr(2, "Ready to collate experiment", "", limited))
             } else if(anyBAMsNeedProcessing()) {
                 return(ui_infobox_expr(1,
-                    "Some BAM files need to be processed"))
+                    "Some BAM files need to be processed", "", limited))
             } else if(allBAMsNeedProcessing()) {
                 return(ui_infobox_expr(1,
-                    "BAM files need to be processed"))
+                    "BAM files need to be processed", "", limited))
             } else if(is_valid(settings_expr$NxtSE_path)) {
                 return(ui_infobox_expr(0,
-                    paste("Selected path:", settings_expr$NxtSE_path)))
+                    paste("Selected path:", settings_expr$NxtSE_path), "", limited))
             } else {
-                return(ui_infobox_expr(0, "Select path for NxtSE output"))
+                return(ui_infobox_expr(0, "Select path for NxtSE output", "", limited))
             }
         })
         output$se_expr_infobox <- renderUI({
@@ -502,10 +544,6 @@ server_expr <- function(
             }
         })
 
-        observe({
-            shinyFileSave(input, "saveNxtSE_RDS", roots = volumes(), 
-                session = session, filetypes = c("rds"))    
-        })
         observeEvent(input$saveNxtSE_RDS, {    
             req(settings_expr$se)
             if(!is(settings_expr$se, "NxtSE")) {
@@ -574,48 +612,9 @@ server_expr <- function(
     })
 }
 
-# Clear all info boxes
-.server_expr_clear_ref <- function(output) {
-    # output$fasta_source_infobox <- renderInfoBox(infoBox(""))
-    # output$gtf_source_infobox <- renderInfoBox(infoBox(""))
-    # output$mappa_source_infobox <- renderInfoBox(infoBox(""))
-    # output$NPA_source_infobox <- renderInfoBox(infoBox(""))
-    # output$BL_source_infobox <- renderInfoBox(infoBox(""))
-    output$txt_reference_path_load <- renderText("")
-    output$ref_expr_infobox <- renderUI(ui_infobox_ref(""))
-    return(output)
-}
+## Internal functions
 
-# Check path contains valid SpliceWiz reference
-.server_expr_check_ref_path <- function(ref_path) {
-    if(is_valid(ref_path)) {
-        ref_settings_file <- file.path(ref_path, "settings.Rds")
-        if(file.exists(ref_settings_file)) {
-            ref_settings <- readRDS(ref_settings_file)
-            if("reference_path" %in% names(ref_settings)) {
-                return(ref_path)
-            }
-        }
-    }
-    return("")
-}
-
-# Register ref_path into server
-.server_expr_parse_ref_path <- function(ref_path, output) {
-    if(is_valid(ref_path)) {
-        ref_settings_file <- file.path(ref_path, "settings.Rds")
-        ref_settings <- readRDS(ref_settings_file)
-        # output <- .server_expr_load_ref(ref_settings, 
-            # output)
-        output$txt_reference_path_load <- renderText(
-            ref_path)
-        output$ref_expr_infobox <- renderUI(ui_infobox_ref(
-            ref_settings_file))
-    } else {
-        output <- .server_expr_clear_ref(output)
-    }
-    return(output)
-}
+### Unifying df.files with df.anno ###
 
 # Filter df2 by the samples in df1 by simple dataframe union
 .server_expr_simple_unify_df <- function(df1, df2) {
@@ -686,6 +685,8 @@ server_expr <- function(
     }
 }
 
+### Generate rhandsontable from data.frame (locking specified columns)
+
 # Generate rHOT from df (used for df.files and df.anno)
 .server_expr_gen_HOT <- function(
         df, enable_select = FALSE,
@@ -705,152 +706,7 @@ server_expr <- function(
     }
 }
 
-# Load settings.Rds from SpliceWiz reference to populate status boxes
-.server_expr_load_ref <- function(ref_settings, output) {
-    ah <- ah_genome_record <- ah_gtf_record <- NULL
-    fasta <- gtf <- mappa <- nonPA <- Black <- NULL
-    if(
-            "ah_genome" %in% names(ref_settings) &&
-            is_valid(ref_settings[["ah_genome"]])
-    ) {
-        ah <- AnnotationHub()
-        ah_genome_record <- tryCatch({
-            basename(ah$sourceurl[
-                which(names(ah) == ref_settings[["ah_genome"]])])
-        }, error = function(e) NULL)
-    }
-    if(
-            "ah_transcriptome" %in% names(ref_settings) &&
-            is_valid(ref_settings[["ah_transcriptome"]])
-    ) {
-        if(is.null(ah)) ah <- AnnotationHub()
-        ah_gtf_record <- tryCatch({
-            basename(ah$sourceurl[
-                which(names(ah) == ref_settings[["ah_transcriptome"]])])
-        }, error = function(e) NULL)
-    }
-    if(is.null(ah_genome_record) && "fasta_file" %in% names(ref_settings)) {
-        fasta <- basename(ref_settings[["fasta_file"]])
-    }
-    if(is.null(ah_gtf_record) && "gtf_file" %in% names(ref_settings)) {
-        gtf <- basename(ref_settings[["gtf_file"]])
-    }
-    if("MappabilityRef" %in% names(ref_settings)) {
-        mappa <- basename(ref_settings[["MappabilityRef"]])
-    }
-    if("nonPolyARef" %in% names(ref_settings)) {
-        nonPA <- basename(ref_settings[["nonPolyARef"]])
-    }
-    if("BlacklistRef" %in% names(ref_settings)) {
-        Black <- basename(ref_settings[["BlacklistRef"]])
-    }   
-    output <- .server_expr_load_ref_genome(output, ah_genome_record, fasta)
-    output <- .server_expr_load_ref_gtf(output, ah_gtf_record, gtf)
-    output <- .server_expr_load_ref_misc(output, mappa, nonPA, Black)
-    return(output)
-}
-
-# Add genome FASTA profile into server
-.server_expr_load_ref_genome <- function(output, ah_genome_record, fasta) {
-    if(is_valid(ah_genome_record)) {
-        output$fasta_source_infobox <- renderInfoBox({
-            infoBox("Genome - AnnotationHub", "", ah_genome_record,
-                icon = icon("dna", lib = "font-awesome"), 
-                color = "green")
-        })      
-    } else if(is_valid(fasta)) {
-        output$fasta_source_infobox <- renderInfoBox({
-            infoBox("Genome - User FASTA", "",
-                fasta, 
-                icon = icon("dna", lib = "font-awesome"),
-                color = "green")
-        })
-    } else {
-        output$fasta_source_infobox <- renderInfoBox({
-            infoBox("Genome - INVALID", "",
-                "", 
-                icon = icon("dna", lib = "font-awesome"),
-                color = "red")
-        })
-    }
-    return(output)
-}
-
-# Add annotation GTF profile into server
-.server_expr_load_ref_gtf <- function(output, ah_gtf_record, gtf) {
-    if(is_valid(ah_gtf_record)) {
-        output$gtf_source_infobox <- renderInfoBox({
-            infoBox("Gene Annotation - AnnotationHub",  "", ah_gtf_record,
-                icon = icon("book-medical", lib = "font-awesome"),
-                color = "orange")
-        })               
-    } else if(is_valid(gtf)) {
-        output$gtf_source_infobox <- renderInfoBox({
-            infoBox("Gene Annotation - User GTF",  "",
-                gtf, 
-                icon = icon("book-medical", lib = "font-awesome"),
-                color = "orange")
-        })
-    } else {
-        output$gtf_source_infobox <- renderInfoBox({
-            infoBox("Gene Annotation - INVALID", "",
-                "", 
-                icon = icon("book-medical", lib = "font-awesome"),
-                color = "red")
-        })
-    }
-    return(output)
-}
-
-# Add miscellaneous reference data into server
-.server_expr_load_ref_misc <- function(output, mappa, nonPA, Black) {
-    if(is_valid(mappa)) {
-        output$mappa_source_infobox <- renderInfoBox({
-            infoBox("Mappability", "",
-                mappa, 
-                icon = icon("map", lib = "font-awesome"),
-                color = "blue")
-        })
-    } else {
-        output$mappa_source_infobox <- renderInfoBox({
-            infoBox("Mappability", "",
-                "NOT USED", 
-                icon = icon("map", lib = "font-awesome"),
-                color = "blue")
-        })  
-    }
-    if(is_valid(nonPA)) {
-        output$NPA_source_infobox <- renderInfoBox({
-            infoBox("Non-PolyA", "",
-                nonPA, 
-                icon = icon("font", lib = "font-awesome"),
-                color = "purple")
-        })
-    } else {
-        output$NPA_source_infobox <- renderInfoBox({
-            infoBox("Non-PolyA", "",
-                "NOT USED", 
-                icon = icon("font", lib = "font-awesome"),
-                color = "purple")
-        })
-    }
-    if(is_valid(Black)) {
-        output$BL_source_infobox <- renderInfoBox({
-            infoBox("BlackList", "",
-                Black, 
-                icon = icon("list-alt", lib = "font-awesome"),
-                color = "red")
-        })
-    } else {
-        output$BL_source_infobox <- renderInfoBox({
-            infoBox("BlackList", "",
-                "NOT USED", 
-                icon = icon("list-alt", lib = "font-awesome"),
-                color = "red")
-        })
-    }
-    return(output)
-}
+# Add BAM files from folder to list
 
 .addBAMfiles <- function(df.bams, bam_path) {
     if(!is_valid(bam_path)) return(df.bams)
@@ -866,7 +722,7 @@ server_expr <- function(
         selected = TRUE
     )
     
-    if(is.null(df.bams)) return(as.data.frame(new_DT))
+    if(!is_valid(df.bams)) return(as.data.frame(new_DT))
     df.bams <- df.bams[!(df.bams$path %in% bams$path),]
     return(rbind(
         df.bams,
@@ -874,75 +730,7 @@ server_expr <- function(
     ))
 }
 
-# Given a BAM path, load BAM files to populate experiment
-Expr_Load_BAMs <- function(df.files, bam_path, session) {
-    if(!is_valid(bam_path)) return(df.files)
-
-    # First assume bams are named by subdirectory names
-    temp.DT <- findSamples(bam_path, suffix = ".bam", level = 1)
-    if(!is.null(temp.DT) && nrow(temp.DT) > 0) {
-        temp.DT <- as.data.table(temp.DT)
-        if(length(unique(temp.DT$sample)) == nrow(temp.DT)) {
-            # Assume subdirectory names designate sample names
-        } else {
-            temp.DT <- as.data.table(findSamples(
-                bam_path, suffix = ".bam", level = 0))
-            if(length(unique(temp.DT$sample)) == nrow(temp.DT)) {
-            # Else assume bam names designate sample names
-            } else {
-                sendSweetAlert(session = session,
-                    title = "Incompatible BAM file names",
-                    text = paste("Could not determine sample names.",
-                        "Please ensure either BAMs are uniquely named by",
-                        "sample name,",
-                        "or its parent directories are uniquely named."
-                    ), type = "error")
-                temp.DT <- NULL
-            }
-        }
-    } else {
-        sendSweetAlert(session = session, 
-            title = "No BAM files found",
-            text = "No BAM files found", type = "error")            
-        temp.DT <- NULL
-    }
-    # compile experiment df with bam paths
-    if(!is.null(temp.DT) && nrow(temp.DT) > 0)  {
-        colnames(temp.DT)[2] <- "bam_file"
-        if(is_valid(df.files)) {
-            df.files <- update_data_frame(df.files, temp.DT)
-        } else {
-            DT <- data.table(sample = temp.DT$sample,
-                bam_file = "", sw_file = "", cov_file = "")
-            DT[temp.DT, on = "sample", c("bam_file") := get("i.bam_file")]
-            df.files <- as.data.frame(DT)
-        }
-        return(df.files)
-    } else {
-        return(df.files)
-    }
-}
-
-Expr_BAM_update_status <- function(df.bams, df.files, bam_path, collate_path) {
-    if(is_valid(df.bams) && "path" %in% names(df.bams)) {
-        if(
-                "sw_file" %in% colnames(df.files) && 
-                all(file.exists(df.files$sw_file))
-        ) {
-            return(renderUI(ui_infobox_bam(bam_path, escape = TRUE)))
-        } else if(
-                is_valid(collate_path) && 
-                file.exists(file.path(collate_path, "colData.Rds"))
-        ) {
-            return(renderUI(ui_infobox_bam(bam_path, escape = TRUE)))
-        } else {
-            return(renderUI(ui_infobox_bam(bam_path, df.bams$path)))
-        }
-    } else {
-        return(renderUI(ui_infobox_bam(bam_path)))        
-    } 
-}
-
+# Load SpliceWiz output files from given directory
 Expr_Load_SW <- function(df.files, sw_path) {
     if(!is_valid(sw_path)) return(df.files)
     # merge splicewiz paths
@@ -998,6 +786,8 @@ Expr_Load_SW <- function(df.files, sw_path) {
     }
     return(df.files)
 }
+
+### Running processBAM after a prompt
 
 # Brings a prompt message asking do you really want to run processBAM
 Expr_PB_initiate_run <- function(input, session, n_threads, settings_expr) {
@@ -1059,7 +849,40 @@ Expr_PB_initiate_run <- function(input, session, n_threads, settings_expr) {
     return()
 }
 
-# Brings a prompt message asking do you really want to run processBAM
+# After user confirms, actually call processBAM
+Expr_PB_actually_run <- function(input, session, n_threads, settings_expr) {
+    n_bams <- nrow(settings_expr$selected_bams)
+    withProgress(message = 'Running SpliceWiz (processBAM)', value = 0, {
+        i_done <- 0
+        incProgress(0.001, 
+            message = paste('Running SpliceWiz (processBAM)',
+                i_done, "of", n_bams, "done")
+        )
+        for(i in seq_len(n_bams)) {
+            processBAM(
+                bamfiles = settings_expr$selected_bams$path[i],
+                sample_names = settings_expr$selected_bams$sampleName[i],
+                reference_path = settings_expr$ref_path,
+                output_path = file.path(settings_expr$NxtSE_path, "pbOutput"),
+                n_threads = n_threads,
+                run_featureCounts = FALSE,
+                verbose = TRUE                    
+            )
+            i_done <- i_done + 1
+            incProgress(1 / n_bams, 
+                message = paste(i_done, "of", n_bams, "done")
+            )
+        }
+    })
+
+    sendSweetAlert(
+        session = session,
+        title = "SpliceWiz (processBAM) run completed",
+        type = "success"
+    )
+}
+
+# Brings a prompt message asking do you really want to run collateData
 Expr_cD_initiate_run <- function(input, session, n_threads, args) {
     if(!is_valid(args[["reference_path"]])) {
         sendSweetAlert(
@@ -1107,40 +930,7 @@ Expr_cD_initiate_run <- function(input, session, n_threads, args) {
     return(NULL)
 }
 
-
-# After user confirms, actually call processBAM
-Expr_PB_actually_run <- function(input, session, n_threads, settings_expr) {
-    n_bams <- nrow(settings_expr$selected_bams)
-    withProgress(message = 'Running SpliceWiz (processBAM)', value = 0, {
-        i_done <- 0
-        incProgress(0.001, 
-            message = paste('Running SpliceWiz (processBAM)',
-                i_done, "of", n_bams, "done")
-        )
-        for(i in seq_len(n_bams)) {
-            processBAM(
-                bamfiles = settings_expr$selected_bams$path[i],
-                sample_names = settings_expr$selected_bams$sampleName[i],
-                reference_path = settings_expr$ref_path,
-                output_path = file.path(settings_expr$NxtSE_path, "pbOutput"),
-                n_threads = n_threads,
-                run_featureCounts = FALSE,
-                verbose = TRUE                    
-            )
-            i_done <- i_done + 1
-            incProgress(1 / n_bams, 
-                message = paste(i_done, "of", n_bams, "done")
-            )
-        }
-    })
-
-    sendSweetAlert(
-        session = session,
-        title = "SpliceWiz (processBAM) run completed",
-        type = "success"
-    )
-}
-
+# Actually run collateData
 Expr_cD_actually_run <- function(input, session, n_threads, settings_expr) {
     withProgress(
             message = 'Collating SpliceWiz (processBAM) output', 
@@ -1154,21 +944,7 @@ Expr_cD_actually_run <- function(input, session, n_threads, settings_expr) {
     )   # saves / updates expr
 }
 
-
-# Check SpliceWiz path contains SpliceWiz output or not
-.server_expr_check_sw_path <- function(df.files, sw_path, output) {
-    if(is_valid(df.files) && "sw_file" %in% colnames(df.files)) {
-        sw_files <- df.files$sw_file
-    } else {
-        sw_files <- NULL
-    }
-    output$pb_expr_infobox <- renderUI({
-        ui_infobox_pb(sw_path, sw_files)
-    })
-    return(output)
-}
-
-# Load annotation file
+# Load annotation file and merge with current annotations
 Expr_Load_Anno <- function(df.anno, df.files, anno_file, session) {
     temp.DT <- tryCatch(fread(anno_file), error = function(e) NULL)
     if(!is_valid(temp.DT) || nrow(temp.DT) == 0) {
@@ -1427,7 +1203,6 @@ Expr_Update_colData <- function(
             }
         }
     } else {
-        # TODO: delete this if this does nothing!
         sendSweetAlert(
             session = session,
             title = "collateData appears to have failed",

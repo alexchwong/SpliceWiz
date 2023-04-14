@@ -22,7 +22,6 @@ ui_DE <- function(id) {
     fluidRow(
         .ui_notice(),
         column(4,
-            textOutput(ns("warning_DE")),
             selectInput(ns('method_DE'), 'Method', 
                 DE_opts),
             selectInput(ns('variable_DE'), 'Variable', 
@@ -63,6 +62,7 @@ ui_DE <- function(id) {
                 # filetype = list(RDS = "Rds")),
             actionBttn(ns("perform_DE"), "Perform DE",
                 style = "gradient", color = "success"), br(), br(),
+            textOutput(ns("warning_DE")), br(),
             wellPanel(style = "max-width: 300px",
                 shinySaveAttnButton(ns("save_DE"), 
                     label = "Save Analysis to file", 
@@ -74,7 +74,8 @@ ui_DE <- function(id) {
             )
         ),
         column(8,
-            actionButton(ns("clear_selected_DE"), "Clear Selected Events"),
+            actionButton(ns("clear_selected_DE"), "Clear Selected Events"), 
+            br(), br(),
             div(style = 'overflow-x: scroll',  
                 DT::dataTableOutput(ns('DT_DE'))
             )

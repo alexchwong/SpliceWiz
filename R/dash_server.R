@@ -72,11 +72,15 @@ dash_server <- function(input, output, session) {
         get_rows_selected_volc <- reactive(settings_Volc$selected)
         
     # Reactives that returns the number of threads to use
-        get_threads_reactive <- reactive(.dash_get_threads(
-            input$thread_number, input$cores_numeric))
-        get_memmode_reactive <- reactive(.dash_get_memmode(
-            input$memory_option))
-        get_omp_reactive <- reactive(.dash_get_openmp())
+        get_threads_reactive <- reactive({
+            # .dash_get_threads(input$thread_number, input$cores_numeric)
+            1
+        })
+        get_memmode_reactive <- reactive({
+            #.dash_get_memmode(input$memory_option))
+            TRUE
+        })
+        # get_omp_reactive <- reactive(.dash_get_openmp())
 
     # Tie module data to their server objects
     settings_system <- setreactive_system()
@@ -140,26 +144,26 @@ dash_server <- function(input, output, session) {
     })
     
     # Update 
-    observeEvent(list(input$memory_option, get_threads_reactive()), {
-        req(input$memory_option)
-        n_threads <- get_threads_reactive()
-        if(n_threads != .getSWthreads()) n_threads <- setSWthreads(n_threads)
-        if(input$memory_option == "Low") {
-            ref_mem <- 4
-            cd_mem <- 6
-        } else {
-            ref_mem <- 8
-            cd_mem <- 6 * n_threads
-        }
-        if(get_omp_reactive()) {
-            pb_mem <- 10
-        } else {
-            pb_mem <- 10 * n_threads
-        }
-        output$txt_mem_buildRef <- renderText(paste(ref_mem, "Gb"))
-        output$txt_mem_processBAM <- renderText(paste(pb_mem, "Gb"))
-        output$txt_mem_collateData <- renderText(paste(cd_mem, "Gb"))
-    })
+    # observeEvent(list(input$memory_option, get_threads_reactive()), {
+        # req(input$memory_option)
+        # n_threads <- get_threads_reactive()
+        # if(n_threads != .getSWthreads()) n_threads <- setSWthreads(n_threads)
+        # if(input$memory_option == "Low") {
+            # ref_mem <- 4
+            # cd_mem <- 6
+        # } else {
+            # ref_mem <- 8
+            # cd_mem <- 6 * n_threads
+        # }
+        # if(get_omp_reactive()) {
+            # pb_mem <- 10
+        # } else {
+            # pb_mem <- 10 * n_threads
+        # }
+        # output$txt_mem_buildRef <- renderText(paste(ref_mem, "Gb"))
+        # output$txt_mem_processBAM <- renderText(paste(pb_mem, "Gb"))
+        # output$txt_mem_collateData <- renderText(paste(cd_mem, "Gb"))
+    # })
 # End of server function
 }
 

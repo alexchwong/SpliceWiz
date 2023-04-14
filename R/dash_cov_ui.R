@@ -66,7 +66,7 @@ ui_cov_new <- function(id) {
             )
         ),
         fluidRow(
-            column(3, 
+            column(4, 
                 wellPanel(style = "overflow-y:scroll; max-height: 800px",
                     selectInput(ns('event_norm_cov'), 'Normalize by Event', 
                         width = '100%', choices = c("(none)")),
@@ -78,9 +78,18 @@ ui_cov_new <- function(id) {
                     
                     conditionalPanel(ns = ns,
                         condition = "['(Individual Samples)'].indexOf(input.condition_cov) < 0",
-                        selectInput(ns('diff_stat'), 
-                            'Differential coverage track', 
-                            width = '100%', choices = c("t-test")),                        
+                        # selectInput(ns('diff_stat'), 
+                            # 'Differential coverage track', 
+                            # width = '100%', choices = c("t-test")),                        
+                        shinyWidgets::prettyRadioButtons(
+                            inputId = ns("diff_stat"),
+                            label = "Measure difference by:", 
+                            choiceNames = c("t-test", "none"),
+                            choiceValues = c("t-test", "none"),
+                            inline = TRUE, 
+                            status = "danger",
+                            fill = TRUE
+                        ),
                         selectInput(ns('diffA'), 'Contrasting category A', 
                             width = '100%', choices = c("(none)")),
                         selectInput(ns('diffB'), 'Contrasting category B', 
@@ -132,13 +141,13 @@ ui_cov_new <- function(id) {
                 ),
                 conditionalPanel(ns = ns,
                     condition = "input.selTr_cov == true",                
-                    wellPanel(style = "overflow-y:scroll; max-height: 400px",
+                    wellPanel(style = "overflow-y:scroll; max-height: 250px",
                         rHandsontableOutput(ns("transcripts_lookup"))
                     )
                 ),
                 conditionalPanel(ns = ns,
                     condition = "input.exonMode_cov == true",                
-                    wellPanel(style = "overflow-y:scroll; max-height: 400px",
+                    wellPanel(style = "overflow-y:scroll; max-height: 250px",
                         rHandsontableOutput(ns("exons_lookup"))
                     )
                 ),
@@ -146,11 +155,11 @@ ui_cov_new <- function(id) {
                 br(), br(),
                 vis_ggplot_UI(ns("covExonSave"), "Save exon-centric plot as PDF"),
             ),
-            column(9, 
-                plotlyOutput(ns("plot_cov"), height = "800px"),
+            column(8, 
+                plotlyOutput(ns("plot_cov"), height = "600px"),
                 conditionalPanel(ns = ns,
                     condition = "input.exonMode_cov == true",
-                    plotOutput(ns("stillplot_cov"), height = "800px")
+                    plotOutput(ns("stillplot_cov"), height = "600px")
                 )
             )
         )    

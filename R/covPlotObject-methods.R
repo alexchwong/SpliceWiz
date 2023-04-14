@@ -618,7 +618,7 @@ plotView <- function(
             } else {
                 start(plotRanges[i]) <- args[["limit_start"]]
             }
-            if(end(plotRanges[i]) - rbf < args[["limit_end"]]) {
+            if(end(plotRanges[i]) + rbf < args[["limit_end"]]) {
                 end(plotRanges[i]) <- end(plotRanges[i]) + rbf
             } else {
                 end(plotRanges[i]) <- args[["limit_end"]]
@@ -902,6 +902,9 @@ plotView <- function(
 
         exons_gr <- .grDT(exonsOnly, keep.extra.columns = TRUE)
         names(exons_gr) <- exons_gr$exon_name
+        # Remove exons that lie outside view range
+        OL <- findOverlaps(exons_gr, fetchRange, type = "within")
+        exons_gr <- exons_gr[sort(unique(OL@from))]
 
         if(!plotAnnotations & showExonRanges) showExonRanges <- FALSE
         if(plotAnnotations) {
@@ -1888,7 +1891,8 @@ plotView <- function(
     
     reduced <- as.data.frame(reduced)
 
-    if (nrow(subset(reduced, type = "intron")) > 0) {
+    reducedIntrons <- data.frame()
+    if (sum(reduced$type == "intron", na.rm = TRUE) > 0) {
         reducedIntrons <- reduced[reduced$type == "intron", ]
         reducedIntronsExpanded <- c()
         for(i in seq_len(nrow(reducedIntrons))) {
@@ -1978,6 +1982,7 @@ plotView <- function(
 
 # Convert highlight codes to colors
 .pV_highlight_to_colors <- function(highlights, usePlotly = FALSE) {
+    if(is.null(highlights)) return(NULL)
     if(usePlotly) {
         highlights <- sub("0", "rgba(0,0,0,1)", highlights)
         highlights <- sub("1", "rgba(0,0,255,1)", highlights)
@@ -2067,9 +2072,10 @@ plotView <- function(
         )
     }
 
-    p <- p + 
-        scale_color_manual(values = col_highlights) +
-        scale_fill_manual(values = fill_highlights)    
+    if(!is.null(col_highlights)) 
+        p <- p + scale_color_manual(values = col_highlights)
+    if(!is.null(fill_highlights)) 
+        p <- p + scale_fill_manual(values = fill_highlights)
     
     p <- p + theme_white_legend_plot_track +
         theme(

@@ -5,42 +5,46 @@ ui_expr <- function(id) {
         fluidRow(
             uiOutput(ns("ref_expr_infobox")),
             uiOutput(ns("bam_expr_infobox")),
-            # uiOutput(ns("pb_expr_infobox")),
+                                              
             uiOutput(ns("se_expr_infobox")),
         ),
         fluidRow(
             column(4,
                 wellPanel(
+                    ui_ddb_project_dir(id, color = "default"), br(), # br(),
+                    actionBttn(ns("run_pb_expr"), "Process Selected BAMs", 
+                        style = "gradient", color = "success"),  br(), br(),
+                    shinyFilesAttnButton(ns("file_expr_anno_load"), 
+                        label = "Import Annotations from File", 
+                        title = "Choose Sample Annotation Table", 
+                        multiple = FALSE), br(), br(),
                     conditionalPanel(
                         ns = ns,
                         condition = paste(
                             "['Annotations'].indexOf(input.hot_switch_expr)",
                             ">= 0"
                         ),
-                        ui_wellPanel_anno(id)
+                        ui_ddb_anno(id), br(),
                     ),
-                    # ui_ddb_demo_load(id, color = "danger"), br(),
-                    ui_ddb_project_dir(id, color = "default"), br(), # br(),
-                    actionBttn(ns("run_pb_expr"), "Process BAMs", 
-                        style = "gradient"),  br(), br(),
-                    # ui_ddb_build_annos(id, color = "default"), br(),
-                    shinyFilesAttnButton(ns("file_expr_anno_load"), 
-                        label = "Import Annotations from File", 
-                        title = "Choose Sample Annotation Table", 
-                        multiple = FALSE), br(), br(),
-                    ui_ddb_build_expr(id, color = "default"),  br(),
-                    actionBttn(ns("run_collate_expr"), 
-                        "Collate Experiment",
-                        style = "gradient")
+                    ui_ddb_exprSettings(id, color = "default"),  br(),
+                    actionBttn(ns("run_collate_expr"), "Collate Experiment",
+                        style = "gradient", color = "success"), br(), br(),
+                    ui_ddb_anno_io(id, color = "default"), br(),
+                    ui_ddb_sys(id, color = "default")
                 )
             ),
             column(8,
                 shinyWidgets::radioGroupButtons(
                     inputId = ns("hot_switch_expr"),
                     label = "Experiment Display",
-                    choiceNames = c("BAMs", "Files", "Annotations"),
-                    choiceValues = c("BAMs", "Files", "Annotations"),
-                    selected = "BAMs"
+                    choiceNames = c("Reference", "BAMs", "Files", "Annotations"),
+                    choiceValues = c("ref", "BAMs", "Files", "Annotations"),
+                    selected = "ref"
+                ),
+                conditionalPanel(
+                    ns = ns,
+                    condition = "['ref'].indexOf(input.hot_switch_expr) >= 0",
+                    rHandsontableOutput(ns("hot_ref_expr"))
                 ),
                 conditionalPanel(
                     ns = ns,
@@ -90,14 +94,6 @@ ui_expr_limited <- function(id) {
         fluidRow(
             column(4,
                 wellPanel(
-                    conditionalPanel(
-                        ns = ns,
-                        condition = paste(
-                            "['Annotations'].indexOf(input.hot_switch_expr)",
-                            ">= 0"
-                        ),
-                        ui_wellPanel_anno(id)
-                    ),
                     # ui_ddb_find_expr_folder(id, color = "default"), br(),
                     shinyDirAttnButton(ns("dir_NxtSE_path_load"), 
                         label = "Select Experiment (NxtSE) folder", 
@@ -109,6 +105,14 @@ ui_expr_limited <- function(id) {
                         title = "Choose Sample Annotation Table", 
                         multiple = FALSE), br(), br(),
                     # ui_ddb_load_expr(id, color = "default"), br(),
+                    conditionalPanel(
+                        ns = ns,
+                        condition = paste(
+                            "['Annotations'].indexOf(input.hot_switch_expr)",
+                            ">= 0"
+                        ),
+                        ui_ddb_anno(id), br(),
+                    ),
                     actionBttn(ns("build_expr"), "Load NxtSE from folder", 
                         style = "gradient", color = "success"),  br(), br(),
                     shinySaveAttnButton(ns("saveNxtSE_RDS"), 
@@ -167,6 +171,62 @@ ui_wellPanel_anno <- function(id) {
     )
 }
 
+ui_ddb_sys <- function(id, color = "warning") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "expr_ddb_sys",
+        id = id,
+        title = "System settings",
+        color = color,
+        icon = icon("computer", lib = "font-awesome"),
+
+        shinyWidgets::sliderTextInput(
+            inputId = ns("pbam_threads"), 
+            label = "Threads for processing BAM",
+            choices = c(1,2,4,6,8,12,16,24), 
+            selected = 1
+        ),
+        shinyWidgets::sliderTextInput(
+            inputId = ns("cd_threads"), 
+            label = "Threads for collating experiment",
+            choices = c(1,2,4,6,8), 
+            selected = 1
+        ),
+        shinyWidgets::materialSwitch(
+           inputId = ns("mem_mode"),
+           label = "Low memory mode (for collating experiment)", right = TRUE,
+           value = TRUE, status = "warning"
+        ),
+    )
+}
+
+
+ui_ddb_anno <- function(id, color = "warning") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "expr_ddb_anno",
+        id = id,
+        title = "Add / Remove Annotation Columns",
+        color = color,
+        icon = icon("pen", lib = "font-awesome"),
+
+        uiOutput(ns("newcol_expr")), # done
+        splitLayout(cellWidths = c("40%", "60%"), 
+            wellPanel(
+                radioButtons(ns("type_newcol_expr"), "Data Type",
+                    c("character", "integer", "double"))
+            ),
+            wellPanel(
+                actionButton(ns("addcolumn_expr"), "Add Column"), 
+                br(),  # done
+                actionButton(ns("removecolumn_expr"), 
+                    "Remove Column") # done
+            )
+        )
+    )
+}
+
+
 ui_ddb_project_dir <- function(id, color = "danger") {
     ns <- NS(id)
     ui_toggle_wellPanel_modular(
@@ -196,6 +256,35 @@ ui_ddb_project_dir <- function(id, color = "danger") {
             buttonType = "primary"
         ),
         textOutput(ns("txt_NxtSE_path_load"))
+    )
+}
+
+ui_ddb_anno_io <- function(id, color = "danger") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "expr_ddb_anno_io",
+        id = id,
+        title = "Annotations Import/Export",
+        color = color,
+        icon = icon("folder-open", lib = "font-awesome"),
+
+        actionButton(ns("anno_to_NxtSE"),
+            "Export annotations to NxtSE folder",
+            class = "btn-primary"
+        ), br(), br(),
+        
+        actionButton(ns("anno_from_NxtSE"),
+            "Import annotations from NxtSE folder",
+            class = "btn-primary"
+        ),  br(), br(),
+
+        shinySaveButton(ns("anno_as_csv"), 
+            label = "Export annotations as csv file", 
+            title = "Export annotations as csv file", 
+            buttonType = "primary", filetype = list(csv = "csv"),
+            multiple = FALSE
+        ), # br(), br(),
+
     )
 }
 
@@ -283,7 +372,7 @@ ui_ddb_build_annos <- function(id, color = "danger") {
     )
 }
 
-ui_ddb_build_expr <- function(id, color = "danger") {
+ui_ddb_exprSettings <- function(id, color = "danger") {
     ns <- NS(id)
     ui_toggle_wellPanel_modular(
         inputId = "expr_ddb_expr_load",
@@ -321,13 +410,11 @@ ui_ddb_build_expr <- function(id, color = "danger") {
                 value = TRUE, status = "success"
             ),
         ), br(),#br(),
-        # shinyWidgets::switchInput(ns("package_COV"), 
-            # label = "Copy COV files to output folder", labelWidth = "200px"),
-        # br(),
-
-        # tags$h4("Collate Experiment"),
-        # actionButton(ns("run_collate_expr"), "Run collateData()"),
-        # br(),br(),
+        shinyWidgets::materialSwitch(
+            inputId = ns("NxtSE_overwrite"), 
+            label = "Overwrite existing NxtSE", right = TRUE,
+            value = FALSE, status = "danger"
+        ), br(),
         
         tags$h4("Clear Experiment"),
         actionButton(ns("clear_expr"), "Clear Experiment")
@@ -474,9 +561,14 @@ ui_infobox_pb <- function(sw_path, sw_files, escape = FALSE) {
     return(box1)
 }
 
-ui_infobox_expr <- function(status = 0, msg = "", submsg = "") {
+ui_infobox_expr <- function(
+        status = 0, msg = "", submsg = "", limited = FALSE
+) {
+    boxTitle <- "NxtSE path"
+    if(limited) boxTitle <- "NxtSE object"
+    
     box1 <-  infoBox(
-        title = "NxtSE Object", 
+        title = boxTitle, 
         value = ifelse(status == 0,
             "MISSING", msg),
         subtitle  = submsg,

@@ -122,7 +122,7 @@ ui_ref_new <- function(id) {
                     shinyWidgets::actionBttn(ns("load_ref_example"), 
                         "Load Demo FASTA / GTF",
                         style = "gradient", color = "danger"
-                    )
+                    ), br(), br(), textOutput(ns("txt_demo"))
                 )
             ),
             wellPanel(

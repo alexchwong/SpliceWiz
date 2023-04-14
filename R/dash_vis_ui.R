@@ -1,9 +1,9 @@
-vis_ggplot_UI <- function(id, label = "Export as ggplot") {
+vis_ggplot_UI <- function(id, label = "Save Plot to PDF") {
     ns <- NS(id)
     ui_toggle_wellPanel_modular(
         inputId = "ddb_ggsave",
         id = id,
-        title = "Save Plot to PDF",
+        title = label,
         color = "default",
         icon = icon("folder-open", lib = "font-awesome"), 
         wellPanel(
@@ -25,7 +25,7 @@ vis_ggplot_UI <- function(id, label = "Export as ggplot") {
 visFilter_UI <- function(id, label = "Filter events by") {
     ns <- NS(id)
     wellPanel(
-        h5(label),
+        # h5(label),
         selectInput(ns('vF_filterType'), 'Filter Events by', 
             choices = c(
                 "Adjusted P value", 
@@ -65,7 +65,7 @@ visFilter_UI <- function(id, label = "Filter events by") {
             width = '100%', multiple = TRUE,
             choices = c("IR", "MXE", "SE", "AFE", "ALE", 
                 "A5SS", "A3SS")), br(),
-        actionButton(ns("vF_reset"), "Reset to default"),
+        # actionButton(ns("vF_reset"), "Reset to default"),
     )
 }
         
@@ -88,13 +88,19 @@ ui_vis_diag <- function(id) {
                    label = "NMD Mode", right = TRUE,
                    value = FALSE, status = "success"
                 ),
-                vis_ggplot_UI(ns("scatterSave")),
-                # actionButton(ns("output_plot_diag"), 
-                    # "Generate RStudio ggplot"),
+                vis_ggplot_UI(ns("scatterSave")), br(),
                 actionButton(ns("clear_diag"), "Clear settings"), br(), br(),
                 textOutput(ns("warning_diag"))
             ),
             column(9,
+                actionButton(ns("clear_selected"), "Clear Selected Events"), 
+                br(), br(),
+                shinyWidgets::materialSwitch(
+                   inputId = ns("reverse_select"),
+                   label = "Box/Lasso de-selects", right = TRUE,
+                   value = FALSE, status = "warning"
+                ),                
+                br(), br(), 
                 plotlyOutput(ns("plot_diag"), height = "800px")
             )
         )
@@ -121,16 +127,20 @@ ui_vis_volcano <- function(id) {
                    label = "NMD Mode", right = TRUE,
                    value = FALSE, status = "success"
                 ),
-                vis_ggplot_UI(ns("volcanoSave")),
-                # shinySaveButton(ns("saveplot_volc"), 
-                    # "Save Plot as PDF", "Save Plot as PDF...", 
-                    # filetype = list(PDF = "pdf")),
-                # actionButton(ns("output_plot_volc"), 
-                    # "Generate RStudio ggplot"),
+                vis_ggplot_UI(ns("volcanoSave")),  br(),
                 actionButton(ns("clear_volc"), "Clear settings"), br(), br(),
                 textOutput(ns("warning_volc"))
             ),
             column(9,
+                actionButton(ns("clear_selected"), "Clear Selected Events"), 
+                br(), br(),
+                shinyWidgets::materialSwitch(
+                   inputId = ns("reverse_select"),
+                   label = "Box/Lasso de-selects", right = TRUE,
+                   value = FALSE, status = "warning"
+                ),
+                br(), br(), 
+
                 plotlyOutput(ns("plot_volc"), height = "800px")
             )
         )
@@ -172,12 +182,7 @@ ui_vis_heatmap <- function(id) {
                         "RdGy", "RdYlBu", "RdYlGn", "Spectral"),
                     selected = "RdYlBu"
                 ),
-                vis_ggplot_UI(ns("heatSave")),
-                # shinySaveButton(ns("saveplot_heat"), 
-                    # "Save Plot as PDF", "Save Plot as PDF...", 
-                    # filetype = list(PDF = "pdf"))
-                actionButton(ns("output_plot_heat"), 
-                    "Generate RStudio ggplot"),
+                vis_ggplot_UI(ns("heatSave")),  br(),
             ),
             column(9, 
                 textOutput(ns("warning_heat")),

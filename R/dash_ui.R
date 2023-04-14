@@ -31,43 +31,50 @@ ui_tab_title <- function() {
     out_choices <- c(thread_choices, "custom")
     tabItem(tabName = "navTitle",
         fluidRow(
-            column(4,
-            tags$div(title = paste(
-                "These options set the number of threads to run",
-                "computationally-intensive operations",
-                "such as processBAM, collateData, and DESeq2.",
-                "Also, set memory mode here."),
-                h3("Thread and memory options"),
-                shinyWidgets::pickerInput(
-                   inputId = "thread_number",
-                   label = "Number of threads to use", 
-                    choices = out_choices
-                ),
-                conditionalPanel(
-                    condition = "['custom'].indexOf(input.thread_number) >= 0",
-                    numericInput("cores_numeric", "# Threads", min = 1, 
-                        max = parallel::detectCores(), value = 1)
-                ),
-                radioGroupButtons(
-                    inputId = "memory_option",
-                    label = "Memory Usage",
-                    choices = c( 
-                        "Low",
-                        "High"
-                    ),
-                    justified = TRUE,
-                    checkIcon = list(
-                        yes = icon("ok", lib = "glyphicon")
-                    )
-                ), br(),
-                h4("Estimated memory usage for reference generation"),
-                textOutput("txt_mem_buildRef"), br(),
-                h4("Estimated memory usage for BAM processing"),
-                textOutput("txt_mem_processBAM"), br(),
-                h4("Estimated memory usage for data collation"),
-                textOutput("txt_mem_collateData"), br()
-            )),
             column(8,
+                h2("Welcome to SpliceWiz!"),
+                # tags$div(title = paste(
+                    # "These options set the number of threads to run",
+                    # "computationally-intensive operations",
+                    # "such as processBAM, collateData, and DESeq2.",
+                    # "Also, set memory mode here."),
+                    # h3("Thread and memory options"),
+                    # shinyWidgets::pickerInput(
+                       # inputId = "thread_number",
+                       # label = "Number of threads to use", 
+                        # choices = out_choices
+                    # ),
+                    # conditionalPanel(
+                        # condition = "['custom'].indexOf(input.thread_number) >= 0",
+                        # numericInput("cores_numeric", "# Threads", min = 1, 
+                            # max = parallel::detectCores(), value = 1)
+                    # ),
+                    # radioGroupButtons(
+                        # inputId = "memory_option",
+                        # label = "Memory Usage",
+                        # choices = c( 
+                            # "Low",
+                            # "High"
+                        # ),
+                        # justified = TRUE,
+                        # checkIcon = list(
+                            # yes = icon("ok", lib = "glyphicon")
+                        # )
+                    # ), br(),
+                    # h4("Estimated memory usage for reference generation"),
+                    # textOutput("txt_mem_buildRef"), br(),
+                    # h4("Estimated memory usage for BAM processing"),
+                    # textOutput("txt_mem_processBAM"), br(),
+                    # h4("Estimated memory usage for data collation"),
+                    # textOutput("txt_mem_collateData"), br()
+                # ),
+                img(src=paste0(
+                    "https://www.biorxiv.org/content/biorxiv/", 
+                    "early/2022/07/06/2022.07.05.498887/", 
+                    "F1.large.jpg"                
+                ), height = 800)                
+            ),
+            column(4,
                 # img(src=paste0(
                     # "https://pbs.twimg.com/",
                     # "profile_images/",

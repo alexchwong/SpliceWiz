@@ -40,13 +40,13 @@ visFilter_server <- function(id, get_de, rows_all, rows_selected) {
             value = data.table()
         )
         
-        observeEvent(input$vF_reset, {
-            updateSelectInput(inputId = "vF_filterType", 
-                selected = "Adjusted P value")
-            updateSliderInput(inputId = "vF_pvalT", value = 0.05)
-            updateSliderInput(inputId = "vF_topN", value = 500)
-            updateSelectInput(inputId = "vF_EventType", selected = NULL)
-        })
+        # observeEvent(input$vF_reset, {
+            # updateSelectInput(inputId = "vF_filterType", 
+                # selected = "Adjusted P value")
+            # updateSliderInput(inputId = "vF_pvalT", value = 0.05)
+            # updateSliderInput(inputId = "vF_topN", value = 500)
+            # updateSelectInput(inputId = "vF_EventType", selected = NULL)
+        # })
         
         input_df_r <- reactive({
             req(get_de())
@@ -262,8 +262,12 @@ server_vis_diag <- function(
             validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
         
             validate(need(get_de(), "Perform DE Analysis first"))
-        
-            validate(need(settings_Diag$meanPSI, 
+
+            validate(need(is_valid(input$variable_diag), 
+                "Select conditions and contrasts"))
+            validate(need(is_valid(input$denom_diag), 
+                "Select conditions and contrasts"))
+            validate(need(is_valid(input$nom_diag), 
                 "Select conditions and contrasts"))
         
             # Filter DE by EventType; fetch diag object
@@ -312,9 +316,9 @@ server_vis_diag <- function(
 
             selected <- settings_Diag$selected
 
-            if(click.id %in% selected) {
+            if(click.id %in% selected && input$reverse_select) {
                 selected <- selected[-which(selected == click.id)]
-            } else {
+            } else if(!input$reverse_select) {
                 selected <- c(selected, click.id)
             }
             settings_Diag$selected <- selected
@@ -333,7 +337,11 @@ server_vis_diag <- function(
             req(brush.id)
 
             selected <- settings_Diag$selected
-            selected <- unique(c(selected, brush.id))
+            if(!input$reverse_select) {
+                selected <- union(selected, brush.id)           
+            } else {
+                selected <- setdiff(selected, brush.id)
+            }
             settings_Diag$selected <- selected
         })
     
@@ -388,7 +396,12 @@ server_vis_diag <- function(
                 choices = c("(none)"), selected = "(none)")
 
             updateSwitchInput(session = session, inputId = "NMD_diag",
-                selected = FALSE)
+                value = FALSE)
+        })
+
+        observeEvent(input$clear_selected, {
+            req(input$clear_selected)
+            settings_Diag$selected <- NULL
         })
     
         get_ggplot <- reactive({
@@ -578,9 +591,9 @@ server_vis_volcano <- function(
 
             selected <- settings_Volc$selected
 
-            if(click.id %in% selected) {
+            if(click.id %in% selected && input$reverse_select) {
                 selected <- selected[-which(selected == click.id)]
-            } else {
+            } else if(!input$reverse_select) {
                 selected <- c(selected, click.id)
             }
             settings_Volc$selected <- selected
@@ -599,7 +612,11 @@ server_vis_volcano <- function(
             req(brush.id)
 
             selected <- settings_Volc$selected
-            selected <- unique(c(selected, brush.id))
+            if(!input$reverse_select) {
+                selected <- union(selected, brush.id)           
+            } else {
+                selected <- setdiff(selected, brush.id)
+            }
             settings_Volc$selected <- selected
         })
 
@@ -610,6 +627,11 @@ server_vis_volcano <- function(
                 inputId = "adjP_volc", value = TRUE)
             updateSwitchInput(session = session, 
                 inputId = "NMD_volc", value = FALSE)
+        })
+
+        observeEvent(input$clear_selected, {
+            req(input$clear_selected)
+            settings_Volc$selected <- NULL
         })
 
         get_ggplot <- reactive({

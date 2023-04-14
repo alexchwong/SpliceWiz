@@ -247,7 +247,7 @@ server_cov2 <- function(
 # Aggregate non-range trigger
         trigger <- eventReactive(list(
             input$plot_ribbon, input$plot_Jn_cov, input$normalizeCov,
-            input$plot_key_iso, input$condense_cov,
+            input$plot_key_iso, input$condense_cov, input$diff_stat,
             tracks_rd(), diff_rd(), eventNorm_rd(), strand_rd(), trSelected_rd()
         ), {
             runif(1)
@@ -630,13 +630,12 @@ server_cov2 <- function(
             
             if(!is_valid(filterByTranscripts)) {
                 filterByTranscripts <- ""
-                filterByEventTranscripts <- FALSE
-                filterByExpressedTranscripts <- FALSE
             }
             
             newSettings <- list(
                 view_start = tmpStart, view_end = tmpEnd,
                 trackList = trackList, diffList = diffList,
+                diff_stat = isolate(input$diff_stat),
                 ribbon_mode = isolate(input$plot_ribbon),
                 plotJunctions = isolate(input$plot_Jn_cov),
                 normalizeCoverage = isolate(input$normalizeCov),
@@ -662,7 +661,7 @@ server_cov2 <- function(
                         view_end = newSettings[["view_end"]],
                         trackList = newSettings[["trackList"]],
                         diffList = newSettings[["diffList"]],
-                        diff_stat = "t-test",
+                        diff_stat = newSettings[["diff_stat"]],
                         ribbon_mode = newSettings[["ribbon_mode"]],
                         plotJunctions = newSettings[["plotJunctions"]],
                         normalizeCoverage = newSettings[["normalizeCoverage"]],
@@ -760,16 +759,16 @@ server_cov2 <- function(
 
         observeEvent(settings_Cov$transcripts, {
             tr <- isolate(settings_Cov$transcripts)
-            if(nrow(tr) > 0) {
+            if(is_valid(tr) && nrow(tr) > 0) {
                 DT <- data.table(
                     transcript_id = tr$transcript_id,
                     transcript_name = tr$transcript_name,
                     selected = FALSE
                 )
+                setorderv(DT, "transcript_name")
             } else {
-                DT <- data.frame()
+                DT <- data.table()
             }
-            setorderv(DT, "transcript_name")
             settings_Cov$TrTable <- as.data.frame(DT)
         })
 
@@ -841,7 +840,7 @@ server_cov2 <- function(
                 # view_end = newSettings[["view_end"]],
                 trackList = newSettings[["trackList"]],
                 diffList = newSettings[["diffList"]],
-                diff_stat = "t-test",
+                diff_stat = newSettings[["diff_stat"]],
                 ribbon_mode = newSettings[["ribbon_mode"]],
                 plotJunctions = newSettings[["plotJunctions"]],
                 normalizeCoverage = newSettings[["normalizeCoverage"]],
@@ -873,7 +872,7 @@ server_cov2 <- function(
                 view_end = newSettings[["view_end"]],
                 trackList = newSettings[["trackList"]],
                 diffList = newSettings[["diffList"]],
-                diff_stat = "t-test",
+                diff_stat = newSettings[["diff_stat"]],
                 ribbon_mode = newSettings[["ribbon_mode"]],
                 plotJunctions = newSettings[["plotJunctions"]],
                 normalizeCoverage = newSettings[["normalizeCoverage"]],

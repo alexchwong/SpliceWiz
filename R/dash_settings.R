@@ -43,6 +43,8 @@ setreactive_expr <- function() {
         df.anno_savestate = c(),
 
         ref_settings = c(),
+        ref_table = data.frame(),
+        
         expr_path = "",
         selected_bams = c(),
         collateData_args = c(),

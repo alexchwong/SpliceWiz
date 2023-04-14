@@ -448,12 +448,13 @@ buildRef <- function(
         
         # Update settings.Rds only after everything is finalised
         settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
-        settings.list$genome_type <- genome_type
-        settings.list$nonPolyARef <- nonPolyARef
-        settings.list$MappabilityRef <- MappabilityRef
-        settings.list$BlacklistRef <- BlacklistRef
-        settings.list$useExtendedTranscripts <- useExtendedTranscripts
-        settings.list$BuildVersion <- buildRef_version
+        settings.list[["genome_type"]] <- genome_type
+        settings.list[["nonPolyARef"]] <- nonPolyARef
+        settings.list[["MappabilityRef"]] <- MappabilityRef
+        settings.list[["BlacklistRef"]] <- BlacklistRef
+        settings.list[["ontologySpecies"]] <- ontologySpecies
+        settings.list[["useExtendedTranscripts"]] <- useExtendedTranscripts
+        settings.list[["BuildVersion"]] <- buildRef_version
 
         saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
 

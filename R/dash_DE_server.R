@@ -142,21 +142,6 @@ server_DE <- function(
 
         observeEvent(input$perform_DE, {
             req(is(get_se(), "NxtSE"))
-            output$warning_DE <- renderText({
-                validate(need(is_valid(input$variable_DE),
-                    "Variable for DE needs to be defined"))
-                validate(need(is_valid(input$nom_DE), 
-                    "Nominator for DE Variable needs to be defined"))
-                validate(need(is_valid(input$denom_DE), 
-                    "Denominator for DE Variable needs to be defined"))
-                validate(need(input$nom_DE != "(time series)" ||
-                        input$method_DE %in% c("limma", "DESeq2", "edgeR"), 
-                    paste("Time series analysis can only be performed",
-                    "using limma, edgeR or DESeq2")))
-                validate(need(input$denom_DE != input$nom_DE, 
-                    "Denominator and Nominator must be different"))
-                "Running differential analysis"
-            })
             req(is_valid(input$variable_DE))
             req(is_valid(input$nom_DE))
             req(is_valid(input$denom_DE))

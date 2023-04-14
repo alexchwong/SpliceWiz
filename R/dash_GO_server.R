@@ -94,6 +94,12 @@ server_GO <- function(
             if(input$universe_GO == "All Genes") {
                 # a signal to use all genes instead            
                 universeEvents <- NULL 
+            } else if(input$universe_GO == "Selected ASE Modality") {
+                if(is_valid(input$GO_EventType)) {
+                    universeEvents <- res_all$EventName[
+                        res_all$EventType %in% input$GO_EventType
+                    ]                
+                }
             }
 
             ontologyType <- "BP"

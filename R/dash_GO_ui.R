@@ -15,6 +15,17 @@ ui_GO <- function(id) {
             ),
             selectInput(ns('universe_GO'), 'Background Genes based on', 
                 c("All ASE events", "Selected ASE Modality", "All Genes")),
+            conditionalPanel(ns = ns,
+                condition = paste0(
+                    "['Selected ASE Modality'].",
+                    "indexOf(input.universe_GO) == 0"
+                ),
+                selectInput(ns("GO_EventType"), 
+                    "Filter Events by ASE Modality", 
+                    width = '100%', multiple = TRUE,
+                    choices = c("IR", "MXE", "SE", "AFE", "ALE", 
+                        "A5SS", "A3SS")), br(),
+            ),
             vis_ggplot_UI(ns("GOplotSave")),
             br(), br(),
             shinySaveButton(ns("GO_export_geneId"), 

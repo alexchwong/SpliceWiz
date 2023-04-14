@@ -261,9 +261,13 @@ server_cov2 <- function(
             events_id_view <- settings_Cov$event.ranges[
                 get("EventName") == input$events_cov]
             
+            seqInfo <- ref_r()$seqInfo[input$chr_cov]
+            seqmax <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
+            req(seqmax > 50)
+
             span        <- events_id_view$end[1] - events_id_view$start[1]
             view_start  <- max(1, events_id_view$start[1] - span)
-            view_end    <- view_start + 3 * span
+            view_end    <- min(view_start + 3 * span, seqmax)
             
             GRanges(events_id_view$seqnames[1], IRanges(
                 view_start, view_end
@@ -489,6 +493,8 @@ server_cov2 <- function(
             tmpChr <- as.character(seqnames(gr))
             tmpStart <- start(gr)
             tmpEnd <- end(gr)
+            
+            message("Plot requested start ", tmpStart, ", end ", tmpEnd)
 
             colData <- isolate(colData_r())
             condOptions <- colnames(colData)
@@ -524,11 +530,12 @@ server_cov2 <- function(
                     args[["limit_end"]] < tmpEnd
                 )
             ) {
-                refreshCDO <- TRUE  
+                refreshCDO <- TRUE
             }
 
             dataObj <- isolate(settings_Cov$dataObj)
             if(refreshCDO) {
+                message("Refresh CDO")
                 withProgress(message = 'Retrieving COV data...', value = 0, {
                     dataObj <- getCoverageData(
                         isolate(get_se()),
@@ -542,8 +549,14 @@ server_cov2 <- function(
 
         # Check cDO is valid before assigning to reactive list
             args <- isolate(dataObj@args)
+            message("CDO limit_start ", args[["limit_start"]],
+                ", limit_end ", args[["limit_end"]])
             req(all(c("limit_start", "limit_end") %in% names(args)))
             settings_Cov$dataObj <- dataObj
+
+        # Extra layer of safety
+            if(tmpStart < args[["limit_start"]]) tmpStart <- args[["limit_start"]]
+            if(tmpEnd > args[["limit_end"]]) tmpEnd <- args[["limit_end"]]
 
         # Update Norm Event options and retrieve normEvent
             normEvent <- isolate(eventNorm_r())
@@ -601,6 +614,7 @@ server_cov2 <- function(
 
             plotObj <- isolate(settings_Cov$plotObj)
             if(refreshCPO) {
+                message("Refresh CPO")
                 withProgress(
                     message = 'Calculating track coverages...', 
                     value = 0, 
@@ -619,6 +633,8 @@ server_cov2 <- function(
             # Check if cPO is valid before assigning to reactive list
             args <- plotObj@args
             req(all(c("limit_start", "limit_end") %in% names(args)))
+            message("CPO limit_start ", args[["limit_start"]],
+                ", limit_end ", args[["limit_end"]])
             settings_Cov$plotObj <- plotObj
 
             refreshPlotly <- refreshCPO

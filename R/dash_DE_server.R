@@ -32,7 +32,15 @@ server_DE <- function(
         
         # Filter import
         observeEvent(get_filters(), {
-            settings_DE$filters <- get_filters()
+            newFilters <- get_filters()
+            settings_DE$filters <- newFilters
+            
+            # Wipe out prior DE results if new filters
+            if(!identical(settings_DE$filters, settings_DE$prevFilters)) {
+                settings_DE$res <- NULL
+            }
+            
+            settings_DE$prevFilters <- newFilters
         })
         
         observeEvent(input$variable_DE, {
@@ -455,6 +463,7 @@ server_DE <- function(
             settings_DE$dof <- settings_DE$res_settings$dof
 
             if("filters" %in% names(load_DE)) {
+                settings_DE$prevFilters <- load_DE$filters
                 settings_DE$filters <- load_DE$filters
             }
         })

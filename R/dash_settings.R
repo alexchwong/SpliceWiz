@@ -94,6 +94,8 @@ setreactive_DE <- function() {
 
 setreactive_GO <- function() {
     reactiveValues(
+        trigger = NULL,
+        
         res = NULL,
 
         errorMsg = "",
@@ -116,6 +118,8 @@ setreactive_GO <- function() {
 setreactive_Diag <- function() {
     # NB same code as Volcano
     reactiveValues(
+        trigger = NULL,
+        
         useDE = NULL,
         
         meanPSI = NULL,
@@ -131,6 +135,8 @@ setreactive_Diag <- function() {
 # Settings for Heatmap
 setreactive_Heat <- function() {
     reactiveValues(
+        trigger = NULL,
+        
         useDE = NULL,
         eventsGO = NULL,
         mat = NULL,

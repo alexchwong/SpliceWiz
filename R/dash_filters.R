@@ -162,22 +162,18 @@ server_filters <- function(
         })
         
         # Updates column chart based on changing applied filter, or log scale
-        observeEvent({list(
-            settings_filter$filterSummary,
-            input$graphscale_Filters
-        )}, {
+        output$plot_filtered_Events <- renderPlotly({
             req(is(get_se(), "NxtSE"))
             req(settings_filter$filterSummary)
             DT <- data.table(
                 EventType = rowData(get_se())$EventType,
                 keep = settings_filter$filterSummary
             )
-            output$plot_filtered_Events <- renderPlotly({
-                print(
-                    Filters_Plot_Summary(DT, input$graphscale_Filters)
-                )
-            })
+            graphMode <- input$graphscale_Filters
+            
+            Filters_Plot_Summary(DT, graphMode)
         })
+
         
         # Saves current list of filters to Rds file
         observe({

@@ -560,7 +560,7 @@ server_cov2 <- function(
                 normalizeCoverage = isolate(input$normalizeCov),
                 condenseTranscripts = isolate(input$condense_cov)                
             )            
-            print(plotReq)
+            # print(plotReq)
             req(!identical(plotReq, settings_Cov$plotReq))
             settings_Cov$plotReq <- plotReq
 

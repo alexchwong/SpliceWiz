@@ -95,6 +95,14 @@ server_vis_diag <- function(
 
         observeEvent(refresh_tab(), {
             req(refresh_tab())
+            randomVar <- runif(1)
+            settings_Diag$trigger <- randomVar
+            # print(randomVar)
+        })
+        
+        observeEvent(settings_Diag$trigger, {
+            req(settings_Diag$trigger)
+            
             output$warning_diag <- renderText({
                 validate(need(is(get_se(), "NxtSE"), 
                 "Please load NxtSE object"))
@@ -129,8 +137,10 @@ server_vis_diag <- function(
         # Reactive to generate mean PSIs
         # - this is the main bottleneck
         observe({
+            req(settings_Diag$trigger)
             req(is(get_se(), "NxtSE"))
             req(get_de())
+            
             req(is_valid(input$variable_diag))
             req(is_valid(input$denom_diag))
             req(is_valid(input$nom_diag))
@@ -156,14 +166,18 @@ server_vis_diag <- function(
             settings_Diag$selected <- rows_selected()
         }, ignoreNULL = FALSE)
     
+        # Main scatter plot generator
         observe({
+            req(settings_Diag$trigger)
             req(is(get_se(), "NxtSE"))
             req(get_de())
+
             req(settings_Diag$meanPSI)
             
             res <- useDE_r()
             req(res)
             req(nrow(res) > 0)
+            req(all(res$EventName %in% rownames(get_se())))
 
             df.diag <- res[get("EventName") %in% 
                 settings_Diag$meanPSI$EventName]
@@ -260,7 +274,6 @@ server_vis_diag <- function(
     
         output$plot_diag <- renderPlotly({
             validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
-        
             validate(need(get_de(), "Perform DE Analysis first"))
 
             validate(need(is_valid(input$variable_diag), 
@@ -274,6 +287,9 @@ server_vis_diag <- function(
             res <- useDE_r()
             validate(need(nrow(res) > 0, 
                 "No events found. Consider relaxing some filters"
+            ))
+            validate(need(all(res$EventName %in% rownames(get_se())),
+                "Filtered NxtSE does not match DE results"
             ))
             
             df.diag <- res[get("EventName") %in% 
@@ -294,12 +310,6 @@ server_vis_diag <- function(
             
             req(settings_Diag$final_plot)
             settings_Diag$final_plot
-        })
-
-        # Output ggplot to RStudio plot window
-        observeEvent(input$output_plot_diag, {
-            req(settings_Diag$ggplot)
-            print(isolate(settings_Diag$ggplot))
         })
         
         # Reactive click
@@ -457,6 +467,8 @@ server_vis_volcano <- function(
 
         observeEvent(refresh_tab(), {
             req(refresh_tab())
+            randomVar <- runif(1)
+            settings_Volc$trigger <- randomVar
         })
 
         useDE_r <- visFilter_server("volcano", get_de, rows_all, rows_selected)
@@ -466,12 +478,14 @@ server_vis_volcano <- function(
         }, ignoreNULL = FALSE)
 
         observe({
+            req(settings_Volc$trigger)
             req(is(get_se(), "NxtSE"))
             req(get_de())
+            
             res <- useDE_r()
-
             req(res)
             req(nrow(res) > 0)
+            req(all(res$EventName %in% rownames(get_se())))
 
             df.volc <- as.data.frame(res)
             if(input$NMD_volc) {
@@ -557,9 +571,13 @@ server_vis_volcano <- function(
         output$plot_volc <- renderPlotly({
             validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
             validate(need(get_de(), "Perform DE Analysis first"))
+
             res <- useDE_r()
             validate(need(nrow(res) > 0, 
                 "No events found. Consider relaxing some filters"
+            ))
+            validate(need(all(res$EventName %in% rownames(get_se())),
+                "Filtered NxtSE does not match DE results"
             ))
 
             df.volc <- as.data.frame(res)
@@ -570,11 +588,6 @@ server_vis_volcano <- function(
             
             req(settings_Volc$final_plot)
             settings_Volc$final_plot
-        })
-
-        observeEvent(input$output_plot_volc, {
-            req(settings_Volc$ggplot)
-            print(isolate(settings_Volc$ggplot))
         })
 
         # Reactive click
@@ -657,6 +670,13 @@ server_vis_heatmap <- function(
         # - update GO terms
         observeEvent(refresh_tab(), {
             req(refresh_tab())
+            randomVar <- runif(1)
+            settings_Heat$trigger <- randomVar
+            # print(randomVar)
+        })
+        
+        observeEvent(settings_Heat$trigger, {
+            req(settings_Heat$trigger)
             req(is(get_se(), "NxtSE"))
             colData <- colData(get_se())
             if(
@@ -763,6 +783,7 @@ server_vis_heatmap <- function(
         })
         
         observe({
+            req(settings_Heat$trigger)
             req(is(get_se(), "NxtSE"))
             req(useDE_r())
 
@@ -770,7 +791,8 @@ server_vis_heatmap <- function(
             req(nrow(res) > 0)
             res <- res[, c("EventName", "EventType"), with = FALSE]
             res <- res[get("EventName") %in% settings_Heat$eventsGO]
-            req(nrow(res) > 0)
+            req(nrow(res) > 0)            
+            req(all(res$EventName %in% rownames(get_se())))
             
             colData <- as.data.frame(colData(get_se()))
             
@@ -902,7 +924,7 @@ server_vis_heatmap <- function(
 
         output$plot_heat <- renderPlotly({
             validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
-            validate(need(useDE_r(), "Perform DE Analysis first"))
+            validate(need(get_de(), "Perform DE analysis first"))
 
             res <- useDE_r()
             validate(need(nrow(res) > 0,
@@ -913,6 +935,11 @@ server_vis_heatmap <- function(
             validate(need(nrow(res) > 0,
                 "No events to display after gene ontology filtering"
             ))
+
+            validate(need(all(res$EventName %in% rownames(get_se())),
+                "Filtered NxtSE does not match DE results"
+            ))
+
             validate(need(settings_Heat$mat, 
                 "No events with finite values to display"
             ))
@@ -929,10 +956,6 @@ server_vis_heatmap <- function(
         })
         spModule <- vis_ggplot_server("heatSave", get_ggplot, volumes)
         
-        observeEvent(input$output_plot_heat, {
-            print(settings_Heat$ggplot)
-        })
-
     })
 }
 

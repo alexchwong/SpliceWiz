@@ -8,7 +8,9 @@ server_GO <- function(
 
         observeEvent(refresh_tab(), {
             req(refresh_tab())
+            settings_GO$trigger <- runif(1)
         })
+        
         useDE_r <- visFilter_server("GOfilters", get_de, rows_all, rows_selected)
 
         observe({
@@ -84,6 +86,12 @@ server_GO <- function(
                 settings_GO$final_plot <- NULL
             }
             req(nrow(res) > 0)
+
+            if(!all(res$EventName %in% rownames(get_se()))) {
+                settings_GO$errorMsg <- 
+                    "Filtered NxtSE does not match DE results"
+            }
+            req(all(res$EventName %in% rownames(get_se())))
             
             settings_GO$filteredVolc <- res
 
@@ -141,7 +149,7 @@ server_GO <- function(
         output$plot_GO <- renderPlotly({
             validate(need(nrow(settings_GO$resGO) > 0, "Zero results"))
             validate(need(!is_valid(settings_GO$errorMsg), settings_GO$errorMsg))
-            print(settings_GO$final_plot)
+            settings_GO$final_plot
         })
 
         get_ggplot <- reactive({

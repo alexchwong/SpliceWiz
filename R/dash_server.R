@@ -31,10 +31,10 @@ dash_server <- function(input, output, session) {
     refresh_QC          <- reactive(settings_refresh$qc)
     refresh_filters     <- reactive(settings_refresh$filters)
     refresh_DE          <- reactive(settings_refresh$DE)
-    refresh_GO          <- reactive(settings_refresh$GO)
     
-    refresh_diag        <- reactive(settings_refresh$diag)
     refresh_volc        <- reactive(settings_refresh$volc)
+    refresh_diag        <- reactive(settings_refresh$diag)
+    refresh_GO          <- reactive(settings_refresh$GO)
     refresh_heat        <- reactive(settings_refresh$heat)
     refresh_cov         <- reactive(settings_refresh$cov)
     
@@ -122,6 +122,7 @@ dash_server <- function(input, output, session) {
 
         } else if(input$navSelection == "navExpr") {
             settings_refresh$expr <- runif(1)
+            
         } else if(input$navSelection == "navExprLoad") {
             settings_refresh$expr_load <- runif(1)
         } else if(input$navSelection == "navQC") {
@@ -130,12 +131,13 @@ dash_server <- function(input, output, session) {
             settings_refresh$filters <- runif(1)
         } else if(input$navSelection == "navAnalyse") {
             settings_refresh$DE <- runif(1)
-        } else if(input$navSelection == "navGO") {
-            settings_refresh$GO <- runif(1)
+            
+        } else if(input$navSelection == "navVolcano") {
+            settings_refresh$volc <- runif(1)
         } else if(input$navSelection == "navDiag") {
             settings_refresh$diag <- runif(1)
-        } else if(input$navSelection == "navDiag") {
-            settings_refresh$volc <- runif(1)
+        } else if(input$navSelection == "navGO") {
+            settings_refresh$GO <- runif(1)
         } else if(input$navSelection == "navHeatmap") {
             settings_refresh$heat <- runif(1)
         } else if(input$navSelection == "navCoverage") {

@@ -215,7 +215,7 @@ extract_gene_ids_for_GO <- function(
         nonMatches <- uniqueEventnames[!(uniqueEventnames %in% 
             allEvents$EventName)]
         .log(paste("One or more EventName(s) not found in reference!",
-            "Culprit examples:", head(nonMatches)
+            "Culprit examples:", paste(head(nonMatches), collapse = "; ")
         ))
     }
     

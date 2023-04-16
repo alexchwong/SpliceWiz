@@ -629,15 +629,15 @@ getGenomeData <- function(
 .gCD_retrieve_norms <- function(args, colData) {
 
     # Retrieve a list of in-range events
-    view_gr <- GRanges(
+    limit_gr <- GRanges(
         seqnames = args[["view_chr"]],
         ranges = IRanges(
-            start = args[["view_start"]], end = args[["view_end"]]
+            start = args[["limit_start"]], end = args[["limit_end"]]
         ),
         strand = "*"
     )
 
-    OL <- findOverlaps(row_gr(args[["se"]]), view_gr)
+    OL <- findOverlaps(row_gr(args[["se"]]), limit_gr, type = "within")
     
     event_gr <- row_gr(args[["se"]])[unique(from(OL))]
     names(event_gr) <- rownames(args[["se"]])[unique(from(OL))]

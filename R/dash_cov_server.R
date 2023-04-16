@@ -234,9 +234,23 @@ server_cov2 <- function(
         diff_rd <- diff_r %>% debounce(1000)
 
         eventNorm_r <- reactive({
-            return(input$event_norm_cov)
+            normEvent <- input$event_norm_cov
+            return(normEvent)
         })
         eventNorm_rd <- eventNorm_r %>% debounce(1000)
+
+        observeEvent(settings_Cov$normEvent, {
+            req(settings_Cov$normEvent)
+            req("selectedNormEvent" %in% names(settings_Cov$normEvent))
+            req("normEvent" %in% names(settings_Cov$normEvent))
+            req("availEvents" %in% names(settings_Cov$normEvent))
+            tmp <- settings_Cov$normEvent$selectedNormEvent
+            
+            updateSelectInput(session = session, inputId = "event_norm_cov", 
+                choices = c("(none)", settings_Cov$normEvent$availEvents), 
+                selected = settings_Cov$normEvent$normEvent
+            )            
+        })
         
         strand_r <- reactive({
             req(input$strand_cov)
@@ -255,24 +269,30 @@ server_cov2 <- function(
 
 # Locate by Gene or Event triggers change in chr/start/end
         eventGR <- eventReactive(input$events_cov, {
-            req(input$events_cov)
-            req(input$events_cov != "(none)")
+            req(is_valid(input$events_cov))
+            event <- isolate(input$events_cov)
             
             events_id_view <- settings_Cov$event.ranges[
-                get("EventName") == input$events_cov]
+                get("EventName") == event]
             
-            seqInfo <- ref_r()$seqInfo[input$chr_cov]
+            chr_event <- as.character(events_id_view$seqnames[1])
+            start_event <- events_id_view$start[1]
+            end_event <- events_id_view$end[1]
+            span_event <- end_event - start_event
+            
+            seqInfo <- ref_r()$seqInfo[chr_event]
             seqmax <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
             req(seqmax > 50)
 
-            span        <- events_id_view$end[1] - events_id_view$start[1]
-            view_start  <- max(1, events_id_view$start[1] - span)
-            view_end    <- min(view_start + 3 * span, seqmax)
+            view_start  <- max(1, start_event - span_event)
+            view_end    <- min(start_event + 2 * span_event, seqmax)
             
-            GRanges(events_id_view$seqnames[1], IRanges(
+            GRanges(chr_event, IRanges(
                 view_start, view_end
             ))
         })
+        
+        
 
         genesGR <- eventReactive(input$genes_cov, {
             req(input$genes_cov)
@@ -335,6 +355,11 @@ server_cov2 <- function(
 
         plotly_relayout <- reactive({
             req(settings_Cov$plotCount > 0)
+            req(all(
+                c("xrange", "resolution") %in% 
+                names(settings_Cov$plotlyObj@args)
+            ))
+
             sourceName <- paste0("plotly_ViewRef_",
                 as.character(settings_Cov$plotCount))
             event_data("plotly_relayout", source = sourceName)
@@ -494,7 +519,7 @@ server_cov2 <- function(
             tmpStart <- start(gr)
             tmpEnd <- end(gr)
             
-            message("Plot requested start ", tmpStart, ", end ", tmpEnd)
+            # message("Plot requested start ", tmpStart, ", end ", tmpEnd)
 
             colData <- isolate(colData_r())
             condOptions <- colnames(colData)
@@ -517,6 +542,28 @@ server_cov2 <- function(
         # Starting deal-breakers
             req(length(trackOptions) > 0)
 
+        # Generate a plot request object
+        # Ensures each unique request is processed only once
+            plotReq <- list(
+                gr = gr,
+                condName = condName,
+                trackList = trackList,
+                diffList = diffList,
+                strand = strand,
+                reqEvent = isolate(input$events_cov),
+                normEvent = isolate(eventNorm_r()),
+                filterByTranscripts = trSelected_r(),
+                filterByEventTranscripts = isolate(input$plot_key_iso),
+                diff_stat = isolate(input$diff_stat),
+                ribbon_mode = isolate(input$plot_ribbon),
+                plotJunctions = isolate(input$plot_Jn_cov),
+                normalizeCoverage = isolate(input$normalizeCov),
+                condenseTranscripts = isolate(input$condense_cov)                
+            )            
+            print(plotReq)
+            req(!identical(plotReq, settings_Cov$plotReq))
+            settings_Cov$plotReq <- plotReq
+
         # Do we need to update cDO? If out of range, or if no cDO
             refreshCDO <- FALSE
             args <- settings_Cov$dataObj@args
@@ -535,7 +582,7 @@ server_cov2 <- function(
 
             dataObj <- isolate(settings_Cov$dataObj)
             if(refreshCDO) {
-                message("Refresh CDO")
+                # message("Refresh CDO")
                 withProgress(message = 'Retrieving COV data...', value = 0, {
                     dataObj <- getCoverageData(
                         isolate(get_se()),
@@ -549,8 +596,8 @@ server_cov2 <- function(
 
         # Check cDO is valid before assigning to reactive list
             args <- isolate(dataObj@args)
-            message("CDO limit_start ", args[["limit_start"]],
-                ", limit_end ", args[["limit_end"]])
+            # message("CDO limit_start ", args[["limit_start"]],
+                # ", limit_end ", args[["limit_end"]])
             req(all(c("limit_start", "limit_end") %in% names(args)))
             settings_Cov$dataObj <- dataObj
 
@@ -558,33 +605,48 @@ server_cov2 <- function(
             if(tmpStart < args[["limit_start"]]) tmpStart <- args[["limit_start"]]
             if(tmpEnd > args[["limit_end"]]) tmpEnd <- args[["limit_end"]]
 
-        # Update Norm Event options and retrieve normEvent
-            normEvent <- isolate(eventNorm_r())
-            normRowData <- isolate(dataObj@normData$rowData)
-            availEvents <- c()
-            if(nrow(normRowData) > 0) {
-                availEvents <- normRowData$EventName
-                requestedEvent <- isolate(input$events_cov)
-                if(
-                        requestedEvent %in% availEvents &
-                        !(normEvent %in% availEvents)
-                ) {
-                    normEvent <- requestedEvent
-                } else if(!(normEvent %in% availEvents)) {
+        # Export available normEvents so it can be updated externally
+            normRowData <- dataObj@normData$rowData
+            availEvents <- normRowData$EventName
+
+            selectedNormEvent <- isolate(eventNorm_r())
+            normEvent <- selectedNormEvent
+            reqEvent <- isolate(input$events_cov)
+            
+            if(
+                !is_valid(settings_Cov$prevReqEvent) ||
+                settings_Cov$prevReqEvent != reqEvent
+            ) {
+                # normEvent was changed by user
+                settings_Cov$prevReqEvent <- reqEvent
+                if(reqEvent %in% availEvents) {
+                    normEvent <- reqEvent
+                }
+            } else { 
+                # Allow user to choose normEvent as long as it is in range
+                if(!(normEvent %in% availEvents)) {
                     normEvent <- "(none)"
                 }
-            } else {
-                normEvent <- "(none)"
             }
-            updateSelectInput(session = session, inputId = "event_norm_cov", 
-                choices = c("(none)", availEvents),
-                selected = normEvent
-            )
+            
+            # Kill prior plot if normEvent is not set but `condition` is
+            if(!is_valid(normEvent) & is_valid(condName)) {
+                settings_Cov$plotlyObj <- covPlotly()
+                settings_Cov$exons_gr <- NULL
+                settings_Cov$transcripts <- NULL
+                settings_Cov$plotCount <- isolate(settings_Cov$plotCount) + 1
+                settings_Cov$oldPlotSettings <- NULL
 
-            # Abort if valid condName but no valid normEvent
-            req(!(
-                !is_valid(normEvent) & is_valid(condName)
-            ))
+                settings_Cov$normEvent <- list(
+                    selectedNormEvent = selectedNormEvent,
+                    normEvent = normEvent,
+                    availEvents = availEvents
+                )
+                message("Using normEvent: ", normEvent)
+            }
+            
+            req(!( !is_valid(normEvent) & is_valid(condName) ))
+            settings_Cov$plotReq[["normEvent"]] <- normEvent
             
             # Do we need to update cPO?
             # - change in condition (which affects tracks), 
@@ -614,7 +676,7 @@ server_cov2 <- function(
 
             plotObj <- isolate(settings_Cov$plotObj)
             if(refreshCPO) {
-                message("Refresh CPO")
+                # message("Refresh CPO")
                 withProgress(
                     message = 'Calculating track coverages...', 
                     value = 0, 
@@ -633,8 +695,8 @@ server_cov2 <- function(
             # Check if cPO is valid before assigning to reactive list
             args <- plotObj@args
             req(all(c("limit_start", "limit_end") %in% names(args)))
-            message("CPO limit_start ", args[["limit_start"]],
-                ", limit_end ", args[["limit_end"]])
+            # message("CPO limit_start ", args[["limit_start"]],
+                # ", limit_end ", args[["limit_end"]])
             settings_Cov$plotObj <- plotObj
 
             refreshPlotly <- refreshCPO
@@ -649,6 +711,7 @@ server_cov2 <- function(
             }
             
             newSettings <- list(
+                view_chr = tmpChr,
                 view_start = tmpStart, view_end = tmpEnd,
                 trackList = trackList, diffList = diffList,
                 diff_stat = isolate(input$diff_stat),
@@ -693,25 +756,81 @@ server_cov2 <- function(
             }
             
             req(is(plotlyObj, "covPlotly"))
-            settings_Cov$oldPlotSettings <- newSettings
+
+        # Save selectable exons and transcripts
             settings_Cov$exons_gr <- getExonRanges(plotlyObj)            
             settings_Cov$transcripts <- 
                 plotObj@annotation[["transcripts.DT"]]
+
+        # Save covPlotly object
             settings_Cov$plotlyObj <- setResolution(plotlyObj, 
                 isolate(input$slider_num_plotRes))
+
+        # Trigger update to normEvent box
+        # - which will trigger a loop as it updates
+            settings_Cov$normEvent <- list(
+                selectedNormEvent = selectedNormEvent,
+                normEvent = normEvent,
+                availEvents = availEvents
+            )
+            message("Using normEvent: ", normEvent)
                 
-            # Increment plot count to trigger synthFig()
+        # Increment plot count to trigger synthFig()
             settings_Cov$plotCount <- isolate(settings_Cov$plotCount) + 1
+
+        # Save plotView call settings - this triggers cDO retrieval (if required)
+            settings_Cov$oldPlotSettings <- newSettings
+        })
+
+        observeEvent(settings_Cov$oldPlotSettings, {
+            req(settings_Cov$oldPlotSettings)
+            req(all(
+                c("view_start", "view_end") %in% 
+                names(settings_Cov$oldPlotSettings)
+            ))
+            req(is(settings_Cov$dataObj, "covDataObject"))
+            req(all(
+                c("limit_start", "limit_end") %in% 
+                names(settings_Cov$dataObj@args)
+            ))
+            view_chr <- isolate(settings_Cov$oldPlotSettings[["view_chr"]])
+            seqInfo <- ref_r()$seqInfo[view_chr]
+            seqmax <- as.numeric(GenomeInfoDb::seqlengths(seqInfo))
+            req(seqmax > 50)
+            
+            view_start <- isolate(settings_Cov$oldPlotSettings[["view_start"]])
+            view_end <- isolate(settings_Cov$oldPlotSettings[["view_end"]])
+            view_range <- view_end - view_start
+            fetch_start <- max(1, view_start - view_range)
+            fetch_end <- min(view_end + view_range, seqmax)
+            
+            cDO_args <- settings_Cov$dataObj@args
+            if(
+                view_chr != cDO_args[["view_chr"]] || (
+                    fetch_start < cDO_args[["limit_start"]] |
+                    fetch_end > cDO_args[["limit_end"]]
+                )
+            ) {
+                withProgress(message = 'Buffering COV data...', value = 0, {
+                    dataObj <- getCoverageData(
+                        isolate(get_se()),
+                        seqname = view_chr,
+                        start = view_start,
+                        end = view_end,
+                        tracks = colnames(isolate(get_se()))
+                    )
+                })                
+            }            
         })
 
         # Trigger new plotlyFig every time this increments
         synthFig <- eventReactive(settings_Cov$plotCount, {
             req(settings_Cov$plotlyObj)
+            req(is(settings_Cov$plotlyObj, "covPlotly"))            
             req(all(
                 c("xrange", "resolution") %in% 
                 names(settings_Cov$plotlyObj@args)
             ))
-            plotCount <- isolate(settings_Cov$plotCount)
 
             doExons <- isolate(input$exonMode_cov)
             if(doExons) {
@@ -720,6 +839,7 @@ server_cov2 <- function(
                 fig <- .covPlotlyMake(settings_Cov$plotlyObj)
             }
 
+            plotCount <- isolate(settings_Cov$plotCount)
             fig$x$source <- paste0("plotly_ViewRef_",
                 as.character(plotCount))
             if(packageVersion("plotly") >= "4.9.0") {
@@ -757,6 +877,17 @@ server_cov2 <- function(
         })
         
         output$plot_cov <- renderPlotly({
+            req(settings_Cov$plotlyObj)
+            req(is(settings_Cov$plotlyObj, "covPlotly"))
+
+            validate(need(
+                all(
+                    c("xrange", "resolution") %in% 
+                    names(settings_Cov$plotlyObj@args)
+                ),
+                "Interactive coverage plot not initialized"
+            ))
+            
             synthFig()
         })
 

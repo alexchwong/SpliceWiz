@@ -773,7 +773,7 @@ server_cov2 <- function(
                 normEvent = normEvent,
                 availEvents = availEvents
             )
-            message("Using normEvent: ", normEvent)
+            # message("Using normEvent: ", normEvent)
                 
         # Increment plot count to trigger synthFig()
             settings_Cov$plotCount <- isolate(settings_Cov$plotCount) + 1

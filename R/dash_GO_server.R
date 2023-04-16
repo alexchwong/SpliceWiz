@@ -42,6 +42,7 @@ server_GO <- function(
        
         # observe to calculate filtered volcano results
         observe({
+            req(settings_GO$trigger)
             if(!is(get_se(), "NxtSE")) {
                 settings_GO$errorMsg <- 
                     "Load NxtSE object first"

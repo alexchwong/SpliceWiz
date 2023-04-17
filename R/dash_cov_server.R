@@ -287,9 +287,23 @@ server_cov2 <- function(
             view_start  <- max(1, start_event - span_event)
             view_end    <- min(start_event + 2 * span_event, seqmax)
             
-            GRanges(chr_event, IRanges(
+            gr <- GRanges(chr_event, IRanges(
                 view_start, view_end
             ))
+            
+            # If gr == prior gr, it means the new event has the same range as
+            # the prior selected event
+            # in this scenario, it is appropriate to select the new event
+            # via the normEvent ddb
+            if(
+                is_valid(settings_Cov$prevEventGR) &&
+                identical(gr, settings_Cov$prevEventGR)
+            ) {
+                updateSelectInput(session = session, inputId = "event_norm_cov", 
+                    selected = event
+                )                            
+            }
+            return(gr)
         })
         
         

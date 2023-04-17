@@ -792,6 +792,7 @@ plotView <- function(
             for(i in seq_len(length(tmpCovPlot))) {
                 curTrack <- names(args[["trackList"]])[i]
                 covTrack[[j]][[i]] <- tmpCovPlot[[i]]
+                ymax <- max(layer_scales(tmpCovPlot[[i]])$y$range$range)
                 if(nrow(dfJnSum_all) > 0) {
                     tmpCovSubset <- dfJnSum_all[get("covTrack") == curTrack]
                     # disable junction plots for multiple samples per track
@@ -818,6 +819,7 @@ plotView <- function(
                 covTrack[[j]][[i]] <- covTrack[[j]][[i]] +
                     coord_cartesian(
                     xlim = c(plotViewStart, plotViewEnd),
+                    ylim = c(0, 1.2 * ymax),
                     expand = FALSE
                 )
             }
@@ -826,6 +828,7 @@ plotView <- function(
                 diffTrack[[j]] <- list()
                 for(i in seq_len(length(tmpDiffPlot))) {
                     diffTrack[[j]][[i]] <- tmpDiffPlot[[i]]
+                    ymax <- max(layer_scales(tmpDiffPlot[[i]])$y$range$range)
                     if(!is.null(okCoords)) {
                         diffTrack[[j]][[i]]$data <- diffTrack[[j]][[i]]$data[
                             diffTrack[[j]][[i]]$data$x %in% okCoords,]
@@ -833,6 +836,7 @@ plotView <- function(
                     diffTrack[[j]][[i]] <- diffTrack[[j]][[i]] +
                         coord_cartesian(
                         xlim = c(plotViewStart, plotViewEnd),
+                        ylim = c(0, 1.2 * ymax),
                         expand = FALSE
                     )
                 }
@@ -1287,7 +1291,7 @@ plotView <- function(
     start(fetch_gr) <- max(args[["limit_start"]], 
         start(range_gr) - width(range_gr))
     end(fetch_gr) <- min(args[["limit_end"]],
-        end(range_gr) + width(range_gr))  
+        end(range_gr) + width(range_gr))    
 
     DT_list <- list()
     DTJn_list <- list()
@@ -1554,6 +1558,10 @@ plotView <- function(
         df <- df_all[df_all$covTrack == covTrack,]
         dfJn <- dfJn_all[dfJn_all$covTrack == covTrack,]
         nGroups <- length(unique(df$group))
+        
+        # Filter by [plotViewStart, plotViewEnd]
+        df <- df[df$x >= plotViewStart & df$x <= plotViewEnd,]
+        dfJn <- dfJn[dfJn$x >= plotViewStart & dfJn$x <= plotViewEnd,]
         
         p <- ggplot(df) + geom_hline(yintercept = 0)   
 

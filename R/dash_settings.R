@@ -175,7 +175,7 @@ setreactive_Cov <- function() {
 # Settings for Coverage plots (NEW)
 setreactive_Cov2 <- function() {
     reactiveValues(
-        geneList = NULL,
+        # geneList = NULL,
         useDE = NULL,
         
         trackTable = data.frame(),
@@ -195,9 +195,10 @@ setreactive_Cov2 <- function() {
         plotCount = 0,
 
         event.ranges = NULL,
+        prevEventGR = NULL,
 
         plotly_relayout = NULL,
-        plot_ini = FALSE,
+        # plot_ini = FALSE,
         oldPlotSettings = list(),
         prevReqEvent = NULL,
         plotReq = NULL,

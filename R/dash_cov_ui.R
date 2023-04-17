@@ -152,7 +152,7 @@ ui_cov_new <- function(id) {
                     )
                 ),
                 vis_ggplot_UI(ns("covSave"), "Save interactive plot as PDF"),
-                br(), br(),
+                br(),
                 vis_ggplot_UI(ns("covExonSave"), "Save exon-centric plot as PDF"),
             ),
             column(8, 

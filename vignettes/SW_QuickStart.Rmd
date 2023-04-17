@@ -1229,7 +1229,7 @@ Splicing of overlapping introns are not considered in PSI quantitation.
 
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
-res_limma_allIntrons <- ASE_limma(
+res_edgeR_allIntrons <- ASE_edgeR(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -1237,7 +1237,7 @@ res_limma_allIntrons <- ASE_limma(
     IRmode = "all"
 )
 
-res_limma_annotatedIR <- ASE_limma(
+res_edgeR_annotatedIR <- ASE_edgeR(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -1245,7 +1245,7 @@ res_limma_annotatedIR <- ASE_limma(
     IRmode = "annotated"
 )
 
-res_limma_annotated_binaryIR <- ASE_limma(
+res_edgeR_annotated_binaryIR <- ASE_edgeR(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -1265,8 +1265,8 @@ categories of batches from which to normalize. For example, to normalize the
 analysis by the `batch` category, one would run:
 
 ```{r, results='hide', message = FALSE, warning = FALSE}
-require("limma")
-res_limma_batchnorm <- ASE_limma(
+require("edgeR")
+res_edgeR_batchnorm <- ASE_edgeR(
     se = se.filtered,
     test_factor = "condition",
     test_nom = "B",
@@ -1355,11 +1355,11 @@ statistical significance (-log10 p values, y axis):
 ```{r, fig.width = 7, fig.height = 5, eval = Sys.info()["sysname"] != "Darwin"}
 library(ggplot2)
 
-ggplot(res_limma,
-        aes(x = logFC, y = -log10(adj.P.Val))) + 
+ggplot(res_edgeR,
+        aes(x = logFC, y = -log10(FDR))) + 
     geom_point() +
     labs(title = "Differential analysis - B vs A",
-         x = "Log2-fold change", y = "BH-adjusted P values (-log10)")
+         x = "Log2-fold change", y = "FDR (-log10)")
 ```
 
 <details>
@@ -1371,11 +1371,11 @@ for each modality of ASE. The type of ASE is contained in the `EventType` column
 of the differential results data frame.
 
 ```{r, fig.width = 7, fig.height = 5, eval = Sys.info()["sysname"] != "Darwin"}
-ggplot(res_limma,
-        aes(x = logFC, y = -log10(adj.P.Val))) + 
+ggplot(res_edgeR,
+        aes(x = logFC, y = -log10(FDR))) + 
     geom_point() + facet_wrap(vars(EventType)) +
     labs(title = "Differential analysis - B vs A",
-         x = "Log2-fold change", y = "BH-adjusted P values (-log10)")
+         x = "Log2-fold change", y = "FDR (-log10)")
 ```
 \
 </details>
@@ -1437,7 +1437,7 @@ values and can be plotted:
 ```{r, fig.width = 7, fig.height = 5, eval = Sys.info()["sysname"] != "Darwin"}
 library(ggplot2)
 
-ggplot(res_limma, aes(x = 100 * AvgPSI_B, y = 100 * AvgPSI_A)) + 
+ggplot(res_edgeR, aes(x = 100 * AvgPSI_B, y = 100 * AvgPSI_A)) + 
     geom_point() + xlim(0, 100) + ylim(0, 100) +
     labs(title = "PSI values across conditions",
          x = "PSI of condition B", y = "PSI of condition A")
@@ -1638,7 +1638,7 @@ First, obtain a matrix of PSI values:
 # Create a matrix of values of the top 10 differentially expressed events:
 mat <- makeMatrix(
     se.filtered,
-    event_list = res_limma$EventName[1:10],
+    event_list = res_edgeR$EventName[1:10],
     method = "PSI"
 )
 ```
@@ -1717,6 +1717,7 @@ transformed values
 Coverage plots visualize RNA-seq coverage in individual samples. SpliceWiz uses
 its coverage normalization algorithm to visualize group differences in PSIs.
 \
+
 <details>
 <summary>What are SpliceWiz coverage plots and how are they generated?</summary>
 \
@@ -1743,174 +1744,285 @@ can be compared across samples.
 First, lets obtain a list of differential events with delta PSI > 5%:
 
 ```{r}
-res_limma.filtered <- subset(res_limma, abs(deltaPSI) > 0.05)
-```
-
-Plot up to 4 individual samples using `plotCoverage()`:
-
-```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
-plotCoverage(
-    se = se,
-    Event = res_limma.filtered$EventName[1],
-    tracks = colnames(se)[c(1,2,4,5)],
+res_edgeR <- ASE_edgeR(
+    se = se.filtered,
+    test_factor = "condition",
+    test_nom = "B",
+    test_denom = "A"
 )
+
+res_edgeR.filtered <- res_edgeR[res_edgeR$abs_deltaPSI > 0.05,]
+res_edgeR.filtered$EventName[1]
 ```
+
+We can see here the top differential event belongs to NSUN5. The first step to
+plotting this event is to create a data object that contains the requisite data
+for the gene NSUN5:
+
+```{r}
+dataObj <- getCoverageData(se, Gene = "NSUN5", tracks = colnames(se))
+```
+
+This step retrieves all coverage and junction data for NSUN5 (and surrounding
+genes).
 \
-<details>
-<summary>Plotting junction counts (new in 0.99.4+)</summary>
+
+Next, we need to create event-specific data for the IR event in NSUN5 intron 2.
+
+```{r}
+plotObj <- getPlotObject(dataObj, Event = res_edgeR.filtered$EventName[1])
+```
+
+This step normalizes the coverage and junction data from the viewpoint of
+NSUN5 intron 2.
 \
 
-Sashimi plots, first popularised by MISO, are coverage plots with arcs that
-denote split reads. They are each labelled by a number denoting the number of
-split reads spanning the corresponding junctions.
+The final step is to generate the plot:
 
-In SpliceWiz (>=0.99.4) junctions can be plotted by setting 
-`plotJunctions = TRUE` from within `plotCoverage()`
-
-```{r, eval = Sys.info()["sysname"] != "Darwin"}
-plotCoverage(
-    se = se,
-    Event = res_limma.filtered$EventName[1],
-    tracks = colnames(se)[c(1,2,4,5)],
+```{r}
+plotView(
+    plotObj,
+    centerByEvent = TRUE, # whether the plot should be centered at the `Event`
+    trackList = list(1,2,3,4,5,6),
     plotJunctions = TRUE
 )
 ```
-\
-</details>
+
+This plots all 6 individual coverage plots, each in its own track. 
 \
 
 <details>
-<summary>The genome track is too cluttered! How can I customize it?</summary>
+<summary>Why are the tracks referred to using numbers</summary>
 \
-We can set the `selected_transcripts` parameter of the `plotCoverage()` function
-to only display the specified transcripts. Selected transcripts can be supplied
-by name or ID (`transcript_name` and `transcript_id` field in the GTF file,
-respectively)
 
-```{r, eval = Sys.info()["sysname"] != "Darwin"}
-plotCoverage(
-    se = se,
-    Event = res_limma.filtered$EventName[1],
-    tracks = colnames(se)[c(1,2,4,5)],
-    selected_transcripts = c("NSUN5-201", "NSUN5-203", "NSUN5-206")
-)
+In the covPlotObject which is returned by the above function, each "track" is
+a sample. These can be viewed using the `tracks()` function:
+
+```{r}
+tracks(plotObj)
 ```
+
+For convenience, users have the option of referring to tracks by their actual
+names, or by numbers. So, in the above example, the two parameters below are
+equivalent:
+
+* `trackList = list(1,2)`
+* `trackList = list("02H003", "02H025")
 \
 </details>
 \
 
-### Group-averaged coverage plots
+### Normalized Coverage plots of individual samples
 
-We plot average coverages of groups "A" and "B" of the "condition" category,
-as follows:
+To plot "normalized" coverage plots, where coverage is normalized to transcript
+depth (i.e. sum of all transcripts = 1), set `normalizeCoverage = TRUE`.
+We can also include multiple samples in each trace, so lets stack all samples
+in the same condition in the same trace:
 
-```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
-plotCoverage(
-    se = se,
-    Event = res_limma.filtered$EventName[1],
-    tracks = c("A", "B"),
+```{r}
+plotView(
+    plotObj,
+    centerByEvent = TRUE,
+    trackList = list(c(1,2,3), c(4,5,6)), 
+    # Each list element contains a vector of track id's
+    
+    normalizeCoverage = TRUE
+)
+```
+
+NB: junction (sashimi) arcs are not plotted in tracks with more than 1 trace
+(to avoid cluttering)
+
+### Group Coverage plots
+
+To plot group coverage plots, first we need to generate a new `covPlotObject`.
+This is because the previous `covPlotObject` was generated on the basis of
+each track being an individual sample. To generate a plot object where each 
+track represents a condition:
+
+```{r}
+plotObj_group <- getPlotObject(
+    dataObj,
+    Event = res_edgeR.filtered$EventName[1],
     condition = "condition",
-    plotJunctions = TRUE,
+    tracks = c("A", "B") 
+)
+
+# NB:
+# when `condition` is not specified, tracks are assumed to be the same samples
+# as that of the covDataObject
+# when `condition` is specified, tracks must refer to the condition categories
+# that are desired for the final plot
+```
+
+Note that there are several scenarios where a new covPlotObject is required:
+
+* When plotting normalized coverages using a different normalization ASE,
+* When plotting by a different condition or different tracks,
+* When plotting on a different strand (default is `*` - unstranded)
+
+To generate the group coverage plot, with the two conditions on the same track:
+
+```{r}
+plotView(
+    plotObj_group,
+    centerByEvent = TRUE,
+    trackList = list(c("A", "B"))
 )
 ```
 
-Note that junctions are labelled not by their counts (which are different
-between replicates of a group, and are dependent on gene expression and 
-sequencing depth). Instead, SpliceWiz labels junction arcs by the mean +/- sd of
- "provisional PSI". These are PSI estimates calculated for each sample, based on 
-the ratio of the junction read count as a proportion of total spliced read 
-counts that share either exon cluster with that of the assessed junction.
+### Coverage plots using exon windows
 
-\
-<details>
-<summary>How do I stack conditions together to better visualize their coverage differences?</summary>
-\
+Sometimes, we are interested in the differential coverage of exons but not of
+the intervening introns. Given introns are often much longer than exons, it is
+useful to plot by the exons of interest.
 
-Differences in group-normalized coverage are best visualized when the traces
-are stacked together in the same track. To do this, set `stack_tracks = TRUE`
-from within `plotCoverage()`. Note this is only enabled when plotting
-group-normalized coverage plots (i.e., when `condition` is set).
+For example, to plot the skipped casette exon in TRA2B:
 
-```{r, fig.width = 8, fig.height = 6, eval = Sys.info()["sysname"] != "Darwin"}
-plotCoverage(
-    se = se,
-    Event = res_limma.filtered$EventName[1],
-    tracks = c("A", "B"),
-    condition = "condition",
-    stack_tracks = TRUE,
+```{r}
+dataObj <- getCoverageData(se, Gene = "TRA2B", tracks = colnames(se))
+
+plotObj <- getPlotObject(
+    dataObj, 
+    Event = "SE:TRA2B-206-exon2;TRA2B-205-int1", 
+    condition = "condition", tracks = c("A", "B")
+)
+
+plotView(
+    plotObj, 
+    centerByEvent = TRUE, 
+    trackList = list(c(1,2)), 
+    filterByEventTranscripts = TRUE
 )
 ```
-\
-</details>
-\
 
-<details>
-<summary>What are the shaded ribbons in this plot?</summary>
-\
+NB: setting `filterByEventTranscripts = TRUE` means only transcripts involved
+in the specified splicing event are plotted in the annotation
 
-The shaded ribbons represent the uncertainty of the coverage. This is denoted
-by the `ribbon_mode` parameter of the plotCoverage() command. The default is
-standard deviation `sd`. Alternatively, users can choose the 95% confidence
-interval `ci`, or the standard error of the mean `sem`.
+Note that the involved exons are in only a small area of the coverage plot. To
+zoom in on the exons, we first have to plot an "exon view" so the exons are
+labelled, and at the same time return their coordinates:
 
-This feature is important for two reasons:
+```{r}
+gr <- plotView(
+    plotObj, 
+    centerByEvent = TRUE, 
+    trackList = list(c(1,2)), 
+    filterByEventTranscripts = TRUE, 
+    showExonRanges = TRUE
+)
+```
 
-* The uncertainties around the regions expected to be invariable 
-(e.g. constitutively expressed flanking exons) are expected to be low if
-SpliceWiz's estimate of exonic abundance is accurate,
-* The confidences of the differentially expressed alternatively-spliced exons 
-(or retained introns) represents the certainty of the differential expression
-of these regions.
-\
-</details>
-\
+By setting the parameter `showExonRanges = TRUE`, the `plotView` function
+shows a plot with exons and their names in the annotation track, and returns
+a GRanges object, with ranges named by their corresponding exon names:
+
+```{r}
+names(gr)
+```
+
+We can see in the above figure that he exons of interest are 
+`c("TRA2B-206-E1", "TRA2B-206-E2", "TRA2B-206-E3")`. To plot these in an
+"exons view" coverage plot:
+
+
+```{r}
+plotView(
+    plotObj, 
+    centerByEvent = TRUE, 
+    trackList = list(c(1,2)), 
+    filterByEventTranscripts = TRUE, 
+    plotRanges = gr[c("TRA2B-206-E1", "TRA2B-206-E2", "TRA2B-206-E3")]
+)
+```
 
 ### Using the GUI
 
-Click on `Display` and then `Coverage plot` from the menu side bar. 
-It should look like this:
+The main coverage plot interface is as follows
 
 ```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Coverage Plots - GUI"}
-knitr::include_graphics("img/Cov.jpg")
+knitr::include_graphics("img/Vis_cov1.jpg")
 ```
 
-Coverage plots can be customized as follows:
+The top bar contains controls to locate the genomic loci of interest:
 
-* (1) Genes: display whole genes
-* (2) Events: display individual ASE events
-* (3) Coordinates: display by genomic coordinates
-* (4) Zoom in or out (each step is a factor of 3)
-* (5) Strand: select unstranded (*), positive (+) or negative (-). NB most 
-RNA-seq protocols are reverse-stranded; this means the strand is opposite to 
-that of the expressed RNA
-* (6) Select events ranked by p values from All results, Filtered results (using
-the interactive DT data table), or Selected results using lasso / box select
-tools on the volcano or scatter plots
-* (7) Graph mode. You can either pan (across the genomic axis), zoom tool (drag
-to zoom in) or movable labels (labels can be moved by dragging)
-* (8) Number of top events to display in the Events dropdown menu
-* (9) Refresh plot. The plot will be automatically refreshed after a few seconds
-when selections are changed. However, for some controls (such as genes, events),
-the plot needs to be manually refreshed
-* (10) View either individual samples or group-averaged by condition
-* (11) Normalize RNA-seq coverage values by the junction coverage reads of the 
-selected ASE event. This ensures that exon depths are normalized to unity. Only
-applicable to `View` by `condition`
-* (12) Condition: select which category of condition to contrast
-* (13) Tracks: select either individual samples, or experimental conditions
-* (14) Plot Junctions: Plot split read counts when viewing by individual 
-samples, or provisional PSI values (calculated based on split reads across
-exon clusters) when viewing by conditions. Not plotted when stack traces is ON.
-* (15) Stack traces: if on, all traces are output onto the same track
-(view by condition only)
-* (16) Pairwise t-test (only applicable to view by condition, 2 tracks 
-highlighted only). A pairwise t-test of normalized coverages will be performed,
-and per-window t-test results (-log10 transformed) will be displayed. Higher
-values indicate higher significance
-* (17) Display Key Isoforms: Only plots transcripts that contain at least one
-of the two alternate isoforms being plotted.
-* (18) Condensed tracks: whether the individual transcripts `OFF` or collapsed
-combined transcripts `ON` is displayed
+(1) Genes - locate by the specified gene
+(2) Events - locate by the specified alternate splicing event. The list of
+events can be modified by the right-hand controls in the top bar
+(3) Coordinates - locate by the specified chromosome and start/end coordinate
+(4) Zoom in or out (each step by a factor of 3)
+(5) Strand - view coverage by strand-specific (+/-) or non-specific (*) modes
+(6) Select events either by all events in differential analysis (which can be
+filtered using the html-table column filters), user-highlighted
+events (using volcano/scatter plots), or by gene ontology category. If using
+gene-ontology category, an extra drop-down box will appear allowing users to
+specify from the top gene ontology categories from prior GO analysis
+(7) Limit the number of events displayed in the Event drop-down box (2)
+
+In the plot control panel on the left hand side of the main plot area:
+
+(8) Select which alternative splicing event that should be normalized against.
+This is critical when plotting normalized coverages (14) or plotting by
+condition (9)
+(9) Select whether to plot by individual samples, or specify the condition to
+plot group-plots. See the next section for condition-specific controls.
+(10) The track list table allows users to specify track ID's for one or more of
+the specified controls. The left hand column displays available sample names
+(if plotting by individual samples), or condition categories (if a condition
+is specified)
+(11) Interactive plots can be slow to render because of too many data points.
+Resolution (the number of data points across the main display) can be controlled
+using this slider.
+(12) For group plots, variance of each group can be displayed either as 
+standard deviation (SD), standard error of the mean (SEM), 95% confidence
+interval (95% CI) or none.
+(13) Whether junction (sashimi) arcs should be plotted. Note that junction arcs
+will be disabled if there are multiple traces on the same track
+(14) When plotting individual samples, whether raw or normalized coverages
+should be displayed. Junction counts will also be normalized (they are
+automatically normalized in group coverage plots)
+(15) Whether to display isoforms belonging to the included / excluded isoform
+described in the selected normalizing alternative splicing event
+(16) Whether transcripts should be condensed by gene. This is useful if there
+are too many transcripts cluttering the display.
+(17) If selected, brings up a transcript table where users can select 1 or more
+transcripts to display in the annotation track.
+(18) If selected, converts the annotation track into an exons display track
+with named exons. A table will pop up allowing users to select 2 or more exon
+ranges. Selecting these exons will generate a static exons-only coverage plot.
+
+The main plot (19) is a plotly-based interactive plot. Users can zoom in to 
+a genomic loci of interest using the zoom tool.
+
+There are several options that appear if a specific condition is set:
+
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Group Coverage Plots"}
+knitr::include_graphics("img/Vis_cov2.jpg")
+```
+
+(1) Note that the track list table now shows condition categories instead of
+names of samples
+(2) Difference of normalized coverage between conditions can be objectively
+measured. Users have the option to use the Student's T-test to measure
+difference in normalized coverage between replicates of a pair of conditions
+(3) Two drop-down boxes allowing users to select a pair of conditions to assess
+difference in normalized coverage
+
+As mentioned, when the "Exon Plot mode" is selected, 
+an exons table is displayed where users
+can select one or more exon ranges can be selected, as shown below:
+
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Exon Coverage Plots"}
+knitr::include_graphics("img/Vis_cov3.jpg")
+```
+
+Selecting 2 or more exon ranges will trigger (after a 3 second delay) a static
+exon-window coverage plot to be generated.
+
+Note that at the bottom of the left hand panel, users can save the interactive
+(top) plot, or the static exon-window coverage (bottom) plot to PDF as ggplot-
+based figures. 
+
 \
 
 # SessionInfo

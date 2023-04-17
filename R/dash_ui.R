@@ -31,43 +31,50 @@ ui_tab_title <- function() {
     out_choices <- c(thread_choices, "custom")
     tabItem(tabName = "navTitle",
         fluidRow(
-            column(4,
-            tags$div(title = paste(
-                "These options set the number of threads to run",
-                "computationally-intensive operations",
-                "such as processBAM, collateData, and DESeq2.",
-                "Also, set memory mode here."),
-                h3("Thread and memory options"),
-                shinyWidgets::pickerInput(
-                   inputId = "thread_number",
-                   label = "Number of threads to use", 
-                    choices = out_choices
-                ),
-                conditionalPanel(
-                    condition = "['custom'].indexOf(input.thread_number) >= 0",
-                    numericInput("cores_numeric", "# Threads", min = 1, 
-                        max = parallel::detectCores(), value = 1)
-                ),
-                radioGroupButtons(
-                    inputId = "memory_option",
-                    label = "Memory Usage",
-                    choices = c( 
-                        "Low",
-                        "High"
-                    ),
-                    justified = TRUE,
-                    checkIcon = list(
-                        yes = icon("ok", lib = "glyphicon")
-                    )
-                ), br(),
-                h4("Estimated memory usage for reference generation"),
-                textOutput("txt_mem_buildRef"), br(),
-                h4("Estimated memory usage for BAM processing"),
-                textOutput("txt_mem_processBAM"), br(),
-                h4("Estimated memory usage for data collation"),
-                textOutput("txt_mem_collateData"), br()
-            )),
             column(8,
+                h2("Welcome to SpliceWiz!"),
+                # tags$div(title = paste(
+                    # "These options set the number of threads to run",
+                    # "computationally-intensive operations",
+                    # "such as processBAM, collateData, and DESeq2.",
+                    # "Also, set memory mode here."),
+                    # h3("Thread and memory options"),
+                    # shinyWidgets::pickerInput(
+                       # inputId = "thread_number",
+                       # label = "Number of threads to use", 
+                        # choices = out_choices
+                    # ),
+                    # conditionalPanel(
+                        # condition = "['custom'].indexOf(input.thread_number) >= 0",
+                        # numericInput("cores_numeric", "# Threads", min = 1, 
+                            # max = parallel::detectCores(), value = 1)
+                    # ),
+                    # radioGroupButtons(
+                        # inputId = "memory_option",
+                        # label = "Memory Usage",
+                        # choices = c( 
+                            # "Low",
+                            # "High"
+                        # ),
+                        # justified = TRUE,
+                        # checkIcon = list(
+                            # yes = icon("ok", lib = "glyphicon")
+                        # )
+                    # ), br(),
+                    # h4("Estimated memory usage for reference generation"),
+                    # textOutput("txt_mem_buildRef"), br(),
+                    # h4("Estimated memory usage for BAM processing"),
+                    # textOutput("txt_mem_processBAM"), br(),
+                    # h4("Estimated memory usage for data collation"),
+                    # textOutput("txt_mem_collateData"), br()
+                # ),
+                img(src=paste0(
+                    "https://www.biorxiv.org/content/biorxiv/", 
+                    "early/2022/07/06/2022.07.05.498887/", 
+                    "F1.large.jpg"                
+                ), height = 800)                
+            ),
+            column(4,
                 # img(src=paste0(
                     # "https://pbs.twimg.com/",
                     # "profile_images/",
@@ -143,7 +150,8 @@ ui_tab_heatmap <- function() {
 
 ui_tab_coverage <- function() {
     tabItem(tabName = "navCoverage",
-        ui_cov("cov")
+        # ui_cov("cov")
+        ui_cov_new("cov")
     )
 }
 
@@ -189,5 +197,205 @@ ui_toggle_wellPanel_modular <- function(
     )
 }
 
+shinyDirAttnButton <- function(
+    id, label, title,
+    icon = NULL,
+    style = "gradient",
+    color = "default",
+    size = "md",
+    block = FALSE,
+    no_outline = TRUE,
+  ...
+) {
+    value <- restoreInput(id = id, default = NULL)
+    style <- match.arg(
+        arg = style,
+        choices = c(
+            "simple", "bordered", "minimal", "stretch", "jelly",
+            "gradient", "fill", "material-circle", "material-flat",
+            "pill", "float", "unite"
+        )
+    )
+    color <- match.arg(
+        arg = color,
+        choices = c(
+            "default", "primary", "warning", "danger", "success", "royal"
+        )
+    )
+    size <- match.arg(arg = size, choices = c("xs", "sm", "md", "lg"))
+  
+    tagList(
+        singleton(
+            tags$head(
+                tags$script(src = "sF/shinyFiles.js"),
+                tags$link(
+                    rel = "stylesheet",
+                    type = "text/css",
+                    href = "sF/styles.css"
+                ),
+                tags$link(
+                    rel = "stylesheet",
+                    type = "text/css",
+                    href = "sF/fileIcons.css"
+                )
+            )
+        ),
+        sWidgets_attachDep(
+            tags$button(
+                id = id,
+                type = "button",
+                class = "shinyDirectories action-button bttn",
+                class = paste0("bttn-", style),
+                class = paste0("bttn-", size),
+                class = paste0("bttn-", color),
+                class = if (block) "bttn-block",
+                class = if (no_outline) "bttn-no-outline",
+                style = style,
+                "data-title" = title,
+                "data-val" = value,
+                icon, label, ...
+            ), "bttn"
+        )
+    )
+}
 
+shinyFilesAttnButton <- function(
+    id, label, title, 
+    multiple = FALSE, 
+    buttonType="default", 
+    icon = NULL,
+    style = "gradient",
+    color = "default",
+    size = "md",
+    block = FALSE,
+    no_outline = TRUE,
+    viewtype = c("detail", "list", "icon"), 
+    ...
+) {
+    value <- restoreInput(id = id, default = NULL)
+    viewtype <- match.arg(viewtype)
+    if(!is_valid(viewtype)) viewtype <- "detail"
+    style <- match.arg(
+        arg = style,
+        choices = c(
+            "simple", "bordered", "minimal", "stretch", "jelly",
+            "gradient", "fill", "material-circle", "material-flat",
+            "pill", "float", "unite"
+        )
+    )
+    color <- match.arg(
+        arg = color,
+        choices = c(
+            "default", "primary", "warning", "danger", "success", "royal"
+        )
+    )
+    size <- match.arg(arg = size, choices = c("xs", "sm", "md", "lg"))
+    
+    tagList(
+        singleton(
+            tags$head(
+                tags$script(src = "sF/shinyFiles.js"),
+                tags$link(
+                    rel = "stylesheet",
+                    type = "text/css",
+                    href = "sF/styles.css"
+                ),
+                tags$link(
+                    rel = "stylesheet",
+                    type = "text/css",
+                    href = "sF/fileIcons.css"
+                )
+            )
+        ),
+        sWidgets_attachDep(
+            tags$button(
+                id = id,
+                type = "button",
+                class = "shinyFiles action-button bttn",
+                class = paste0("bttn-", style),
+                class = paste0("bttn-", size),
+                class = paste0("bttn-", color),
+                class = if (block) "bttn-block",
+                class = if (no_outline) "bttn-no-outline",
+                style = style,
+                "data-title" = title,
+                "data-selecttype" = ifelse(multiple, "multiple", "single"),
+                "data-val" = value,
+                "data-view" = paste0("sF-btn-", viewtype),
+                icon, label, ...
+            ), "bttn"
+        )
+    )
+}
 
+shinySaveAttnButton <- function(
+    id, label, title, 
+    filename = "", filetype,
+    buttonType="default", 
+    icon = NULL,
+    style = "gradient",
+    color = "default",
+    size = "md",
+    block = FALSE,
+    no_outline = TRUE,
+    viewtype = c("detail", "list", "icon"), 
+    ...
+) {
+    value <- restoreInput(id = id, default = NULL)
+    viewtype <- match.arg(viewtype)
+    if (missing(filetype)) filetype <- NA
+    filetype <- sFiles_formatFiletype(filetype)
+    if(!is_valid(viewtype)) viewtype <- "detail"
+    style <- match.arg(
+        arg = style,
+        choices = c(
+            "simple", "bordered", "minimal", "stretch", "jelly",
+            "gradient", "fill", "material-circle", "material-flat",
+            "pill", "float", "unite"
+        )
+    )
+    color <- match.arg(
+        arg = color,
+        choices = c(
+            "default", "primary", "warning", "danger", "success", "royal"
+        )
+    )
+    size <- match.arg(arg = size, choices = c("xs", "sm", "md", "lg"))
+    
+    tagList(
+        singleton(
+            tags$head(
+                tags$script(src = "sF/shinyFiles.js"),
+                tags$link(
+                    rel = "stylesheet",
+                    type = "text/css",
+                    href = "sF/styles.css"
+                ),
+                tags$link(
+                    rel = "stylesheet",
+                    type = "text/css",
+                    href = "sF/fileIcons.css"
+                )
+            )
+        ),
+        sWidgets_attachDep(
+            tags$button(
+                id = id,
+                type = "button",
+                class = "shinySave action-button bttn",
+                class = paste0("bttn-", style),
+                class = paste0("bttn-", size),
+                class = paste0("bttn-", color),
+                class = if (block) "bttn-block",
+                class = if (no_outline) "bttn-no-outline",
+                style = style,
+                "data-title" = title,
+                "data-filetype" = filetype,
+                "data-filename" = filename,
+                "data-val" = value,
+                "data-view" = paste0("sF-btn-", viewtype),
+                icon, label, ...
+            ), "bttn"
+        )
+    )
+}

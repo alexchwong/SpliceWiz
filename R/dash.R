@@ -92,10 +92,10 @@ spliceWiz <- function(
             dir.create(file.path(tempdir(), "Reference"))
         if(!dir.exists(file.path(tempdir(), "bams")))
             dir.create(file.path(tempdir(), "bams"))
-        if(!dir.exists(file.path(tempdir(), "pb_output")))
-            dir.create(file.path(tempdir(), "pb_output"))
         if(!dir.exists(file.path(tempdir(), "NxtSE")))
             dir.create(file.path(tempdir(), "NxtSE"))
+        if(!dir.exists(file.path(tempdir(), "NxtSE/pbOutput")))
+            dir.create(file.path(tempdir(), "NxtSE/pbOutput"))
         ret <- example_bams(path = file.path(tempdir(), "bams"))
         
         if(is.null(ret)) {

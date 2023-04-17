@@ -1,7 +1,7 @@
 #' @useDynLib SpliceWiz, .registration = TRUE
 #' @import NxtIRFdata
 #' @import ompBAM
-#' @importFrom methods as is coerce callNextMethod new validObject
+#' @importFrom methods as is coerce callNextMethod new validObject show
 #' @importFrom parallel detectCores
 #' @importFrom scales label_number cut_si
 #' @importFrom stats as.formula model.matrix qt runif na.omit prcomp aggregate
@@ -16,7 +16,7 @@
 #' @import ggplot2
 #' @importFrom AnnotationHub AnnotationHub cache query
 #' @importFrom BiocFileCache BiocFileCache bfcrpath bfcquery
-#' @importFrom BiocGenerics start end width
+#' @importFrom BiocGenerics start end start<- end<- width
 #' @importFrom BiocGenerics nrow ncol rbind cbind
 #' @importFrom BiocParallel SnowParam MulticoreParam SerialParam
 #' @importFrom BiocParallel bpparam bplapply
@@ -41,7 +41,9 @@
 #' @importFrom patchwork area plot_layout wrap_plots
 #' @importFrom plotly config layout plotlyOutput event_data ggplotly 
 #' @importFrom plotly plotlyProxy plotlyProxyInvoke renderPlotly subplot 
-#' @importFrom plotly highlight orca toWebGL
+#' @importFrom plotly highlight orca toWebGL partial_bundle
+#' @importFrom plotly plot_ly add_trace add_ribbons plotly_build
+#' @importFrom plotly plot_ly event_register event_unregister
 #' @importFrom rhdf5 h5createFile h5createDataset h5delete h5write h5createGroup
 #' @importFrom rtracklayer import export TwoBitFile track
 #' @importFrom S4Vectors mcols mcols<- metadata Rle metadata<- SimpleList 
@@ -59,15 +61,18 @@
 #' @importFrom shinyFiles shinyDirButton shinyDirChoose shinyFileChoose
 #' @importFrom shinyFiles shinyFilesButton shinyFileSave shinySaveButton
 #' @importFrom shinyWidgets sliderTextInput updateSliderTextInput
+#' @importFrom shinyWidgets prettyRadioButtons materialSwitch
 #' @importFrom shinyWidgets radioGroupButtons updateRadioGroupButtons
-#' @importFrom shinyWidgets switchInput actionBttn
+#' @importFrom shinyWidgets switchInput actionBttn updateSwitchInput
 #' @importFrom shinyWidgets sendSweetAlert ask_confirmation
 #' @importFrom rhandsontable rhandsontable hot_to_r hot_col
 #' @importFrom rhandsontable renderRHandsontable rHandsontableOutput
+#' @importFrom htmltools tagList singleton
 #' @importFrom stats runif na.omit prcomp complete.cases p.adjust
 #' @importFrom DT datatable selectRows dataTableProxy  
 #' @importFrom grDevices colorRampPalette
 #' @importFrom heatmaply heatmaply
+#' @importFrom pheatmap pheatmap
 #' @importFrom matrixStats colVars
 #' @importFrom RColorBrewer brewer.pal.info
 #' @importFrom rvest read_html html_nodes html_attr
@@ -79,6 +84,9 @@ NULL
 BG_replaceSlots <- getFromNamespace("replaceSlots", "BiocGenerics")
 S4_disableValidity <- getFromNamespace("disableValidity", "S4Vectors")
 S4_selectSome <- getFromNamespace("selectSome", "S4Vectors")
+
+sWidgets_attachDep <- getFromNamespace("attachShinyWidgetsDep", "shinyWidgets")
+sFiles_formatFiletype <- getFromNamespace("formatFiletype", "shinyFiles")
 
 # Checks character indices on NxtSE object
 SE_charbound <- function(idx, txt, fmt) {

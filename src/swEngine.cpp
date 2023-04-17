@@ -563,7 +563,11 @@ int swEngine::SpliceWizMultiCore(
   // Write stats here:
     std::string myLine;
     BBchild.at(0).WriteOutput(myLine);
-    outGZ.writestring(myLine); outGZ.writeline("");
+    outGZ.writestring(myLine); // outGZ.writeline("");
+
+  // Write source filename here
+    outGZ.writestring("Source BAM Path\t"); 
+    outGZ.writeline(bam_file.at(z)); outGZ.writeline("");
 
     int directionality = oJC.at(0).Directional(myLine);
     outGZ.writeline("Directionality\tValue"); 

@@ -51,6 +51,12 @@
 #' # Coerce SummarizedExperiment -> NxtSE
 #' se_NxtSE <- as(se_raw, "NxtSE")
 #' identical(se, se_NxtSE) # Returns TRUE
+#'
+#' # Update NxtSE object to the latest version
+#' # - useful if an NxtSE object made with old SpliceWiz version
+#' # - was stored as an RDS obejct
+#'
+#' se <- update_NxtSE(se)
 #' 
 #' # Get directory path of NxtSE (i.e., collate_path)
 #' sourcePath(se)
@@ -78,6 +84,9 @@
 #'
 #' # Get Junction GRanges object
 #' junc_gr(se)
+#'
+#' # Get EventRegion as GRanges object
+#' row_gr(se)
 #'
 #' # Get list of available coverage files
 #' covfile(se)
@@ -136,10 +145,12 @@
 #' sampleQC<- sampleQC<-,NxtSE-method
 #' ref ref,NxtSE-method
 #' sourcePath sourcePath,NxtSE-method
+#' row_gr row_gr,NxtSE-method
 #' junc_PSI junc_PSI,NxtSE-method
 #' junc_counts junc_counts,NxtSE-method
 #' junc_counts_uns junc_counts_uns,NxtSE-method
 #' junc_gr junc_gr,NxtSE-method
+#' update_NxtSE update_NxtSE,NxtSE-method
 #' realize_NxtSE realize_NxtSE,NxtSE-method
 #' coerce,SummarizedExperiment,NxtSE-method
 #' @md
@@ -304,5 +315,45 @@ setClass("ASEFilter",
         condition = "character",
         minCond = "numeric",
         EventTypes = "character"
+    )
+)
+
+#' @export
+setClass("covDataObject",
+    slots = c(
+        args = "list",
+        annotation = "list",
+        colData = "data.frame",
+        covData = "list",
+        juncData = "list",
+        normData = "list"
+    )
+)
+
+#' @export
+setClass("covPlotObject",
+    slots = c(
+        args = "list",
+        cov = "list",
+        norm_cov = "list",
+        junc = "list",
+        norm_junc = "list",
+        junc_PSI = "list",
+        junc_stats = "list",
+        cov_stats = "list",
+        annotation = "list"
+    )
+)
+
+#' @export
+setClass("covPlotly",
+    slots = c(
+        fig = "list",
+        args = "list",
+        covTrack = "list",
+        diffTrack = "list",
+        annoTrack = "list",
+        exonTrack = "list",
+        vLayout = "numeric"
     )
 )

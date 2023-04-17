@@ -70,7 +70,7 @@ ui_ref_new <- function(id) {
                     selectInput(ns('newref_genome_type'),
                         paste('Select Genome Type to set',
                             'Mappability and non-PolyA files'),
-                        c("(custom)", "hg38", "mm10", "hg19", "mm9")
+                        c("(none)", "hg38", "mm10", "hg19", "mm9")
                     )
                 ),
                 tags$div(title = paste("Select Mappability Exclusion file.",
@@ -122,7 +122,7 @@ ui_ref_new <- function(id) {
                     shinyWidgets::actionBttn(ns("load_ref_example"), 
                         "Load Demo FASTA / GTF",
                         style = "gradient", color = "danger"
-                    )
+                    ), br(), br(), textOutput(ns("txt_demo"))
                 )
             ),
             wellPanel(

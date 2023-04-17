@@ -472,9 +472,9 @@ collateData <- function(Experiment, reference_path, output_path,
                     data.list <- get_multi_DT_from_gz(
                         normalizePath(block$path[i]),
                         c("BAM", "Directionality", "QC"))
-                    stats <- data.list$BAM
-                    direct <- data.list$Directionality
-                    QC <- data.list$QC
+                    stats <- data.list[["BAM"]]
+                    direct <- data.list[["Directionality"]]
+                    QC <- data.list[["QC"]]
 
                     block <- .collateData_stats_reads(block, i, stats, direct)
                     block <- .collateData_stats_QC(block, i, QC, direct)
@@ -489,76 +489,86 @@ collateData <- function(Experiment, reference_path, output_path,
 ################################################################################
 
 .collateData_stats_reads <- function(block, i, stats, direct) {
-    if (stats$Value[3] == 0 & stats$Value[4] > 0) {
+    statsVec        <- unname(unlist(stats[,2]))
+    names(statsVec) <- unname(unlist(stats[,1]))
+    numNuc      <- as.numeric(statsVec["Total nucleotides"])
+    numSingle   <- as.numeric(statsVec["Total singles processed"])
+    numPairs    <- as.numeric(statsVec["Total pairs processed"])
+    
+    if (numSingle == 0 & numPairs > 0) {
         block$paired[i] <- TRUE
-        block$depth[i] <- stats$Value[4]
-        block$mean_frag_size[i] <- stats$Value[2] /
-            stats$Value[4]
-    } else if (stats$Value[3] > 0 &&
-            stats$Value[4] / stats$Value[3] / 1000) {
+        block$depth[i] <- numPairs
+        block$mean_frag_size[i] <- numNuc / numPairs
+    } else if (numSingle > 0 && numPairs / numSingle > 10) {
         block$paired[i] <- TRUE
-        block$depth[i] <- stats$Value[4]
-        block$mean_frag_size[i] <- stats$Value[2] /
-            stats$Value[4]
+        block$depth[i] <- numPairs
+        block$mean_frag_size[i] <- numNuc / numPairs
     } else {
         block$paired[i] <- FALSE
-        block$depth[i] <- stats$Value[3]
-        block$mean_frag_size[i] <- stats$Value[2] /
-            stats$Value[3]
+        block$depth[i] <- numSingle
+        block$mean_frag_size[i] <- numNuc / numSingle
     }
-    block$strand[i] <- direct$Value[9]
+    block$strand[i] <- as.numeric(
+        direct$Value[direct[,1] == "Overall Directionality"])
     return(block)
 }
 
 .collateData_stats_QC <- function(block, i, QC, direct) {
-    block$directionality_strength[i] <- direct$Value[8]
+    block$directionality_strength[i] <- as.numeric(
+        direct$Value[grepl("Dir score known junctions", unlist(direct[,1]))])
     block$Intergenic_Fraction[i] <-
-        QC$Value[QC$QC == "Intergenic Reads"] /
-            block$depth[i]
+        QC$Value[QC$QC == "Intergenic Reads"] / block$depth[i]
     block$rRNA_Fraction[i] <-
-        QC$Value[QC$QC == "rRNA Reads"] /
-            block$depth[i]
+        QC$Value[QC$QC == "rRNA Reads"] / block$depth[i]
     block$NonPolyA_Fraction[i] <-
-        QC$Value[QC$QC == "NonPolyA Reads"] /
-            block$depth[i]
+        QC$Value[QC$QC == "NonPolyA Reads"] / block$depth[i]
     block$Mitochondrial_Fraction[i] <-
-        QC$Value[QC$QC == "Mitochondrial Reads"] /
-            block$depth[i]
+        QC$Value[QC$QC == "Mitochondrial Reads"] / block$depth[i]
     block$Unanno_Jn_Fraction[i] <-
         QC$Value[QC$QC == "Unannotated Junctions"] /
-        (QC$Value[QC$QC == "Unannotated Junctions"] +
-        QC$Value[QC$QC == "Annotated Junctions"])
+        (
+            QC$Value[QC$QC == "Unannotated Junctions"] +
+            QC$Value[QC$QC == "Annotated Junctions"]
+        )
     block$NMD_Jn_Fraction[i] <-
         QC$Value[QC$QC == "NMD Junctions"] /
         QC$Value[QC$QC == "Annotated Junctions"]
     block$Fraction_Splice_Reads[i] <-
-        QC$Value[QC$QC == "Annotated Junctions"] /
-        block$depth[i]
+        QC$Value[QC$QC == "Annotated Junctions"] / block$depth[i]
     block$Fraction_Span_Reads[i] <-
-        QC$Value[QC$QC == "Spans Reads"] /
-            block$depth[i]
+        QC$Value[QC$QC == "Spans Reads"] / block$depth[i]
     # IRBurden calculations
     block$IRBurden_clean_unstranded[i] <-
         QC$Value[QC$QC == "Non-Directional Clean IntronDepth Sum"] /
-        (QC$Value[QC$QC == "Non-Directional Clean IntronDepth Sum"] +
-        QC$Value[QC$QC == "Annotated Junctions"])
+        (
+            QC$Value[QC$QC == "Non-Directional Clean IntronDepth Sum"] +
+            QC$Value[QC$QC == "Annotated Junctions"]
+        )
     block$IRBurden_exitrons_unstranded[i] <-
         QC$Value[QC$QC == "Non-Directional Known-Exon IntronDepth Sum"] /
-        (QC$Value[QC$QC == "Non-Directional Known-Exon IntronDepth Sum"] +
-        QC$Value[QC$QC == "Annotated Junctions"])
+        (
+            QC$Value[QC$QC == "Non-Directional Known-Exon IntronDepth Sum"] +
+            QC$Value[QC$QC == "Annotated Junctions"]
+        )
     block$IRBurden_antisense[i] <-
         QC$Value[QC$QC == "Non-Directional Anti-Sense IntronDepth Sum"] /
-        (QC$Value[QC$QC == "Non-Directional Anti-Sense IntronDepth Sum"] +
-        QC$Value[QC$QC == "Annotated Junctions"])
+        (
+            QC$Value[QC$QC == "Non-Directional Anti-Sense IntronDepth Sum"] +
+            QC$Value[QC$QC == "Annotated Junctions"]
+        )
     if (block$strand[i] != 0) {
         block$IRBurden_clean[i] <-
             QC$Value[QC$QC == "Directional Clean IntronDepth Sum"] /
-            (QC$Value[QC$QC == "Directional Clean IntronDepth Sum"] +
-            QC$Value[QC$QC == "Annotated Junctions"])
+            (
+                QC$Value[QC$QC == "Directional Clean IntronDepth Sum"] +
+                QC$Value[QC$QC == "Annotated Junctions"]
+            )
         block$IRBurden_exitrons[i] <-
             QC$Value[QC$QC == "Directional Known-Exon IntronDepth Sum"] /
-            (QC$Value[QC$QC == "Directional Known-Exon IntronDepth Sum"] +
-            QC$Value[QC$QC == "Annotated Junctions"])
+            (
+                QC$Value[QC$QC == "Directional Known-Exon IntronDepth Sum"] +
+                QC$Value[QC$QC == "Annotated Junctions"]
+            )
     }
     return(block)
 }

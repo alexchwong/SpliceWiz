@@ -292,6 +292,7 @@ makeSE <- function(
     if(verbose) .log("...loading rowData", "message")
     rowData <- readRDS(file.path(collate_path, "rowEvent.Rds"))
     rowData(se) <- rowData
+    metadata(se)[["row_gr"]] <- coord2GR(rowData$EventRegion)
 
     # Encapsulate as NxtSE object
     se <- as(se, "NxtSE")

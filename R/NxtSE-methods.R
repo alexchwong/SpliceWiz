@@ -62,6 +62,12 @@ setAs("SummarizedExperiment", "NxtSE", function(from) {
     junc_counts_uns(out) <- se@metadata[["junc_counts_uns"]] 
     junc_gr(out) <- se@metadata[["junc_gr"]]
 
+    if(!("row_gr" %in% names(se@metadata))) {
+        row_gr(out) <- coord2GR(rowData(se)$EventRegion)
+    } else {
+        row_gr(out) <- se@metadata[["row_gr"]]
+    }
+
     # Restore validity
     if (!isTRUE(old)) {
         S4_disableValidity(old)
@@ -342,6 +348,22 @@ setMethod("sourcePath", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     x@metadata[["sourcePath"]]
 })
 
+#' @describeIn NxtSE-class Retrieves a GRanges object representing the genomic
+#'   spans of the ASEs (EventRegion as GRanges)
+#' @export
+setMethod("row_gr", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
+    if(!("row_gr" %in% names(x@metadata))) {
+        x@metadata[["row_gr"]] <- coord2GR(rowData(x)$EventRegion)
+    }
+    if (withDimnames) {
+        ret <- x@metadata[["row_gr"]]
+        names(ret) <- rownames(x)
+        ret
+    } else {
+        x@metadata[["row_gr"]]
+    }
+})
+
 #' @describeIn NxtSE-class Retrieves a list of annotation data associated
 #'   with this NxtSE object; primarily used in plotCoverage()
 #' @export
@@ -369,11 +391,23 @@ setMethod("junc_counts", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
 setMethod("junc_counts_uns", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     x@metadata[["junc_counts_uns"]]
 })
+
 #' @describeIn NxtSE-class Getter for junction GenomicRanges coordinates; 
 #' primarily used in plotCoverage()
 #' @export
 setMethod("junc_gr", c("NxtSE"), function(x, withDimnames = TRUE, ...) {
     x@metadata[["junc_gr"]]
+})
+
+#' @describeIn NxtSE-class Updates NxtSE object to the latest version. 
+#' @export
+setMethod("update_NxtSE", c("NxtSE"), function(x, ...) {
+    
+    # 1.1.7: row_gr
+    if(!("row_gr") %in% names(metadata(x))) {
+        row_gr(x) <- coord2GR(rowData(x)$EventRegion)
+    }
+    return(x)
 })
 
 #' @describeIn NxtSE-class Converts all DelayedMatrix assays as matrices
@@ -500,6 +534,13 @@ setReplaceMethod("sourcePath", c("NxtSE"), function(x, value)
     x
 })
 
+setReplaceMethod("row_gr", c("NxtSE"), function(x, value)
+{
+    x@metadata[["row_gr"]] <- value
+    x
+})
+
+
 setReplaceMethod("ref", c("NxtSE"), function(x, value)
 {
     x@metadata[["ref"]] <- value
@@ -528,6 +569,13 @@ setReplaceMethod("junc_gr", c("NxtSE"), function(x, value)
     x@metadata[["junc_gr"]] <- value
     x
 })
+
+setReplaceMethod("row_gr", c("NxtSE"), function(x, value)
+{
+    x@metadata[["row_gr"]] <- value
+    x
+})
+
 
 ################################ SUBSETTERS ####################################
 
@@ -577,6 +625,8 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
         junc_counts(x, FALSE) <- junc_counts(x, FALSE)[, samples, drop = FALSE]
         junc_counts_uns(x, FALSE) <- 
             junc_counts_uns(x, FALSE)[, samples, drop = FALSE]
+
+        row_gr(x) <- row_gr(x, FALSE)[ii]
     } else if (!missing(i)) {
         events <- rownames(x)[ii]
         events_Inc <- events[events %in% rownames(metadata(x)[["Up_Inc"]])]
@@ -592,6 +642,8 @@ setMethod("[", c("NxtSE", "ANY", "ANY"), function(x, i, j, ...) {
             up_exc(x, FALSE)[events_Exc, , drop = dontDrop]
         down_exc(x, FALSE) <-
             down_exc(x, FALSE)[events_Exc, , drop = dontDrop]
+            
+        row_gr(x) <- row_gr(x, FALSE)[ii]
     } else if (!missing(j)) {
         samples <- colnames(x)[jj]
 
@@ -637,6 +689,8 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         junc_PSI(x, FALSE)[, samples] <- junc_PSI(value)
         junc_counts(x, FALSE)[, samples] <- junc_counts(value)
         junc_counts_uns(x, FALSE)[, samples] <- junc_counts_uns(value)
+
+        row_gr(x) <- row_gr(value, FALSE)
     } else if (!missing(i)) {
         events <- rownames(x)[i]
         events_Inc <- events[events %in% rownames(metadata(x)[["Up_Inc"]])]
@@ -646,6 +700,8 @@ setMethod("[<-", c("NxtSE", "ANY", "ANY", "NxtSE"),
         down_inc(x, FALSE)[events_Inc, ] <- down_inc(value, FALSE)
         up_exc(x, FALSE)[events_Exc, ] <- up_exc(value, FALSE)
         down_exc(x, FALSE)[events_Exc, ] <- down_exc(value, FALSE)
+
+        row_gr(x) <- row_gr(value, FALSE)
     } else if (!missing(j)) {
         samples <- colnames(x)[j]
         up_inc(x, FALSE)[, samples] <- up_inc(value, FALSE)
@@ -969,14 +1025,14 @@ setMethod("rbind", "NxtSE", function(..., deparse.level = 1) {
     })
     
     # c() concatenates
-    
-    # tryCatch({
-        # metadata$junc_gr <- do.call(c, lapply(args, junc_gr))
-    # }, error = function(err) {
-        # stop(
-            # "failed to combine 'junc_gr' in 'cbind(<",
-            # class(args[[1]]), ">)':\n  ",
-            # conditionMessage(err))
-    # })    
+    tryCatch({
+        metadata$row_gr <- do.call(c, lapply(args, row_gr))
+    }, error = function(err) {
+        stop(
+            "failed to combine 'row_gr' in 'rbind(<",
+            class(args[[1]]), ">)':\n  ",
+            conditionMessage(err))
+    })
+
     BG_replaceSlots(out, metadata = metadata, check = FALSE)
 })

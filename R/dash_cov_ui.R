@@ -1,19 +1,19 @@
-ui_cov <- function(id) {
+ui_cov_new <- function(id) {
     ns <- NS(id)
     wellPanel(
         .ui_notice(),
-        fluidRow(style='height:25vh',
+        fluidRow(
             column(4, 
                 textOutput(ns("warning_cov")),
                 div(style=.cov_ui_inline(250), 
-                    selectizeInput(ns('genes_cov'), 'Genes', 
+                    selectizeInput(ns("genes_cov"), 'Locate by Gene', 
                         choices = "(none)")
                 ),
                 div(style=.cov_ui_inline(350), 
-                    selectizeInput(ns('events_cov'), 'Events', 
+                    selectizeInput(ns("events_cov"), 'Locate by Event', 
                         choices = "(none)")
-                ), br(),
-                actionButton(ns("refresh_coverage"), "Refresh Plot")
+                ) #, br(),
+                # actionButton(ns("refresh_coverage"), "Refresh Plot")
             ),
             column(4,
                 div(style=.cov_ui_inline(80),
@@ -40,24 +40,11 @@ ui_cov <- function(id) {
                         choices = c("*", "+", "-"), 
                         checkIcon = list(yes = icon("ok", lib = "glyphicon"))
                     )
-                ), br(),
-                shinyWidgets::radioGroupButtons(ns("graph_mode_cov"), 
-                    label = "Graph Mode", justified = FALSE,
-                    choices = c("Pan", "Zoom", "Movable Labels"), 
-                    checkIcon = list(yes = icon("ok", lib = "glyphicon"))),
+                )#, br(),
             ),
             column(4,
-                # shinyWidgets::radioGroupButtons(ns("select_events_cov"), 
-                    # label = 
-                        # "Select Events from Differential Expression Results",
-                        # justified = FALSE,
-                    # choiceNames = c("Top All Results", "Top Filtered Results", 
-                        # "Top Selected Results"), 
-                    # choiceValues = c("All", "Filtered", "Selected"),
-                    # checkIcon = list(yes = icon("ok", lib = "glyphicon"))
-                # ),
                 selectInput(ns('modeFilter_COV'), 
-                    'Display events from:', 
+                    'Display available events by:', 
                     c(
                         "All filtered events", 
                         "Highlighted (selected) events", 
@@ -79,39 +66,102 @@ ui_cov <- function(id) {
             )
         ),
         fluidRow(
-            column(3, 
-                selectInput(ns('mode_cov'), 'View', width = '100%',
-                    choices = c("Individual", "By Condition")),
-                selectInput(ns('event_norm_cov'), 'Normalize Event', 
-                    width = '100%', choices = c("(none)")),
-                conditionalPanel(ns = ns,
-                    condition = "['By Condition'].indexOf(input.mode_cov) >= 0",
-                    selectInput(ns('condition_cov'), 'Condition', 
-                        width = '100%', choices = c("(none)"))
+            column(4, 
+                wellPanel(style = "overflow-y:scroll; max-height: 800px",
+                    selectInput(ns('event_norm_cov'), 'Normalize by Event', 
+                        width = '100%', choices = c("(none)")),
+                    selectInput(ns('condition_cov'), 'Condition variable:', 
+                        width = '100%', choices = c("(Individual Samples)")),
+                    wellPanel(style = "overflow-y:scroll; max-height: 300px",
+                        rHandsontableOutput(ns("track_table"))
+                    ),
+                    
+                    conditionalPanel(ns = ns,
+                        condition = "['(Individual Samples)'].indexOf(input.condition_cov) < 0",
+                        # selectInput(ns('diff_stat'), 
+                            # 'Differential coverage track', 
+                            # width = '100%', choices = c("t-test")),                        
+                        shinyWidgets::prettyRadioButtons(
+                            inputId = ns("diff_stat"),
+                            label = "Measure difference by:", 
+                            choiceNames = c("t-test", "none"),
+                            choiceValues = c("t-test", "none"),
+                            inline = TRUE, 
+                            status = "danger",
+                            fill = TRUE
+                        ),
+                        selectInput(ns('diffA'), 'Contrasting category A', 
+                            width = '100%', choices = c("(none)")),
+                        selectInput(ns('diffB'), 'Contrasting category B', 
+                            width = '100%', choices = c("(none)")),
+                    ),
+                    shinyWidgets::sliderTextInput(ns("slider_num_plotRes"), 
+                        "Plot resolution", 
+                        choices = c(250, 500, 1000, 2000, 5000, 10000),
+                        selected = 1000),
+                    shinyWidgets::prettyRadioButtons(
+                        inputId = ns("plot_ribbon"),
+                        label = "Variance by:", 
+                        choiceNames = c("SD", "SEM", "95% CI", "none"),
+                        choiceValues = c("sd", "sem", "ci", "none"),
+                        inline = TRUE, 
+                        status = "danger",
+                        fill = TRUE
+                    ),
+                    shinyWidgets::materialSwitch(
+                       inputId = ns("plot_Jn_cov"),
+                       label = "Plot Junctions", right = TRUE,
+                       value = FALSE, status = "success"
+                    ),
+                    shinyWidgets::materialSwitch(
+                       inputId = ns("normalizeCov"),
+                       label = "Normalize Coverage", right = TRUE,
+                       value = FALSE, status = "success"
+                    ),
+                    shinyWidgets::materialSwitch(
+                       inputId = ns("plot_key_iso"),
+                       label = "Display Event Isoforms only", right = TRUE,
+                       value = FALSE, status = "success"
+                    ),
+                    shinyWidgets::materialSwitch(
+                       inputId = ns("condense_cov"),
+                       label = "Condense Annotation by Gene", right = TRUE,
+                       value = FALSE, status = "success"
+                    ),
+                    shinyWidgets::materialSwitch(
+                       inputId = ns("selTr_cov"),
+                       label = "Select transcripts", right = TRUE,
+                       value = FALSE, status = "success"
+                    ),
+                    shinyWidgets::materialSwitch(
+                       inputId = ns("exonMode_cov"),
+                       label = "Exon Plot Mode", right = TRUE,
+                       value = FALSE, status = "success"
+                    )
                 ),
-                selectInput(ns('track1_cov'), 'Track 1', width = '100%',
-                    choices = c("(none)")),
-                selectInput(ns('track2_cov'), 'Track 2', width = '100%',
-                    choices = c("(none)")),
-                selectInput(ns('track3_cov'), 'Track 3', width = '100%',
-                    choices = c("(none)")),
-                selectInput(ns('track4_cov'), 'Track 4', width = '100%',
-                    choices = c("(none)")),
-                shinyWidgets::switchInput(ns("plot_Jn_cov"), 
-                    label = "Plot Junctions", labelWidth = "150px"),
-                shinyWidgets::switchInput(ns("stack_tracks_cov"), 
-                    label = "Stack Traces", labelWidth = "150px"),
-                shinyWidgets::switchInput(ns("pairwise_t_cov"), 
-                    label = "Pairwise t-test", labelWidth = "150px"),
-                shinyWidgets::switchInput(ns("plot_key_iso"), 
-                    label = "Display Key Isoforms", labelWidth = "150px"),
-                shinyWidgets::switchInput(ns("condense_cov"), 
-                    label = "Condensed Tracks", labelWidth = "150px"),
-                # shinySaveButton(ns("saveplot_cov"), 
-                    # "Save Plot as PDF", "Save Plot as PDF...", 
-                    # filetype = list(PDF = "pdf")),
+                conditionalPanel(ns = ns,
+                    condition = "input.selTr_cov == true",                
+                    wellPanel(style = "overflow-y:scroll; max-height: 250px",
+                        rHandsontableOutput(ns("transcripts_lookup"))
+                    )
+                ),
+                conditionalPanel(ns = ns,
+                    condition = "input.exonMode_cov == true",                
+                    wellPanel(style = "overflow-y:scroll; max-height: 250px",
+                        rHandsontableOutput(ns("exons_lookup"))
+                    )
+                ),
+                vis_ggplot_UI(ns("covSave"), "Save interactive plot as PDF"),
+                br(),
+                vis_ggplot_UI(ns("covExonSave"), "Save exon-centric plot as PDF"),
             ),
-            column(9, plotlyOutput(ns("plot_cov"), height = "800px"))
+            column(8, 
+                plotlyOutput(ns("plot_cov"), height = "600px"),
+                conditionalPanel(ns = ns,
+                    condition = "input.exonMode_cov == true",
+                    plotOutput(ns("stillplot_cov"), height = "600px")
+                )
+            )
         )    
     )
 }

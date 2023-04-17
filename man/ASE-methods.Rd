@@ -8,7 +8,6 @@
 \alias{ASE_edgeR_timeseries}
 \alias{ASE_DESeq}
 \alias{ASE_DoubleExpSeq}
-\alias{ASE_satuRn}
 \title{Differential Alternative Splicing Event analysis}
 \usage{
 ASE_limma(
@@ -81,20 +80,6 @@ ASE_DoubleExpSeq(
   filter_antiover = TRUE,
   filter_antinear = FALSE
 )
-
-ASE_satuRn(
-  se,
-  test_factor,
-  test_nom,
-  test_denom,
-  batch1 = "",
-  batch2 = "",
-  n_threads = 1,
-  IRmode = c("all", "annotated", "annotated_binary"),
-  filter_antiover = TRUE,
-  filter_antinear = FALSE,
-  filterByMinCPM = 0
-)
 }
 \arguments{
 \item{se}{The \linkS4class{NxtSE} object created by \code{makeSE()}. To reduce
@@ -143,11 +128,6 @@ trends, etc.}
 
 \item{n_threads}{(DESeq2 only) How many threads to use for DESeq2
 based analysis.}
-
-\item{filterByMinCPM}{(default \code{0}) In \code{ASE_satuRn()}, Included/Excluded
-counts will be filtered using this value as the threshold prior to satuRn
-analysis. Filtering is performed using \code{edgeR::filterByExpr()} parsing
-this parameter into its \code{min.count} parameter.}
 }
 \value{
 For all methods, a data.table containing the following:
@@ -199,16 +179,6 @@ DESeq2 results for differential testing for
 raw included / excluded counts only
 }
 
-\strong{satuRn specific output}
-\itemize{
-\item estimates, se, df, t, pval, regular_FDR:
-estimated log-odds ratio, standard error, degrees of freedom, (Wald) t
-statistic, nominal p-value and associated false discovery rate
-\item empirical_pval, empirical_FDR: nominal p value and associated FDR
-computed by estimating the null distribution of the test statistic
-empirically (by satuRn).
-}
-
 \strong{DoubleExp specific output}
 \itemize{
 \item MLE_nom, MLE_denom: Maximum likelihood expectation of PSI values for the
@@ -222,7 +192,7 @@ full models. See \link[DoubleExpSeq:DBGLM1]{DoubleExpSeq::DBGLM1} for details.
 }
 }
 \description{
-Use Limma, DESeq2, DoubleExpSeq, edgeR, and satuRn wrapper functions
+Use Limma, DESeq2, DoubleExpSeq, and edgeR wrapper functions
 to test for differential Alternative Splice Events (ASEs)
 }
 \details{
@@ -264,12 +234,6 @@ complex models, please see \link{ASE-GLM-edgeR} to build your own GLM models.
 Using \strong{DoubleExpSeq}, included and excluded counts are modeled using
 the generalized beta prime distribution, using empirical Bayes shrinkage
 to estimate dispersion.
-
-Using \strong{satuRn}, included and excluded counts are modeled using
-the quasi-binomial distribution in a generalised linear model. Rows with
-all-zero included / excluded counts are automatically filtered. To reduce
-computation time, users can also use the \code{filterByMinCPM} parameter to
-perform further filtering (performed internally via \code{edgeR::filterByExpr}).
 
 \strong{EventType} are as follow:
 \itemize{
@@ -340,9 +304,6 @@ a filtered NxtSE object
 of a filtered NxtSE object (uses double exponential beta-binomial model)
 to estimate group dispersions, followed by LRT
 
-\item \code{ASE_satuRn()}: Use satuRn to perform differential ASE analysis of
-a filtered NxtSE object
-
 }}
 \examples{
 # Load the NxtSE object and set up the annotations
@@ -368,14 +329,6 @@ res_edgeR_QL <- ASE_edgeR(se, "treatment", "A", "B", useQL = TRUE)
 
 require("DoubleExpSeq")
 res_DES <- ASE_DoubleExpSeq(se, "treatment", "A", "B")
-
-# satuRn analysis (quasi binomial), 
-#   Filtering counts using 1 count per million as threshold prior to analysis
-
-require("satuRn")
-require("edgeR")
-
-res_sat <- ASE_satuRn(se, "treatment", "A", "B", filterByMinCPM = 1)
 
 # DESeq2 analysis (counts modeled using negative binomial distribution)
 

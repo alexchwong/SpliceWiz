@@ -1,7 +1,7 @@
 Package: SpliceWiz
 Title: Easy, optimized, and accurate alternative splicing analysis in R
-Version: 1.1.7
-Date: 2023-03-27
+Version: 1.1.8
+Date: 2023-04-17
 Authors@R: c(person("Alex Chit Hei", "Wong", email="a.wong@centenary.org.au", 
 		role=c("aut", "cre", "cph")),
 	person("Ulf", "Schmitz", role=c("ctb")),
@@ -39,8 +39,10 @@ Imports:
 	GenomeInfoDb,
 	GenomicRanges,
 	HDF5Array,
+    htmltools,
 	IRanges,
     patchwork,
+    pheatmap,
 	progress,
 	plotly,
 	R.utils,
@@ -61,8 +63,8 @@ Imports:
 	RColorBrewer,
 	rvest
 Suggests: 
-    knitr, rmarkdown, openssl, crayon, splines, testthat (>= 3.0.0), pheatmap,
-    DESeq2, limma, DoubleExpSeq, satuRn, edgeR, DBI, GO.db, fgsea, Rsubread 
+    knitr, rmarkdown, openssl, crayon, splines, testthat (>= 3.0.0), 
+    DESeq2, limma, DoubleExpSeq, edgeR, DBI, GO.db, fgsea, Rsubread 
 LinkingTo: 
     ompBAM,
     Rcpp,
@@ -83,6 +85,10 @@ Collate: AllImports.R
 	wrappers.R
 	make_plot_data.R
 	Coverage.R
+    covPlotly-methods.R
+    covDataObject-methods.R
+    covPlotObject-methods.R
+	plotCoverage.R
 	utils.R
 	File_finders.R
     BuildRef_GO.R

@@ -12,20 +12,15 @@ setreactive_newref <- function() {
         newref_path = "",
         newref_fasta = "",
         newref_gtf = "",
-        newref_AH_fasta = "",
-        newref_AH_gtf = "",
         newref_mappa = "",
         newref_NPA = "",
         newref_bl = "",
-        
-        ui_newrefAH_Species = "",
-        ui_newrefAH_Version_Trans = "",
-        ui_newrefAH_Trans = "",
-        ui_newrefAH_Assembly = "",
-        ui_newrefAH_Version_Genome = "",
-        ui_newrefAH_Genome = "",
-        
-        ui_newref_genome_type = ""
+
+    # FTP data
+        availRelease = "",
+        availSpecies = "",
+        availGenome = "",
+        availGTF = ""
     )
 }
 
@@ -39,6 +34,7 @@ setreactive_expr <- function() {
         collate_path = "",
         collate_path_prompt = "",
 
+        df.bams = c(),
         df.files = c(),
         df.anno = c(),
         disallow_df_update = FALSE,
@@ -47,10 +43,15 @@ setreactive_expr <- function() {
         df.anno_savestate = c(),
 
         ref_settings = c(),
+        ref_table = data.frame(),
+        
         expr_path = "",
-        selected_rows = c(),
+        selected_bams = c(),
+        collateData_args = c(),
         df = c(),
-        se = NULL
+        se = NULL,
+        
+        se_expr_infobox_state = -1
     )
 }
 
@@ -93,7 +94,11 @@ setreactive_DE <- function() {
 
 setreactive_GO <- function() {
     reactiveValues(
+        trigger = NULL,
+        
         res = NULL,
+
+        errorMsg = "",
 
         # gene_ids that can optionally be saved to file by user
         gene_ids = NULL,
@@ -104,7 +109,8 @@ setreactive_GO <- function() {
         
         resGO = NULL,
 
-        final_plot = NULL
+        final_plot = NULL,
+        ggplot = NULL
     )
 }
 
@@ -112,6 +118,8 @@ setreactive_GO <- function() {
 setreactive_Diag <- function() {
     # NB same code as Volcano
     reactiveValues(
+        trigger = NULL,
+        
         useDE = NULL,
         
         meanPSI = NULL,
@@ -127,7 +135,11 @@ setreactive_Diag <- function() {
 # Settings for Heatmap
 setreactive_Heat <- function() {
     reactiveValues(
+        trigger = NULL,
+        
         useDE = NULL,
+        eventsGO = NULL,
+        mat = NULL,
         
         ggplot = NULL,
         final_plot = NULL
@@ -157,5 +169,42 @@ setreactive_Cov <- function() {
         
         trigger = NULL,
         plot_params = NULL
+    )
+}
+
+# Settings for Coverage plots (NEW)
+setreactive_Cov2 <- function() {
+    reactiveValues(
+        # geneList = NULL,
+        useDE = NULL,
+        
+        trackTable = data.frame(),
+        exonsTable = data.frame(),
+        transcripts = data.frame(),
+        exons_gr = GRanges(),
+
+    # New ranges can be triggered from different sources
+        newGR = GRanges(), # aggregate GRanges
+    # This is used to trigger plot refresh in absence of locale change
+        plotTrigger = NULL,
+        
+        dataObj = covDataObject(),
+        plotObj = covPlotObject(),
+        plotlyObj = covPlotly(),
+        plotlyFig = plot_ly(),
+        plotCount = 0,
+
+        event.ranges = NULL,
+        prevEventGR = NULL,
+
+        plotly_relayout = NULL,
+        # plot_ini = FALSE,
+        oldPlotSettings = list(),
+        prevReqEvent = NULL,
+        plotReq = NULL,
+        normEvent = list(),
+        
+        ggplot = ggplot(),
+        exonsplot = ggplot()
     )
 }

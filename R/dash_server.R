@@ -1,11 +1,17 @@
 dash_server <- function(input, output, session) {
     addResourcePath('localImages', system.file('extdata', package='SpliceWiz'))
     
-    # Volumes / storage drives
-    default_volumes <- c("Working Directory" = getwd(), 
-        "Home" = "~", "Temporary Directory" = tempdir(),
-        getVolumes()())
-    volumes <- reactive(default_volumes)
+    # Paths / Volumes / Drives
+    volumes <- reactive({
+        c(
+            "Working Directory" = getwd(),
+            "Current Parent Dir" = normalizePath(dirname(getwd())),
+            "Home" = "~",
+            "Temporary Directory" = tempdir(),
+            getVolumes()()
+        )
+    })
+
     # Defines for Reactives
     settings_expr <- settings_expr_load <- settings_filtered_SE <- 
         settings_DE <- settings_Diag <- settings_Volc <- c()
@@ -25,10 +31,10 @@ dash_server <- function(input, output, session) {
     refresh_QC          <- reactive(settings_refresh$qc)
     refresh_filters     <- reactive(settings_refresh$filters)
     refresh_DE          <- reactive(settings_refresh$DE)
-    refresh_GO          <- reactive(settings_refresh$GO)
     
-    refresh_diag        <- reactive(settings_refresh$diag)
     refresh_volc        <- reactive(settings_refresh$volc)
+    refresh_diag        <- reactive(settings_refresh$diag)
+    refresh_GO          <- reactive(settings_refresh$GO)
     refresh_heat        <- reactive(settings_refresh$heat)
     refresh_cov         <- reactive(settings_refresh$cov)
     
@@ -66,11 +72,15 @@ dash_server <- function(input, output, session) {
         get_rows_selected_volc <- reactive(settings_Volc$selected)
         
     # Reactives that returns the number of threads to use
-        get_threads_reactive <- reactive(.dash_get_threads(
-            input$thread_number, input$cores_numeric))
-        get_memmode_reactive <- reactive(.dash_get_memmode(
-            input$memory_option))
-        get_omp_reactive <- reactive(.dash_get_openmp())
+        get_threads_reactive <- reactive({
+            # .dash_get_threads(input$thread_number, input$cores_numeric)
+            1
+        })
+        get_memmode_reactive <- reactive({
+            #.dash_get_memmode(input$memory_option))
+            TRUE
+        })
+        # get_omp_reactive <- reactive(.dash_get_openmp())
 
     # Tie module data to their server objects
     settings_system <- setreactive_system()
@@ -98,7 +108,7 @@ dash_server <- function(input, output, session) {
     settings_Heat <- server_vis_heatmap("heatmap", refresh_heat, volumes, 
         get_filtered_se_reactive, get_de_reactive, get_go_reactive,
         get_rows_all, get_rows_selected)
-    settings_Cov <- server_cov("cov", refresh_cov, volumes, 
+    settings_Cov <- server_cov2("cov", refresh_cov, volumes, 
         get_filtered_se_reactive, get_de_reactive, get_go_reactive,
         get_rows_all, get_rows_selected)
 
@@ -112,6 +122,7 @@ dash_server <- function(input, output, session) {
 
         } else if(input$navSelection == "navExpr") {
             settings_refresh$expr <- runif(1)
+            
         } else if(input$navSelection == "navExprLoad") {
             settings_refresh$expr_load <- runif(1)
         } else if(input$navSelection == "navQC") {
@@ -120,12 +131,13 @@ dash_server <- function(input, output, session) {
             settings_refresh$filters <- runif(1)
         } else if(input$navSelection == "navAnalyse") {
             settings_refresh$DE <- runif(1)
-        } else if(input$navSelection == "navGO") {
-            settings_refresh$GO <- runif(1)
+            
+        } else if(input$navSelection == "navVolcano") {
+            settings_refresh$volc <- runif(1)
         } else if(input$navSelection == "navDiag") {
             settings_refresh$diag <- runif(1)
-        } else if(input$navSelection == "navDiag") {
-            settings_refresh$volc <- runif(1)
+        } else if(input$navSelection == "navGO") {
+            settings_refresh$GO <- runif(1)
         } else if(input$navSelection == "navHeatmap") {
             settings_refresh$heat <- runif(1)
         } else if(input$navSelection == "navCoverage") {
@@ -134,26 +146,26 @@ dash_server <- function(input, output, session) {
     })
     
     # Update 
-    observeEvent(list(input$memory_option, get_threads_reactive()), {
-        req(input$memory_option)
-        n_threads <- get_threads_reactive()
-        if(n_threads != .getSWthreads()) n_threads <- setSWthreads(n_threads)
-        if(input$memory_option == "Low") {
-            ref_mem <- 4
-            cd_mem <- 6
-        } else {
-            ref_mem <- 8
-            cd_mem <- 6 * n_threads
-        }
-        if(get_omp_reactive()) {
-            pb_mem <- 10
-        } else {
-            pb_mem <- 10 * n_threads
-        }
-        output$txt_mem_buildRef <- renderText(paste(ref_mem, "Gb"))
-        output$txt_mem_processBAM <- renderText(paste(pb_mem, "Gb"))
-        output$txt_mem_collateData <- renderText(paste(cd_mem, "Gb"))
-    })
+    # observeEvent(list(input$memory_option, get_threads_reactive()), {
+        # req(input$memory_option)
+        # n_threads <- get_threads_reactive()
+        # if(n_threads != .getSWthreads()) n_threads <- setSWthreads(n_threads)
+        # if(input$memory_option == "Low") {
+            # ref_mem <- 4
+            # cd_mem <- 6
+        # } else {
+            # ref_mem <- 8
+            # cd_mem <- 6 * n_threads
+        # }
+        # if(get_omp_reactive()) {
+            # pb_mem <- 10
+        # } else {
+            # pb_mem <- 10 * n_threads
+        # }
+        # output$txt_mem_buildRef <- renderText(paste(ref_mem, "Gb"))
+        # output$txt_mem_processBAM <- renderText(paste(pb_mem, "Gb"))
+        # output$txt_mem_collateData <- renderText(paste(cd_mem, "Gb"))
+    # })
 # End of server function
 }
 

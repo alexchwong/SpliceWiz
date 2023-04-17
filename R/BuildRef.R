@@ -362,7 +362,7 @@ buildRef <- function(
         setSWthreads(1) # try this to prevent memory leak
 
         session <- shiny::getDefaultReactiveDomain()
-        N_steps <- 8
+        N_steps <- 9
 
         dash_progress("Reading Reference Files", N_steps)
         
@@ -383,6 +383,7 @@ buildRef <- function(
         
         .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
         
+        dash_progress("Processing gene ontology", N_steps)
         if(ontologySpecies == "" & genome_type != "") {
             ontologySpecies <- .getOntologySpecies(genome_type)
         }
@@ -447,12 +448,13 @@ buildRef <- function(
         
         # Update settings.Rds only after everything is finalised
         settings.list <- readRDS(file.path(reference_path, "settings.Rds"))
-        settings.list$genome_type <- genome_type
-        settings.list$nonPolyARef <- nonPolyARef
-        settings.list$MappabilityRef <- MappabilityRef
-        settings.list$BlacklistRef <- BlacklistRef
-        settings.list$useExtendedTranscripts <- useExtendedTranscripts
-        settings.list$BuildVersion <- buildRef_version
+        settings.list[["genome_type"]] <- genome_type
+        settings.list[["nonPolyARef"]] <- nonPolyARef
+        settings.list[["MappabilityRef"]] <- MappabilityRef
+        settings.list[["BlacklistRef"]] <- BlacklistRef
+        settings.list[["ontologySpecies"]] <- ontologySpecies
+        settings.list[["useExtendedTranscripts"]] <- useExtendedTranscripts
+        settings.list[["BuildVersion"]] <- buildRef_version
 
         saveRDS(settings.list, file.path(reference_path, "settings.Rds"))
 

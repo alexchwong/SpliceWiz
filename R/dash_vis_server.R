@@ -8,6 +8,84 @@
 # - get_de()[rows_all]
 #   - {option to filter by padj, pvalue, or top n rows}
 
+vis_ggplot_server <- function(id, get_ggplot, volumes) {
+    moduleServer(id, function(input, output, session) {
+        final <- reactiveVal(value = NULL)
+        observe({
+            shinyFileSave(input, "saveplot", roots = volumes(), 
+                session = session, filetypes = c("pdf"))
+        })
+        observeEvent(input$saveplot, {
+            p <- get_ggplot()
+            req(p)
+
+            selectedfile <- parseSavePath(volumes(), input$saveplot)
+            req(selectedfile$datapath)
+            
+            ggsave(
+                selectedfile$datapath, 
+                plot = p,
+                width = isolate(input$wt), 
+                height = isolate(input$ht), 
+                units = isolate(input$units)
+            )
+        })
+        return(final)
+    })
+}
+
+visFilter_server <- function(id, get_de, rows_all, rows_selected) {
+    moduleServer(id, function(input, output, session) {
+        final <- reactiveVal(
+            value = data.table()
+        )
+        
+        # observeEvent(input$vF_reset, {
+            # updateSelectInput(inputId = "vF_filterType", 
+                # selected = "Adjusted P value")
+            # updateSliderInput(inputId = "vF_pvalT", value = 0.05)
+            # updateSliderInput(inputId = "vF_topN", value = 500)
+            # updateSelectInput(inputId = "vF_EventType", selected = NULL)
+        # })
+        
+        input_df_r <- reactive({
+            req(get_de())
+            res_bkgd <- as.data.table(.get_unified_volcano_data(get_de()))
+            res_bkgd$All <- seq_len(nrow(res_bkgd)) %in% rows_all()
+            res_bkgd$Selected <- seq_len(nrow(res_bkgd)) %in% rows_selected()
+            return(res_bkgd)
+        })
+        
+        useDE_r <- reactive({
+            req(input_df_r())
+            tmpres <- input_df_r()
+            # message("Original #events: ", nrow(tmpres))
+            if(is_valid(input$vF_EventType)) {
+                tmpres <- tmpres[get("EventType") %in% input$vF_EventType]
+                # message("after Event filter: ", nrow(tmpres))
+            }
+
+            req(input$vF_filterType)
+            if(input$vF_filterType == "Adjusted P value") {
+                tmpres <- tmpres[get("FDR") <= input$vF_pvalT]
+            } else if(input$vF_filterType == "Nominal P value") {
+                tmpres <- tmpres[get("pvalue") <= input$vF_pvalT]
+            } else if(input$vF_filterType == "Top events by p-value") {
+                if(input$vF_topN < nrow(tmpres)) {
+                    tmpres <- tmpres[seq_len(input$vF_topN)]
+                }
+            } else if(input$vF_filterType == "Highlighted events") {
+                tmpres <- tmpres[get("Selected") == TRUE]
+            }
+            # message("after final filter: ", nrow(tmpres))
+            return(tmpres)
+        })
+        observe(final(useDE_r()))
+        return(final)
+    })
+}
+
+
 server_vis_diag <- function(
         id, refresh_tab, volumes, get_se, get_de,
         rows_all, rows_selected
@@ -17,6 +95,14 @@ server_vis_diag <- function(
 
         observeEvent(refresh_tab(), {
             req(refresh_tab())
+            randomVar <- runif(1)
+            settings_Diag$trigger <- randomVar
+            # print(randomVar)
+        })
+        
+        observeEvent(settings_Diag$trigger, {
+            req(settings_Diag$trigger)
+            
             output$warning_diag <- renderText({
                 validate(need(is(get_se(), "NxtSE"), 
                 "Please load NxtSE object"))
@@ -45,12 +131,16 @@ server_vis_diag <- function(
                 )
             }
         })
+        
+        useDE_r <- visFilter_server("scatter", get_de, rows_all, rows_selected)
 
         # Reactive to generate mean PSIs
         # - this is the main bottleneck
         observe({
+            req(settings_Diag$trigger)
             req(is(get_se(), "NxtSE"))
             req(get_de())
+            
             req(is_valid(input$variable_diag))
             req(is_valid(input$denom_diag))
             req(is_valid(input$nom_diag))
@@ -71,44 +161,40 @@ server_vis_diag <- function(
             })
         })
 
-        # Reactive to generate filtered DE object
-        observe({
-            req(is(get_se(), "NxtSE"))
-            req(get_de())
-            tmpres <- as.data.table(
-                .get_unified_volcano_data(get_de()[rows_all(),]))
-            if(input$filterType_diag == "Adjusted P value") {
-                settings_Diag$useDE <- tmpres[get("FDR") <= input$pvalT_diag]
-            } else if(input$filterType_diag == "Nominal P value") {
-                settings_Diag$useDE <- tmpres[get("pvalue") <= input$pvalT_diag]
-            } else if(input$filterType_diag == "Top events by p-value") {
-                if(input$topN_diag < nrow(settings_Diag$useDE)) {
-                    settings_Diag$useDE <- tmpres[seq_len(input$topN_diag)]
-                } else {
-                    settings_Diag$useDE <- tmpres
-                }
-            }
-        })
-
         # Update local rows_selected with that of global
         observeEvent(rows_selected(), {
             settings_Diag$selected <- rows_selected()
         }, ignoreNULL = FALSE)
     
-        output$plot_diag <- renderPlotly({
-            validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
-            validate(need(settings_Diag$useDE, "Perform DE Analysis first"))
-            validate(need(settings_Diag$meanPSI, 
-                "Select conditions and contrasts"))
+        # Main scatter plot generator
+        observe({
+            req(settings_Diag$trigger)
+            req(is(get_se(), "NxtSE"))
+            req(get_de())
 
-            # Filter DE by EventType; fetch diag object
-            res <- settings_Diag$useDE
-            if(is_valid(input$EventType_diag)) {
-                res <- res[get("EventType") %in% input$EventType_diag]
-            }
-            df.diag <- settings_Diag$meanPSI[
-                settings_Diag$meanPSI$EventName %in% res$EventName,]
+            req(settings_Diag$meanPSI)
             
+            res <- useDE_r()
+            req(res)
+            req(nrow(res) > 0)
+            req(all(res$EventName %in% rownames(get_se())))
+
+            df.diag <- res[get("EventName") %in% 
+                settings_Diag$meanPSI$EventName]
+            req(nrow(df.diag) > 0)
+            
+            if(input$NMD_diag == TRUE) {
+                df.diag <- df.diag[df.diag$NMD_direction != 0, ]
+            }
+            req(nrow(df.diag) > 0)
+            
+            df.diag$nom <- settings_Diag$meanPSI$nom[match(
+                df.diag$EventName, settings_Diag$meanPSI$EventName
+            )]
+            df.diag$denom <- settings_Diag$meanPSI$denom[match(
+                df.diag$EventName, settings_Diag$meanPSI$EventName
+            )]
+                        
             # Annotate which rows are selected; NMD direction
             selected <- settings_Diag$selected      
             if(is_valid(selected)) {
@@ -121,17 +207,12 @@ server_vis_diag <- function(
                 match(df.diag$EventName, get_de()$EventName)])
             
             if(input$NMD_diag == TRUE) {
-                df.diag             <- df.diag[df.diag$NMD_direction != 0, ]
                 df.diag$nom_NMD     <- ifelse(df.diag$NMD_direction == 1, 
                                         df.diag$nom, df.diag$denom)
                 df.diag$denom_NMD   <- ifelse(df.diag$NMD_direction == -1, 
                                         df.diag$nom, df.diag$denom)
             }
-            
-            validate(need(nrow(df.diag) > 0, 
-                "Zero ASEs to plot. Consider relaxing p-value filters"))
 
-            # Generate ggplot object
             settings_Diag$plot_ini <- TRUE            
             if(input$NMD_diag == TRUE) {
                 p <- ggplot(df.diag, 
@@ -163,12 +244,10 @@ server_vis_diag <- function(
             
             # Annotate colors, etc
             p <- p + labs(color = "Selected")
+            settings_Diag$ggplot <- p
             
             withProgress(message = 'Rendering plot...', value = 0, {
-
                 # Record ggplot / plotly objects into settings_Diag
-                settings_Diag$ggplot <- p
-                
                 py <- ggplotly(
                     p, tooltip = "text",
                     source = "plotly_diagonal",
@@ -190,15 +269,47 @@ server_vis_diag <- function(
                     plotly::event_register(
                         settings_Diag$final_plot, "plotly_selected")
                 }
-            
-                print(settings_Diag$final_plot)
             })
         })
+    
+        output$plot_diag <- renderPlotly({
+            validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
+            validate(need(get_de(), "Perform DE Analysis first"))
 
-        # Output ggplot to RStudio plot window
-        observeEvent(input$output_plot_diag, {
-            req(settings_Diag$ggplot)
-            print(isolate(settings_Diag$ggplot))
+            validate(need(is_valid(input$variable_diag), 
+                "Select conditions and contrasts"))
+            validate(need(is_valid(input$denom_diag), 
+                "Select conditions and contrasts"))
+            validate(need(is_valid(input$nom_diag), 
+                "Select conditions and contrasts"))
+        
+            # Filter DE by EventType; fetch diag object
+            res <- useDE_r()
+            validate(need(nrow(res) > 0, 
+                "No events found. Consider relaxing some filters"
+            ))
+            validate(need(all(res$EventName %in% rownames(get_se())),
+                "Filtered NxtSE does not match DE results"
+            ))
+            
+            df.diag <- res[get("EventName") %in% 
+                settings_Diag$meanPSI$EventName]
+            validate(need(nrow(df.diag) > 0, 
+                "No events found. Consider relaxing some filters"
+            ))
+
+            if(input$NMD_diag == TRUE) {
+                df.diag <- df.diag[df.diag$NMD_direction != 0, ]
+            }
+            validate(need(nrow(df.diag) > 0, 
+                paste(
+                    "No events found.", 
+                    "Consider relaxing some filters or disable NMD mode"
+                )
+            ))
+            
+            req(settings_Diag$final_plot)
+            settings_Diag$final_plot
         })
         
         # Reactive click
@@ -215,9 +326,9 @@ server_vis_diag <- function(
 
             selected <- settings_Diag$selected
 
-            if(click.id %in% selected) {
+            if(click.id %in% selected && input$reverse_select) {
                 selected <- selected[-which(selected == click.id)]
-            } else {
+            } else if(!input$reverse_select) {
                 selected <- c(selected, click.id)
             }
             settings_Diag$selected <- selected
@@ -236,7 +347,11 @@ server_vis_diag <- function(
             req(brush.id)
 
             selected <- settings_Diag$selected
-            selected <- unique(c(selected, brush.id))
+            if(!input$reverse_select) {
+                selected <- union(selected, brush.id)           
+            } else {
+                selected <- setdiff(selected, brush.id)
+            }
             settings_Diag$selected <- selected
         })
     
@@ -272,16 +387,7 @@ server_vis_diag <- function(
         })
 
         # Reset to default
-        observeEvent(input$clear_diag, {
-            updateSelectInput(session = session, 
-                "EventType_diag", selected = NULL)
-            updateSelectInput(session = session, 
-                "filterType_diag", selected = "Adjusted P value")
-            shinyWidgets::updateSliderTextInput(session = session, 
-                "topN_diag", selected = 500)
-            shinyWidgets::updateSliderTextInput(session = session, 
-                "pvalT_diag", selected = 0.05)
-            
+        observeEvent(input$clear_diag, {           
             if(is_valid(is(get_se(), "NxtSE"))) {
                 colData <- colData(get_se())
                 updateSelectInput(
@@ -298,7 +404,20 @@ server_vis_diag <- function(
                 choices = c("(none)"), selected = "(none)")
             updateSelectInput(session = session, inputId = "denom_diag", 
                 choices = c("(none)"), selected = "(none)")
+
+            updateSwitchInput(session = session, inputId = "NMD_diag",
+                value = FALSE)
         })
+
+        observeEvent(input$clear_selected, {
+            req(input$clear_selected)
+            settings_Diag$selected <- NULL
+        })
+    
+        get_ggplot <- reactive({
+            settings_Diag$ggplot
+        })
+        spModule <- vis_ggplot_server("scatterSave", get_ggplot, volumes)
     
         return(settings_Diag)        
     })
@@ -348,59 +467,44 @@ server_vis_volcano <- function(
 
         observeEvent(refresh_tab(), {
             req(refresh_tab())
+            randomVar <- runif(1)
+            settings_Volc$trigger <- randomVar
         })
 
-        # Reactive to generate filtered DE object
-        observe({
-            req(get_de())
-            tmpres <- as.data.table(
-                .get_unified_volcano_data(get_de()[rows_all(),]))
-            if(input$filterType_volc == "Adjusted P value") {
-                settings_Volc$useDE <- tmpres[get("FDR") <= input$pvalT_volc]
-            } else if(input$filterType_volc == "Nominal P value") {
-                settings_Volc$useDE <- tmpres[get("pvalue") <= input$pvalT_volc]
-            } else if(input$filterType_volc == "Top events by p-value") {
-                if(input$topN_volc < nrow(settings_Volc$useDE)) {
-                    settings_Volc$useDE <- tmpres[seq_len(input$topN_volc)]
-                } else {
-                    settings_Volc$useDE <- tmpres
-                }
-            }
-        })
+        useDE_r <- visFilter_server("volcano", get_de, rows_all, rows_selected)
 
         observeEvent(rows_selected(), {
             settings_Volc$selected <- rows_selected()
         }, ignoreNULL = FALSE)
 
-        output$plot_volc <- renderPlotly({
-            validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
-            validate(need(settings_Volc$useDE, "Perform DE Analysis first"))
-
-            selected <- settings_Volc$selected
-
-            res <- settings_Volc$useDE
-            if(is_valid(input$EventType_volc)) {
-                res <- res[get("EventType") %in% input$EventType_volc]
-            }
-
-            xunits <- .get_volcano_data_FCunits(get_de())
-            df.volc <- as.data.frame(res)
+        observe({
+            req(settings_Volc$trigger)
+            req(is(get_se(), "NxtSE"))
+            req(get_de())
             
+            res <- useDE_r()
+            req(res)
+            req(nrow(res) > 0)
+            req(all(res$EventName %in% rownames(get_se())))
+
+            df.volc <- as.data.frame(res)
+            if(input$NMD_volc) {
+                df.volc <- df.volc[df.volc$NMD_direction != 0, ]
+                df.volc$logFC <- df.volc$logFC * df.volc$NMD_direction
+            }
+            req(nrow(df.volc) > 0)
+
+            xunits <- .get_volcano_data_FCunits(res)           
+            selected <- settings_Volc$selected
             if(is_valid(selected)) {
                 df.volc$selected <- 
                     (df.volc$EventName %in% get_de()$EventName[selected])
             } else {
                 df.volc$selected <- FALSE
             }
-            if(input$NMD_volc) {
-                df.volc <- df.volc[df.volc$NMD_direction != 0, ]
-                df.volc$logFC <- df.volc$logFC * df.volc$NMD_direction
-            }
-
-            validate(need(nrow(df.volc) > 0, 
-                "Zero ASEs to plot. Consider relaxing p-value filters"))
 
             settings_Volc$plot_ini <- TRUE
+
             if(input$adjP_volc) {
                 p <- ggplot(df.volc, aes(
                         x = get("logFC"), y = -log10(get("FDR")),
@@ -460,13 +564,30 @@ server_vis_volcano <- function(
                     plotly::event_register(
                         settings_Volc$final_plot, "plotly_selected")
                 }
-                print(settings_Volc$final_plot)
             })
+            
         })
 
-        observeEvent(input$output_plot_volc, {
-            req(settings_Volc$ggplot)
-            print(isolate(settings_Volc$ggplot))
+        output$plot_volc <- renderPlotly({
+            validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
+            validate(need(get_de(), "Perform DE Analysis first"))
+
+            res <- useDE_r()
+            validate(need(nrow(res) > 0, 
+                "No events found. Consider relaxing some filters"
+            ))
+            validate(need(all(res$EventName %in% rownames(get_se())),
+                "Filtered NxtSE does not match DE results"
+            ))
+
+            df.volc <- as.data.frame(res)
+            if(input$NMD_volc) df.volc <- df.volc[df.volc$NMD_direction != 0, ]
+            validate(need(nrow(df.volc) > 0, 
+                "No events found. Consider relaxing some filters"
+            ))
+            
+            req(settings_Volc$final_plot)
+            settings_Volc$final_plot
         })
 
         # Reactive click
@@ -483,9 +604,9 @@ server_vis_volcano <- function(
 
             selected <- settings_Volc$selected
 
-            if(click.id %in% selected) {
+            if(click.id %in% selected && input$reverse_select) {
                 selected <- selected[-which(selected == click.id)]
-            } else {
+            } else if(!input$reverse_select) {
                 selected <- c(selected, click.id)
             }
             settings_Volc$selected <- selected
@@ -504,17 +625,33 @@ server_vis_volcano <- function(
             req(brush.id)
 
             selected <- settings_Volc$selected
-            selected <- unique(c(selected, brush.id))
+            if(!input$reverse_select) {
+                selected <- union(selected, brush.id)           
+            } else {
+                selected <- setdiff(selected, brush.id)
+            }
             settings_Volc$selected <- selected
         })
 
         observeEvent(input$clear_volc, {
-            updateSelectInput(session = session, "EventType_volc", 
-                selected = NULL)
-            shinyWidgets::updateSliderTextInput(session = session, 
-                "number_events_volc", selected = 1000)
+            updateSwitchInput(session = session, 
+                inputId = "facet_volc", value = FALSE)
+            updateSwitchInput(session = session, 
+                inputId = "adjP_volc", value = TRUE)
+            updateSwitchInput(session = session, 
+                inputId = "NMD_volc", value = FALSE)
         })
-        
+
+        observeEvent(input$clear_selected, {
+            req(input$clear_selected)
+            settings_Volc$selected <- NULL
+        })
+
+        get_ggplot <- reactive({
+            settings_Volc$ggplot
+        })
+        spModule <- vis_ggplot_server("volcanoSave", get_ggplot, volumes)
+
         return(settings_Volc)
     })
 }
@@ -526,8 +663,20 @@ server_vis_heatmap <- function(
     moduleServer(id, function(input, output, session) {
         settings_Heat <- setreactive_Diag()
 
+        useDE_r <- visFilter_server("heatmap", get_de, rows_all, rows_selected)
+
+        # Tab refresh
+        # - update conditions
+        # - update GO terms
         observeEvent(refresh_tab(), {
             req(refresh_tab())
+            randomVar <- runif(1)
+            settings_Heat$trigger <- randomVar
+            # print(randomVar)
+        })
+        
+        observeEvent(settings_Heat$trigger, {
+            req(settings_Heat$trigger)
             req(is(get_se(), "NxtSE"))
             colData <- colData(get_se())
             if(
@@ -567,7 +716,7 @@ server_vis_heatmap <- function(
 
             # Update annotation column names in selection
             req(get_go())
-            goTerms <- get_go()$Term
+            goTerms <- as.character(get_go()$Term)
             if(length(goTerms) > 50) goTerms <- goTerms[seq_len(50)]
             if(
                     is_valid(input$GO_heat) && 
@@ -576,16 +725,18 @@ server_vis_heatmap <- function(
                 selectedOption <- isolate(input$GO_heat)
                 updateSelectInput(
                     session = session, inputId = "GO_heat", 
-                    choices = goTerms, 
+                    choices = c("(none)", goTerms), 
                     selected = selectedOption
                 )
             } else {
                 updateSelectInput(
                     session = session, inputId = "GO_heat", 
-                    choices = goTerms
+                    choices = c("(none)", goTerms)
                 )
             }
         })
+        
+        # Enable sample annotations
         observeEvent(input$anno_col_heat, {
             req(is(get_se(), "NxtSE"))
             colData <- colData(get_se())
@@ -616,74 +767,77 @@ server_vis_heatmap <- function(
                     selected = "(none)")
             }
         })
-        
-        # Reactive to generate filtered DE object
+
         observe({
-            req(get_de())
-            tmpres <- as.data.table(
-                .get_unified_volcano_data(get_de()[rows_all(),]))
-            if(input$filterType_heat == "Adjusted P value") {
-                tmpres2 <- tmpres[get("FDR") <= input$pvalT_heat]
-            } else if(input$filterType_heat == "Nominal P value") {
-                tmpres2 <- tmpres[get("pvalue") <= input$pvalT_heat]
-            } else if(input$filterType_heat == "Top events by p-value") {
-                if(input$topN_heat < nrow(settings_Heat$useDE)) {
-                    tmpres2 <- tmpres[seq_len(input$topN_heat)]
-                } else {
-                    tmpres2 <- tmpres
-                }
-            }
-            settings_Heat$useDE <- tmpres2[, 
-                c("EventName", "EventType"), with = FALSE]
-        })
-
-        output$plot_heat <- renderPlotly({
-            
-            validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
-            validate(need(settings_Heat$useDE, "Perform DE Analysis first"))
-
-            res <- settings_Heat$useDE
-            
-            # Filter by highlighted events or GO category
-            if(input$secondFilter_heat == "Highlighted (selected) events") {
-                selected <- rows_selected()
-                res <- res[get("EventName") %in% get_de()$EventName[selected]]
-            } else if(input$secondFilter_heat == 
-                "Top Gene Ontology Categories")
-            {
-                # filter by selected GO category
-                validate(need(get_go(), 
-                    "Run Gene Ontology analysis first"))
+            res <- get_de()
+            if(!is_valid(res)) {
+                settings_Heat$eventsGO <- NULL
+            } else if(is_valid(input$GO_heat)) {
                 goInfo <- get_go()
                 go_id <- goInfo$go_id[match(input$GO_heat, goInfo$Term)]
-                events <- subset_EventNames_by_GO(res$EventName, go_id,
-                    get_se())
-                res <- res[get("EventName") %in% events]
+                settings_Heat$eventsGO <- subset_EventNames_by_GO(
+                    res$EventName, go_id, get_se())
             } else {
-                # do nothing
+                settings_Heat$eventsGO <- res$EventName
             }
-            
-            if(nrow(res) > input$slider_num_events_heat) {
-                res <- res[seq_len(input$slider_num_events_heat)]
-            }
-            
-            validate(need(nrow(res) > 0, "No events to plot"))
+        })
+        
+        observe({
+            req(settings_Heat$trigger)
+            req(is(get_se(), "NxtSE"))
+            req(useDE_r())
 
+            res <- useDE_r()
+            req(nrow(res) > 0)
+            res <- res[, c("EventName", "EventType"), with = FALSE]
+            res <- res[get("EventName") %in% settings_Heat$eventsGO]
+            req(nrow(res) > 0)            
+            req(all(res$EventName %in% rownames(get_se())))
+            
             colData <- as.data.frame(colData(get_se()))
-
-            if(input$mode_heat == "PSI") {
-                mat <- makeMatrix(get_se(), res$EventName,
-                    rownames(colData), "PSI")
-            } else if(input$mode_heat == "Logit") {
-                mat <- makeMatrix(get_se(), res$EventName,
-                    rownames(colData), "logit")
+            
+            rowLim <- input$slider_num_events_heat
+            if(nrow(res) > rowLim) {
+                for(rNum in seq(rowLim, nrow(res), by = rowLim)) {
+                    resSubset <- res[seq_len(rNum)]
+                    if(input$mode_heat == "PSI") {
+                        mat <- makeMatrix(get_se(), resSubset$EventName,
+                            rownames(colData), "PSI")
+                    } else if(input$mode_heat == "Logit") {
+                        mat <- makeMatrix(get_se(), resSubset$EventName,
+                            rownames(colData), "logit")
+                    } else {
+                        mat <- makeMatrix(get_se(), resSubset$EventName,
+                            rownames(colData), "Z-score")
+                    }
+                    if(nrow(mat) >= rowLim) {
+                        mat <- mat[seq_len(rowLim),]
+                        break
+                    }
+                }            
             } else {
-                mat <- makeMatrix(get_se(), res$EventName,
-                    rownames(colData), "Z-score")
+                if(input$mode_heat == "PSI") {
+                    mat <- makeMatrix(get_se(), res$EventName,
+                        rownames(colData), "PSI")
+                } else if(input$mode_heat == "Logit") {
+                    mat <- makeMatrix(get_se(), res$EventName,
+                        rownames(colData), "logit")
+                } else {
+                    mat <- makeMatrix(get_se(), res$EventName,
+                        rownames(colData), "Z-score")
+                }
             }
+            settings_Heat$mat <- mat
+        })
 
-            validate(need(nrow(mat) > 0 & ncol(mat) > 0, 
-                "No Events with sufficient finite PSI values to draw heatmap"))
+        observe({
+            req(get_se())
+            req(settings_Heat$mat)
+            req(nrow(settings_Heat$mat) > 0)
+
+            mat <- settings_Heat$mat
+            
+            colData <- as.data.frame(colData(get_se()))
 
             colors.df <- RColorBrewer::brewer.pal.info
             color.index <- which(rownames(colors.df) == input$color_heat)
@@ -720,18 +874,18 @@ server_vis_heatmap <- function(
                     mat <- mat[, new_order]
                     colData_sorted <- colData[new_order, ]
                     
-                    # settings_Heat$ggplot <- pheatmap(
-                        # mat, color = color_vec, 
-                        # annotation_col = colData_sorted[, 
-                            # input$anno_col_heat, drop=FALSE],
-                        # cluster_cols = FALSE
-                    # )
-                    settings_Heat$ggplot <- heatmaply::ggheatmap(
-                        mat, color = color, 
-                        col_side_colors = colData_sorted[, 
+                    settings_Heat$ggplot <- pheatmap(
+                        mat, color = color_vec, 
+                        annotation_col = colData_sorted[, 
                             input$anno_col_heat, drop=FALSE],
-                        dendrogram = "row"
+                        cluster_cols = FALSE
                     )
+                    # settings_Heat$ggplot <- heatmaply::ggheatmap(
+                        # mat, color = color, 
+                        # col_side_colors = colData_sorted[, 
+                            # input$anno_col_heat, drop=FALSE],
+                        # dendrogram = "row"
+                    # )
                     settings_Heat$final_plot <- heatmaply::heatmaply(
                         mat, color = color, 
                         col_side_colors = colData_sorted[, 
@@ -739,16 +893,16 @@ server_vis_heatmap <- function(
                         dendrogram = "row"
                     )
                 } else {
-                    # settings_Heat$ggplot <- pheatmap(
-                        # mat, color = color_vec, 
-                        # annotation_col = colData[, 
-                            # input$anno_col_heat, drop=FALSE]
-                    # )
-                    settings_Heat$ggplot <- heatmaply::ggheatmap(
-                        mat, color = color, 
-                        col_side_colors = colData[, 
+                    settings_Heat$ggplot <- pheatmap(
+                        mat, color = color_vec, 
+                        annotation_col = colData[, 
                             input$anno_col_heat, drop=FALSE]
                     )
+                    # settings_Heat$ggplot <- heatmaply::ggheatmap(
+                        # mat, color = color, 
+                        # col_side_colors = colData[, 
+                            # input$anno_col_heat, drop=FALSE]
+                    # )
                     settings_Heat$final_plot <- heatmaply::heatmaply(
                         mat, color = color, 
                         col_side_colors = colData[, 
@@ -757,17 +911,51 @@ server_vis_heatmap <- function(
                 }
 
             } else {
-                # settings_Heat$ggplot <- pheatmap(
-                    # mat, color = color_vec
-                # )
-                settings_Heat$ggplot <- heatmaply::ggheatmap(
-                    mat, color = color)
+                settings_Heat$ggplot <- pheatmap(
+                    mat, color = color_vec
+                )
+                # settings_Heat$ggplot <- heatmaply::ggheatmap(
+                    # mat, color = color)
                 settings_Heat$final_plot <- heatmaply::heatmaply(
                     mat, color = color)
             }      
-            print(settings_Heat$final_plot)
+            
         })
 
+        output$plot_heat <- renderPlotly({
+            validate(need(is(get_se(), "NxtSE"), "Load Experiment first"))
+            validate(need(get_de(), "Perform DE analysis first"))
+
+            res <- useDE_r()
+            validate(need(nrow(res) > 0,
+                "No events to display. Suggest relaxing some filters"
+            ))
+            res <- res[, c("EventName", "EventType"), with = FALSE]
+            res <- res[get("EventName") %in% settings_Heat$eventsGO]
+            validate(need(nrow(res) > 0,
+                "No events to display after gene ontology filtering"
+            ))
+
+            validate(need(all(res$EventName %in% rownames(get_se())),
+                "Filtered NxtSE does not match DE results"
+            ))
+
+            validate(need(settings_Heat$mat, 
+                "No events with finite values to display"
+            ))
+            validate(need(nrow(settings_Heat$mat) > 0, 
+                "No events with finite values to display"
+            ))
+
+            req(settings_Heat$final_plot)
+            settings_Heat$final_plot
+        })
+
+        get_ggplot <- reactive({
+            settings_Heat$ggplot
+        })
+        spModule <- vis_ggplot_server("heatSave", get_ggplot, volumes)
+        
     })
 }
 

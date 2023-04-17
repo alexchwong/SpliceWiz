@@ -32,7 +32,15 @@ server_DE <- function(
         
         # Filter import
         observeEvent(get_filters(), {
-            settings_DE$filters <- get_filters()
+            newFilters <- get_filters()
+            settings_DE$filters <- newFilters
+            
+            # Wipe out prior DE results if new filters
+            if(!identical(settings_DE$filters, settings_DE$prevFilters)) {
+                settings_DE$res <- NULL
+            }
+            
+            settings_DE$prevFilters <- newFilters
         })
         
         observeEvent(input$variable_DE, {
@@ -142,21 +150,6 @@ server_DE <- function(
 
         observeEvent(input$perform_DE, {
             req(is(get_se(), "NxtSE"))
-            output$warning_DE <- renderText({
-                validate(need(is_valid(input$variable_DE),
-                    "Variable for DE needs to be defined"))
-                validate(need(is_valid(input$nom_DE), 
-                    "Nominator for DE Variable needs to be defined"))
-                validate(need(is_valid(input$denom_DE), 
-                    "Denominator for DE Variable needs to be defined"))
-                validate(need(input$nom_DE != "(time series)" ||
-                        input$method_DE %in% c("limma", "DESeq2", "edgeR"), 
-                    paste("Time series analysis can only be performed",
-                    "using limma, edgeR or DESeq2")))
-                validate(need(input$denom_DE != input$nom_DE, 
-                    "Denominator and Nominator must be different"))
-                "Running differential analysis"
-            })
             req(is_valid(input$variable_DE))
             req(is_valid(input$nom_DE))
             req(is_valid(input$denom_DE))
@@ -300,25 +293,25 @@ server_DE <- function(
                         setorderv(res.ASE, "adj.P.Val")
                     }
                 })
-            } else if(settings_DE$method == "satuRn") {
-                withProgress(message = 'Running satuRn...', value = 0, {
-                    res.ASE <- ASE_satuRn(
-                        se = get_se(), 
-                        test_factor = settings_DE$DE_Var, 
-                        test_nom = settings_DE$nom_DE, 
-                        test_denom = settings_DE$denom_DE,
-                        batch1 = settings_DE$batchVar1, 
-                        batch2 = settings_DE$batchVar2,
-                        IRmode = settings_DE$IRmode_DE,
-                        n_threads = get_threads()
-                    )
-                    if(!input$adjP_DE) {
-                        setorderv(res.ASE, "pval")
-                    } else {
-                        setorderv(res.ASE, "regular_FDR")
-                    }
-                })
-            }
+            } #else if(settings_DE$method == "satuRn") {
+                # withProgress(message = 'Running satuRn...', value = 0, {
+                    # res.ASE <- ASE_satuRn(
+                        # se = get_se(), 
+                        # test_factor = settings_DE$DE_Var, 
+                        # test_nom = settings_DE$nom_DE, 
+                        # test_denom = settings_DE$denom_DE,
+                        # batch1 = settings_DE$batchVar1, 
+                        # batch2 = settings_DE$batchVar2,
+                        # IRmode = settings_DE$IRmode_DE,
+                        # n_threads = get_threads()
+                    # )
+                    # if(!input$adjP_DE) {
+                        # setorderv(res.ASE, "pval")
+                    # } else {
+                        # setorderv(res.ASE, "regular_FDR")
+                    # }
+                # })
+            # }
             
             # Allow filtering by EventType: factorize it
             if(
@@ -441,7 +434,7 @@ server_DE <- function(
             req(any(unlist(colData[,load_DE$settings$DE_Var]) == 
                 load_DE$settings$denom_DE))
             req(load_DE$settings$method %in% 
-                c("DESeq2", "limma", "DoubleExpSeq", "edgeR", "satuRn"))
+                c("DESeq2", "limma", "DoubleExpSeq", "edgeR"))
             req(load_DE$settings$IRmode_DE %in% 
                 c("all", "annotated", "annotated_binary"))
             req("dof" %in% names(load_DE$settings))
@@ -470,6 +463,7 @@ server_DE <- function(
             settings_DE$dof <- settings_DE$res_settings$dof
 
             if("filters" %in% names(load_DE)) {
+                settings_DE$prevFilters <- load_DE$filters
                 settings_DE$filters <- load_DE$filters
             }
         })

@@ -1,59 +1,106 @@
+vis_ggplot_UI <- function(id, label = "Save Plot to PDF") {
+    ns <- NS(id)
+    ui_toggle_wellPanel_modular(
+        inputId = "ddb_ggsave",
+        id = id,
+        title = label,
+        color = "default",
+        icon = icon("folder-open", lib = "font-awesome"), 
+        wellPanel(
+            selectInput(ns('units'), 'Units:', 
+                choices = c("in", "cm", "mm", "px"),
+                selected = "in"
+            ),
+            numericInput(ns("wt"), "Width:", 8),
+            numericInput(ns("ht"), "Height:", 6),
+            shinySaveButton(ns("saveplot"),
+                "Save", "Save Plot as PDF...", 
+                buttonType = "primary",
+                filetype = list(PDF = "pdf")
+            ),
+        )
+    )
+}
+
+visFilter_UI <- function(id, label = "Filter events by") {
+    ns <- NS(id)
+    wellPanel(
+        # h5(label),
+        selectInput(ns('vF_filterType'), 'Filter Events by', 
+            choices = c(
+                "Adjusted P value", 
+                "Nominal P value", 
+                "Top events by p-value",
+                "Highlighted events"
+            ),
+            selected = "Adjusted P value"
+        ),
+        conditionalPanel(ns = ns,
+            condition = paste0(
+                "['Top events by p-value'].",
+                "indexOf(input.vF_filterType) != 0"
+            ),
+            shinyWidgets::sliderTextInput(
+                inputId = ns("vF_pvalT"), 
+                label = "P-value/FDR threshold",
+                choices = c(0.000001, 0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 1), 
+                selected = 0.05
+            )
+        ),
+        conditionalPanel(ns = ns,
+            condition = paste0(
+                "['Top events by p-value'].",
+                "indexOf(input.vF_filterType) == 0"
+            ),
+            shinyWidgets::sliderTextInput(
+                inputId = ns("vF_topN"), 
+                label = "Number of top events",
+                choices = c(10, 20, 50, 100, 200, 300, 
+                    500, 1000, 2000, 5000, 10000), 
+                selected = 500
+            )
+        ),
+        selectInput(ns("vF_EventType"), 
+            "Filter Events by ASE Modality", 
+            width = '100%', multiple = TRUE,
+            choices = c("IR", "MXE", "SE", "AFE", "ALE", 
+                "A5SS", "A3SS")), br(),
+        # actionButton(ns("vF_reset"), "Reset to default"),
+    )
+}
+        
+
 ui_vis_diag <- function(id) {
     ns <- NS(id)
     wellPanel(
         .ui_notice(),
         fluidRow(
             column(3,
-                selectInput(ns('filterType_diag'), 'Filter Events by', 
-                    c("Adjusted P value", "Nominal P value", "Top events by p-value")),
-                conditionalPanel(ns = ns,
-                    condition = paste0(
-                        "['Top events by p-value'].",
-                        "indexOf(input.filterType_diag) != 0"
-                    ),
-                    shinyWidgets::sliderTextInput(
-                        inputId = ns("pvalT_diag"), 
-                        label = "P-value/FDR threshold",
-                        choices = c(0.000001, 0.0001, 0.001, 
-                            0.01, 0.05, 0.1, 0.2), 
-                        selected = 0.05
-                    )
-                ),
-                conditionalPanel(ns = ns,
-                    condition = paste0(
-                        "['Top events by p-value'].",
-                        "indexOf(input.filterType_diag) == 0"
-                    ),
-                    shinyWidgets::sliderTextInput(
-                        inputId = ns("topN_diag"), 
-                        label = "Number of top events",
-                        choices = c(10, 20, 50, 100, 200, 300, 
-                            500, 1000, 2000, 5000, 10000), 
-                        selected = 500
-                    )
-                ),
-                selectInput(ns("EventType_diag"), 
-                    "Filter Events by ASE Modality", 
-                    width = '100%', multiple = TRUE,
-                    choices = c("IR", "MXE", "SE", "AFE", "ALE", 
-                        "A5SS", "A3SS")),
+                visFilter_UI(ns("scatter")),
                 selectInput(ns('variable_diag'), 'Variable', 
                     c("(none)")),
                 selectInput(ns('nom_diag'), 'X-axis condition', 
                     c("(none)")),
                 selectInput(ns('denom_diag'), 'Y-axis condition', 
                     c("(none)")),
-                shinyWidgets::switchInput(ns("NMD_diag"), 
-                    label = "NMD Mode", labelWidth = "100px"),
-                # shinySaveButton(ns("saveplot_diag"), 
-                    # "Save Plot as PDF", "Save Plot as PDF...", 
-                    # filetype = list(PDF = "pdf")),
-                actionButton(ns("output_plot_diag"), 
-                    "Generate RStudio ggplot"),
+                shinyWidgets::materialSwitch(
+                   inputId = ns("NMD_diag"),
+                   label = "NMD Mode", right = TRUE,
+                   value = FALSE, status = "success"
+                ),
+                vis_ggplot_UI(ns("scatterSave")), br(),
                 actionButton(ns("clear_diag"), "Clear settings"), br(), br(),
                 textOutput(ns("warning_diag"))
             ),
             column(9,
+                actionButton(ns("clear_selected"), "Clear Selected Events"), 
+                br(), br(),
+                shinyWidgets::materialSwitch(
+                   inputId = ns("reverse_select"),
+                   label = "Box/Lasso de-selects", right = TRUE,
+                   value = FALSE, status = "warning"
+                ),                
+                br(), br(), 
                 plotlyOutput(ns("plot_diag"), height = "800px")
             )
         )
@@ -66,56 +113,34 @@ ui_vis_volcano <- function(id) {
         .ui_notice(),
         fluidRow(
             column(3,    
-                selectInput(ns('filterType_volc'), 'Filter Events by', 
-                    c("Adjusted P value", "Nominal P value", "Top events by p-value")),
-                conditionalPanel(ns = ns,
-                    condition = paste0(
-                        "['Top events by p-value'].",
-                        "indexOf(input.filterType_volc) != 0"
-                    ),
-                    shinyWidgets::sliderTextInput(
-                        inputId = ns("pvalT_volc"), 
-                        label = "P-value/FDR threshold",
-                        choices = c(0.000001, 0.0001, 0.001, 
-                            0.01, 0.05, 0.1, 0.2), 
-                        selected = 0.05
-                    )
+                visFilter_UI(ns("volcano")),
+                shinyWidgets::materialSwitch(
+                   inputId = ns("facet_volc"),
+                   label = "Facet by ASE Modality", right = TRUE,
+                   value = FALSE, status = "success"
+                ),            shinyWidgets::materialSwitch(
+                   inputId = ns("adjP_volc"),
+                   label = "Plot adjusted P values", right = TRUE,
+                   value = TRUE, status = "success"
+                ),            shinyWidgets::materialSwitch(
+                   inputId = ns("NMD_volc"),
+                   label = "NMD Mode", right = TRUE,
+                   value = FALSE, status = "success"
                 ),
-                conditionalPanel(ns = ns,
-                    condition = paste0(
-                        "['Top events by p-value'].",
-                        "indexOf(input.filterType_volc) == 0"
-                    ),
-                    shinyWidgets::sliderTextInput(
-                        inputId = ns("topN_volc"), 
-                        label = "Number of top events",
-                        choices = c(10, 20, 50, 100, 200, 300, 
-                            500, 1000, 2000, 5000, 10000), 
-                        selected = 500
-                    )
-                ),
-                selectInput(ns("EventType_volc"), 
-                    "Filter Events by ASE Modality", 
-                    width = '100%', multiple = TRUE,
-                    choices = c("IR", "MXE", "SE", "AFE", "ALE", 
-                        "A5SS", "A3SS")),
-                shinyWidgets::switchInput(ns("facet_volc"), 
-                    label = "Facet by ASE Modality", 
-                    labelWidth = "150px"),
-                shinyWidgets::switchInput(ns("adjP_volc"), 
-                    label = "Use Adjusted P values", 
-                    value = TRUE, labelWidth = "100px"),
-                shinyWidgets::switchInput(ns("NMD_volc"), 
-                    label = "NMD Mode", labelWidth = "100px"),
-                # shinySaveButton(ns("saveplot_volc"), 
-                    # "Save Plot as PDF", "Save Plot as PDF...", 
-                    # filetype = list(PDF = "pdf")),
-                actionButton(ns("output_plot_volc"), 
-                    "Generate RStudio ggplot"),
+                vis_ggplot_UI(ns("volcanoSave")),  br(),
                 actionButton(ns("clear_volc"), "Clear settings"), br(), br(),
                 textOutput(ns("warning_volc"))
             ),
             column(9,
+                actionButton(ns("clear_selected"), "Clear Selected Events"), 
+                br(), br(),
+                shinyWidgets::materialSwitch(
+                   inputId = ns("reverse_select"),
+                   label = "Box/Lasso de-selects", right = TRUE,
+                   value = FALSE, status = "warning"
+                ),
+                br(), br(), 
+
                 plotlyOutput(ns("plot_volc"), height = "800px")
             )
         )
@@ -128,50 +153,9 @@ ui_vis_heatmap <- function(id) {
         .ui_notice(),
         fluidRow(
             column(3, 
-                selectInput(ns('filterType_heat'), 'Filter Events by', 
-                    c("Adjusted P value", "Nominal P value", "Top events by p-value")),
-                conditionalPanel(ns = ns,
-                    condition = paste0(
-                        "['Top events by p-value'].",
-                        "indexOf(input.filterType_heat) != 0"
-                    ),
-                    shinyWidgets::sliderTextInput(
-                        inputId = ns("pvalT_heat"), 
-                        label = "P-value/FDR threshold",
-                        choices = c(0.000001, 0.0001, 0.001, 
-                            0.01, 0.05, 0.1, 0.2), 
-                        selected = 0.05
-                    )
-                ),
-                conditionalPanel(ns = ns,
-                    condition = paste0(
-                        "['Top events by p-value'].",
-                        "indexOf(input.filterType_heat) == 0"
-                    ),
-                    shinyWidgets::sliderTextInput(
-                        inputId = ns("topN_heat"), 
-                        label = "Number of top events",
-                        choices = c(10, 20, 50, 100, 200, 300, 
-                            500, 1000, 2000, 5000, 10000), 
-                        selected = 500
-                    )
-                ),
-                selectInput(ns('secondFilter_heat'), 
-                    'Display events from:', 
-                    c(
-                        "All filtered events", 
-                        "Highlighted (selected) events", 
-                        "Top Gene Ontology Categories"
-                    )
-                ),
-                conditionalPanel(ns = ns,
-                    condition = paste0(
-                        "['Top Gene Ontology Categories'].",
-                        "indexOf(input.secondFilter_heat) == 0"
-                    ),
-                    selectInput(ns('GO_heat'), 'Filter by GO category', 
+                visFilter_UI(ns("heatmap")),
+                selectInput(ns('GO_heat'), 'Filter by GO category', 
                         c("(none)")),
-                ),
                 selectInput(ns("anno_col_heat"), 
                     "Display Annotation Categories", 
                     width = '100%', multiple = TRUE,
@@ -198,11 +182,7 @@ ui_vis_heatmap <- function(id) {
                         "RdGy", "RdYlBu", "RdYlGn", "Spectral"),
                     selected = "RdYlBu"
                 ),
-                # shinySaveButton(ns("saveplot_heat"), 
-                    # "Save Plot as PDF", "Save Plot as PDF...", 
-                    # filetype = list(PDF = "pdf"))
-                # actionButton(ns("output_plot_heat"), 
-                    # "Generate RStudio ggplot"),
+                vis_ggplot_UI(ns("heatSave")),  br(),
             ),
             column(9, 
                 textOutput(ns("warning_heat")),

@@ -32,6 +32,8 @@
 \alias{ref,NxtSE-method}
 \alias{sourcePath}
 \alias{sourcePath,NxtSE-method}
+\alias{row_gr}
+\alias{row_gr,NxtSE-method}
 \alias{junc_PSI}
 \alias{junc_PSI,NxtSE-method}
 \alias{junc_counts}
@@ -40,6 +42,8 @@
 \alias{junc_counts_uns,NxtSE-method}
 \alias{junc_gr}
 \alias{junc_gr,NxtSE-method}
+\alias{update_NxtSE}
+\alias{update_NxtSE,NxtSE-method}
 \alias{realize_NxtSE}
 \alias{realize_NxtSE,NxtSE-method}
 \alias{coerce,SummarizedExperiment,NxtSE-method}
@@ -66,6 +70,8 @@ NxtSE(...)
 
 \S4method{sourcePath}{NxtSE}(x, withDimnames = TRUE, ...)
 
+\S4method{row_gr}{NxtSE}(x, withDimnames = TRUE, ...)
+
 \S4method{ref}{NxtSE}(x, withDimnames = TRUE, ...)
 
 \S4method{junc_PSI}{NxtSE}(x, withDimnames = TRUE, ...)
@@ -75,6 +81,8 @@ NxtSE(...)
 \S4method{junc_counts_uns}{NxtSE}(x, withDimnames = TRUE, ...)
 
 \S4method{junc_gr}{NxtSE}(x, withDimnames = TRUE, ...)
+
+\S4method{update_NxtSE}{NxtSE}(x, ...)
 
 \S4method{realize_NxtSE}{NxtSE}(x, includeJunctions = FALSE, withDimnames = TRUE, ...)
 
@@ -154,6 +162,9 @@ of the samples
 \item \code{sourcePath(NxtSE)}: Retrieves the directory path containing the source
 data for this NxtSE object.
 
+\item \code{row_gr(NxtSE)}: Retrieves a GRanges object representing the genomic
+spans of the ASEs (EventRegion as GRanges)
+
 \item \code{ref(NxtSE)}: Retrieves a list of annotation data associated
 with this NxtSE object; primarily used in plotCoverage()
 
@@ -168,6 +179,8 @@ DelayedMatrix; primarily used in plotCoverage()
 
 \item \code{junc_gr(NxtSE)}: Getter for junction GenomicRanges coordinates;
 primarily used in plotCoverage()
+
+\item \code{update_NxtSE(NxtSE)}: Updates NxtSE object to the latest version.
 
 \item \code{realize_NxtSE(NxtSE)}: Converts all DelayedMatrix assays as matrices
 (i.e. performs all delayed calculation and loads resulting object
@@ -228,6 +241,12 @@ se_raw <- as(se, "SummarizedExperiment")
 se_NxtSE <- as(se_raw, "NxtSE")
 identical(se, se_NxtSE) # Returns TRUE
 
+# Update NxtSE object to the latest version
+# - useful if an NxtSE object made with old SpliceWiz version
+# - was stored as an RDS obejct
+
+se <- update_NxtSE(se)
+
 # Get directory path of NxtSE (i.e., collate_path)
 sourcePath(se)
 
@@ -254,6 +273,9 @@ junc_PSI(se) # PSI of junction (as proportion of SpliceOver metric)
 
 # Get Junction GRanges object
 junc_gr(se)
+
+# Get EventRegion as GRanges object
+row_gr(se)
 
 # Get list of available coverage files
 covfile(se)

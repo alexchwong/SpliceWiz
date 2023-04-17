@@ -281,7 +281,7 @@ The SpliceWiz GUI uses the `shinyDashboard` interface. Use the side menu on the
 left hand side of the interface to navigate across the various sub-panels in the
 SpliceWiz GUI.
 
-```{r, echo=FALSE, out.width='231pt', fig.align = 'center', fig.cap="Menu Side Bar"}
+```{r, echo=FALSE, out.width='231pt', fig.align = 'center', fig.cap="SpliceWiz GUI - Menu Side Bar"}
 knitr::include_graphics("img/MenuBar.jpg")
 ```
 
@@ -330,7 +330,7 @@ After starting the SpliceWiz GUI in demo mode,
 click the `Reference` tab from the menu side bar. The following interface
 will be shown:
 
-```{r, echo=FALSE, out.width='1000pt', fig.align = 'center', fig.cap="Reference GUI"}
+```{r, echo=FALSE, out.width='1000pt', fig.align = 'center', fig.cap="Building the SpliceWiz reference using the GUI"}
 knitr::include_graphics("img/buildRef.jpg")
 ```
 
@@ -509,7 +509,7 @@ SpliceWiz GUI in demo mode. Then,
 click the `Experiment` tab from the menu side bar. The following interface
 will be shown:
 
-```{r, echo=FALSE, out.width='8000pt', fig.align = 'center', fig.cap="Experiment GUI"}
+```{r, echo=FALSE, out.width='8000pt', fig.align = 'center', fig.cap="The Experiment Panel - GUI"}
 knitr::include_graphics("img/Expr_empty.jpg")
 ```
 
@@ -813,7 +813,6 @@ Using this panel, columns can be added or removed by clicking their
 corresponding buttons. Data types for columns can also be defined here.
 </details>
 \
-
 <details>
 <summary>Using the GUI to collate the experiment</summary>
 \
@@ -822,7 +821,7 @@ After annotating the experiment in the step above, click on the
 `Experiment Settings` button. Then enable `Look for Novel Splicing` to bring
 up the following display:
 
-```{r, echo=FALSE, out.width='480pt', fig.align = 'center', fig.cap="collateData GUI"}
+```{r, echo=FALSE, out.width='480pt', fig.align = 'center', fig.cap="Customizing the Experiment Settings"}
 knitr::include_graphics("img/Expr_cd_settings.jpg")
 ```
 
@@ -870,7 +869,7 @@ After running the steps in the previous GUI sections, navigate to `Analysis`
 and then click the `Load Experiment` on the menu bar. The display should
 look like this:
 
-```{r, echo=FALSE, out.width='1000pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
+```{r, echo=FALSE, out.width='1000pt', fig.align = 'center', fig.cap="Analysis - Loading the Experiment - GUI"}
 knitr::include_graphics("img/Expr_load_empty.jpg")
 ```
 
@@ -889,7 +888,7 @@ To continue with our example, click the `Select Experiment (NxtSE) Folder`, then
 select the `NxtSE` directory. 
 The interface should now look like this:
 
-```{r, echo=FALSE, out.width='1000pt', fig.align = 'center', fig.cap="Loading the NxtSE GUI"}
+```{r, echo=FALSE, out.width='1000pt', fig.align = 'center', fig.cap="Loading the NxtSE after reviewing the samples and annotations - GUI"}
 knitr::include_graphics("img/Expr_load_folder.jpg")
 ```
 
@@ -1042,7 +1041,7 @@ se.filtered <- se[applyFilters(se),]
 After following the GUI tutorials in the prior sections, click on `Analysis`
 and then `Filters` from the menu bar. It should look like this:
 
-```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Filters - GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Analysis - Filters - GUI"}
 knitr::include_graphics("img/Filters_empty.jpg")
 ```
 
@@ -1051,7 +1050,7 @@ To load SpliceWiz's default filters, click the top right button
 `Apply Filters`. After the filters have been run, your session should now look
 like this:
 
-```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="SpliceWiz default filters- GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="SpliceWiz default filters - GUI"}
 knitr::include_graphics("img/Filters_applied.jpg")
 ```
 </details>
@@ -1095,7 +1094,7 @@ After running the previous sections (of the GUI instructions), click `Analysis`
 and then `Differential Expression Analysis` on the menu side bar. It should look
 something like this:
 
-```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Differential Expression GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Analysis - Differential Expression Analysis - GUI"}
 knitr::include_graphics("img/DE_empty.jpg")
 ```
 
@@ -1108,7 +1107,7 @@ Once differential expression analysis has finished, your session should look
 like below. The output is a DT-based data table equivalent to the `ASE_edgeR()`
 function.
 
-```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Differential Expression (edgeR) GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Example Differential Analysis using edgeR - GUI"}
 knitr::include_graphics("img/DE_edgeR.jpg")
 ```
 
@@ -1256,7 +1255,6 @@ res_edgeR_annotated_binaryIR <- ASE_edgeR(
 \
 </details>
 \
-
 <details>
 <summary>Can I account for batch factors?</summary>
 \
@@ -1447,7 +1445,8 @@ ggplot(res_edgeR, aes(x = 100 * AvgPSI_B, y = 100 * AvgPSI_A)) +
 <summary>Using the GUI</summary>
 \
 After following the previous sections including differential analysis, navigate
-to `Display` and then `Scatter Plot`. Change the `Variable` to `condition`, 
+to `Display` and then `Scatter Plot`. After relaxing the event filters 
+similar to the previous section, change the `Variable` to `condition`, 
 `X-axis condition` to `A` and `Y-axis condition` to `B`. 
 A scatter plot should be automatically generated as follows:
 
@@ -1464,7 +1463,8 @@ previous section (volcano plots - GUI)
 (3) and (4) - `X-axis` and `Y-axis` dropdowns refer to the condition categories
 (that are used to contrast between two experimental conditions)
 (5) If `NMD Mode` is `ON`, the PSI values are altered such that they represent
-the inclusion values of the NMD substrate (instead of the "included" isoform)
+the inclusion values of the NMD substrate (instead of that of 
+the "included" isoform)
 (6) The plot can be exported as a pdf file (ggplot object)
 (7) Clear settings
 
@@ -1540,12 +1540,15 @@ analysis.
 or "Cellular Compartment"
 (3) Enrich for upregulated, downregulated events, or both
 (4) Which set of genes to consider as background. Default is genes belonging
-to tested ASEs (as they contain introns). Alternatives are to either test for
-genes of ASEs of the specified modality (a popup select input box will appear),
-or by all genes in the genome
-(5) Gene ontology lollypop plots can be saved to PDF
+to All ASE Events (as they contain introns). Alternatives are to either test for
+genes of ASEs of the specified modality (a popup select input box will appear,
+allowing users to select which modalities of ASE to derive background genes),
+or by all genes in the genome (NB this option will contain intronless genes
+which may bias the result).
+(5) Gene ontology plots can be saved to PDF
 (6) Gene ID's of enriched genes (6a) or background genes (6b) can be exported 
-to file, allowing users to use their own gene ontology enrichment tool of choice
+to file, allowing users to repeat GO analysis using their own gene 
+ontology enrichment tool of choice.
 
 </details>
 \
@@ -1684,7 +1687,8 @@ pheatmap(mat, annotation_col = anno_col_df)
 <details>
 <summary>Using the GUI</summary>
 \
-Navigate to `Display`, then `Heatmap` in the menu side bar. A heatmap will be
+Navigate to `Display`, then `Heatmap` in the menu side bar. After relaxing
+the event filters as per the prior sections, a heatmap will be
 automatically generated:
 
 ```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Heatmap - GUI"}
@@ -1940,7 +1944,7 @@ plotView(
 
 The main coverage plot interface is as follows
 
-```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Coverage Plots - GUI"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Coverage Plots Main Panel - GUI"}
 knitr::include_graphics("img/Vis_cov1.jpg")
 ```
 
@@ -1996,7 +2000,7 @@ a genomic loci of interest using the zoom tool.
 
 There are several options that appear if a specific condition is set:
 
-```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Group Coverage Plots"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Group Coverage Plots - GUI"}
 knitr::include_graphics("img/Vis_cov2.jpg")
 ```
 
@@ -2012,7 +2016,7 @@ As mentioned, when the "Exon Plot mode" is selected,
 an exons table is displayed where users
 can select one or more exon ranges can be selected, as shown below:
 
-```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Exon Coverage Plots"}
+```{r, echo=FALSE, out.width='800pt', fig.align = 'center', fig.cap="Generating Exon Coverage (Static) Plots - GUI"}
 knitr::include_graphics("img/Vis_cov3.jpg")
 ```
 

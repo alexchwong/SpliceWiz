@@ -303,6 +303,7 @@ server_cov2 <- function(
                     selected = event
                 )                            
             }
+            settings_Cov$prevEventGR <- gr
             return(gr)
         })
         

@@ -1,3 +1,21 @@
+Changes in version 1.1.8 (2023-04-17)
++ Users will no longer need to specify separate folders for processBAM and
+collateData output. Instead, using the GUI, processBAM will output to the
+`pbOutput` subdirectory inside the specified NxtSE folder
++ Buttons in the Experiment creation and loading interfaces have been streamlined
++ Users can select and de-select events using lasso / box / click select tools
+in volcano and scatter plots (previously only select was possible for all except
+click)
++ A unified event filtering interface has been implemented for all visualizations
++ A new system for creating coverage plots has been implemented. Coverage plots
+are now created in a 3-step process: getCoverageData (to get coverage data!),
+getPlotObject (customizes data for ASE event normalization and per condition),
+and plotView (which actually generates the plot). This system makes it easier 
+to refine plots without having to fetch data from the disk everytime.
++ All GUI visualization can now be exported directly as pdf files
++ Added internal functions to NxtSE object - row_gr() fetches EventRegion 
+GRanges for each ASE
+
 Changes in version 1.1.7 (2023-03-27)
 + Bugfix: t-test track plots as zero any non-finite p-values (arises when all
   normalized coverages are the same value)

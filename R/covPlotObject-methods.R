@@ -1552,7 +1552,8 @@ plotView <- function(
     covTracks <- levels(df_all$covTrack)
 
     plotList <- list()
-
+    viewMin <- min(plotViewStart, plotViewEnd)
+    viewMax <- max(plotViewStart, plotViewEnd)
     for(i in seq_len(length(covTracks))) {
         covTrack = covTracks[i]
         df <- df_all[df_all$covTrack == covTrack,]
@@ -1560,8 +1561,8 @@ plotView <- function(
         nGroups <- length(unique(df$group))
         
         # Filter by [plotViewStart, plotViewEnd]
-        df <- df[df$x >= plotViewStart & df$x <= plotViewEnd,]
-        dfJn <- dfJn[dfJn$x >= plotViewStart & dfJn$x <= plotViewEnd,]
+        df <- df[df$x >= viewMin & df$x <= viewMax,]
+        dfJn <- dfJn[dfJn$x >= viewMin & dfJn$x <= viewMax,]
         
         p <- ggplot(df) + geom_hline(yintercept = 0)   
 

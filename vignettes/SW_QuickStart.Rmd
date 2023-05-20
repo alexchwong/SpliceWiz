@@ -167,6 +167,9 @@ Next, install R 4.2.1 as follows:
 conda install -c conda-forge r-base=4.2.1
 ```
 
+NB: We have not been able to successfuly use r-base=4.3, so we recommend using
+r-base=4.2.1 (until further notice).
+
 Many of SpliceWiz's dependencies are up-to-date from the conda-forge channel,
 so they are best installed via conda:
 
@@ -185,7 +188,7 @@ So, lets enter the R terminal from the command line:
 R
 ```
 
-Set up Bioconductor 3.16:
+Set up Bioconductor 3.16 (which is the latest version compatible with R 4.2):
 
 ```{r eval = FALSE}
 BiocManager::install(version = "3.16")
@@ -193,9 +196,7 @@ BiocManager::install(version = "3.16")
 
 Again, follow the prompts to update any necessary packages.
 
-Once this is done, install SpliceWiz (devel) from github (as current devel
-version can only be installed with Bioconductor devel which runs R 4.3, and this
-is not readily available as a conda package)
+Once this is done, install SpliceWiz (devel) from github:
 
 ```{r eval = FALSE}
 # BiocManager::install("SpliceWiz")

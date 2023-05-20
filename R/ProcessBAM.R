@@ -307,6 +307,7 @@ processBAM <- function(
     outfile <- file.path(output_path, "main.FC.Rds")
     if(overwrite) {
         need_to_do <- rep(TRUE, length(s_names))
+        samples_todo <- s_names
     } else {
         samples_todo <-  .processBAM_fcfile_validate(outfile, s_names)
         if(!is.null(samples_todo) && length(samples_todo) == 0) {
@@ -380,17 +381,22 @@ processBAM <- function(
             if(overwrite) {
                 # Remove samples in old output that have been re-run
                 removeSamples <- intersect(res.old$targets, res$targets)
+                keepSamples = setdiff(res.old$targets, removeSamples)
                 if(length(removeSamples) > 0) {
                     res.old$targets <- setdiff(res.old$targets, res$targets)
-                    res.old$stat <- res.old$stat[, -removeSamples]
-                    res.old$counts <- res.old$counts[, -removeSamples]
+                    res.old$stat <- res.old$stat[, c("Status", keepSamples),
+                        drop = FALSE]
+                    res.old$counts <- res.old$counts[, keepSamples,
+                        drop = FALSE]
                 }
             }
             # Append old sample results to existing results
             new_samples <- res$targets[!(res$targets %in% res.old$targets)]
+            
             res$targets <- c(res.old$targets, new_samples)
             res$stat <- cbind(res.old$stat, res$stat[, new_samples])
             res$counts <- cbind(res.old$counts, res$counts[, new_samples])
+            rownames(res$counts) <- res$annotation$GeneID
         } else {
             .log(paste(
                 "featureCounts output not compatible with previous",

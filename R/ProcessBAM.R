@@ -438,16 +438,18 @@ processBAM <- function(
     )
     stats <- data.list$BAM
     direct <- data.list$Directionality
-
-    paired <- (stats$Value[3] == 0 & stats$Value[4] > 0) ||
-        (stats$Value[3] > 0 && stats$Value[4] / stats$Value[3] / 1000)
-    strand <- direct$Value[9]
+    numSingles <- as.numeric(stats$Value[3])
+    numPairs <- as.numeric(stats$Value[4])
+    paired <- (numSingles == 0 & numPairs > 0) ||
+        (numSingles > 0 && numPairs / numSingles / 1000)
+    strand <- as.numeric(direct$Value[9])
     if (strand == -1) strand <- 2
     return(list(
         paired = paired,
         strand = strand
     ))
 }
+
 
 # Validate arguments; return error if invalid
 .processBAM_validate_args <- function(s_bam, max_threads, output_files) {

@@ -1,3 +1,7 @@
+Changes to version 1.3.3 (2023-07-27)
++ Bugfix: Fixed compatibility for GTF references with CDS entries but no ccds_id
+column
+
 Changes in version 1.3.2 (2023-06-05)
 + Bugfix: error when running featureCounts wrapper due to non-numeric
 assignment of single / paired end reads

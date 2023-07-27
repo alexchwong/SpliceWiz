@@ -3414,7 +3414,7 @@ collateData <- function(Experiment, reference_path, output_path,
     fetchCols <- c("seqnames", "start", "end", "strand", "type", 
         "transcript_id", "exon_id", "exon_number")
     fetchColsProt <- c("seqnames", "start", "end", "strand", "type", 
-        "transcript_id", "ccds_id", "exon_number")
+        "transcript_id", "protein_id", "ccds_id", "exon_number")
     fetchColsIntron_A <- c("seqnames", "start", "end", "strand")
     fetchColsIntron_B <- c("transcript_id", "intron_id", "intron_number")
     
@@ -3432,18 +3432,32 @@ collateData <- function(Experiment, reference_path, output_path,
     )
 
     if(file.exists(file.path(dir_path, "Proteins.fst"))) {
+        # peek columns in Proteins.fst
+        protein_test <- read.fst(file.path(dir_path, "Proteins.fst"), to = 1)
+        protCols <- colnames(protein_test)
+        fetchColsProt <- intersect(fetchColsProt, protCols)
+        
         protein.DT <- as.data.table(
             read.fst(file.path(dir_path, "Proteins.fst"),
             columns = fetchColsProt))
-        setnames(protein.DT, "ccds_id", "exon_id")
-        misc.DT <- as.data.table(read.fst(file.path(dir_path, "Misc.fst"),
-            columns = fetchCols))
+        
+        if(any(c("protein_id", "ccds_id") %in% fetchColsProt)) {
+            if("ccds_id" %in% fetchColsProt) {
+                setnames(protein.DT, "ccds_id", "exon_id")
+                if("protein_id" %in% fetchColsProt)
+                    protein.DT$protein_id <- NULL
+            } else {
+                setnames(protein.DT, "protein_id", "exon_id")
+            }
+            misc.DT <- as.data.table(read.fst(file.path(dir_path, "Misc.fst"),
+                columns = fetchCols))
 
-        total.DT <- rbindlist(list(
-            exons.DT[, fetchCols, with = FALSE],
-            protein.DT[, fetchCols, with = FALSE],
-            misc.DT[, fetchCols, with = FALSE]
-        ))
+            total.DT <- rbindlist(list(
+                exons.DT[, fetchCols, with = FALSE],
+                protein.DT[, fetchCols, with = FALSE],
+                misc.DT[, fetchCols, with = FALSE]
+            ))
+        }
     } else {
         total.DT <- exons.DT
     }

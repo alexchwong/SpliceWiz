@@ -131,7 +131,8 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         # Refresh genome / GTF
         observeEvent(input$species, {
             req(is_valid(input$release))
-            req(is_valid(is_valid(input$species)))
+            req(is_valid(input$species))
+            req(input$species %in% settings_newref$availSpecies)
             withProgress(
                     message = "Retrieving data from Ensembl FTP", value = 0, 
             {
@@ -148,6 +149,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         observeEvent(input$fasta, {
             req(is_valid(input$release))
             req(is_valid(input$species))
+            req(input$species %in% settings_newref$availSpecies)
             req(is_valid(input$fasta))
             settings_newref$newref_fasta <- paste0(
                 # "https://ftp.ensembl.org/pub/",
@@ -162,6 +164,7 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         observeEvent(input$gtf, {
             req(is_valid(input$release))
             req(is_valid(input$species))
+            req(input$species %in% settings_newref$availSpecies)
             req(is_valid(input$gtf))
             settings_newref$newref_gtf <- paste0(
                 # "https://ftp.ensembl.org/pub/",

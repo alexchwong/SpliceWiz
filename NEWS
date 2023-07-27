@@ -1,4 +1,4 @@
-Changes to version 1.3.3 (2023-07-17)
+Changes to version 1.3.3 (2023-07-27)
 + Bugfix: Fixed compatibility for GTF references with CDS entries but no ccds_id
 column
 

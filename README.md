@@ -16,23 +16,23 @@ SpliceWiz is an R package for exploring differential alternative splicing events
 
 # Documentation <a name="doco"></a>
 
-## Bioconductor Release (Bioc 3.16 / R 4.2) <a name="docorelease"></a>
+## Bioconductor Release (Bioc 3.17 / R 4.3) <a name="docorelease"></a>
 
-[Bioconductor Landing Page (Release - 3.16)](https://bioconductor.org/packages/release/bioc/html/SpliceWiz.html)
+[Bioconductor Landing Page (Release)](https://bioconductor.org/packages/release/bioc/html/SpliceWiz.html)
 
-[QuickStart Vignette (Release - 3.16)](https://bioconductor.org/packages/release/bioc/vignettes/SpliceWiz/inst/doc/SW_QuickStart.html)
+[QuickStart Vignette (Release)](https://bioconductor.org/packages/release/bioc/vignettes/SpliceWiz/inst/doc/SW_QuickStart.html)
 
-[Reference Manual (Release - 3.16)](https://bioconductor.org/packages/release/bioc/manuals/SpliceWiz/man/SpliceWiz.pdf) 
+[Reference Manual (Release)](https://bioconductor.org/packages/release/bioc/manuals/SpliceWiz/man/SpliceWiz.pdf) 
 
-## Bioconductor Devel (Bioc 3.17 / R 4.3) <a name="docodevel"></a>
+## Bioconductor Devel (future Bioc 3.18 / R 4.3) <a name="docodevel"></a>
 
-[Bioconductor Landing Page (Devel - 3.17)](https://bioconductor.org/packages/devel/bioc/html/SpliceWiz.html)
+[Bioconductor Landing Page (Devel)](https://bioconductor.org/packages/devel/bioc/html/SpliceWiz.html)
 
-[QuickStart Vignette (Devel - 3.17)](https://bioconductor.org/packages/devel/bioc/vignettes/SpliceWiz/inst/doc/SW_QuickStart.html)
+[QuickStart Vignette (Devel)](https://bioconductor.org/packages/devel/bioc/vignettes/SpliceWiz/inst/doc/SW_QuickStart.html)
 
-[Reference Manual (Devel - 3.17)](https://bioconductor.org/packages/devel/bioc/manuals/SpliceWiz/man/SpliceWiz.pdf) 
+[Reference Manual (Devel)](https://bioconductor.org/packages/devel/bioc/manuals/SpliceWiz/man/SpliceWiz.pdf) 
 
-# Installation (Release - Bioc 3.16 / R 4.2) <a name="inst"></a>
+# Installation (Release - Bioc 3.17 / R 4.3) <a name="inst"></a>
 
 ## Enabling OpenMP multi-threading (for MacOS users) <a name="ompmac"></a>
 
@@ -44,18 +44,18 @@ install the `libomp` libraries via brew:
 brew install libomp
 ```
 
-## On R (version >= 4.2.0) using Bioconductor version 3.16 (current release) <a name="instrelease"></a>
+## On R (version >= 4.3) using Bioconductor version 3.17 (current release) <a name="instrelease"></a>
 
 ```
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-BiocManager::install(version = "3.16")
+BiocManager::install(version = "3.17")
 BiocManager::valid()              # checks for out of date packages
 
 BiocManager::install("SpliceWiz")
 ```
 
-## On R (devel version >= 4.3) using Bioconductor version 3.17 (devel) <a name="instdevel"></a>
+## On R (devel version >= 4.3) using Bioconductor devel (future 3.18) <a name="instdevel"></a>
 
 ```
 if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -71,14 +71,14 @@ BiocManager::install("SpliceWiz")
 Reasons for installing via GitHub:
 * Using the latest development version on current release of Bioconductor -
 means you don't have to install Bioconductor devel
-* You are using Bioconductor version 3.15 or earlier
+* You are using Bioconductor version 3.16 or earlier
 
 ```
 library("devtools")
 install_github("alexchwong/ompBAM")
 
-# to install SpliceWiz version 1.1.6, install from the "1.1.6-release" branch:
-install_github("alexchwong/SpliceWiz", "1.1.6-release", dependencies=TRUE)
+# To install the latest devel version, install from the "main" branch
+install_github("alexchwong/SpliceWiz", "main", dependencies=TRUE)
 ```
 
 Note that prior to Bioconductor versions 3.14 or earlier, you may need to retrieve

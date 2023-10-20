@@ -350,15 +350,15 @@ runFilter <- function(se, filterObj) {
 
     if(is(truth_inc_temp, "DelayedArray")) {
         truth_inc <- rbind(
-            truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),],
+            truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),,drop = FALSE],
             tmpIncTRUE,
-            truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),]
+            truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),,drop = FALSE]
         )    
     } else {
         truth_inc <- rbind(
-            truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),],
+            truth_inc_temp[seq_len(num_IR + num_MXE + num_SE),,drop = FALSE],
             as.matrix(tmpIncTRUE),
-            truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),]
+            truth_inc_temp[-seq_len(num_IR + num_MXE + num_SE),,drop = FALSE]
         )    
     }
 

@@ -4095,8 +4095,8 @@ Get_GTF_file <- function(reference_path) {
         AS_Table_search.a[get("EventType") != "AFE" | get("in_1a") == 1]
     AS_Table_search.a <-
         AS_Table_search.a[get("EventType") != "ALE" | get("is_last_intron")]
-    AS_Table_search.a[, c("Event") := get("Event2a")]
-    AS_Table_search.a[is.na(get("Event")), c("Event") := get("Event1a")]
+    AS_Table_search.a[, c("Event") := get("Event1a")]
+    AS_Table_search.a[!is.na(get("Event2a")), c("Event") := get("Event2a")]
     AS_Table_search.a <- candidate.introns.order[AS_Table_search.a,
         on = c("Event", "transcript_id", "transcript_support_level"),
         c("EventType", "EventID", "Event1a", "Event2a", "transcript_id",
@@ -4122,8 +4122,8 @@ Get_GTF_file <- function(reference_path) {
         AS_Table_search.b[get("EventType") != "AFE" | get("in_1b") == 1]
     AS_Table_search.b <-
         AS_Table_search.b[get("EventType") != "ALE" | get("is_last_intron")]
-    AS_Table_search.b[, c("Event") := get("Event2b")]
-    AS_Table_search.b[is.na(get("Event")), c("Event") := get("Event1b")]
+    AS_Table_search.b[, c("Event") := get("Event1b")]
+    AS_Table_search.b[!is.na(get("Event2b")), c("Event") := get("Event2b")]
     AS_Table_search.b <- candidate.introns.order[AS_Table_search.b,
         on = c("Event", "transcript_id", "transcript_support_level"),
         c("EventType", "EventID", "Event1b", "Event2b", "transcript_id",

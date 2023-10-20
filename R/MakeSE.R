@@ -538,7 +538,7 @@ makeSE <- function(
         OL_DT$countMeans <- matMeans[OL_DT$to_idx]
 
         # Reduce hash table by max junction count and its coordinates, per IR
-        OL_DT <- OL_DT[OL_DT[, .I[which.max(countMeans)], by=from]$V1]
+        OL_DT <- OL_DT[OL_DT[, .I[which.max(get("countMeans"))], by="from"]$V1]
         OL_DT$coord <- rownames(junc_counts)[OL_DT$to]
 
         # Reduce IR events to whether max junction coord matches IR event

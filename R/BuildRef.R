@@ -1350,6 +1350,36 @@ Get_GTF_file <- function(reference_path) {
     ))
     rm(Exons)
 
+    # Guarantees only 1 seqname per gene_id
+    gene_seqname <- unique(data.table(
+        seqname = as.character(seqnames(gtf_gr)),
+        gene_id = gtf_gr$gene_id
+    ))
+    dup_gene_id <- unique(gene_seqname$gene_id[
+        duplicated(gene_seqname$gene_id)
+    ])
+    if(length(dup_gene_id) > 0) {
+        .log(paste(
+            "Multiple seqnames found for the following gene_id:",
+            paste(dup_gene_id, collapse = " ")
+        ))
+    }
+
+    # Guarantees only 1 seqname per transcript_id
+    transcript_seqname <- unique(data.table(
+        seqname = as.character(seqnames(gtf_gr)),
+        transcript_id = gtf_gr$transcript_id
+    ))
+    dup_tr_id <- unique(transcript_seqname$transcript_id[
+        duplicated(transcript_seqname$transcript_id)
+    ])
+    if(length(dup_tr_id) > 0) {
+        .log(paste(
+            "Multiple seqnames found for the following transcript_id:",
+            paste(dup_tr_id, collapse = " ")
+        ))
+    }
+
     # Ensure the following columns are found in the fixed gtf:
     # - transcript_name,
     # - transcript_biotype, transcript_support_level

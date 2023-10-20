@@ -326,7 +326,7 @@ collateData <- function(Experiment, reference_path, output_path,
         tryCatch({
             tmpse <- makeSE(norm_output_path, verbose = FALSE,
                 RemoveOverlapping = FALSE)
-            tmpse2 <- .makeSE_iterate_IR(tmpse, verbose = FALSE)
+            tmpse2 <- .makeSE_iterate_IR_new(tmpse, verbose = FALSE)
             tmpFiltered <- (
                 rowData(tmpse)$EventName %in% 
                 rowData(tmpse2)$EventName

@@ -218,8 +218,10 @@ collateData <- function(Experiment, reference_path, output_path,
             juncThreshold = novelSplicing_countThreshold)
 
         dash_progress("Compiling Intron Retention List", N_steps)
+        oldScipen <- options(scipen=999)
         .collateData_sw_merge(df.internal, jobs, BPPARAM_mod, 
             norm_output_path, stranded)
+        options(oldScipen)
 
         # Tandem junction compilation
         if(novelSplicing & novelSplicing_useTJ) {

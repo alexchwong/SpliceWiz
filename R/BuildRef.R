@@ -1977,10 +1977,13 @@ Get_GTF_file <- function(reference_path) {
     # reset
     candidate.introns[, c("start") := get("intron_start")]
     candidate.introns[, c("end") := get("intron_end")]
+
+    oldScipen <- options(scipen=999)
     candidate.introns[, c("Event") := paste0(
         get("seqnames"), ":", get("intron_start"), "-",
         get("intron_end"), "/", get("strand")
     )]
+    options(oldScipen)
     return(candidate.introns)
 }
 

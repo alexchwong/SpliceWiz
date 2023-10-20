@@ -33,12 +33,16 @@
 #' set can be assigned using `covfile(se) <- vector_of_cov_files`. See
 #' the example below for details.
 #'
-#' If `RemoveOverlapping = TRUE`, `makeSE` will try to
-#' identify which introns belong to major isoforms, then remove introns of
-#' minor introns that overlaps those of major isoforms. Non-overlapping
-#' introns are then reassessed iteratively, until all introns are included
-#' or excluded in this way. This is important to ensure that overlapping
+#' If `RemoveOverlapping = TRUE`, `makeSE` will remove introns that overlap
+#' other introns with higher junction read counts in the dataset. This means
+#' that SpliceWiz will assess a set of non-overlapping introns which belong
+#' to likely major isoforms, ensuring that overlapping
 #' novel IR events are not 'double-counted'.
+#'
+#' NB: Since version 1.3.4, SpliceWiz has improved the algorithm of generating
+#' the set of non-overlapping introns (prior versions appear to generate
+#' sets of introns that still overlap). To use the prior algorithm for
+#' compatibility with prior analysis, set `RemoveOverlapping = FALSE`.
 #'
 #' @param collate_path (Required) The output path of [collateData] pointing
 #'   to the collated data
@@ -138,26 +142,31 @@ makeSE <- function(
     filtered_rowData_file <- file.path(collate_path, "filteredIntrons.Rds")
     if (RemoveOverlapping == TRUE) {
         dash_progress("Removing overlapping introns...", N)
+        if(verbose) .log("...removing overlapping introns...", "message")
 
-        if(FALSE && fullExperiment & file.exists(filtered_rowData_file)) {
+        if(
+            metadata(se)$BuildVersion >= "1.3.4" && 
+            fullExperiment & file.exists(filtered_rowData_file)
+        ) {
             # Take a shortcut
-            if(verbose) .log("...removing overlapping introns...", "message")
             tmpFiltered <- readRDS(filtered_rowData_file)
             se <- se[tmpFiltered,]
         } else {
-            if(verbose) .log("...removing overlapping introns...", "message")
             se <- .makeSE_iterate_IR_new(se, verbose)
         } 
     } else if(RemoveOverlapping == "legacy") {
         dash_progress("Removing overlapping introns...", N)
+        if(verbose) .log("...removing overlapping introns...", "message")
 
-        if(FALSE && fullExperiment & file.exists(filtered_rowData_file)) {
+        if(
+            metadata(se)$BuildVersion < "1.3.4" &
+            metadata(se)$BuildVersion >= "1.1.6" &            
+            fullExperiment & file.exists(filtered_rowData_file)
+        ) {
             # Take a shortcut
-            if(verbose) .log("...removing overlapping introns...", "message")
             tmpFiltered <- readRDS(filtered_rowData_file)
             se <- se[tmpFiltered,]
         } else {
-            if(verbose) .log("...removing overlapping introns...", "message")
             se <- .makeSE_iterate_IR(se, verbose)
         }
     }
@@ -256,7 +265,7 @@ makeSE <- function(
                 metadata(se)$BuildVersion,
                 "< 0.99.4"
             ), ")"
-        ), "error")
+        ), "warning")
     }
 
     # Add reference
@@ -491,7 +500,7 @@ makeSE <- function(
 
     # junc_PSI <- junc_PSI(se)
     # junc_counts <- junc_counts(se)
-    junc_counts <- junc_PSI(se)
+    junc_counts <- junc_counts(se)
     
     se.IR <- se[rowData(se)$EventType == "IR", , drop = FALSE]
     if(nrow(se.IR) == 0) return(se)

@@ -71,12 +71,16 @@ files, a vector of file paths corresponding to all the COV files of the data
 set can be assigned using \code{covfile(se) <- vector_of_cov_files}. See
 the example below for details.
 
-If \code{RemoveOverlapping = TRUE}, \code{makeSE} will try to
-identify which introns belong to major isoforms, then remove introns of
-minor introns that overlaps those of major isoforms. Non-overlapping
-introns are then reassessed iteratively, until all introns are included
-or excluded in this way. This is important to ensure that overlapping
+If \code{RemoveOverlapping = TRUE}, \code{makeSE} will remove introns that overlap
+other introns with higher junction read counts in the dataset. This means
+that SpliceWiz will assess a set of non-overlapping introns which belong
+to likely major isoforms, ensuring that overlapping
 novel IR events are not 'double-counted'.
+
+NB: Since version 1.3.4, SpliceWiz has improved the algorithm of generating
+the set of non-overlapping introns (prior versions appear to generate
+sets of introns that still overlap). To use the prior algorithm for
+compatibility with prior analysis, set \code{RemoveOverlapping = FALSE}.
 }
 \examples{
 

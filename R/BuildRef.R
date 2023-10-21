@@ -4580,8 +4580,28 @@ Get_GTF_file <- function(reference_path) {
     for(suffix in str_to_translate) {
         DNA <- paste("DNA", suffix, sep = "_")
         AA <- paste("AA", suffix, sep = "_")
+
+        # Convert to NA if all N's
+        
         AS_Table.Extended[nchar(get(DNA)) > 0,
-            c(AA) := .translate_fuzzy(get(DNA))]    
+            c("tmp_N") := vapply(
+                nchar(get(DNA)), function(x) paste(rep("N", x), collapse = ""), 
+                FUN.VALUE = character(1)
+            )
+        ]
+        AS_Table.Extended[get(DNA) == get("tmp_N"), c(DNA) := NA]
+        AS_Table.Extended$tmp_N <- NULL
+
+        tryCatch({
+            AS_Table.Extended[nchar(get(DNA)) > 0,
+                c(AA) := .translate_fuzzy(get(DNA))]    
+        , error = function(err) {
+            # Allow progression even when translation fails
+            .log(paste(
+                "Translation to amino acids failed for ", DNA, ", skipping"                
+            ), "warning")
+        })
+
     }
     return(AS_Table.Extended)
 }

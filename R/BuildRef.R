@@ -4595,7 +4595,7 @@ Get_GTF_file <- function(reference_path) {
         tryCatch({
             AS_Table.Extended[nchar(get(DNA)) > 0,
                 c(AA) := .translate_fuzzy(get(DNA))]    
-        , error = function(err) {
+        }, error = function(err) {
             # Allow progression even when translation fails
             .log(paste(
                 "Translation to amino acids failed for ", DNA, ", skipping"                

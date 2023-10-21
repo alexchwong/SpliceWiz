@@ -25,7 +25,7 @@ Alternatively, if the names of only a subset of samples are given, then
 The colData can be set later using \link{colData}}
 
 \item{RemoveOverlapping}{(default = \code{TRUE}) Whether to filter out overlapping
-novel IR events belonging to minor isoforms. See details.}
+IR events belonging to minor isoforms. See details.}
 
 \item{realize}{(default = \code{FALSE}) Whether to load all assay data into
 memory. See details}
@@ -75,7 +75,7 @@ If \code{RemoveOverlapping = TRUE}, \code{makeSE} will remove introns that overl
 other introns with higher junction read counts in the dataset. This means
 that SpliceWiz will assess a set of non-overlapping introns which belong
 to likely major isoforms, ensuring that overlapping
-novel IR events are not 'double-counted'.
+IR events are not 'double-counted'.
 
 NB: Since version 1.3.4, SpliceWiz has improved the algorithm of generating
 the set of non-overlapping introns (prior versions appear to generate

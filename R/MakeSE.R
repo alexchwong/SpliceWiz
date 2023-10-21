@@ -37,7 +37,7 @@
 #' other introns with higher junction read counts in the dataset. This means
 #' that SpliceWiz will assess a set of non-overlapping introns which belong
 #' to likely major isoforms, ensuring that overlapping
-#' novel IR events are not 'double-counted'.
+#' IR events are not 'double-counted'.
 #'
 #' NB: Since version 1.3.4, SpliceWiz has improved the algorithm of generating
 #' the set of non-overlapping introns (prior versions appear to generate
@@ -54,7 +54,7 @@
 #'   `makeSE()` will construct the NxtSE object based only on the samples given.
 #'   The colData can be set later using [colData]
 #' @param RemoveOverlapping (default = `TRUE`) Whether to filter out overlapping
-#'   novel IR events belonging to minor isoforms. See details.
+#'   IR events belonging to minor isoforms. See details.
 #' @param realize (default = `FALSE`) Whether to load all assay data into
 #'   memory. See details
 #' @param verbose (default = `TRUE`) Whether loading messages are displayed

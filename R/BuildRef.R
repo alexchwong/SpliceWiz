@@ -1360,22 +1360,22 @@ Get_GTF_file <- function(reference_path) {
     ])
     if(length(dup_gene_id) > 0) {
         .log(paste(
-            "Multiple seqnames found for the following gene_id:",
+            "In GTF file, multiple seqnames found for the following gene_id:",
             paste(dup_gene_id, collapse = " ")
         ))
     }
 
     # Guarantees only 1 seqname per transcript_id
-    transcript_seqname <- unique(data.table(
+    transcript_seqname <- na.omit(unique(data.table(
         seqname = as.character(seqnames(gtf_gr)),
         transcript_id = gtf_gr$transcript_id
-    ))
+    )))
     dup_tr_id <- unique(transcript_seqname$transcript_id[
         duplicated(transcript_seqname$transcript_id)
     ])
     if(length(dup_tr_id) > 0) {
         .log(paste(
-            "Multiple seqnames found for the following transcript_id:",
+            "In GTF file, multiple seqnames found for the following transcript_id:",
             paste(dup_tr_id, collapse = " ")
         ))
     }

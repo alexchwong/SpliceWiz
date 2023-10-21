@@ -242,6 +242,10 @@ viewGO <- function(reference_path) {
     }
 
     Genes <- viewGenes(reference_path)
+
+    # Convert Gencode to Ensembl gene_id
+    Genes$gene_id <- .gencode_correct_id_batch(Genes$gene_id)
+    
     tmp$gene_name <- Genes$gene_name[match(tmp[, idName], Genes$gene_id)]
     # tmp <- tmp[!is.na(tmp$gene_name),]
     

@@ -380,6 +380,9 @@ getAvailableGO <- function(
 
     pathways <- split(ontUse$ensembl_id, ontUse$go_id)
     
+    genes <- .gencode_correct_id_batch(genes)
+    universe <- .gencode_correct_id_batch(universe)
+    
     foraRes <- as.data.table(fgsea::fora(
         pathways, 
         genes=genes, 
@@ -574,3 +577,19 @@ getAvailableGO <- function(
     return(p)
 }
 
+#
+
+.gencode_correct_id_indiv <- function(geneId) {
+    if(
+        substr(geneId, 1, 3) == "ENS" &&
+        length(tstrsplit(geneId, split = ".", fixed = TRUE)) == 2
+    ) {
+        return(tstrsplit(geneId, split = ".", fixed = TRUE)[[1]])
+    } else {
+        return(geneId)
+    }
+}
+
+.gencode_correct_id_batch <- function(geneIds) {
+    return(unname(vapply(geneIds, .gencode_correct_id_indiv, character(1))))
+}

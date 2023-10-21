@@ -33,12 +33,16 @@
 #' set can be assigned using `covfile(se) <- vector_of_cov_files`. See
 #' the example below for details.
 #'
-#' If `RemoveOverlapping = TRUE`, `makeSE` will try to
-#' identify which introns belong to major isoforms, then remove introns of
-#' minor introns that overlaps those of major isoforms. Non-overlapping
-#' introns are then reassessed iteratively, until all introns are included
-#' or excluded in this way. This is important to ensure that overlapping
-#' novel IR events are not 'double-counted'.
+#' If `RemoveOverlapping = TRUE`, `makeSE` will remove introns that overlap
+#' other introns with higher junction read counts in the dataset. This means
+#' that SpliceWiz will assess a set of non-overlapping introns which belong
+#' to likely major isoforms, ensuring that overlapping
+#' IR events are not 'double-counted'.
+#'
+#' NB: Since version 1.3.4, SpliceWiz has improved the algorithm of generating
+#' the set of non-overlapping introns (prior versions appear to generate
+#' sets of introns that still overlap). To use the prior algorithm for
+#' compatibility with prior analysis, set `RemoveOverlapping = FALSE`.
 #'
 #' @param collate_path (Required) The output path of [collateData] pointing
 #'   to the collated data
@@ -50,7 +54,7 @@
 #'   `makeSE()` will construct the NxtSE object based only on the samples given.
 #'   The colData can be set later using [colData]
 #' @param RemoveOverlapping (default = `TRUE`) Whether to filter out overlapping
-#'   novel IR events belonging to minor isoforms. See details.
+#'   IR events belonging to minor isoforms. See details.
 #' @param realize (default = `FALSE`) Whether to load all assay data into
 #'   memory. See details
 #' @param verbose (default = `TRUE`) Whether loading messages are displayed
@@ -138,16 +142,33 @@ makeSE <- function(
     filtered_rowData_file <- file.path(collate_path, "filteredIntrons.Rds")
     if (RemoveOverlapping == TRUE) {
         dash_progress("Removing overlapping introns...", N)
+        if(verbose) .log("...removing overlapping introns...", "message")
 
-        if(fullExperiment & file.exists(filtered_rowData_file)) {
+        if(
+            metadata(se)$BuildVersion >= "1.3.4" && 
+            fullExperiment & file.exists(filtered_rowData_file)
+        ) {
             # Take a shortcut
-            if(verbose) .log("...removing overlapping introns...", "message")
             tmpFiltered <- readRDS(filtered_rowData_file)
             se <- se[tmpFiltered,]
         } else {
-            if(verbose) .log("...removing overlapping introns...", "message")
-            se <- .makeSE_iterate_IR(se, verbose)
+            se <- .makeSE_iterate_IR_new(se, verbose)
         } 
+    } else if(RemoveOverlapping == "legacy") {
+        dash_progress("Removing overlapping introns...", N)
+        if(verbose) .log("...removing overlapping introns...", "message")
+
+        if(
+            metadata(se)$BuildVersion < "1.3.4" &
+            metadata(se)$BuildVersion >= "1.1.6" &            
+            fullExperiment & file.exists(filtered_rowData_file)
+        ) {
+            # Take a shortcut
+            tmpFiltered <- readRDS(filtered_rowData_file)
+            se <- se[tmpFiltered,]
+        } else {
+            se <- .makeSE_iterate_IR(se, verbose)
+        }
     }
 
     if(verbose) .log("NxtSE loaded", "message")
@@ -244,7 +265,7 @@ makeSE <- function(
                 metadata(se)$BuildVersion,
                 "< 0.99.4"
             ), ")"
-        ), "error")
+        ), "warning")
     }
 
     # Add reference
@@ -471,4 +492,69 @@ makeSE <- function(
         include <- c()
     }
     return(include)
+}
+
+# NEW METHOD
+# Iterates through introns; removes overlapping minor introns
+.makeSE_iterate_IR_new <- function(se, verbose = TRUE) {
+
+    # junc_PSI <- junc_PSI(se)
+    # junc_counts <- junc_counts(se)
+    junc_counts <- junc_counts(se)
+    
+    se.IR <- se[rowData(se)$EventType == "IR", , drop = FALSE]
+    if(nrow(se.IR) == 0) return(se)
+
+    # Match IR events to junction counts in se
+    row_to_junc <- match(rowData(se.IR)$EventRegion, rownames(junc_counts))
+    names(row_to_junc) <- rowData(se.IR)$EventRegion
+
+    # Remove IR events not found in junction counts
+    se.IR <- se.IR[!is.na(row_to_junc),]
+    row_to_junc <- row_to_junc[!is.na(row_to_junc)]
+    
+    # Quick way to get GRanges of IR events in se
+    se.coords.gr <- junc_gr(se)[row_to_junc]
+    names(se.coords.gr) <- names(row_to_junc)
+    
+    if (length(se.coords.gr) > 0) {
+        # Overlap between IR events and repertoire of junction counts
+        OL <- findOverlaps(
+            se.coords.gr, # coord2GR(EventRegion), 
+            junc_gr(se) # coord2GR(rownames(junc_counts))
+        )
+
+        # Hash table of overlaps
+        OL_DT <- data.table(
+          from = from(OL), to = to(OL)
+        )
+
+        # Create unique list of junction counts (to minimize rowMeans calcs)
+        uniq_to <- sort(unique(to(OL)))
+        matMeans <- rowMeans(junc_counts[uniq_to, ])
+
+        # Match junction means to hash table
+        OL_DT$to_idx <- match(OL_DT$to, uniq_to)
+        OL_DT$countMeans <- matMeans[OL_DT$to_idx]
+
+        # Reduce hash table by max junction count and its coordinates, per IR
+        OL_DT <- OL_DT[OL_DT[, .I[which.max(get("countMeans"))], by="from"]$V1]
+        OL_DT$coord <- rownames(junc_counts)[OL_DT$to]
+
+        # Reduce IR events to whether max junction coord matches IR event
+        coord_maxSplice <- character(length(se.coords.gr))
+        coord_maxSplice[OL_DT$from] <- OL_DT$coord
+        se.IR <- se.IR[coord_maxSplice == rowData(se.IR)$EventRegion,]
+        
+        se <- se[c(
+            which(rowData(se)$EventName %in% rowData(se.IR)$EventName),
+            which(rowData(se)$EventType != "IR")
+        ), ]
+        
+        rm(OL_DT, coord_maxSplice)
+    }
+    
+    rm(se.IR)
+    gc()
+    return(se)
 }

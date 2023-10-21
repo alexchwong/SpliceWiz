@@ -4,7 +4,7 @@ globalVariables(c(":=", "."))
 
 ASE_version <- "1.1.6"
 
-collateData_version <- "1.1.6"
+collateData_version <- "1.3.4"
 
 buildRef_version <- "1.1.6"
 

@@ -1350,6 +1350,36 @@ Get_GTF_file <- function(reference_path) {
     ))
     rm(Exons)
 
+    # Guarantees only 1 seqname per gene_id
+    gene_seqname <- unique(data.table(
+        seqname = as.character(seqnames(gtf_gr)),
+        gene_id = gtf_gr$gene_id
+    ))
+    dup_gene_id <- unique(gene_seqname$gene_id[
+        duplicated(gene_seqname$gene_id)
+    ])
+    if(length(dup_gene_id) > 0) {
+        .log(paste(
+            "In GTF file, multiple seqnames found for the following gene_id:",
+            paste(dup_gene_id, collapse = " ")
+        ))
+    }
+
+    # Guarantees only 1 seqname per transcript_id
+    transcript_seqname <- na.omit(unique(data.table(
+        seqname = as.character(seqnames(gtf_gr)),
+        transcript_id = gtf_gr$transcript_id
+    )))
+    dup_tr_id <- unique(transcript_seqname$transcript_id[
+        duplicated(transcript_seqname$transcript_id)
+    ])
+    if(length(dup_tr_id) > 0) {
+        .log(paste(
+            "In GTF file, multiple seqnames found for the following transcript_id:",
+            paste(dup_tr_id, collapse = " ")
+        ))
+    }
+
     # Ensure the following columns are found in the fixed gtf:
     # - transcript_name,
     # - transcript_biotype, transcript_support_level
@@ -1977,10 +2007,13 @@ Get_GTF_file <- function(reference_path) {
     # reset
     candidate.introns[, c("start") := get("intron_start")]
     candidate.introns[, c("end") := get("intron_end")]
+
+    oldScipen <- options(scipen=999)
     candidate.introns[, c("Event") := paste0(
         get("seqnames"), ":", get("intron_start"), "-",
         get("intron_end"), "/", get("strand")
     )]
+    options(oldScipen)
     return(candidate.introns)
 }
 
@@ -4095,8 +4128,8 @@ Get_GTF_file <- function(reference_path) {
         AS_Table_search.a[get("EventType") != "AFE" | get("in_1a") == 1]
     AS_Table_search.a <-
         AS_Table_search.a[get("EventType") != "ALE" | get("is_last_intron")]
-    AS_Table_search.a[, c("Event") := get("Event2a")]
-    AS_Table_search.a[is.na(get("Event")), c("Event") := get("Event1a")]
+    AS_Table_search.a[, c("Event") := get("Event1a")]
+    AS_Table_search.a[!is.na(get("Event2a")), c("Event") := get("Event2a")]
     AS_Table_search.a <- candidate.introns.order[AS_Table_search.a,
         on = c("Event", "transcript_id", "transcript_support_level"),
         c("EventType", "EventID", "Event1a", "Event2a", "transcript_id",
@@ -4122,8 +4155,8 @@ Get_GTF_file <- function(reference_path) {
         AS_Table_search.b[get("EventType") != "AFE" | get("in_1b") == 1]
     AS_Table_search.b <-
         AS_Table_search.b[get("EventType") != "ALE" | get("is_last_intron")]
-    AS_Table_search.b[, c("Event") := get("Event2b")]
-    AS_Table_search.b[is.na(get("Event")), c("Event") := get("Event1b")]
+    AS_Table_search.b[, c("Event") := get("Event1b")]
+    AS_Table_search.b[!is.na(get("Event2b")), c("Event") := get("Event2b")]
     AS_Table_search.b <- candidate.introns.order[AS_Table_search.b,
         on = c("Event", "transcript_id", "transcript_support_level"),
         c("EventType", "EventID", "Event1b", "Event2b", "transcript_id",
@@ -4547,8 +4580,28 @@ Get_GTF_file <- function(reference_path) {
     for(suffix in str_to_translate) {
         DNA <- paste("DNA", suffix, sep = "_")
         AA <- paste("AA", suffix, sep = "_")
+
+        # Convert to NA if all N's
+        
         AS_Table.Extended[nchar(get(DNA)) > 0,
-            c(AA) := .translate_fuzzy(get(DNA))]    
+            c("tmp_N") := vapply(
+                nchar(get(DNA)), function(x) paste(rep("N", x), collapse = ""), 
+                FUN.VALUE = character(1)
+            )
+        ]
+        AS_Table.Extended[get(DNA) == get("tmp_N"), c(DNA) := NA]
+        AS_Table.Extended$tmp_N <- NULL
+
+        tryCatch({
+            AS_Table.Extended[nchar(get(DNA)) > 0,
+                c(AA) := .translate_fuzzy(get(DNA))]    
+        }, error = function(err) {
+            # Allow progression even when translation fails
+            .log(paste(
+                "Translation to amino acids failed for ", DNA, ", skipping"                
+            ), "warning")
+        })
+
     }
     return(AS_Table.Extended)
 }

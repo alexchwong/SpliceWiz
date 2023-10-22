@@ -43,8 +43,8 @@ jobs:
             --env R_LIBS_USER=/R-lib
           run: |
             echo "options(Ncpus=2L, timeout = 300)" >> ~/.Rprofile
-            mkdir SpliceWiz
-            mv * SpliceWiz/
+            mkdir build/SpliceWiz
+            mv build/* build/SpliceWiz/
             Rscript -e 'pkgs <- remotes::dev_package_deps("/build/SpliceWiz", dependencies = TRUE)' \
                     -e 'BiocManager::install(pkgs$package, update = TRUE, ask = FALSE)'
   

@@ -43,34 +43,16 @@ jobs:
             --env R_LIBS_USER=/R-lib
           run: |
             echo "options(Ncpus=2L, timeout = 300)" >> ~/.Rprofile
-            Rscript -e 'remotes::install_local(dependencies = TRUE, repos = BiocManager::repositories(), build_vignettes = FALSE, upgrade = TRUE)'
-
+            mkdir SpliceWiz
+            mv * SpliceWiz/
+            Rscript -e 'pkgs <- remotes::dev_package_deps("/build/SpliceWiz", dependencies = TRUE)' \
+                    -e 'BiocManager::install(pkgs$package, update = TRUE, ask = FALSE)'
+  
   check-arm64:
     name: Test package on ARM64
     runs-on: ubuntu-22.04
     needs:   install-dependencies
     steps:
-
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Make R library
-        run: mkdir -p ${RUNNER_TEMP}/R-lib
-        
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-        with:
-          platforms: arm64
-
-      - name: Cache Dependencies
-        id: cache-deps
-        uses: actions/cache@v3
-        with:
-          path: ${{ runner.temp }}/R-lib
-          key: R_lib-ARM64-${{ hashFiles('**/DESCRIPTION') }}
-          restore-keys: |
-            R_lib-ARM64-${{ hashFiles('**/DESCRIPTION') }}
-            R_lib-ARM64-
 
       - name: Test Package
         uses: addnab/docker-run-action@v3
@@ -84,14 +66,14 @@ jobs:
             --workdir /build
           run: |
             ## Install and store the log like on the BioC Build System
-            R CMD INSTALL . &> SpliceWiz.install-out.txt
+            R CMD INSTALL SpliceWiz &> SpliceWiz.install-out.txt
             if [ $? -eq  1 ]; then
               cat SpliceWiz.install-out.txt
               exit 1;
             fi
             
             ## build the package
-            R CMD build --keep-empty-dirs --no-resave-data .
+            R CMD build --keep-empty-dirs --no-resave-data SpliceWiz
             if [ $? -eq  1 ]; then exit 1; fi
             
             ## Check the package using the shortcut from the BBS

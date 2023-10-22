@@ -30,9 +30,23 @@ jobs:
           restore-keys: |
             R_lib-ARM64-${{ hashFiles('**/DESCRIPTION') }}
             R_lib-ARM64-
-            
-  install-arm64:
-    name: Install package on ARM64
+      
+      - name: Install the dependencies
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ghcr.io/grimbough/bioc-with-tinytex:devel-arm64
+          shell: bash
+          options: |
+            --platform linux/arm64
+            --volume ${{ runner.temp }}/R-lib:/R-lib
+            --volume ${{ github.workspace }}:/build
+            --env R_LIBS_USER=/R-lib
+          run: |
+            echo "options(Ncpus=2L, timeout = 300)" >> ~/.Rprofile
+            Rscript -e 'remotes::install_local(dependencies = TRUE, repos = BiocManager::repositories(), build_vignettes = FALSE, upgrade = TRUE)'
+
+  check-arm64:
+    name: Test package on ARM64
     runs-on: ubuntu-22.04
     needs:   install-dependencies
     steps:
@@ -58,7 +72,7 @@ jobs:
             R_lib-ARM64-${{ hashFiles('**/DESCRIPTION') }}
             R_lib-ARM64-
 
-      - name: Install dependencies pass 1
+      - name: Test Package
         uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/grimbough/bioc-with-tinytex:devel-arm64
@@ -69,86 +83,26 @@ jobs:
             --env R_LIBS_USER=/R-lib
             --workdir /build
           run: |
-            ## Try installing the package dependencies in steps. First the local
-            ## dependencies, then any remaining dependencies to avoid the
-            ## issues described at
-            ## https://stat.ethz.ch/pipermail/bioc-devel/2020-April/016675.html
-            ## https://github.com/r-lib/remotes/issues/296
-            ## Ideally, all dependencies should get installed in the first pass.
-
-            message(paste('****', Sys.time(), 'installing BiocManager ****'))
-            remotes::install_cran("BiocManager")
-
-            BiocManager::install(version = "3.17", ask = FALSE, force = TRUE)
-          
-            ## For running the checks
-            message(paste('****', Sys.time(), 'installing rcmdcheck and BiocCheck ****'))
-            install.packages(c("rcmdcheck", "BiocCheck"), repos = BiocManager::repositories())
-
-            BiocManager::install("BiocGenerics")
-
-            ## Pass #1 at installing dependencies
-            message(paste('****', Sys.time(), 'pass number 1 at installing dependencies: local dependencies ****'))
-            remotes::install_local(dependencies = TRUE, repos = BiocManager::repositories(), build_vignettes = FALSE, upgrade = TRUE)
-          shell: Rscript {0}
-
-      - name: Install dependencies pass 2
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ghcr.io/grimbough/bioc-with-tinytex:devel-arm64
-          options: |
-            --platform linux/arm64
-            --volume ${{ runner.temp }}/R-lib:/R-lib
-            --volume ${{ github.workspace }}:/build
-            --env R_LIBS_USER=/R-lib
-            --workdir /build
-          run: |
-            ## Pass #2 at installing dependencies
-            message(paste('****', Sys.time(), 'pass number 2 at installing dependencies: any remaining dependencies ****'))
-            remotes::install_local(dependencies = TRUE, repos = BiocManager::repositories(), build_vignettes = TRUE, upgrade = TRUE, force = TRUE)
-          shell: Rscript {0}
-
-  check-arm64:
-    name: Test package on ARM64
-    runs-on: ubuntu-22.04
-    needs:   install-arm64
-    steps:
-
-      - name: Session info
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ghcr.io/grimbough/bioc-with-tinytex:devel-arm64
-          options: |
-            --platform linux/arm64
-            --volume ${{ runner.temp }}/R-lib:/R-lib
-            --volume ${{ github.workspace }}:/build
-            --env R_LIBS_USER=/R-lib
-            --workdir /build
-          run: |
-            options(width = 100)
-            pkgs <- installed.packages()[, "Package"]
-            sessioninfo::session_info(pkgs, include_base = TRUE)
-          shell: Rscript {0}
-
-      - name: Run CMD check
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ghcr.io/grimbough/bioc-with-tinytex:devel-arm64
-          options: |
-            --platform linux/arm64
-            --volume ${{ runner.temp }}/R-lib:/R-lib
-            --volume ${{ github.workspace }}:/build
-            --env R_LIBS_USER=/R-lib
-            --workdir /build
-          run: |
-            options(crayon.enabled = TRUE)
-            rcmdcheck::rcmdcheck(
-              args = c("--no-manual", "--no-vignettes", "--timings"),
-              build_args = c("--no-manual", "--keep-empty-dirs", "--no-resave-data"),
-              error_on = "warning",
-              check_dir = "check"
-            )
-          shell: Rscript {0}
+            ## Install and store the log like on the BioC Build System
+            R CMD INSTALL . &> SpliceWiz.install-out.txt
+            if [ $? -eq  1 ]; then
+              cat SpliceWiz.install-out.txt
+              exit 1;
+            fi
+            
+            ## build the package
+            R CMD build --keep-empty-dirs --no-resave-data .
+            if [ $? -eq  1 ]; then exit 1; fi
+            
+            ## Check the package using the shortcut from the BBS
+            R CMD check --install=check:SpliceWiz.install-out.txt --library="${R_LIBS_USER}" --no-vignettes --timings SpliceWiz*.tar.gz
+            if [ $? -eq  1 ]; then exit 1; fi
+            
+            ## build a package binary for Linux ARM64
+            mkdir -p SpliceWiz.buildbin-libdir
+            R CMD INSTALL --build --library=SpliceWiz.buildbin-libdir SpliceWiz*.tar.gz
+            if [ $? -eq  1 ]; then exit 1; fi
+          shell: bash
 
       - uses: actions/upload-artifact@v3
         if: always()

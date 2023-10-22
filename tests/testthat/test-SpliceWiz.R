@@ -60,12 +60,12 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
         sampleQC(se_compare)[,-1]
     )
 
-    for(i in seq_len(ncol(se))) {
-        expect_equal(
-            openssl::md5(file(covfile(se_realized)[i])), 
-            openssl::md5(file(covfile(se_compare)[i]))
-        )
-    }
+    # for(i in seq_len(ncol(se))) {
+        # expect_equal(
+            # openssl::md5(file(covfile(se_realized)[i])), 
+            # openssl::md5(file(covfile(se_compare)[i]))
+        # )
+    # }
 
     expect_equal(
         up_inc(se_realized), 

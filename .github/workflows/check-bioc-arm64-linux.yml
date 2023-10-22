@@ -156,9 +156,6 @@ jobs:
             --volume ${{ github.workspace }}:/build
             --env R_LIBS_USER=/R-lib
             --workdir /build
-          env:
-            _R_CHECK_CRAN_INCOMING_: false
-            DISPLAY: 99.0
           run: |
             options(crayon.enabled = TRUE)
             rcmdcheck::rcmdcheck(

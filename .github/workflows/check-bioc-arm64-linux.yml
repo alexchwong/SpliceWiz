@@ -43,8 +43,9 @@ jobs:
             --env R_LIBS_USER=/R-lib
           run: |
             echo "options(Ncpus=2L, timeout = 300)" >> ~/.Rprofile
+            everyth=`ls build/`
             mkdir build/SpliceWiz
-            mv !(build/SpliceWiz) build/SpliceWiz/
+            mv ${everyth} build/SpliceWiz/
             Rscript -e 'pkgs <- remotes::dev_package_deps("/build/SpliceWiz", dependencies = TRUE)' \
                     -e 'BiocManager::install(pkgs$package, update = TRUE, ask = FALSE)'
   
@@ -85,8 +86,9 @@ jobs:
             --env R_LIBS_USER=/R-lib
             --workdir /build
           run: |
+            everyth=`ls *`
             mkdir SpliceWiz
-            mv !(SpliceWiz) SpliceWiz/
+            mv ${everyth} SpliceWiz/
 
             ## Install and store the log like on the BioC Build System
             R CMD INSTALL SpliceWiz &> SpliceWiz.install-out.txt

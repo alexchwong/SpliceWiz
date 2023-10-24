@@ -32,6 +32,7 @@ jobs:
             
       - name: Install Dependencies
         uses: addnab/docker-run-action@v3
+        timeout-minutes: 1000
         with:
           image: ghcr.io/grimbough/bioc-with-tinytex:devel-arm64
           options: |
@@ -78,7 +79,6 @@ jobs:
             
       - name: Test Package
         uses: addnab/docker-run-action@v3
-        timeout-minute: 1000
         with:
           image: ghcr.io/grimbough/bioc-with-tinytex:devel-arm64
           options: |

@@ -1594,9 +1594,10 @@ Get_GTF_file <- function(reference_path) {
     if(sum(gtf_gr$type == "CDS") + sum(gtf_gr$type == "start_codon") == 0) {
         .log(paste(
             "No protein information detected in reference!",
-            "Ensure there are valid entries with type == `CDS`",
+            "For full functionality,",
+            "ensure there are valid entries with type == `CDS`",
             "and type == `start_codon` in the gtf file.",
-            "Protein reference and NMD annotation is skipped.",
+            "Protein reference and NMD annotation is skipped."
         ), "message")
         return(0)
     }

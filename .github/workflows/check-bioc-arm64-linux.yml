@@ -35,7 +35,7 @@ jobs:
             mkdir SpliceWiz
             mv ${everyth} SpliceWiz/
 
-            Rscript -e 'pkgs <- remotes::dev_package_deps("/SpliceWiz", dependencies = TRUE)' \
+            Rscript -e 'pkgs <- remotes::dev_package_deps("SpliceWiz", dependencies = TRUE)' \
                     -e 'BiocManager::install(pkgs$package, update = TRUE, ask = FALSE)'
 
             ## Install and store the log like on the BioC Build System

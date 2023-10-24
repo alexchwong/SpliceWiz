@@ -5,20 +5,30 @@ on:
   pull_request:
 
 jobs: 
-  check-arm64:
+  install-dependencies:
     name: Test package on ARM64
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Make R library
-        run: mkdir -p ${RUNNER_TEMP}/R-lib
-        
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         with:
           platforms: arm64
+        
+      - name: Make R library
+        run: mkdir -p ${RUNNER_TEMP}/R-lib
+        
+      - name: Cache Dependencies
+        id: cache-deps
+        uses: actions/cache@v3
+        with:
+          path: ${{ runner.temp }}/R-lib
+          key: R_lib-ARM64-${{ hashFiles('**/DESCRIPTION') }}
+          restore-keys: |
+            R_lib-ARM64-${{ hashFiles('**/DESCRIPTION') }}
+            R_lib-ARM64-
             
       - name: Test Package
         uses: addnab/docker-run-action@v3
@@ -37,6 +47,60 @@ jobs:
 
             Rscript -e 'pkgs <- remotes::dev_package_deps("SpliceWiz", dependencies = TRUE)' \
                     -e 'BiocManager::install(pkgs$package, update = TRUE, ask = FALSE)'
+
+          shell: bash
+
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: my-artifact
+          path: |
+            ~/**/*.tar.gz
+            ~/**/*.install-out.txt
+            ~/**/*.Rcheck
+          if-no-files-found: warn
+          
+
+  check-arm64:
+    name: Test package on ARM64
+    runs-on: ubuntu-22.04
+    needs:   install-dependencies
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: arm64
+        
+      - name: Make R library
+        run: mkdir -p ${RUNNER_TEMP}/R-lib
+        
+      - name: Cache Dependencies
+        id: cache-deps
+        uses: actions/cache@v3
+        with:
+          path: ${{ runner.temp }}/R-lib
+          key: R_lib-ARM64-${{ hashFiles('**/DESCRIPTION') }}
+          restore-keys: |
+            R_lib-ARM64-${{ hashFiles('**/DESCRIPTION') }}
+            R_lib-ARM64-
+            
+      - name: Test Package
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ghcr.io/grimbough/bioc-with-tinytex:devel-arm64
+          options: |
+            --platform linux/arm64
+            --volume ${{ runner.temp }}/R-lib:/R-lib
+            --volume ${{ github.workspace }}:/build
+            --env R_LIBS_USER=/R-lib
+            --workdir /build
+          run: |
+            everyth=`ls *`
+            mkdir SpliceWiz
+            mv ${everyth} SpliceWiz/
 
             ## Install and store the log like on the BioC Build System
             R CMD INSTALL SpliceWiz &> SpliceWiz.install-out.txt

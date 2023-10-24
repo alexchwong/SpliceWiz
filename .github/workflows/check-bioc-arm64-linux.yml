@@ -8,7 +8,6 @@ jobs:
   check-arm64:
     name: Test package on ARM64
     runs-on: ubuntu-22.04
-    needs:   install-dependencies
     steps:
       - name: Checkout
         uses: actions/checkout@v3

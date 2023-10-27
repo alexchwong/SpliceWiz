@@ -4072,8 +4072,12 @@ Get_GTF_file <- function(reference_path) {
     if (!("transcript_support_level" %in% colnames(candidate.introns))) {
         candidate.introns.order[, c("transcript_support_level") := "NA"]
     }
-    candidate.introns.order[,
-        c("is_protein_coding") := !is.na(get("protein_id"))]
+    if(!("protein_id" %in% colnames(candidate.introns))) {
+        candidate.introns.order[, c("is_protein_coding") := FALSE]
+    } else {
+        candidate.introns.order[,
+            c("is_protein_coding") := !is.na(get("protein_id"))]
+    }
     candidate.introns.order[, by = "transcript_id",
         c("is_last_intron") :=
             (get("intron_number") == max(get("intron_number")))]

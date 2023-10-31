@@ -432,6 +432,32 @@ getAvailableGO <- function(
     }
 }
 
+.check_cached_resource <- function(cache_loc, ah_id, ah) {
+    dbcon <- DBI::dbConnect(
+        DBI::dbDriver("SQLite"), 
+        dbname = cache_loc
+    )
+    is_resource_legit <- tryCatch(
+        {
+            genes_DT <- as.data.table(DBI::dbGetQuery(dbcon, paste(
+              "SELECT *",
+              "FROM go",
+              "LEFT JOIN ensembl",
+              "ON go._id = ensembl._id"
+            )))
+            TRUE
+        }, error = function(e) {
+            FALSE
+        }
+    )
+    DBI::dbDisconnect(dbcon)
+    if(!is_resource_legit) {
+        removeResources(ah, ah_id)
+        cache_loc <- AnnotationHub::cache(ah_id)
+    }
+    return(cache_loc)
+}
+
 # Retrieves cache file name of orgDB resource of given species
 .fetch_orgDB <- function(
     species = "",
@@ -450,6 +476,7 @@ getAvailableGO <- function(
     ah_orgListEns <- query(ah_orgList, "Ensembl")
     ah_orgDb <- subset(ah_orgListEns, ah_orgListEns$species == species)
     cache_loc <- AnnotationHub::cache(ah_orgDb[1])
+    cache_loc <- .check_cached_resource(cache_loc, ah_orgDb[1], ah)
     return(cache_loc)
 }
 

@@ -276,21 +276,22 @@ makeSE <- function(
     dash_progress("Linking assays...", N)
     if(verbose) .log("...linking assays", "message")
     se@assays <- .makeSE_adjust_paths(se)
-    se@metadata[["Up_Inc"]] <- .makeSE_expand_assay_path(
-        se@metadata[["Up_Inc"]], collate_path)
-    se@metadata[["Down_Inc"]] <- .makeSE_expand_assay_path(
-        se@metadata[["Down_Inc"]], collate_path)
-    se@metadata[["Up_Exc"]] <- .makeSE_expand_assay_path(
-        se@metadata[["Up_Exc"]], collate_path)
-    se@metadata[["Down_Exc"]] <- .makeSE_expand_assay_path(
-        se@metadata[["Down_Exc"]], collate_path)
     
-    se@metadata[["junc_PSI"]] <- .makeSE_expand_assay_path(
-        se@metadata[["junc_PSI"]], collate_path)
-    se@metadata[["junc_counts"]] <- .makeSE_expand_assay_path(
-        se@metadata[["junc_counts"]], collate_path)    
-    se@metadata[["junc_counts_uns"]] <- .makeSE_expand_assay_path(
-        se@metadata[["junc_counts_uns"]], collate_path)  
+    metadata_opts <- c("Up_Inc", "Down_Inc", "Up_Exc", "Down_Exc")
+    junc_opts <- c("junc_PSI", "junc_counts", "junc_counts_uns")
+
+    for(mopt in metadata_opts) {
+        if(mopt in names(se@metadata)) {
+            se@metadata[[mopt]] <- .makeSE_expand_assay_path(
+                se@metadata[[mopt]], collate_path)
+        }
+    }
+    for(jopt in junc_opts) {
+        if(jopt in names(se@metadata)) {
+            se@metadata[[jopt]] <- .makeSE_expand_assay_path(
+                se@metadata[[jopt]], collate_path)
+        }
+    }
 
     # Locate relative paths of COV files, or have all-empty if not all are found
     dash_progress("Linking COV files...", N)

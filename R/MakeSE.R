@@ -281,13 +281,13 @@ makeSE <- function(
     junc_opts <- c("junc_PSI", "junc_counts", "junc_counts_uns")
 
     for(mopt in metadata_opts) {
-        if(mopt in names(se@metadata)) {
+        if(mopt %in% names(se@metadata)) {
             se@metadata[[mopt]] <- .makeSE_expand_assay_path(
                 se@metadata[[mopt]], collate_path)
         }
     }
     for(jopt in junc_opts) {
-        if(jopt in names(se@metadata)) {
+        if(jopt %in% names(se@metadata)) {
             se@metadata[[jopt]] <- .makeSE_expand_assay_path(
                 se@metadata[[jopt]], collate_path)
         }

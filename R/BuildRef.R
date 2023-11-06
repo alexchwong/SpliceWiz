@@ -1342,18 +1342,78 @@ Get_GTF_file <- function(reference_path) {
 # - also fix missing gene_name and transcript_names in newer Ensembl refs
 .fix_gtf <- function(gtf_gr) {
 
+    # Guarantee transcript_id and gene_id exists
+    .fix_gtf_check_metadata_columns(gtf_gr)
+
+    # Guarantees only 1 seqname per gene_id
+    .fix_gtf_check_one_seqname_per_gene_id(gtf_gr)
+
+    # Guarantees only 1 seqname per transcript_id
+    .fix_gtf_check_one_seqname_per_transcript_id(gtf_gr)
+    
     # Guarantee type == "exon" is annotated in gtf
-    Exons <- gtf_gr[gtf_gr$type == "exon"]
-    if (length(Exons) == 0) .log(paste(
+    # - throws error if not so
+    gtf_gr <- .fix_gtf_check_type_exon(gtf_gr)
+
+    # Guarantee type == "transcript" is annotated in gtf
+    # - fixes this if not so
+    gtf_gr <- .fix_gtf_fix_type_transcript(gtf_gr)
+    
+    # Ensure the following columns are found in the fixed gtf:
+    # - transcript_name,
+    # - transcript_biotype, transcript_support_level
+    gtf_gr <- .fix_gtf_fix_transcript_metadata(gtf_gr)
+
+    # Guarantee type == "gene" is annotated in gtf
+    # - fixes this if not so
+    gtf_gr <- .fix_gtf_fix_type_gene(gtf_gr)
+
+    # Ensure the following columns are found in the fixed gtf:
+    # - gene_name, gene_biotype, 
+    gtf_gr <- .fix_gtf_fix_gene_metadata(gtf_gr)
+    
+    return(gtf_gr)
+}
+
+.fix_gtf_check_metadata_columns <- function(gtf) {
+    must_have_meta <- c("transcript_id", "gene_id")
+    has_meta <- intersect(must_have_meta, names(mcols(gtf)))
+    not_have_meta <- setdiff(must_have_meta, has_meta)
+    if(length(not_have_meta) > 0) .log(paste(
+        "The following mandatory metadata missing from gtf:",
+        paste(not_have_meta, collapse = ", ")
+    ))
+    invisible()
+}
+
+.fix_gtf_check_type_exon <- function(gtf) {
+    if (sum(gtf$type == "exon") == 0) .log(paste(
         "No exons detected in reference!",
         "Ensure there are entries in the gtf file with type == `exon`"
     ))
-    rm(Exons)
+    
+    # Ensure exon_number exists
+    if(!("exon_number" %in% names(mcols(gtf)))) {
+        Exons <- as.data.table(gtf[gtf$type == "exon"])
+        setorderv(Exons, "start", order = 1)
+        Exons[, c("exon_number") := data.table::rowid(get("transcript_id"))]
+        Exons[get("strand") == "-",
+            c("exon_number") :=
+                max(get("exon_number")) + 1 - get("exon_number"),
+            by = "transcript_id"
+        ]
+        gtf <- c(
+            gtf[gtf$type != "exon"],
+            .grDT(Exons, keep.extra.columns = TRUE)
+        )
+    }
+    return(gtf)
+}
 
-    # Guarantees only 1 seqname per gene_id
+.fix_gtf_check_one_seqname_per_gene_id <- function(gtf) {
     gene_seqname <- unique(data.table(
-        seqname = as.character(seqnames(gtf_gr)),
-        gene_id = gtf_gr$gene_id
+        seqname = as.character(seqnames(gtf)),
+        gene_id = gtf$gene_id
     ))
     dup_gene_id <- unique(gene_seqname$gene_id[
         duplicated(gene_seqname$gene_id)
@@ -1364,11 +1424,13 @@ Get_GTF_file <- function(reference_path) {
             paste(dup_gene_id, collapse = " ")
         ))
     }
+    invisible()
+}
 
-    # Guarantees only 1 seqname per transcript_id
+.fix_gtf_check_one_seqname_per_transcript_id <- function(gtf) {
     transcript_seqname <- na.omit(unique(data.table(
-        seqname = as.character(seqnames(gtf_gr)),
-        transcript_id = gtf_gr$transcript_id
+        seqname = as.character(seqnames(gtf)),
+        transcript_id = gtf$transcript_id
     )))
     dup_tr_id <- unique(transcript_seqname$transcript_id[
         duplicated(transcript_seqname$transcript_id)
@@ -1379,114 +1441,134 @@ Get_GTF_file <- function(reference_path) {
             paste(dup_tr_id, collapse = " ")
         ))
     }
+    invisible()
+}
 
-    # Ensure the following columns are found in the fixed gtf:
-    # - transcript_name,
-    # - transcript_biotype, transcript_support_level
-    if ("transcript_name" %in% names(mcols(gtf_gr))) {
-        gtf_gr$transcript_name[is.na(gtf_gr$transcript_name)] <-
-            gtf_gr$transcript_id[is.na(gtf_gr$transcript_name)]
-        gtf_gr$transcript_name <- gsub("/", "_", gtf_gr$transcript_name)
-    } else {
-        gtf_gr$transcript_name <- gtf_gr$transcript_id
-    }
-    if (!("transcript_biotype" %in% names(mcols(gtf_gr)))) {
-        if("transcript_type" %in% names(mcols(gtf_gr))) {
-            colnames(mcols(gtf_gr))[
-                which(colnames(mcols(gtf_gr)) == "transcript_type")
-            ] <- "transcript_biotype"
-        } else {
-            gtf_gr$transcript_biotype <- "protein_coding"        
-        }
-    }
-    if (!("transcript_support_level" %in% names(mcols(gtf_gr)))) {
-        gtf_gr$transcript_support_level <- 1
-    }
-
-    # Ensure the following columns are found in the fixed gtf:
-    # - gene_name, gene_biotype, \
-    if ("gene_name" %in% names(mcols(gtf_gr))) {
-        gtf_gr$gene_name[is.na(gtf_gr$gene_name)] <-
-            gtf_gr$gene_id[is.na(gtf_gr$gene_name)]
-        gtf_gr$gene_name <- gsub("/", "_", gtf_gr$gene_name)
-
-        # Check for duplicated gene names, replace these with:
-        #   "{gene_name}_{gene_id}"
-        unique_gene_id <- unique(gtf_gr$gene_id)
-        unique_gene_name <- gtf_gr$gene_name[
-            match(unique_gene_id, gtf_gr$gene_id)]
-        
-        dup_gene_names <- unique(unique_gene_name[
-            duplicated(unique_gene_name)])
-        if(length(dup_gene_names) > 0) {
-            gtf_gr$transcript_name[gtf_gr$gene_name %in% dup_gene_names] <-
-                gtf_gr$transcript_id[gtf_gr$gene_name %in% dup_gene_names]
-                
-            # Replace {gene_name} with {gene_name}_{gene_id}
-            gtf_gr$gene_name[gtf_gr$gene_name %in% dup_gene_names] <-
-                paste(
-                    gtf_gr$gene_name[gtf_gr$gene_name %in% dup_gene_names],
-                    gtf_gr$gene_id[gtf_gr$gene_name %in% dup_gene_names],
-                    sep = "_"
-                )
-        }
-    } else {
-        gtf_gr$gene_name <- gtf_gr$gene_id
-    }
-    # Fix gene_biotype
-    if ("gene_biotype" %in% names(mcols(gtf_gr))) {
-        # do nothing
-    } else if ("gene_type" %in% names(mcols(gtf_gr))) {
-        colnames(mcols(gtf_gr))[
-            which(colnames(mcols(gtf_gr)) == "gene_type")
-        ] <- "gene_biotype"
-    } else {
-        mcols(gtf_gr)$gene_biotype <- "protein_coding"
-    }
-    
-    Transcripts <- gtf_gr[gtf_gr$type == "transcript"]
+.fix_gtf_fix_type_transcript <- function(gtf) {
     # If transcript are not annotated by "type" column, then do manually
-    if (length(Transcripts) == 0) {
+    if (sum(gtf$type == "transcript") == 0) {
         tx_cols <- c("seqnames", "strand",
             "gene_id", "gene_name", "gene_biotype",
             "transcript_id", "transcript_name", "transcript_biotype")
-        Transcripts <- as.data.table(gtf_gr[gtf_gr$type == "exon"])
+        tx_cols <- intersect(tx_cols, names(mcols(gtf)))
+        Transcripts <- as.data.table(gtf[gtf$type == "exon"])
         Transcripts <- Transcripts[, c("start", "end", "width") := list(
             min(get("start")), max(get("end")),
             max(get("end")) - min(get("start")) + 1
         ), by = tx_cols]
         Transcripts <- unique(Transcripts, by = tx_cols)
+        dup_tx <- unique(Transcripts$transcript_id[
+            duplicated(Transcripts$transcript_id)])
+        if(length(dup_tx) > 0) .log(paste(
+            "Transcripts with duplicate metadata found for:",
+            paste(dup_tx, collapse = ", ")
+        ))
+        
         Transcripts$type <- "transcript"
         Transcripts <- .grDT(Transcripts, keep.extra.columns = TRUE)
         if (length(Transcripts) == 0) 
             .log("No transcripts detected in reference!")
 
         # Add annotated genes into gtf
-        gtf_gr <- c(gtf_gr, Transcripts)
+        gtf <- c(gtf, Transcripts)
     }
-    rm(Transcripts)
+    return(gtf)
+}
 
-    Genes <- gtf_gr[gtf_gr$type == "gene"]
+.fix_gtf_fix_transcript_metadata <- function(gtf) {
+    if ("transcript_name" %in% names(mcols(gtf))) {
+        gtf$transcript_name[is.na(gtf$transcript_name)] <-
+            gtf$transcript_id[is.na(gtf$transcript_name)]
+        gtf$transcript_name <- gsub("/", "_", gtf$transcript_name)
+    } else {
+        gtf$transcript_name <- gtf$transcript_id
+    }
+    if (!("transcript_biotype" %in% names(mcols(gtf)))) {
+        if("transcript_type" %in% names(mcols(gtf))) {
+            colnames(mcols(gtf))[
+                which(colnames(mcols(gtf)) == "transcript_type")
+            ] <- "transcript_biotype"
+        } else {
+            gtf$transcript_biotype <- "protein_coding"        
+        }
+    }
+    if (!("transcript_support_level" %in% names(mcols(gtf)))) {
+        gtf$transcript_support_level <- 1
+    }
+    return(gtf)
+}
+
+.fix_gtf_fix_type_gene <- function(gtf) {
+    Genes <- gtf[gtf$type == "gene"]
     if (length(Genes) == 0) {
         gene_cols <- c("seqnames", "strand",
             "gene_id", "gene_name", "gene_biotype")
-        Genes <- as.data.table(gtf_gr[gtf_gr$type == "transcript"])
+        gene_cols <- intersect(gene_cols, names(mcols(gtf)))
+        Genes <- as.data.table(gtf[gtf$type == "transcript"])
         Genes <- Genes[, c("start", "end", "width") := list(
             min(get("start")), max(get("end")),
             max(get("end")) - min(get("start")) + 1
         ), by = gene_cols]
         Genes <- unique(Genes, by = gene_cols)
+        dup_genes <- unique(Genes$gene_id[
+            duplicated(Genes$gene_id)])
+        if(length(dup_genes) > 0) .log(paste(
+            "Genes with duplicate metadata found for:",
+            paste(dup_genes, collapse = ", ")
+        ))
         Genes$type <- "gene"
         Genes <- .grDT(Genes, keep.extra.columns = TRUE)
         if (length(Genes) == 0) .log("No genes detected in reference!")
         
         # Add annotated genes into gtf
-        gtf_gr <- c(gtf_gr, Genes)
+        gtf <- c(gtf, Genes)
     }
-    rm(Genes)
-
-    return(gtf_gr)
+    return(gtf)
 }
+
+.fix_gtf_fix_gene_metadata <- function(gtf) {
+    if ("gene_name" %in% names(mcols(gtf))) {
+        gtf$gene_name[is.na(gtf$gene_name)] <-
+            gtf$gene_id[is.na(gtf$gene_name)]
+        gtf$gene_name <- gsub("/", "_", gtf$gene_name)
+
+        # Check for duplicated gene names (one gene_name, two gene_id)
+        # - replace these with: "{gene_name}_{gene_id}"
+        unique_gene_id <- unique(gtf$gene_id)
+        unique_gene_name <- gtf$gene_name[
+            match(unique_gene_id, gtf$gene_id)]
+        
+        dup_gene_names <- unique(unique_gene_name[
+            duplicated(unique_gene_name)])
+        if(length(dup_gene_names) > 0) {
+            gtf$transcript_name[gtf$gene_name %in% dup_gene_names] <-
+                gtf$transcript_id[gtf$gene_name %in% dup_gene_names]
+                
+            # Replace {gene_name} with {gene_name}_{gene_id}
+            gtf$gene_name[gtf$gene_name %in% dup_gene_names] <-
+                paste(
+                    gtf$gene_name[gtf$gene_name %in% dup_gene_names],
+                    gtf$gene_id[gtf$gene_name %in% dup_gene_names],
+                    sep = "_"
+                )
+        }
+    } else {
+        gtf$gene_name <- gtf$gene_id
+    }
+    # Fix gene_biotype
+    if ("gene_biotype" %in% names(mcols(gtf))) {
+        # do nothing
+    } else if ("gene_type" %in% names(mcols(gtf))) {
+        colnames(mcols(gtf))[
+            which(colnames(mcols(gtf)) == "gene_type")
+        ] <- "gene_biotype"
+    } else {
+        mcols(gtf)$gene_biotype <- "protein_coding"
+    }
+    return(gtf)
+}
+
+################################################################################
 
 .gtf_get_genome_style <- function(gtf_gr) {
     seqnames <- names(seqinfo(gtf_gr))
@@ -1591,12 +1673,12 @@ Get_GTF_file <- function(reference_path) {
 
 .process_gtf_misc <- function(gtf_gr, reference_path, verbose = TRUE) {
     # If the requisite elements are not found, skip this entire step
-    if(sum(gtf_gr$type == "CDS") + sum(gtf_gr$type == "start_codon") == 0) {
+    if(sum(gtf_gr$type == "CDS") == 0) {
         .log(paste(
             "No protein information detected in reference!",
             "For full functionality,",
             "ensure there are valid entries with type == `CDS`",
-            "and type == `start_codon` in the gtf file.",
+            "in the gtf file.",
             "Protein reference and NMD annotation is skipped."
         ), "message")
         return(0)
@@ -2830,14 +2912,20 @@ Get_GTF_file <- function(reference_path) {
     Exons.tr <- as.data.table(
         read.fst(file.path(reference_path, "fst", "Exons.fst"))
     )
-    Misc <- as.data.table(
-        read.fst(file.path(reference_path, "fst", "Misc.fst"))
+    Proteins <- as.data.table(
+        read.fst(file.path(reference_path, "fst", "Proteins.fst"))
     )
-    start.DT <- Misc[get("type") == "start_codon"]
+    tx_cols <- c("seqnames", "strand", "transcript_id")
+    Proteins <- Proteins[, c("start", "end", "width") := list(
+        min(get("start")), max(get("end")),
+        max(get("end")) - min(get("start")) + 1
+    ), by = tx_cols]
+    Proteins <- unique(Proteins, by = tx_cols)
+    
     Exons.tr <- Exons.tr[get("transcript_id") %in%
-        start.DT[, get("transcript_id")]]
+        Proteins[, get("transcript_id")]]
 
-    Exons.tr[start.DT,
+    Exons.tr[Proteins,
         on = c("transcript_id"),
         c("sc_start", "sc_end") := list(get("i.start"), get("i.end"))
     ]

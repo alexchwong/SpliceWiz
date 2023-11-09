@@ -1392,16 +1392,28 @@ Get_GTF_file <- function(reference_path) {
         "Ensure there are entries in the gtf file with type == `exon`"
     ))
     
-    # Ensure exon_number exists
-    if(!("exon_number" %in% names(mcols(gtf)))) {
+    # Does gtf require editing?
+    if(!any(c("exon_number", "exon_id") %in% names(mcols(gtf)))) {
         Exons <- as.data.table(gtf[gtf$type == "exon"])
         setorderv(Exons, "start", order = 1)
-        Exons[, c("exon_number") := data.table::rowid(get("transcript_id"))]
-        Exons[get("strand") == "-",
-            c("exon_number") :=
-                max(get("exon_number")) + 1 - get("exon_number"),
-            by = "transcript_id"
-        ]
+    
+        # Ensure exon_number exists
+        if(!("exon_number" %in% names(mcols(gtf)))) {
+            Exons[, c("exon_number") := data.table::rowid(get("transcript_id"))]
+            Exons[get("strand") == "-",
+                c("exon_number") :=
+                    max(get("exon_number")) + 1 - get("exon_number"),
+                by = "transcript_id"
+            ]
+        }
+    
+        # Add exon_id if required
+        if(!("exon_id" %in% names(mcols(gtf)))) {
+            Exons[, c("exon_id") := paste(
+                get("transcript_id"), get("exon_number"), sep = "_"
+            )]
+        }
+        
         gtf <- c(
             gtf[gtf$type != "exon"],
             .grDT(Exons, keep.extra.columns = TRUE)

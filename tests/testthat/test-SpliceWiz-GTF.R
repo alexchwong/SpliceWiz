@@ -6,6 +6,7 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
     gtf <- rtracklayer::import(chrZ_gtf(), "gtf")
     gtf <- gtf[gtf$type %in% c("gene", "transcript", "exon")]
     gtf$protein_id <- gtf$ccds_id <- NULL
+    gtf$exon_id <- gtf$exon_number <- NULL
     
     rtracklayer::export(gtf, file.path(tempdir(), "tmp.gtf"), "gtf")
 

@@ -1393,7 +1393,7 @@ Get_GTF_file <- function(reference_path) {
     ))
     
     # Does gtf require editing?
-    if(!any(c("exon_number", "exon_id") %in% names(mcols(gtf)))) {
+    if(!all(c("exon_number", "exon_id") %in% names(mcols(gtf)))) {
         Exons <- as.data.table(gtf[gtf$type == "exon"])
         setorderv(Exons, "start", order = 1)
     

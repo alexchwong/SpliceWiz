@@ -560,7 +560,10 @@ STAR_alignReads <- function(
     if (gzipped) args <- c(args, "--readFilesCommand", shQuote("gzip -dc"))
     if (is_valid(trim_adaptor)) {
         if(.validate_STAR_version(silent = TRUE) >= "2.7.8a" && paired) {
-            args <- c(args, "--clip3pAdapterSeq", trim_adaptor, trim_adaptor)        
+            args <- c(args, 
+                "--clip3pAdapterSeq", trim_adaptor, trim_adaptor,
+                "--clip3pAdapterMMp", "0.1", "0.1"
+            )      
         } else {
             args <- c(args, "--clip3pAdapterSeq", trim_adaptor)        
         }

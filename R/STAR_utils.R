@@ -558,8 +558,13 @@ STAR_alignReads <- function(
 
     if (paired) args <- c(args, paste(fastq_2, collapse = ","))
     if (gzipped) args <- c(args, "--readFilesCommand", shQuote("gzip -dc"))
-    if (is_valid(trim_adaptor)) 
-        args <- c(args, "--clip3pAdapterSeq", trim_adaptor)
+    if (is_valid(trim_adaptor)) {
+        if(.validate_STAR_version(silent = TRUE) >= "2.7.8a" && paired) {
+            args <- c(args, "--clip3pAdapterSeq", trim_adaptor, trim_adaptor)        
+        } else {
+            args <- c(args, "--clip3pAdapterSeq", trim_adaptor)        
+        }
+    }
 
     if (!is.null(additional_args) && all(is.character(additional_args)))
         args <- c(args, additional_args)
@@ -567,7 +572,7 @@ STAR_alignReads <- function(
     system2(command = "STAR", args = args)
 }
 
-.validate_STAR_version <- function(type = "error") {
+.validate_STAR_version <- function(type = "error", silent = FALSE) {
     if (!(Sys.info()["sysname"] %in% c("Linux", "Darwin"))) {
         .log("STAR is only supported on Linux or MacOS", type = type)
         return(NULL)
@@ -598,7 +603,7 @@ STAR_alignReads <- function(
         .log(paste("STAR version < 2.5.0 is not supported;",
             "current version:", star_version), type = type)
     }
-    if (!is.null(star_version) && star_version >= "2.5.0") {
+    if (!is.null(star_version) && star_version >= "2.5.0" && !silent) {
         .log(paste("STAR version", star_version), type = "message")
     }
     return(star_version)

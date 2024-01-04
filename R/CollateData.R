@@ -2255,6 +2255,9 @@ collateData <- function(Experiment, reference_path, output_path,
     rowEvent.Extended.splice[, c("Exc_Is_NMD", "Inc_Is_NMD") := 
         list(FALSE, FALSE)]
 
+    tmpA <- Splice.Options.Summary[get("isoform") == "A"]
+    tmpB <- Splice.Options.Summary[get("isoform") == "B"]
+
     ## Important changes:
     ## - for IR, NMD is
     ##   - reported for all introns calculated in reference (not just CDS)
@@ -2286,8 +2289,6 @@ collateData <- function(Experiment, reference_path, output_path,
             # on = "EventName", c("Inc_Is_NMD") := get("i.all_is_NMD")]
         # rowEvent.Extended[Splice.Options.Summary[get("isoform") == "B"],
             # on = "EventName", c("Exc_Is_NMD") := get("i.all_is_NMD")]
-        tmpA <- Splice.Options.Summary[get("isoform") == "A"]
-        tmpB <- Splice.Options.Summary[get("isoform") == "B"]
 
         rowEvent.Extended.splice$Inc_Is_NMD <- tmpA$all_is_NMD[match(
             rowEvent.Extended.splice$EventName, tmpA$EventName)]
@@ -3459,6 +3460,8 @@ collateData <- function(Experiment, reference_path, output_path,
                 protein.DT[, fetchCols, with = FALSE],
                 misc.DT[, fetchCols, with = FALSE]
             ))
+        } else {
+            total.DT <- exons.DT
         }
     } else {
         total.DT <- exons.DT

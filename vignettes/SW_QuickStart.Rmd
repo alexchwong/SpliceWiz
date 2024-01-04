@@ -68,6 +68,37 @@ like these, where available.
 # FAQ
 
 <details>
+<summary>What are the system memory requirements for running SpliceWiz</summary>
+\
+We recommend the following memory requirements (RAM) for running various steps
+of SpliceWiz:
+
+**buildRef()**
+
+* Building human / mouse SpliceWiz reference: 8 gigabytes
+
+**processBAM()**
+
+* Processing small alignment (BAM) files (~20 million paired end reads): 8 gigabytes
+* Processing large BAM files (~100 million paired end reads): 16 gigabytes
+
+**collateData()**
+
+* Collating routine experiments (e.g. 3 replicates, 2 conditions): 8-16 gigabytes
+* Collating large experiments (20+ samples, using `lowMemoryMode=TRUE`): 32 gigabytes
+* Collating large experiments (20+ samples, using `lowMemoryMode=FALSE`): 
+8 gigabytes per thread
+
+**Differential analysis**
+
+* Differential analysis (routine experiments): 8 gigabytes
+* Differential analysis (large experiments - 20+ samples): 16 gigabytes
+* DESeq2-based differential analysis of large experiments: 32 gigabytes
+
+</details>
+\
+
+<details>
 <summary>How does SpliceWiz measure alternative splicing?</summary>
 \
 

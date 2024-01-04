@@ -98,10 +98,9 @@
 #' @aliases SpliceWiz-package
 #' @keywords package
 #' @references
-#' Middleton R, Gao D, Thomas A, Singh B, Au A, Wong JJ, Bomane A, Cosson B,
-#' Eyras E, Rasko JE, Ritchie W.
-#' IRFinder: assessing the impact of intron retention on mammalian gene
-#' expression. Genome Biol. 2017 Mar 15;18(1):51.
-#' \url{https://doi.org/10.1186/s13059-017-1184-4}
+#' Wong ACH, Wong JJ-L, Rasko JEJ, Schmitz U.
+#' SpliceWiz: interactive analysis and visualization of alternative splicing in R.
+#' Briefings in Bioinformatics, Volume 25, Issue 1, January 2024, bbad468.
+#' \url{https://doi.org/10.1093/bib/bbad468}
 #' @md
 NULL

@@ -1,4 +1,5 @@
-Changes to version 1.5.1 (2023-12-11)
+Changes to version 1.5.1 (2024-01-04)
++ SpliceWiz is now published in Briefings in Bioinformatics! Citation updated.
 + buildRef now works on custom GTFs where there are incomplete transcript
 annotation columns.
 + STAR >= 2.7.8a should no longer throw error about trimming adaptors

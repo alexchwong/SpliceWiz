@@ -55,7 +55,7 @@ BiocManager::valid()              # checks for out of date packages
 BiocManager::install("SpliceWiz")
 ```
 
-## On R (devel version >= 4.3) using Bioconductor devel (future 3.19) <a name="instdevel"></a>
+## On R-devel using Bioconductor devel (future 3.19) <a name="instdevel"></a>
 
 ```
 if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -88,6 +88,6 @@ Mappability files from https://github.com/alexchwong/SpliceWizResources
 
 # Publication <a name="pub"></a>
 
-Check out our (latest) pre-print publication for SpliceWiz:
+SpliceWiz is now published!
 
-[SpliceWiz: easy, optimized, and accurate alternative splicing analysis in R](https://www.biorxiv.org/content/10.1101/2022.07.05.498887v1)
+[SpliceWiz: interactive analysis and visualization of alternative splicing in R](https://academic.oup.com/bib/article/25/1/bbad468/7502685)

@@ -164,7 +164,7 @@ The basic steps of SpliceWiz are as follows:
 
 ## Installation
 
-To install SpliceWiz, start R (version "4.3") and enter: 
+To install SpliceWiz, start R (devel version) and enter: 
 
 ```{r eval=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE))

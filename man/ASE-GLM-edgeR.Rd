@@ -56,7 +56,9 @@ the ASE formula should be
 \code{"~0 + batch1 + batch2 + test_factor + test_factor:ASE"}}
 
 \item{useQL}{(default \code{TRUE}) Whether to use edgeR's quasi-likelihood method
-to help reduce false positives from near-zero junction / intron counts.}
+to help reduce false positives from near-zero junction / intron counts.
+NB: edgeR's quasi-likelihood method is run with legacy method
+(Lun and Smyth (2017)).}
 
 \item{IRmode}{(default \code{all}) Choose the approach to quantify IR events.
 Default \code{all} considers all introns as potentially retained, and calculates

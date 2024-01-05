@@ -3,6 +3,8 @@ Changes to version 1.4.1 (2024-01-04)
 + buildRef now works on custom GTFs where there are incomplete transcript
 annotation columns.
 + STAR >= 2.7.8a should no longer throw error about trimming adaptors
++ Added missing include for cstdint
++ edgeR useQL = TRUE now uses legacy method (as per Lun & Smyth 2017)
 + Minor bugfixes
 
 Changes to version 1.3.5 (2023-10-22)

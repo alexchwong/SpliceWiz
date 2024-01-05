@@ -29,14 +29,14 @@
 #' as the column containing time series data (and leaving `test_nom`
 #' and `test_denom` parameters blank). See examples below.
 #'
-#' (NEW) **edgeR** models counts using a negative binomial model. It accounts 
+#' **edgeR** models counts using a negative binomial model. It accounts 
 #' appropriately for zero-counts which are often 
 #' problematic as PSI approaches zero or one, leading to false positives. The
 #' edgeR-based option produces differential ASEs that are less biased towards
 #' low counts. Our preliminary analysis shows it to be more accurate than limma
 #' or DoubleExpSeq based methods.
 #'
-#' (NEW) For time series analysis using edgeR, `ASE_edgeR_timeseries()` can be
+#' For time series analysis using edgeR, `ASE_edgeR_timeseries()` can be
 #' used interchangeably with its counterpart limma-based function. For
 #' complex models, please see [ASE-GLM-edgeR] to build your own GLM models.
 #'
@@ -125,7 +125,9 @@
 #'   whereas `2` extends the capacity for quadratic trends, `3` for cubic
 #'   trends, etc.
 #' @param useQL (default `TRUE`) Whether to use edgeR's quasi-likelihood method
-#'   to help reduce false positives from near-zero junction / intron counts.
+#'   to help reduce false positives from near-zero junction / intron counts. NB:
+#'   edgeR's quasi-likelihood method is run with legacy method 
+#'   (Lun and Smyth (2017)).
 #' @return For all methods, a data.table containing the following:
 #'   * EventName: The name of the ASE event. This identifies each ASE
 #'     in downstream functions including [makeMeanPSI], [makeMatrix],
@@ -725,7 +727,7 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     y <- edgeR::estimateDisp(y,in_data$design1)
     
     if(useQL) {
-        fit <- edgeR::glmQLFit(y, in_data$design1)
+        fit <- edgeR::glmQLFit(y, in_data$design1, legacy = TRUE)
         qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)        
     } else {
         fit <- edgeR::glmFit(y, in_data$design1)
@@ -779,7 +781,7 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     y <- edgeR::estimateDisp(y,in_data$design1)
     
     if(useQL) {
-        fit <- edgeR::glmQLFit(y, in_data$design1)
+        fit <- edgeR::glmQLFit(y, in_data$design1, legacy = TRUE)
         qlf <- edgeR::glmQLFTest(fit, coef = in_data$coef)        
     } else {
         fit <- edgeR::glmFit(y, in_data$design1)
@@ -828,7 +830,7 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     y <- edgeR::estimateDisp(y,in_data$design1)
     y$offset <- 1
     if(useQL) {
-        fit <- edgeR::glmQLFit(y, in_data$design1)
+        fit <- edgeR::glmQLFit(y, in_data$design1, legacy = TRUE)
         qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)        
     } else {
         fit <- edgeR::glmFit(y, in_data$design1)
@@ -877,7 +879,7 @@ ASE_DoubleExpSeq <- function(se, test_factor, test_nom, test_denom,
     y <- edgeR::estimateDisp(y,in_data$design1)
     y$offset <- 1
     if(useQL) {
-        fit <- edgeR::glmQLFit(y, in_data$design1)
+        fit <- edgeR::glmQLFit(y, in_data$design1, legacy = TRUE)
         qlf <- edgeR::glmQLFTest(fit, contrast = in_data$contrast)        
     } else {
         fit <- edgeR::glmFit(y, in_data$design1)

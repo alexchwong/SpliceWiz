@@ -1,3 +1,7 @@
+Changes to version 1.5.2 (2024-01-05)
++ Hotfix: edgeR's glmQLFit (new method) seems to be breaking ASE_edgeR. SpliceWiz
+now uses legacy = TRUE in glmQLFit.
+
 Changes to version 1.5.1 (2024-01-04)
 + SpliceWiz is now published in Briefings in Bioinformatics! Citation updated.
 + buildRef now works on custom GTFs where there are incomplete transcript

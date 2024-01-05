@@ -119,7 +119,9 @@ not antinear introns. These are ignored if strand-specific RNA-seq
 protocols are used.}
 
 \item{useQL}{(default \code{TRUE}) Whether to use edgeR's quasi-likelihood method
-to help reduce false positives from near-zero junction / intron counts.}
+to help reduce false positives from near-zero junction / intron counts. NB:
+edgeR's quasi-likelihood method is run with legacy method
+(Lun and Smyth (2017)).}
 
 \item{degrees_of_freedom}{(default \code{1}) The complexity of time series trends
 modeled by \code{ASE_limma_timeseries}. E.g., \code{1} will only model linear trends,
@@ -220,14 +222,14 @@ activated using the \code{ASE_DESeq()} function, again specifying \code{test_fac
 as the column containing time series data (and leaving \code{test_nom}
 and \code{test_denom} parameters blank). See examples below.
 
-(NEW) \strong{edgeR} models counts using a negative binomial model. It accounts
+\strong{edgeR} models counts using a negative binomial model. It accounts
 appropriately for zero-counts which are often
 problematic as PSI approaches zero or one, leading to false positives. The
 edgeR-based option produces differential ASEs that are less biased towards
 low counts. Our preliminary analysis shows it to be more accurate than limma
 or DoubleExpSeq based methods.
 
-(NEW) For time series analysis using edgeR, \code{ASE_edgeR_timeseries()} can be
+For time series analysis using edgeR, \code{ASE_edgeR_timeseries()} can be
 used interchangeably with its counterpart limma-based function. For
 complex models, please see \link{ASE-GLM-edgeR} to build your own GLM models.
 

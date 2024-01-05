@@ -1,4 +1,4 @@
-Changes to version 1.4.1 (2024-01-04)
+Changes to version 1.4.1 (2024-01-05)
 + SpliceWiz is now published in Briefings in Bioinformatics! Citation updated.
 + buildRef now works on custom GTFs where there are incomplete transcript
 annotation columns.

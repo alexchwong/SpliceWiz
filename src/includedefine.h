@@ -25,6 +25,7 @@ SOFTWARE.  */
 #ifndef INCLUDEDEFINE_DEF
 #define INCLUDEDEFINE_DEF
 
+#include <cstdint>    	// int32_t, uint32_t
 #include <cstring>    	// memcpy, strncmp, size_t
 #include <fstream>    	// i/o
 #include <sstream>    	// stringstream

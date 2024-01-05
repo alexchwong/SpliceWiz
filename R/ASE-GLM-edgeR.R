@@ -67,6 +67,8 @@
 #'   append mean and delta PSI values onto.
 #' @param useQL (default `TRUE`) Whether to use edgeR's quasi-likelihood method
 #'   to help reduce false positives from near-zero junction / intron counts.
+#'   NB: edgeR's quasi-likelihood method is run with legacy method 
+#'   (Lun and Smyth (2017)).
 #' @return 
 #'   `fitASE_edgeR` and `fitASE_edgeR_custom` returns a named list containing
 #'   the following:
@@ -457,7 +459,7 @@ addPSI_edgeR <- function(
     y <- edgeR::calcNormFactors(y)
     y <- edgeR::estimateDisp(y, model)
     
-    fit <- edgeR::glmQLFit(y, model)
+    fit <- edgeR::glmQLFit(y, model, legacy = TRUE)
     return(list(
         fit = fit,
         model = model
@@ -484,7 +486,7 @@ addPSI_edgeR <- function(
     y$offset <- 1
     
     if(useQL) {
-        fit <- edgeR::glmQLFit(y, model)    
+        fit <- edgeR::glmQLFit(y, model, legacy = TRUE)    
     } else {
         fit <- edgeR::glmFit(y, model)
     }

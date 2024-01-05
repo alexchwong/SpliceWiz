@@ -457,7 +457,7 @@ addPSI_edgeR <- function(
     y <- edgeR::calcNormFactors(y)
     y <- edgeR::estimateDisp(y, model)
     
-    fit <- edgeR::glmQLFit(y, model)
+    fit <- edgeR::glmQLFit(y, model, legacy = TRUE)
     return(list(
         fit = fit,
         model = model
@@ -484,7 +484,7 @@ addPSI_edgeR <- function(
     y$offset <- 1
     
     if(useQL) {
-        fit <- edgeR::glmQLFit(y, model)    
+        fit <- edgeR::glmQLFit(y, model, legacy = TRUE)    
     } else {
         fit <- edgeR::glmFit(y, model)
     }

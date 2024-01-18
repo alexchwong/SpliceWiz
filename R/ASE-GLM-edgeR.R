@@ -1,7 +1,7 @@
-#' Using Generalised linear models to analyse differential ASEs using edgeR
+#' Using Generalised linear models (GLMs) to analyse differential ASEs using edgeR
 #'
-#' These functions allow users to fit included/excluded counts using edgeR's
-#' quasi-likelihood tests for differential Alternative Splice Events (ASEs)
+#' These functions allow users to fit custom GLMs included/excluded counts using 
+#' edgeR for differential Alternative Splice Events (ASEs)
 #'
 #' @details
 #'
@@ -66,13 +66,16 @@
 #' @param results The return value of `testASE_edgeR()`, to be used as input to
 #'   append mean and delta PSI values onto.
 #' @param useQL (default `TRUE`) Whether to use edgeR's quasi-likelihood method
-#'   to help reduce false positives from near-zero junction / intron counts.
+#'   to help reduce false positives from near-zero junction / intron counts. NB:
+#'   edgeR's quasi-likelihood method is run with legacy method 
+#'   (Lun and Smyth (2017)).
 #' @return 
 #'   `fitASE_edgeR` and `fitASE_edgeR_custom` returns a named list containing
 #'   the following:
-#'   * `IncExc`, `ASE`: `DGEGLM` objects containing the fitted models for 
+#'   * `IncExc` and `ASE` are `DGEGLM` objects containing the fitted models for 
 #'     isoform counts and PSIs, respectively
-#'   * `model_IncExc`, `model_ASE`: model matrices of the above fitted models.
+#'   * `model_IncExc` and `model_ASE` are model matrices of the above fitted 
+#'     models.
 #' 
 #'   `testASE_edgeR()` returns a data.table containing the following:
 #'   * EventName: The name of the ASE event. This identifies each ASE

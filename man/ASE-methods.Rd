@@ -124,8 +124,9 @@ edgeR's quasi-likelihood method is run with legacy method
 (Lun and Smyth (2017)).}
 
 \item{degrees_of_freedom}{(default \code{1}) The complexity of time series trends
-modeled by \code{ASE_limma_timeseries}. E.g., \code{1} will only model linear trends,
-whereas \code{2} extends the capacity for quadratic trends, \code{3} for cubic
+modeled by \code{ASE_limma_timeseries} and \code{ASE_edgeR_timeseries}.
+E.g., \code{1} will only model linear trends,
+\code{2} extends the capacity for quadratic trends, and \code{3} for cubic
 trends, etc.}
 
 \item{n_threads}{(DESeq2 only) How many threads to use for DESeq2

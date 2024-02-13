@@ -515,7 +515,7 @@ plotGO <- function(
     
     coverage <- 0
     genes_DT <- data.table()
-    tableNames <- dbListTables(dbcon)
+    tableNames <- DBI::dbListTables(dbcon)
     
     # Test if 'ensembl' is a table
     if("ensembl" %in% tableNames) {

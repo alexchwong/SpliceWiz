@@ -1116,6 +1116,10 @@ Get_GTF_file <- function(reference_path) {
                 file.exists(rtracklayer::path(genome))) {
             file.copy(rtracklayer::path(genome), genome.2bit, overwrite = TRUE)
         } else {
+            # resolve ambiguities
+            genome <- Biostrings::replaceAmbiguities(genome)
+            
+            # export as 2bit
             rtracklayer::export(genome, genome.2bit, "2bit")
         }
         # message("done")

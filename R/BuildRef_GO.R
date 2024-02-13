@@ -315,12 +315,22 @@ plotGO <- function(
         ), "message")
         return()
     }
+    
+    genes <- viewGenes(reference_path)
+    
     if(!is_valid(species)) {
         if(verbose) 
             .log("Gene ontology not prepared for this reference", "message")
         return()
     } else {
-        ontDT <- .get_geneGO(species, verbose)
+        ontDT <- .get_geneGO(species, genes$gene_id, genes$gene_name, verbose)
+    }
+    
+    if(!("gene_id" %in% colnames(ontDT))) {
+        ontDT[, c("gene_id") := genes$gene_id[match(
+            get("gene_name"), genes$gene_name
+        )]]
+        ontDT <- ontDT[!is.na("gene_id")]
     }
     
     if(!is.null(ontDT))
@@ -409,8 +419,7 @@ plotGO <- function(
     if(!(species %in% supportedSpecies)) {
         .log(paste(
             species, 
-            "not supported in AnnotationHub. Supported species:",
-            supportedSpecies
+            "not supported in AnnotationHub."
         ), message)
         return("")
     } else {
@@ -462,7 +471,15 @@ plotGO <- function(
     ah_orgListEns <- query(ah_orgList, "Ensembl")
     ah_orgDb <- subset(ah_orgListEns, ah_orgListEns$species == species)
     cache_loc <- AnnotationHub::cache(ah_orgDb[1])
-    cache_loc <- .check_cached_resource(cache_loc, ah_orgDb[1], ah)
+    cache_loc <- .check_cached_resource(cache_loc, names(ah_orgDb[1]), ah)
+    return(cache_loc)
+}
+
+.fetch_orgDB_cache <- function(ah, species) {
+    ah_orgList <- subset(ah, ah$rdataclass == "OrgDb")
+    ah_orgDb <- ah_orgList[ah_orgList$species == species]
+    cache_loc <- AnnotationHub::cache(ah_orgDb[1])
+    
     return(cache_loc)
 }
 
@@ -481,6 +498,7 @@ plotGO <- function(
 # Compile gene ontology annotations
 .get_geneGO <- function(
     species = c("Homo sapiens", "Mus musculus"),
+    gene_ids, gene_names,
     verbose = TRUE,
     localHub = FALSE, ah = AnnotationHub(localHub = localHub)
 ) {
@@ -489,19 +507,63 @@ plotGO <- function(
     if(species == "") return(NULL)
 
     if(verbose) .log("Retrieving gene GO-term pairings", "message")
-    cache_loc <- .fetch_orgDB(species, localHub, ah)
+    cache_loc <- .fetch_orgDB_cache(ah, species)
     dbcon <- DBI::dbConnect(
         DBI::dbDriver("SQLite"), 
         dbname = cache_loc
     )
-    genes_DT <- as.data.table(DBI::dbGetQuery(dbcon, paste(
-      "SELECT *",
-      "FROM go",
-      "LEFT JOIN ensembl",
-      "ON go._id = ensembl._id"
-    )))
-    DBI::dbDisconnect(dbcon)
+    
+    coverage <- 0
+    genes_DT <- data.table()
+    tableNames <- dbListTables(dbcon)
+    
+    # Test if 'ensembl' is a table
+    if("ensembl" %in% tableNames) {
+        genes_DT <- as.data.table(DBI::dbGetQuery(dbcon, paste(
+          "SELECT *",
+          "FROM go",
+          "LEFT JOIN ensembl",
+          "ON go._id = ensembl._id"
+        )))
+        coverage <- length(intersect(gene_ids, genes_DT$ensembl_id)) / 
+            length(gene_ids)
+    }
 
+    if(coverage < 0.1) {
+        genes_DT <- as.data.table(DBI::dbGetQuery(dbcon, paste(
+          "SELECT *",
+          "FROM go",
+          "LEFT JOIN genes",
+          "ON go._id = genes._id"
+        )))
+        coverage <- length(intersect(gene_ids, genes_DT$gene_id)) / 
+            length(gene_ids)
+    } else {
+        setnames(genes_DT, "ensembl_id", "gene_id", skip_absent=TRUE)
+    }
+    
+    if(coverage < 0.1) {
+        genes_DT <- as.data.table(DBI::dbGetQuery(dbcon, paste(
+          "SELECT *",
+          "FROM go",
+          "LEFT JOIN gene_info",
+          "ON go._id = gene_info._id"
+        )))
+        coverage <- length(intersect(gene_names, genes_DT$symbol)) / 
+            length(gene_names)
+    }
+    
+    DBI::dbDisconnect(dbcon)
+    
+    if(coverage < 0.1) {
+        .log(paste(
+            "Gene ontology failed to match gene_id or gene_name entries,",
+            "skipping gene ontology..."
+        ), "warning")
+    } else {
+        setnames(genes_DT, "symbol", "gene_name", skip_absent=TRUE)
+    }
+    
     if(verbose) .log("Retrieving GO terms from GO.db", "message")
     GO_DT <- .fetch_GOterms()
 

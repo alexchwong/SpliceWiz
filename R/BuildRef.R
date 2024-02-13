@@ -565,9 +565,9 @@ getAvailableGO <- function(
     localHub = FALSE, ah = AnnotationHub(localHub = localHub)
 ) {
     ah_orgList <- subset(ah, ah$rdataclass == "OrgDb")
-    ah_orgListEns <- query(ah_orgList, "Ensembl")
+    # ah_orgListEns <- query(ah_orgList, "Ensembl")
     
-    supportedSpecies <- unique(ah_orgListEns$species)
+    supportedSpecies <- unique(ah_orgList$species)
     return(supportedSpecies)
 }
 

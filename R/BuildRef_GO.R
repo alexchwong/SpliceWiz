@@ -69,7 +69,7 @@
 #'
 #' # Perform GO analysis using first 1000 genes
 #' ontology <- viewGO(ref_path)
-#' allGenes <- sort(unique(ontology$ensembl_id))
+#' allGenes <- sort(unique(ontology$gene_id))
 #'
 #' exampleGeneID <- allGenes[1:1000]
 #' exampleBkgdID <- allGenes
@@ -264,7 +264,7 @@ subset_EventNames_by_GO <- function(
     allEvents <- allEvents[, c("EventName", "gene_id", "gene_id_b")]
     allEvents <- allEvents[allEvents$EventName %in% EventNames,]
     
-    GO_gene_id <- ont$ensembl_id[ont$go_id == go_id]
+    GO_gene_id <- ont$gene_id[ont$go_id == go_id]
     
     allEvents <- allEvents[
         allEvents$gene_id %in% GO_gene_id |
@@ -374,7 +374,7 @@ plotGO <- function(
         ontologyType, "not found as a gene ontology category"
     ))
 
-    pathways <- split(ontUse$ensembl_id, ontUse$go_id)
+    pathways <- split(ontUse$gene_id, ontUse$go_id)
     
     genes <- .gencode_correct_id_batch(genes)
     universe <- .gencode_correct_id_batch(universe)

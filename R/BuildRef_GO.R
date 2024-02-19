@@ -636,7 +636,7 @@ plotGO <- function(
     genes_DT <- genes_DT[complete.cases(genes_DT)]
     # final_DT[, c("_id", "_id.1") := list(NULL, NULL)]
 
-    return(final_DT)
+    return(genes_DT)
 }
 
 ### INTERNALS - plotting GO - ###

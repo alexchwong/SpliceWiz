@@ -620,11 +620,20 @@ plotGO <- function(
     if(verbose) .log("Retrieving GO terms from GO.db", "message")
     GO_DT <- .fetch_GOterms()
 
-    # Reduce to 2-column ont
-    genes_DT <- genes_DT[, c("gene_id", "go_id"), with = FALSE]
+    # Reduce to 2-column ont (+/- evidence)
+    if("evidence" %in% names(genes_DT)) {
+        genes_DT <- genes_DT[, c("gene_id", "go_id", "evidence"), with = FALSE]    
+    } else {
+        genes_DT <- genes_DT[, c("gene_id", "go_id"), with = FALSE]    
+    }
+    genes_DT <- unique(genes_DT)
 
-    final_DT <- genes_DT[GO_DT, on = "go_id"]
-    final_DT <- final_DT[complete.cases(final_DT)]
+    genes_DT[, c("go_term", "Ontology") := list(
+        GO_DT$go_term[match(get("go_id"), GO_DT$go_id)],
+        GO_DT$Ontology[match(get("go_id"), GO_DT$go_id)]
+    )]
+
+    genes_DT <- genes_DT[complete.cases(genes_DT)]
     # final_DT[, c("_id", "_id.1") := list(NULL, NULL)]
 
     return(final_DT)

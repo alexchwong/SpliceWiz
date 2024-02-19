@@ -74,8 +74,8 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
         expect_equal(cov1, cov2)
 
         expect_equal(
-            tools::md5sum(covfile(se_realized)[i]), 
-            tools::md5sum(covfile(se_compare)[i])
+            unname(tools::md5sum(covfile(se_realized)[i])), 
+            unname(tools::md5sum(covfile(se_compare)[i]))
         )
     }
 

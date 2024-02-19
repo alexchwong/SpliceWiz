@@ -373,7 +373,7 @@ plotGO <- function(
     if(!all(c("go_id", "ontology", "go_term", "gene_id") %in% ont_cols)) {
         # See if minimal GO is satisfied; repair if required
         if( all(c("gene_id", "go_id")%in% ont_cols) ) {
-            ont2 <- as.data.table(
+            ont2 <- data.table(
                 gene_id = ont$gene_id,
                 go_id = ont$go_id
             )
@@ -412,7 +412,9 @@ plotGO <- function(
     if(nrow(ontUse) == 0) .log(paste(
         ontologyType, "not found as a gene ontology category"
     ))
-
+    
+    ontUse <- unique(ontUse[, c("gene_id", "go_id"), with = FALSE])
+    
     pathways <- split(ontUse$gene_id, ontUse$go_id)
     
     genes <- .gencode_correct_id_batch(genes)
@@ -628,7 +630,7 @@ plotGO <- function(
     }
     genes_DT <- unique(genes_DT)
 
-    genes_DT[, c("go_term", "Ontology") := list(
+    genes_DT[, c("go_term", "ontology") := list(
         GO_DT$go_term[match(get("go_id"), GO_DT$go_id)],
         GO_DT$Ontology[match(get("go_id"), GO_DT$go_id)]
     )]

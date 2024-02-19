@@ -583,39 +583,39 @@ plotGO <- function(
         )))
         coverage <- length(intersect(gene_ids, genes_DT$gene_id)) / 
             length(gene_ids)
+
+        if(coverage < 0.1) {
+            genes_DT <- as.data.table(DBI::dbGetQuery(dbcon, paste(
+              "SELECT *",
+              "FROM go",
+              "LEFT JOIN gene_info",
+              "ON go._id = gene_info._id"
+            )))
+            coverage <- length(intersect(gene_names, genes_DT$symbol)) / 
+                length(gene_names)
+
+            if(coverage < 0.1) {
+                .log(paste(
+                    "Gene ontology failed to match gene_id or gene_name entries,",
+                    "skipping gene ontology..."
+                ), "warning")
+            } else {
+                setnames(genes_DT, "symbol", "gene_name", skip_absent=TRUE)
+                
+                dup_symbols <- gene_names[duplicated(gene_names)]
+                uniq_symbols <- gene_names[!(gene_names %in% dup_symbols)]
+                
+                genes_DT <- genes_DT[get("gene_name") %in% uniq_symbols]
+                genes_DT[, c("gene_id") := gene_ids[
+                    match(get("gene_name"), gene_names)
+                ]]
+            }
+        }
     } else {
         setnames(genes_DT, "ensembl_id", "gene_id", skip_absent=TRUE)
     }
-    
-    if(coverage < 0.1) {
-        genes_DT <- as.data.table(DBI::dbGetQuery(dbcon, paste(
-          "SELECT *",
-          "FROM go",
-          "LEFT JOIN gene_info",
-          "ON go._id = gene_info._id"
-        )))
-        coverage <- length(intersect(gene_names, genes_DT$symbol)) / 
-            length(gene_names)
-    }
-    
+        
     DBI::dbDisconnect(dbcon)
-    
-    if(coverage < 0.1) {
-        .log(paste(
-            "Gene ontology failed to match gene_id or gene_name entries,",
-            "skipping gene ontology..."
-        ), "warning")
-    } else {
-        setnames(genes_DT, "symbol", "gene_name", skip_absent=TRUE)
-        
-        dup_symbols <- gene_names[duplicated(gene_names)]
-        uniq_symbols <- gene_names[!(gene_names %in% dup_symbols)]
-        
-        genes_DT <- genes_DT[get("gene_name") %in% uniq_symbols]
-        genes_DT[, c("gene_id") := gene_ids[
-            match(get("gene_name"), gene_names)
-        ]]
-    }
     
     if(verbose) .log("Retrieving GO terms from GO.db", "message")
     GO_DT <- .fetch_GOterms()

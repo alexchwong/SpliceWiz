@@ -629,8 +629,12 @@ plotGO <- function(
         
     DBI::dbDisconnect(dbcon)
     
-    if(verbose) .log("Retrieving GO terms from GO.db", "message")
     genes_DT <- .build_GO_table(copy(genes_DT))
+
+    if(verbose) .log(paste(
+        "Gene ontology coverage accounts for",
+        round(coverage * 100, 2), "% of all genes in reference"
+    ), "message")
 
     return(genes_DT)
 }

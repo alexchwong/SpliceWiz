@@ -636,6 +636,15 @@ plotGO <- function(
         round(coverage * 100, 2), "% of all genes in reference"
     ), "message")
 
+    allGenes <- unique(genes_DT$gene_id)
+    revCoverage <- length(intersect(gene_ids, genes_DT$gene_id)) / 
+        length(allGenes)
+
+    if(verbose) .log(paste(
+        "Genes in reference accounts for",
+        round(revCoverage * 100, 2), "% of all genes in gene ontology database"
+    ), "message")
+
     return(genes_DT)
 }
 

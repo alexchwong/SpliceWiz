@@ -365,6 +365,7 @@ plotGO <- function(
 }
 
 .build_GO_table <- function(ont, GO_DT) {
+    if(!is(ont, "data.table")) ont <- as.data.table(ont)
     # Reduce to 2-column ont (+/- evidence)
     if("evidence" %in% names(ont)) {
         genes_DT <- ont[, c("gene_id", "go_id", "evidence"), with = FALSE]    
@@ -421,7 +422,7 @@ plotGO <- function(
         ontologyType, "not found as a gene ontology category"
     ))
     
-    ontUse <- unique(ontUse[, c("gene_id", "go_id"), with = FALSE])
+    ontUse <- unique(ontUse, by = c("gene_id", "go_id"))
     
     pathways <- split(ontUse$gene_id, ontUse$go_id)
     

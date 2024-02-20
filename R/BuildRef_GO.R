@@ -364,6 +364,24 @@ plotGO <- function(
     }
 }
 
+.build_GO_table <- function(ont, GO_DT) {
+    # Reduce to 2-column ont (+/- evidence)
+    if("evidence" %in% names(ont)) {
+        genes_DT <- ont[, c("gene_id", "go_id", "evidence"), with = FALSE]    
+    } else {
+        genes_DT <- ont[, c("gene_id", "go_id"), with = FALSE]    
+    }
+    genes_DT <- unique(genes_DT)
+
+    genes_DT[, c("go_term", "ontology") := list(
+        GO_DT$go_term[match(get("go_id"), GO_DT$go_id)],
+        GO_DT$Ontology[match(get("go_id"), GO_DT$go_id)]
+    )]
+
+    genes_DT <- genes_DT[complete.cases(genes_DT)]
+    return(genes_DT)
+}
+
 .validate_GO_ref <- function(ont) {
     ont_cols <- colnames(ont)
     if("ensembl_id" %in% ont_cols) {
@@ -372,18 +390,8 @@ plotGO <- function(
     }
     if(!all(c("go_id", "ontology", "go_term", "gene_id") %in% ont_cols)) {
         # See if minimal GO is satisfied; repair if required
-        if( all(c("gene_id", "go_id")%in% ont_cols) ) {
-            ont2 <- data.table(
-                gene_id = ont$gene_id,
-                go_id = ont$go_id
-            )
-            GO_DT <- .fetch_GOterms()
-
-            # Reduce to 2-column ont
-            genes_DT <- ont2[, c("gene_id", "go_id"), with = FALSE]
-
-            ont <- genes_DT[GO_DT, on = "go_id"]
-            ont <- ont[complete.cases(ont)]            
+        if( all(c("gene_id", "go_id") %in% ont_cols) ) {
+            ont <- .build_GO_table(copy(ont), GO_DT)        
         } else {
             .log("Given ontology reference is not valid")        
         }
@@ -622,21 +630,7 @@ plotGO <- function(
     if(verbose) .log("Retrieving GO terms from GO.db", "message")
     GO_DT <- .fetch_GOterms()
 
-    # Reduce to 2-column ont (+/- evidence)
-    if("evidence" %in% names(genes_DT)) {
-        genes_DT <- genes_DT[, c("gene_id", "go_id", "evidence"), with = FALSE]    
-    } else {
-        genes_DT <- genes_DT[, c("gene_id", "go_id"), with = FALSE]    
-    }
-    genes_DT <- unique(genes_DT)
-
-    genes_DT[, c("go_term", "ontology") := list(
-        GO_DT$go_term[match(get("go_id"), GO_DT$go_id)],
-        GO_DT$Ontology[match(get("go_id"), GO_DT$go_id)]
-    )]
-
-    genes_DT <- genes_DT[complete.cases(genes_DT)]
-    # final_DT[, c("_id", "_id.1") := list(NULL, NULL)]
+    genes_DT <- .build_GO_table(copy(genes_DT), GO_DT)
 
     return(genes_DT)
 }

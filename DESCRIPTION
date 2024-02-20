@@ -67,7 +67,7 @@ Imports:
 	rvest
 Suggests: 
     knitr, rmarkdown, crayon, splines, testthat (>= 3.0.0), 
-    DESeq2, limma, DoubleExpSeq, edgeR, DBI, GO.db, fgsea, Rsubread 
+    DESeq2, limma, DoubleExpSeq, edgeR, DBI, GO.db, AnnotationDbi, fgsea, Rsubread 
 LinkingTo: 
     ompBAM,
     Rcpp,

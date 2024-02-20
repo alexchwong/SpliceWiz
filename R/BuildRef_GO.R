@@ -364,7 +364,7 @@ plotGO <- function(
     }
 }
 
-.build_GO_table <- function(ont, GO_DT) {
+.build_GO_table <- function(ont) {
     if(!is(ont, "data.table")) ont <- as.data.table(ont)
     # Reduce to 2-column ont (+/- evidence)
     if("evidence" %in% names(ont)) {
@@ -374,6 +374,7 @@ plotGO <- function(
     }
     genes_DT <- unique(genes_DT)
 
+    GO_DT <- .fetch_GOterms()
     genes_DT[, c("go_term", "ontology") := list(
         GO_DT$go_term[match(get("go_id"), GO_DT$go_id)],
         GO_DT$Ontology[match(get("go_id"), GO_DT$go_id)]
@@ -392,7 +393,7 @@ plotGO <- function(
     if(!all(c("go_id", "ontology", "go_term", "gene_id") %in% ont_cols)) {
         # See if minimal GO is satisfied; repair if required
         if( all(c("gene_id", "go_id") %in% ont_cols) ) {
-            ont <- .build_GO_table(copy(ont), GO_DT)        
+            ont <- .build_GO_table(ont)        
         } else {
             .log("Given ontology reference is not valid")        
         }
@@ -629,9 +630,7 @@ plotGO <- function(
     DBI::dbDisconnect(dbcon)
     
     if(verbose) .log("Retrieving GO terms from GO.db", "message")
-    GO_DT <- .fetch_GOterms()
-
-    genes_DT <- .build_GO_table(copy(genes_DT), GO_DT)
+    genes_DT <- .build_GO_table(copy(genes_DT))
 
     return(genes_DT)
 }

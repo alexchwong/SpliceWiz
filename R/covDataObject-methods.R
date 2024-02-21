@@ -278,9 +278,9 @@ getGenomeData <- function(
             "using update_NxtSE()"
         ), "warning")
 
-    if (!all(file.exists(covfile(args[["se"]]))))
+    if (!isCOV(covfile(args[["se"]])))
         .log(paste("In getCoverageData,",
-            "COV files are not defined in se.",
+            "No valid COV files defined in se.",
             "Please supply the correct paths of the COV files",
             "using covfile(se) <- vector_of_correct_COVfile_paths"))
 

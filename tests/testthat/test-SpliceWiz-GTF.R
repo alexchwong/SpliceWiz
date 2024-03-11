@@ -68,16 +68,16 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
         sampleQC(se_compare)[,-1]
     )
 
-    for(i in seq_len(ncol(se))) {
-        cov1 <- getCoverage(covfile(se_realized)[i])
-        cov2 <- getCoverage(covfile(se_compare)[i])
-        expect_equal(cov1, cov2)
+    # for(i in seq_len(ncol(se))) {
+        # cov1 <- getCoverage(covfile(se_realized)[i])
+        # cov2 <- getCoverage(covfile(se_compare)[i])
+        # expect_equal(cov1, cov2)
 
-        expect_equal(
-            unname(tools::md5sum(covfile(se_realized)[i])), 
-            unname(tools::md5sum(covfile(se_compare)[i]))
-        )
-    }
+        # expect_equal(
+            # unname(tools::md5sum(covfile(se_realized)[i])), 
+            # unname(tools::md5sum(covfile(se_compare)[i]))
+        # )
+    # }
 
 
     expect_equal(

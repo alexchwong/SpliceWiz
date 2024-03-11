@@ -24,6 +24,7 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
     )
 
     se <- makeSE(collate_path = file.path(tempdir(), "Collated_output"))
+    print(sampleQC(se))
     
     # Test identical assays
     se_realized <- realize_NxtSE(se)

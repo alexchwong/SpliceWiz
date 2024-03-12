@@ -129,11 +129,13 @@ server_GO <- function(
                     get_se()
                 )
                 settings_GO$gene_ids <- geneIds$genes
-                settings_GO$univ_ids <- geneIds$universe 
+                settings_GO$univ_ids <- geneIds$universe
+                
+                ont <- .validate_GO_ref(ref(get_se())[["ontology"]])
 
                 settings_GO$resGO <- .format_GO_result(
                     .ora_internal(
-                        ref(get_se())[["ontology"]], 
+                        ont, 
                         geneIds$genes, geneIds$universe,
                         ontologyType, pAdjustMethod = "BH"
                     )

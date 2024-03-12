@@ -178,6 +178,9 @@
 #' For `getNonPolyARef()`: Returns the file path to the BED file for
 #' the nonPolyA loci for the specified genome.
 #'
+#' For `getAvailableGO()`: Returns a vector containing names of species with
+#' supported gene ontology annotations.
+#'
 #' @examples
 #' # Quick runnable example: generate a reference using SpliceWiz's example genome
 #'
@@ -552,6 +555,20 @@ getNonPolyARef <- function(genome_type) {
         nonPolyAFile <- ""
     }
     return(nonPolyAFile)
+}
+
+#' @describeIn Build-Reference-methods Returns available species on Bioconductor's
+#'   AnnotationHub. Currently, only Bioconductor's OrgDb/Ensembl gene ontology
+#'   annotations are supported.
+#' @export
+getAvailableGO <- function(
+    localHub = FALSE, ah = AnnotationHub(localHub = localHub)
+) {
+    ah_orgList <- subset(ah, ah$rdataclass == "OrgDb")
+    # ah_orgListEns <- query(ah_orgList, "Ensembl")
+    
+    supportedSpecies <- unique(ah_orgList$species)
+    return(supportedSpecies)
 }
 
 ################ Functions that may be exported in later releases ##############
@@ -1099,6 +1116,10 @@ Get_GTF_file <- function(reference_path) {
                 file.exists(rtracklayer::path(genome))) {
             file.copy(rtracklayer::path(genome), genome.2bit, overwrite = TRUE)
         } else {
+            # resolve ambiguities
+            genome <- Biostrings::replaceAmbiguities(genome)
+            
+            # export as 2bit
             rtracklayer::export(genome, genome.2bit, "2bit")
         }
         # message("done")

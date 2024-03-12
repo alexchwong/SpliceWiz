@@ -121,8 +121,9 @@
 #' @param n_threads (DESeq2 only) How many threads to use for DESeq2
 #'   based analysis.
 #' @param degrees_of_freedom (default `1`) The complexity of time series trends
-#'   modeled by `ASE_limma_timeseries`. E.g., `1` will only model linear trends,
-#'   whereas `2` extends the capacity for quadratic trends, `3` for cubic
+#'   modeled by `ASE_limma_timeseries` and `ASE_edgeR_timeseries`. 
+#'   E.g., `1` will only model linear trends,
+#'   `2` extends the capacity for quadratic trends, and `3` for cubic
 #'   trends, etc.
 #' @param useQL (default `TRUE`) Whether to use edgeR's quasi-likelihood method
 #'   to help reduce false positives from near-zero junction / intron counts. NB:

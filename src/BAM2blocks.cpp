@@ -518,7 +518,7 @@ int BAM2blocks::processAll(unsigned int thread_number, bool mappability_mode) {
       cout << "Error: read processing appears very sluggish in thread " << thread_number
         << ". Suggest sort the BAM file by read name and try again\n"
         << "  e.g. use `samtools collate` or `sambamba sort -n`.\n"
-        << "Alternatively, try to run NxtIRF/IRFinder using `n_threads = 1`\n";
+        << "Alternatively, try to run processBAM() using `n_threads = 1`\n";
       realizeSpareReads();
       return(-1);
     }

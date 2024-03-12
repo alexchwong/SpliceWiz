@@ -1612,7 +1612,7 @@ As an example, to analyse for enriched biological functions of the first 1000
 genes in the reference:
 
 ```{r}
-allGenes <- sort(unique(ontology$ensembl_id))
+allGenes <- sort(unique(ontology$gene_id))
 exampleGeneID <- allGenes[1:1000]
 exampleBkgdID <- allGenes
 

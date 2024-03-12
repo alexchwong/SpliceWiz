@@ -6,7 +6,7 @@
 \alias{fitASE_edgeR_custom}
 \alias{testASE_edgeR}
 \alias{addPSI_edgeR}
-\title{Using Generalised linear models to analyse differential ASEs using edgeR}
+\title{Using Generalised linear models (GLMs) to analyse differential ASEs using edgeR}
 \usage{
 fitASE_edgeR(
   se,
@@ -56,7 +56,9 @@ the ASE formula should be
 \code{"~0 + batch1 + batch2 + test_factor + test_factor:ASE"}}
 
 \item{useQL}{(default \code{TRUE}) Whether to use edgeR's quasi-likelihood method
-to help reduce false positives from near-zero junction / intron counts.}
+to help reduce false positives from near-zero junction / intron counts. NB:
+edgeR's quasi-likelihood method is run with legacy method
+(Lun and Smyth (2017)).}
 
 \item{IRmode}{(default \code{all}) Choose the approach to quantify IR events.
 Default \code{all} considers all introns as potentially retained, and calculates
@@ -108,9 +110,10 @@ calculate mean PSIs}
 \code{fitASE_edgeR} and \code{fitASE_edgeR_custom} returns a named list containing
 the following:
 \itemize{
-\item \code{IncExc}, \code{ASE}: \code{DGEGLM} objects containing the fitted models for
+\item \code{IncExc} and \code{ASE} are \code{DGEGLM} objects containing the fitted models for
 isoform counts and PSIs, respectively
-\item \code{model_IncExc}, \code{model_ASE}: model matrices of the above fitted models.
+\item \code{model_IncExc} and \code{model_ASE} are model matrices of the above fitted
+models.
 }
 
 \code{testASE_edgeR()} returns a data.table containing the following:
@@ -149,8 +152,8 @@ the mean values of the two conditions.
 }
 }
 \description{
-These functions allow users to fit included/excluded counts using edgeR's
-quasi-likelihood tests for differential Alternative Splice Events (ASEs)
+These functions allow users to fit custom GLMs included/excluded counts using
+edgeR for differential Alternative Splice Events (ASEs)
 }
 \details{
 \strong{edgeR} accounts appropriately for zero-counts which are often problematic

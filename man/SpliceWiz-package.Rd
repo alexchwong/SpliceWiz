@@ -54,9 +54,10 @@ SpliceWiz offers several novel filters via the \linkS4class{ASEFilter}
 class. See \link{ASEFilter} for details.
 
 Once the \linkS4class{NxtSE} is annotated and filtered, differential
-analysis is performed, using limma, DESeq2 or DoubleExpSeq wrappers.
-These wrappers model isoform counts as log-normal, negative-binomial,
-or beta-binomial distributions, respectively. See \link{ASE-methods} for details.
+analysis is performed, using limma, DoubleExpSeq (DES), edgeR and
+DESeq2 wrappers. These wrappers model isoform counts as log-normal (limma),
+beta-binomial (DES) and negative-binomial (edgeR and DESeq2) distributions.
+See \link{ASE-methods} for details.
 
 Finally, SpliceWiz provides visualisation tools to illustrate alternative
 splicing using coverage plots, including a novel method to normalise RNA-seq
@@ -87,8 +88,9 @@ event (ASE) analysis on a NxtSE object using limma or DESeq2.
 \item \link{make_plot_data}: Functions that compile individual and group-mean percent
 spliced in (PSI) values of IR and alternative splice events; useful to
 produce scatter plots or heatmaps.
-\item \link{plotCoverage}: Generate RNA-seq coverage plots of
-individual samples or across samples grouped by user-specified conditions
+\item \link{Coverage}: methods that retrieve coverage data from COV files.
+\item \link{getCoverageData} / \link{getPlotObject} / \link{plotView}:
+Functions for plotting SpliceWiz's novel coverage plots.
 }
 
 See the

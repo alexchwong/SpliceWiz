@@ -37,12 +37,12 @@ test_that("SpliceWiz OpenMP produces same output regardless of threads", {
 
     for(i in seq(2, n_threads)) {
         expect_equal(
-            openssl::md5(file(file.path(tempdir(), "pb_test_threads", paste0("thread_", 1, ".txt.gz")))), 
-            openssl::md5(file(file.path(tempdir(), "pb_test_threads", paste0("thread_", i, ".txt.gz"))))
+            unname(tools::md5sum(file.path(tempdir(), "pb_test_threads", paste0("thread_", 1, ".txt.gz")))), 
+            unname(tools::md5sum(file.path(tempdir(), "pb_test_threads", paste0("thread_", i, ".txt.gz"))))
         )
         expect_equal(
-            openssl::md5(file(file.path(tempdir(), "pb_test_threads", paste0("thread_", 1, ".cov")))), 
-            openssl::md5(file(file.path(tempdir(), "pb_test_threads", paste0("thread_", i, ".cov"))))
+            unname(tools::md5sum(file.path(tempdir(), "pb_test_threads", paste0("thread_", 1, ".cov")))), 
+            unname(tools::md5sum(file.path(tempdir(), "pb_test_threads", paste0("thread_", i, ".cov"))))
         )
     }
     

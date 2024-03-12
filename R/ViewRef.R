@@ -238,7 +238,7 @@ viewGO <- function(reference_path) {
         idName <- "ensembl_id"
     } else {
         # hard code for now; TODO - test all available species on aHub
-        idName <- colnames(tmp)[4]
+        idName <- "gene_id"
     }
 
     Genes <- viewGenes(reference_path)
@@ -246,8 +246,8 @@ viewGO <- function(reference_path) {
     # Convert Gencode to Ensembl gene_id
     Genes$gene_id <- .gencode_correct_id_batch(Genes$gene_id)
     
-    tmp$gene_name <- Genes$gene_name[match(tmp[, idName], Genes$gene_id)]
-    # tmp <- tmp[!is.na(tmp$gene_name),]
+    if(!("gene_name" %in% colnames(tmp)))
+        tmp$gene_name <- Genes$gene_name[match(tmp[, idName], Genes$gene_id)]
     
     return(tmp)
 }

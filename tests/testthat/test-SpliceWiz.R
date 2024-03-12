@@ -24,6 +24,7 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
     )
 
     se <- makeSE(collate_path = file.path(tempdir(), "Collated_output"))
+    print(sampleQC(se))
     
     # Test identical assays
     se_realized <- realize_NxtSE(se)
@@ -66,8 +67,8 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
         expect_equal(cov1, cov2)
 
         expect_equal(
-            openssl::md5(file(covfile(se_realized)[i])), 
-            openssl::md5(file(covfile(se_compare)[i]))
+            unname(tools::md5sum(covfile(se_realized)[i])), 
+            unname(tools::md5sum(covfile(se_compare)[i]))
         )
     }
 

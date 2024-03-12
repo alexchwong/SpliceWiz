@@ -1,3 +1,8 @@
+Changes to version 1.5.3 (2024-03-12)
++ Minor improvements in documentation
++ Improved detection of genes in gene ontology with non human/mouse species
++ Minor improvements of error messages
+
 Changes to version 1.5.2 (2024-01-05)
 + Hotfix: edgeR's glmQLFit (new method) seems to be breaking ASE_edgeR. 
 SpliceWiz now uses legacy = TRUE in glmQLFit.

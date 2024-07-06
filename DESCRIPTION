@@ -70,8 +70,7 @@ Suggests:
     DESeq2, limma, DoubleExpSeq, edgeR, DBI, GO.db, AnnotationDbi, fgsea, Rsubread 
 LinkingTo: 
     ompBAM,
-    Rcpp,
-    zlibbioc, 
+    Rcpp, 
 	RcppProgress  
 SystemRequirements:
     C++11, GNU make

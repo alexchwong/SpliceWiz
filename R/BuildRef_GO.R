@@ -534,6 +534,15 @@ plotGO <- function(
     return(cache_loc)
 }
 
+.realize_orgDB_cache <- function(ah, species) {
+    ah_orgList <- subset(ah, ah$rdataclass == "OrgDb")
+    ah_orgDb <- ah_orgList[ah_orgList$species == species]
+    obj <- ah_orgDb[[1]]
+    cache_loc <- AnnotationHub::cache(ah_orgDb[1])
+    
+    return(cache_loc)
+}
+
 # Get GO.db's gene ontology terms
 .fetch_GOterms <- function() {
     .check_package_installed("GO.db", "3.12.0")
@@ -565,6 +574,15 @@ plotGO <- function(
 
     if(verbose) .log("Retrieving gene GO-term pairings", "message")
     cache_loc <- .fetch_orgDB_cache(ah, species)
+    
+    # what if cache_loc is corrupt?
+    if(!DBI::dbCanConnect(
+        DBI::dbDriver("SQLite"), 
+        dbname = cache_loc
+    )) {
+        cache_loc <- .realize_orgDB_cache(ah, species)
+    }
+    
     dbcon <- DBI::dbConnect(
         DBI::dbDriver("SQLite"), 
         dbname = cache_loc

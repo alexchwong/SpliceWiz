@@ -1301,7 +1301,15 @@ Get_GTF_file <- function(reference_path) {
 # debug function
 .get_SpliceWiz_cache <- function() {
     cache <- tools::R_user_dir(package = "SpliceWiz", which = "cache")
-    bfc <- BiocFileCache::BiocFileCache(cache, ask = FALSE)
+    if(dir.exists(dirname(cache))) {
+        if(!dir.exists(cache)) {
+            dir.create(cache)
+        }
+        bfc <- BiocFileCache::BiocFileCache(cache, ask = FALSE)
+    } else {
+        # probably caches are not stored in the one place, use temp
+        bfc <- BiocFileCache::BiocFileCache(cache, ask = interactive())
+    }
     bfc
 }
 

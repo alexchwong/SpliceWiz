@@ -480,7 +480,7 @@ plotGO <- function(
 
 .check_cached_resource <- function(cache_loc, ah_id, ah) {
     dbcon <- DBI::dbConnect(
-        DBI::dbDriver("SQLite"), 
+        RSQLite::SQLite(), 
         dbname = cache_loc
     )
     is_resource_legit <- tryCatch(

@@ -1322,8 +1322,7 @@ Get_GTF_file <- function(reference_path) {
     } else if (any(startsWith(file, c("http", "ftp")))) {
         url <- file
         # TODO: test URLs here
-        cache <- tools::R_user_dir(package = "SpliceWiz", which = "cache")
-        bfc <- BiocFileCache::BiocFileCache(cache, ask = FALSE)
+        cache <- .get_SpliceWiz_cache()
         res <- BiocFileCache::bfcquery(bfc, url, "fpath", exact = TRUE)
         if (nrow(res) > 0 & !force_download)
             return(.get_cache_file_path(cache, res$rpath[nrow(res)]))

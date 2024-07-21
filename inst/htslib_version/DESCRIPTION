@@ -68,7 +68,6 @@ Suggests:
 LinkingTo: 
     ompBAM,
     Rcpp,
-    zlibbioc, 
 	RcppProgress,
     Rhtslib (>= 1.13.1)    
 SystemRequirements:

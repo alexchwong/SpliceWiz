@@ -71,7 +71,6 @@ Suggests:
 LinkingTo: 
     ompBAM,
     Rcpp,
-    zlibbioc, 
 	RcppProgress  
 SystemRequirements:
     C++11, GNU make

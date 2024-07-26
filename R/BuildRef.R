@@ -1322,10 +1322,10 @@ Get_GTF_file <- function(reference_path) {
     } else if (any(startsWith(file, c("http", "ftp")))) {
         url <- file
         # TODO: test URLs here
-        cache <- .get_SpliceWiz_cache()
+        bfc <- .get_SpliceWiz_cache()
         res <- BiocFileCache::bfcquery(bfc, url, "fpath", exact = TRUE)
         if (nrow(res) > 0 & !force_download)
-            return(.get_cache_file_path(cache, res$rpath[nrow(res)]))
+            return(.get_cache_file_path(bfc, res$rpath[nrow(res)]))
 
         # either force_download == TRUE or nrow(res) == 0
         path <- tryCatch(BiocFileCache::bfcadd(bfc, url),
@@ -1339,13 +1339,13 @@ Get_GTF_file <- function(reference_path) {
             # fetch local copy if available
             if (nrow(res) == 0) return("")
             if(verbose) .log("Returning local copy from cache", "message")
-            return(.get_cache_file_path(cache, res$rpath[nrow(res)]))
+            return(.get_cache_file_path(bfc, res$rpath[nrow(res)]))
         }
         # remove prior versions from cache to remove glut
         res <- BiocFileCache::bfcquery(bfc, url, "fpath", exact = TRUE)
         if(nrow(res) > 1)
             BiocFileCache::bfcremove(bfc, res$rid[-nrow(res)])
-        return(.get_cache_file_path(cache, res$rpath[nrow(res)]))
+        return(.get_cache_file_path(bfc, res$rpath[nrow(res)]))
     } else if (!file.exists(file)) {
         if(verbose) .log(paste(file, "not found.", msg), type = "message")
         return("")

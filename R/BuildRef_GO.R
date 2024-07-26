@@ -486,7 +486,7 @@ plotGO <- function(
     is_resource_legit <- tryCatch(
         {
             tableNames <- DBI::dbListTables(dbcon)
-            if(!("go" in tableNames)) stop()
+            if(!("go" %in% tableNames)) stop()
             TRUE
         }, error = function(e) {
             FALSE

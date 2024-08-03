@@ -30,7 +30,7 @@ Imports:
 	data.table,
 	fst,
 	ggplot2,
-	AnnotationHub, 
+	AnnotationHub, RSQLite,
 	BiocFileCache,
 	BiocGenerics,
 	BiocParallel,

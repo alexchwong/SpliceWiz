@@ -15,6 +15,7 @@
 #' @importFrom fst read.fst write.fst threads_fst
 #' @import ggplot2
 #' @importFrom AnnotationHub AnnotationHub cache query removeResources
+#' @importFrom RSQLite SQLite
 #' @importFrom BiocFileCache BiocFileCache bfcrpath bfcquery
 #' @importFrom BiocGenerics start end start<- end<- width
 #' @importFrom BiocGenerics nrow ncol rbind cbind

@@ -1,5 +1,5 @@
-Changes to version 1.6.1 (2024-07-09)
-+ Checks whether cached GO database is corrupt; re-downloads if it is an issues
+Changes to version 1.6.2 (2024-08-04)
++ Checks whether cached GO database is corrupt; re-downloads if it is an issue
 + Removed zlibbioc dependency
 
 Changes to version 1.5.3 (2024-03-12)

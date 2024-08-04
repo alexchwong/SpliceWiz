@@ -106,7 +106,7 @@ is equivalent to this:
 buildRef(
     reference_path = ref_path,
     fasta = "genome.fa",
-    gtf = "transcripts.gtf"
+    gtf = "transcripts.gtf",
     genome_type = "hg38"
 )
 ```

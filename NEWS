@@ -1,3 +1,8 @@
+Changes to version 1.7.2 (2024-07-27)
++ Remove zlibbioc dependency
++ Fix error where AnnotationHub GO resources are not recognised as
+sqlite databases
+
 Changes to version 1.5.3 (2024-03-12)
 + Minor improvements in documentation
 + Improved detection of genes in gene ontology with non human/mouse species

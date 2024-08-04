@@ -480,17 +480,13 @@ plotGO <- function(
 
 .check_cached_resource <- function(cache_loc, ah_id, ah) {
     dbcon <- DBI::dbConnect(
-        DBI::dbDriver("SQLite"), 
+        RSQLite::SQLite(), 
         dbname = cache_loc
     )
     is_resource_legit <- tryCatch(
         {
-            genes_DT <- as.data.table(DBI::dbGetQuery(dbcon, paste(
-              "SELECT *",
-              "FROM go",
-              "LEFT JOIN ensembl",
-              "ON go._id = ensembl._id"
-            )))
+            tableNames <- DBI::dbListTables(dbcon)
+            if(!("go" %in% tableNames)) stop()
             TRUE
         }, error = function(e) {
             FALSE
@@ -530,9 +526,11 @@ plotGO <- function(
     ah_orgList <- subset(ah, ah$rdataclass == "OrgDb")
     ah_orgDb <- ah_orgList[ah_orgList$species == species]
     cache_loc <- AnnotationHub::cache(ah_orgDb[1])
-    
+    cache_loc <- .check_cached_resource(
+        cache_loc, ah_orgDb[1]$ah_id, ah)
     return(cache_loc)
 }
+
 
 # Get GO.db's gene ontology terms
 .fetch_GOterms <- function() {
@@ -565,8 +563,9 @@ plotGO <- function(
 
     if(verbose) .log("Retrieving gene GO-term pairings", "message")
     cache_loc <- .fetch_orgDB_cache(ah, species)
+
     dbcon <- DBI::dbConnect(
-        DBI::dbDriver("SQLite"), 
+        RSQLite::SQLite(), 
         dbname = cache_loc
     )
     

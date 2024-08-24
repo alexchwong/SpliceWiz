@@ -1,8 +1,8 @@
 Package: SpliceWiz
 Title: interactive analysis and visualization of alternative splicing in R
-Version: 1.7.2
-Date: 2024-07-27
-Authors@R: c(person("Alex Chit Hei", "Wong", email="a.wong@centenary.org.au", 
+Version: 1.7.3
+Date: 2024-08-24
+Authors@R: c(person("Alex Chit Hei", "Wong", email="alexchwong.github@gmail.com", 
 		role=c("aut", "cre", "cph")),
 	person("Ulf", "Schmitz", role=c("ctb")),
 	person("William", "Ritchie", role=c("cph")))

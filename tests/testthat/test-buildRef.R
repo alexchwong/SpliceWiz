@@ -28,4 +28,34 @@ test_that("SpliceWiz buildRef is behaving normally", {
         ontologySpecies = "Gallus gallus"
     )
     expect_equal(file.exists(file.path(ref_path, "SpliceWiz.ref.gz")),TRUE)
+    
+    fasta <- "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/634/795/GCF_900634795.4_fBetSpl5.4/GCF_900634795.4_fBetSpl5.4_genomic.fna.gz"
+    gtf <- "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/634/795/GCF_900634795.4_fBetSpl5.4/GCF_900634795.4_fBetSpl5.4_genomic.gtf.gz"
+    ref_path <- file.path(tempdir(), "realRef3")
+    
+    message("Running buildRef with parameters")
+    message("fasta = ", fasta)
+    message("gtf = ", gtf)
+    buildRef(
+        fasta = fasta, 
+        gtf = gtf,
+        reference_path = ref_path,
+        ontologySpecies = "Betta splendens"
+    )
+    expect_equal(file.exists(file.path(ref_path, "SpliceWiz.ref.gz")),TRUE)
+
+    fasta <- "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"
+    gtf <- "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/genes/hg38.ncbiRefSeq.gtf.gz"
+    ref_path <- file.path(tempdir(), "realRef4")
+    
+    message("Running buildRef with parameters")
+    message("fasta = ", fasta)
+    message("gtf = ", gtf)
+    buildRef(
+        fasta = fasta, 
+        gtf = gtf,
+        reference_path = ref_path,
+        genome_type = "hg38"
+    )
+    expect_equal(file.exists(file.path(ref_path, "SpliceWiz.ref.gz")),TRUE)    
 })

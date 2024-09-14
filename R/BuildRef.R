@@ -1385,10 +1385,10 @@ Get_GTF_file <- function(reference_path) {
     .fix_gtf_check_metadata_columns(gtf_gr)
 
     # Guarantees only 1 seqname per gene_id
-    .fix_gtf_check_one_seqname_per_gene_id(gtf_gr)
+    gtf_gr <- .fix_gtf_check_one_seqname_per_gene_id(gtf_gr)
 
     # Guarantees only 1 seqname per transcript_id
-    .fix_gtf_check_one_seqname_per_transcript_id(gtf_gr)
+    gtf_gr <- .fix_gtf_check_one_seqname_per_transcript_id(gtf_gr)
     
     # Guarantee type == "exon" is annotated in gtf
     # - throws error if not so
@@ -1472,27 +1472,43 @@ Get_GTF_file <- function(reference_path) {
     if(length(dup_gene_id) > 0) {
         .log(paste(
             "In GTF file, multiple seqnames found for the following gene_id:",
-            paste(dup_gene_id, collapse = " ")
-        ))
+            paste(dup_gene_id, collapse = " "), " - these will be removed"
+        ), "message")
+        
+        # remove all genes with duplicate gene id's
+        gtf <- gtf[!(gtf$gene_id %in% dup_gene_id)]
     }
-    invisible()
+    return(gtf)
 }
 
 .fix_gtf_check_one_seqname_per_transcript_id <- function(gtf) {
-    transcript_seqname <- na.omit(unique(data.table(
+    transcript_seqname <- unique(data.table(
         seqname = as.character(seqnames(gtf)),
         transcript_id = gtf$transcript_id
-    )))
-    dup_tr_id <- unique(transcript_seqname$transcript_id[
+    ))
+    transcript_seqname <- transcript_seqname[!is.na(get("transcript_id"))]
+    
+    # remove transcripts with NA seqnames (presuming they exist)
+    if(any(is.na(transcript_seqname$seqname))) {
+        invalid_trid <- transcript_seqname[is.na(get("seqname"))]$transcript_id
+        .log(paste(
+            "In GTF file, NA seqnames found for the following transcript_id:",
+            paste(invalid_trid, collapse = " "), " - these will be removed"
+        ), "message")
+        gtf <- gtf[!(gtf$transcript_id %in% invalid_trid)]
+    }
+    
+    dup_trid <- unique(transcript_seqname$transcript_id[
         duplicated(transcript_seqname$transcript_id)
     ])
-    if(length(dup_tr_id) > 0) {
+    if(length(dup_trid) > 0) {
         .log(paste(
             "In GTF file, multiple seqnames found for the following transcript_id:",
-            paste(dup_tr_id, collapse = " ")
-        ))
+            paste(dup_trid, collapse = " ")
+        ), "message")
+        gtf <- gtf[!(gtf$transcript_id %in% dup_trid)]
     }
-    invisible()
+    return(gtf)
 }
 
 .fix_gtf_fix_type_transcript <- function(gtf) {

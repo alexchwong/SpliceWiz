@@ -1290,8 +1290,7 @@ collateData <- function(Experiment, reference_path, output_path,
                 fasta = "", gtf = "", verbose = FALSE,
                 overwrite = FALSE, force_download = FALSE,
                 pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
-            reference_data$gtf_gr <- .validate_gtf_chromosomes(
-                reference_data$genome, reference_data$gtf_gr)
+            reference_data <- .validate_gtf_chromosomes(reference_data)
             reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
         }
 

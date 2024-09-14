@@ -25,7 +25,7 @@ test_that("SpliceWiz buildRef is behaving normally", {
         fasta = fasta, 
         gtf = gtf,
         reference_path = ref_path,
-        genome_type = "hg38"
+        ontologySpecies = "Gallus gallus"
     )
     expect_equal(file.exists(file.path(ref_path, "SpliceWiz.ref.gz")),TRUE)
 })

@@ -343,15 +343,16 @@ plotGO <- function(
         ontDT <- .get_geneGO(species, genes$gene_id, genes$gene_name, verbose)
     }
     
-    if(!("gene_id" %in% colnames(ontDT))) {
-        ontDT[, c("gene_id") := genes$gene_id[match(
-            get("gene_name"), genes$gene_name
-        )]]
-        ontDT <- ontDT[!is.na("gene_id")]
-    }
-    
-    if(!is.null(ontDT))
+    if(!is.null(ontDT)) {
+        if(!("gene_id" %in% colnames(ontDT))) {
+            ontDT[, c("gene_id") := genes$gene_id[match(
+                get("gene_name"), genes$gene_name
+            )]]
+            ontDT <- ontDT[!is.na("gene_id")]
+        }
         fst::write.fst(ontDT, file.path(reference_path, "fst", "Ontology.fst"))
+    }
+    invisible()
 }
 
 .getOntologySpecies <- function(genome_type) {
@@ -605,12 +606,7 @@ plotGO <- function(
             coverage <- length(intersect(gene_names, genes_DT$symbol)) / 
                 length(gene_names)
 
-            if(coverage < 0.1) {
-                .log(paste(
-                    "Gene ontology failed to match gene_id or gene_name entries,",
-                    "skipping gene ontology..."
-                ), "warning")
-            } else {
+            if(coverage >= 0.1) {
                 setnames(genes_DT, "symbol", "gene_name", skip_absent=TRUE)
                 
                 dup_symbols <- gene_names[duplicated(gene_names)]
@@ -627,6 +623,15 @@ plotGO <- function(
     }
         
     DBI::dbDisconnect(dbcon)
+    
+    # skip GO if incompatible reference with GO
+    if(coverage < 0.1) {
+        .log(paste(
+            "Gene ontology failed to match gene_id or gene_name entries,",
+            "skipping gene ontology..."
+        ), "warning")
+        return(NULL)
+    }
     
     genes_DT <- .build_GO_table(copy(genes_DT))
 

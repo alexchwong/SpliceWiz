@@ -380,8 +380,7 @@ buildRef <- function(
             pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
 
         dash_progress("Processing gtf file", N_steps)
-        reference_data$gtf_gr <- .validate_gtf_chromosomes(
-            reference_data$genome, reference_data$gtf_gr)
+        reference_data <- .validate_gtf_chromosomes(reference_data)
         reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
         
         .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
@@ -1216,15 +1215,34 @@ Get_GTF_file <- function(reference_path) {
 }
 
 # Check some chromosomes exist between gtf and genome
-.validate_gtf_chromosomes <- function(genome, gtf_gr) {
-    chrOrder <- names(seqinfo(genome))
-    if (!any(as.character(GenomicRanges::seqnames(gtf_gr)) %in% chrOrder)) {
-        .log(paste("In .validate_gtf_chromosomes(),",
-            "Chromosomes in genome and gene annotation does not match",
-            "likely incompatible FASTA and GTF file"))
+.validate_gtf_chromosomes <- function(refObj) {
+    chrOrder <- names(seqinfo(refObj$genome))
+    chrGTF <- as.character(GenomicRanges::seqnames(refObj$gtf_gr))
+    
+    # if fasta file has spaces in its seqnames, need fix
+    # NB: only fix if none of the gtf seqnames have spaces
+    if(any(grepl(" ", chrOrder)) & !any(grepl(" ", chrGTF))) {
+        .log("Spaces detected in genome seqnames, fixing...")
+        chrOrder_new <- chrOrder
+        for(i in seq_len(length(chrOrder))) {
+            chrOrder_new[i] <- tstrsplit(
+                chrOrder[i], split = " ", fixed = TRUE
+            )[[1]]
+        }
+        names(seqinfo(refObj$genome)) <- chrOrder_new
     }
-    seqlevels(gtf_gr, pruning.mode = "tidy") <- chrOrder
-    return(gtf_gr)
+    
+    chrOrder <- names(seqinfo(refObj$genome))
+    if(any(chrGTF %in% chrOrder)) {
+        seqlevels(refObj$gtf_gr, pruning.mode = "tidy") <- chrOrder
+        return(refObj)
+    }
+    
+    # Error message
+    .log(paste(
+        "Chromosomes in genome and gene annotation does not match",
+        "likely incompatible FASTA and GTF file"
+    ))
 }
 
 ################################################################################

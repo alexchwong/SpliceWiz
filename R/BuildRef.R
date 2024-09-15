@@ -380,8 +380,8 @@ buildRef <- function(
             pseudo_fetch_fasta = lowMemoryMode, pseudo_fetch_gtf = FALSE)
 
         dash_progress("Processing gtf file", N_steps)
-        reference_data$gtf_gr <- .validate_gtf_chromosomes(
-            reference_data$genome, reference_data$gtf_gr)
+        reference_data <- .validate_gtf_chromosomes(
+            reference_data, reference_path, pseudo_fetch = lowMemoryMode)
         reference_data$gtf_gr <- .fix_gtf(reference_data$gtf_gr)
         
         .process_gtf(reference_data$gtf_gr, reference_path, verbose = verbose)
@@ -1099,9 +1099,10 @@ Get_GTF_file <- function(reference_path) {
 }
 
 .fetch_fasta_save_2bit <- function(
-        genome, reference_path, overwrite, verbose = TRUE
+        genome, reference_path, overwrite, 
+        destFN = "genome.2bit", verbose = TRUE
 ) {
-    genome.2bit <- file.path(reference_path, "resource", "genome.2bit")
+    genome.2bit <- file.path(reference_path, "resource", destFN)
     if (is(genome, "TwoBitFile") && file.exists(genome.2bit) &&
             normalizePath(rtracklayer::path(genome)) ==
             normalizePath(genome.2bit)) {
@@ -1216,15 +1217,54 @@ Get_GTF_file <- function(reference_path) {
 }
 
 # Check some chromosomes exist between gtf and genome
-.validate_gtf_chromosomes <- function(genome, gtf_gr) {
-    chrOrder <- names(seqinfo(genome))
-    if (!any(as.character(GenomicRanges::seqnames(gtf_gr)) %in% chrOrder)) {
-        .log(paste("In .validate_gtf_chromosomes(),",
-            "Chromosomes in genome and gene annotation does not match",
-            "likely incompatible FASTA and GTF file"))
+.validate_gtf_chromosomes <- function(
+    refObj, reference_path, pseudo_fetch = FALSE
+) {
+    chrOrder <- names(seqinfo(refObj$genome))
+    chrGTF <- as.character(GenomicRanges::seqnames(refObj$gtf_gr))
+    
+    # if fasta file has spaces in its seqnames, need fix
+    # NB: only fix if none of the gtf seqnames have spaces
+    if(any(grepl(" ", chrOrder)) & !any(grepl(" ", chrGTF))) {
+        .log("Spaces detected in genome seqnames, fixing...")
+        chrOrder_new <- chrOrder
+        for(i in seq_len(length(chrOrder))) {
+            chrOrder_new[i] <- tstrsplit(
+                chrOrder[i], split = " ", fixed = TRUE
+            )[[1]]
+        }
+        names(seqinfo(refObj$genome)) <- chrOrder_new
+        
+        # As fasta file has changed seqnames, must re-save 2bit file
+        tmpFN <- "genome_tmp.2bit"
+        .fetch_fasta_save_2bit(refObj$genome, reference_path,
+            destFN = tmpFN)
+            
+        # replace original 2bit with current
+        refObj$genome <- NULL
+        newFN <- file.path(reference_path, "resource", tmpFN)
+        origFN <- file.path(reference_path, "resource", "genome.2bit")
+        if(file.exists(origFN)) {
+            file.copy(newFN, origFN, overwrite = TRUE)
+            file.remove(newFN)
+        }
+        
+        # Reload genome from 2bit file
+        refObj$genome <- Get_Genome(reference_path, validate = FALSE,
+            as_DNAStringSet = !pseudo_fetch)
     }
-    seqlevels(gtf_gr, pruning.mode = "tidy") <- chrOrder
-    return(gtf_gr)
+    
+    chrOrder <- names(seqinfo(refObj$genome))
+    if(any(chrGTF %in% chrOrder)) {
+        seqlevels(refObj$gtf_gr, pruning.mode = "tidy") <- chrOrder
+        return(refObj)
+    }
+    
+    # Error message
+    .log(paste(
+        "Chromosomes in genome and gene annotation does not match",
+        "likely incompatible FASTA and GTF file"
+    ))
 }
 
 ################################################################################

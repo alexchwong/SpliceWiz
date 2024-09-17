@@ -1,3 +1,9 @@
+Changes to version 1.7.4 (2024-09-17)
++ BUGFIX - fix buildRef error when ftp or http links supplied to buildRef do not
+work
++ Fix genome FASTA chromosomes that contain both chromosome names and descriptors
+(separated by a space " ")
+
 Changes to version 1.7.2 (2024-07-27)
 + Remove zlibbioc dependency
 + Fix error where AnnotationHub GO resources are not recognised as

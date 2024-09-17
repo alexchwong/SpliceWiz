@@ -95,7 +95,6 @@
 #'
 #' @author Alex Wong
 #'
-#' @docType package
 #' @name SpliceWiz-package
 #' @aliases SpliceWiz-package
 #' @keywords package
@@ -105,4 +104,4 @@
 #' Briefings in Bioinformatics, Volume 25, Issue 1, January 2024, bbad468.
 #' \url{https://doi.org/10.1093/bib/bbad468}
 #' @md
-NULL
+"_PACKAGE"

@@ -77,6 +77,7 @@
 #' @importFrom matrixStats colVars
 #' @importFrom RColorBrewer brewer.pal.info
 #' @importFrom rvest read_html html_nodes html_attr
+#' @importFrom httr GET timeout
 NULL
 
 # Import namespaces of internal functions of BiocGenerics and S4Vectors

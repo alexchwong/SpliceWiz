@@ -64,7 +64,7 @@ Imports:
 	heatmaply,
 	matrixStats,
 	RColorBrewer,
-	rvest
+	rvest, httr
 Suggests: 
     knitr, rmarkdown, crayon, splines, testthat (>= 3.0.0), 
     DESeq2, limma, DoubleExpSeq, edgeR, DBI, GO.db, AnnotationDbi, fgsea, Rsubread 

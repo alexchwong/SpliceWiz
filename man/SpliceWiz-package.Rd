@@ -2,6 +2,7 @@
 % Please edit documentation in R/SpliceWiz-package.R
 \docType{package}
 \name{SpliceWiz-package}
+\alias{SpliceWiz}
 \alias{SpliceWiz-package}
 \title{SpliceWiz: efficient and precise alternative splicing analysis in R}
 \description{
@@ -104,6 +105,14 @@ Wong ACH, Wong JJ-L, Rasko JEJ, Schmitz U.
 SpliceWiz: interactive analysis and visualization of alternative splicing in R.
 Briefings in Bioinformatics, Volume 25, Issue 1, January 2024, bbad468.
 \url{https://doi.org/10.1093/bib/bbad468}
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/alexchwong/SpliceWiz}
+  \item Report bugs at \url{https://support.bioconductor.org/}
+}
+
 }
 \author{
 Alex Wong

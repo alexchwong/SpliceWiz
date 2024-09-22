@@ -8,6 +8,7 @@ collateData_version <- "1.3.4"
 
 buildRef_version <- "1.1.6"
 
+#' @export
 is.nan.data.frame <- function(x) do.call(cbind, lapply(x, is.nan))
 
 is_valid <- function(x) {

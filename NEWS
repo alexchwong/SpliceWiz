@@ -1,8 +1,10 @@
-Changes to version 1.6.4 (2024-09-22)
+Changes to version 1.6.5 (2024-09-22)
 + BUGFIX - fix buildRef error when ftp or http links supplied to buildRef do not
 work
 + Fix genome FASTA chromosomes that contain both chromosome names and descriptors
 (separated by a space " ")
++ Fix error where "multiple seqnames found for the following transcript_id" is
+triggered inappropriately
 + Fix GUI crashing at Reference tab when Ensembl FTP site is not accessible
 
 Changes to version 1.6.2 (2024-08-04)

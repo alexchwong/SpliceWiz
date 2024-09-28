@@ -1505,6 +1505,7 @@ Get_GTF_file <- function(reference_path) {
         seqname = as.character(seqnames(gtf)),
         transcript_id = gtf$transcript_id
     )))
+    transcript_seqname <- transcript_seqname[get("transcript_id") != ""]
     dup_tr_id <- unique(transcript_seqname$transcript_id[
         duplicated(transcript_seqname$transcript_id)
     ])

@@ -110,11 +110,23 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
 
         # Refresh release
         observeEvent(refresh_tab(), {
-            withProgress(
-                    message = "Retrieving data from Ensembl FTP", value = 0, 
-            {
-                settings_newref$availRelease <- c("", .refresh_releases())
-            })        
+            # Check Ensembl is working
+            if(!is_valid(settings_newref$ensemblWorking)) {
+                    withProgress(
+                            message = "Testing Ensembl FTP is working", value = 0, 
+                    {
+                        test <- .check_ensembl()
+                    })
+                if(is(test, "list")) {
+                    settings_newref$ensemblWorking <- test                
+                } else {
+                    withProgress(
+                            message = "Retrieving data from Ensembl FTP", value = 0, 
+                    {
+                        settings_newref$availRelease <- c("", .refresh_releases())
+                    })                                    
+                }
+            }
         })
         
         # Refresh species
@@ -283,6 +295,16 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         output$txt_bl <- renderText(settings_newref$newref_bl)
     
     # Drop-down options based on settings
+        observeEvent(settings_newref$ensemblWorking, {
+            if(is(settings_newref$ensemblWorking, "list")) {
+                errMsg <- settings_newref$ensemblWorking$error
+                sendSweetAlert(
+                    session = session,
+                    title = paste("Unable to access Ensembl -", errMsg),
+                    type = "error"
+                )   
+            }
+        })
         observeEvent(settings_newref$availRelease, {
             updateSelectInput(session = session, 
                 inputId = "release", 
@@ -310,6 +332,20 @@ server_ref_new <- function(id, refresh_tab, volumes, get_memmode_reactive) {
         
         return(settings_newref)
     })
+}
+
+.check_ensembl <- function() {
+    url <- "http://ftp.ensembl.org/pub"
+    out <- tryCatch(
+        {
+            GET(url, timeout(10)) %>% read_html() %>% html_nodes("a") %>%html_attr("href")
+        },
+        error=function(cond) {
+            errList <- list(error = cond)
+            return(errList)
+        }
+    )
+    return(out)
 }
 
 .refresh_releases <- function() {

@@ -17,6 +17,7 @@ setreactive_newref <- function() {
         newref_bl = "",
 
     # FTP data
+        ensemblWorking = NULL,
         availRelease = "",
         availSpecies = "",
         availGenome = "",

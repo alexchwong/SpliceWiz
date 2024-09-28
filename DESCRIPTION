@@ -1,7 +1,7 @@
 Package: SpliceWiz
 Title: interactive analysis and visualization of alternative splicing in R
-Version: 1.7.4
-Date: 2024-09-17
+Version: 1.7.5
+Date: 2024-09-28
 Authors@R: c(person("Alex Chit Hei", "Wong", email="alexchwong.github@gmail.com", 
 		role=c("aut", "cre", "cph")),
 	person("Ulf", "Schmitz", role=c("ctb")),
@@ -64,7 +64,7 @@ Imports:
 	heatmaply,
 	matrixStats,
 	RColorBrewer,
-	rvest
+	rvest, httr
 Suggests: 
     knitr, rmarkdown, crayon, splines, testthat (>= 3.0.0), 
     DESeq2, limma, DoubleExpSeq, edgeR, DBI, GO.db, AnnotationDbi, fgsea, Rsubread 

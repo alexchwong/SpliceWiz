@@ -471,7 +471,7 @@ plotGO <- function(
         .log(paste(
             species, 
             "not supported in AnnotationHub."
-        ), message)
+        ), "message")
         return("")
     } else {
         return(species)

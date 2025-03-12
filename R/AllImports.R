@@ -36,7 +36,8 @@
 #' @importFrom GenomicRanges makeGRangesListFromDataFrame split strand 
 #' @importFrom GenomicRanges flank setdiff seqnames psetdiff disjoin
 #' @importFrom GenomicRanges strand<- seqnames<-
-#' @importFrom HDF5Array HDF5Array writeHDF5Array h5writeDimnames 
+#' @importFrom HDF5Array HDF5Array writeHDF5Array 
+#' @importFrom h5mread h5writeDimnames 
 #' @importFrom IRanges IRanges Views RleList
 #' @importFrom progress progress_bar
 #' @importFrom patchwork area plot_layout wrap_plots

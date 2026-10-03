@@ -48,8 +48,8 @@ H5 database. The data is later imported into the R session using the
 
 The \linkS4class{NxtSE} object is a specialized
 \linkS4class{SummarizedExperiment} object tailored for use in SpliceWiz.
-Annotation of rows provide information about ASEs via \link{rowData}, while
-columns allows users to provide annotations via \link{colData}.
+Annotation of rows provide information about ASEs via \link[SummarizedExperiment:rowData]{rowData}, while
+columns allows users to provide annotations via \link[SummarizedExperiment:colData]{colData}.
 
 SpliceWiz offers several novel filters via the \linkS4class{ASEFilter}
 class. See \link{ASEFilter} for details.

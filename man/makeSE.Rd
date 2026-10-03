@@ -22,7 +22,7 @@ Omit \code{colData} to generate a NxtSE object of the whole dataset without
 any assigned annotations.
 Alternatively, if the names of only a subset of samples are given, then
 \code{makeSE()} will construct the NxtSE object based only on the samples given.
-The colData can be set later using \link{colData}}
+The colData can be set later using \link[SummarizedExperiment:colData]{colData}}
 
 \item{RemoveOverlapping}{(default = \code{TRUE}) Whether to filter out overlapping
 IR events belonging to minor isoforms. See details.}

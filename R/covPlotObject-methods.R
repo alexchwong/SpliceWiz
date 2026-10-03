@@ -245,9 +245,8 @@
 #' )
 #' 
 #' @name covPlotObject-class
-#' @aliases
-#' tracks tracks,covPlotObject-method
-#' condition condition,covPlotObject-method
+#' @aliases tracks tracks,covPlotObject-method
+#' @aliases condition condition,covPlotObject-method
 #' @seealso [getCoverageData] [covPlotly-class]
 #' @md
 NULL

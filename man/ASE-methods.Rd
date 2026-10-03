@@ -157,7 +157,7 @@ the mean values of the two conditions.
 \strong{limma specific output}
 \itemize{
 \item logFC, AveExpr, t, P.Value, adj.P.Val, B: limma topTable columns of
-differential ASE. See \link[limma:toptable]{limma::topTable} for details.
+differential ASE. See \link[limma:topTable]{limma::topTable} for details.
 \item inc/exc_(logFC, AveExpr, t, P.Value, adj.P.Val, B): limma results
 for differential testing for raw included / excluded counts only
 }

@@ -201,9 +201,9 @@ downstream exon-intron spanning reads (IR)
 \item \code{sampleQC(NxtSE) <- value}: Sets the values in the data frame containing
 sample QC
 
-\item \code{x[i}: Subsets a NxtSE object
+\item \code{x = NxtSE[i = ANY, j = ANY, drop = ANY]}: Subsets a NxtSE object
 
-\item \code{`[`(x = NxtSE, i = ANY, j = ANY) <- value}: Sets a subsetted NxtSE object
+\item \code{x = NxtSE[i = ANY, j = ANY] <- value}: Sets a subsetted NxtSE object
 
 \item \code{cbind(NxtSE)}: Combines two NxtSE objects (by samples - columns)
 

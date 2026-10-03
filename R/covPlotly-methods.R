@@ -55,10 +55,9 @@
 #' }
 #' 
 #' @name covPlotly-class
-#' @aliases
-#' getExonRanges getExonRanges,covPlotly-method
-#' setResolution setResolution,covPlotly-method
-#' showExons showExons,covPlotly-method
+#' @aliases getExonRanges getExonRanges,covPlotly-method
+#' @aliases setResolution setResolution,covPlotly-method
+#' @aliases showExons showExons,covPlotly-method
 #' @seealso [plotView]
 NULL
 

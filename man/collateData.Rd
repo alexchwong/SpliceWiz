@@ -136,7 +136,7 @@ clusters are contiguous regions covered by exons from any transcript
 obligate intronic regions (genomic regions that are introns for all
 transcripts). For introns that are internal to a single exon cluster
 (i.e. akin to "known-exon" introns from IRFinder), \code{SpliceOver}
-uses \link[GenomicRanges:findOverlaps-methods]{GenomicRanges::findOverlaps} to sum all splice reads that overlap
+uses \link[GenomicRanges:findOverlaps]{GenomicRanges::findOverlaps} to sum all splice reads that overlap
 the same genomic region as the intron of interest.
 
 Detection of novel ASEs:  When \code{novelSplicing} is set to \code{TRUE},

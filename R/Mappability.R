@@ -119,9 +119,8 @@
 #' # `calculateMappability()` in the given reference_path
 #' }
 #' @name Mappability-methods
-#' @aliases
-#' generateSyntheticReads
-#' calculateMappability
+#' @aliases generateSyntheticReads
+#' @aliases calculateMappability
 #' @seealso [Build-Reference-methods]
 #' @md
 NULL

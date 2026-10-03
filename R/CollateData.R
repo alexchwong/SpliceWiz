@@ -1058,14 +1058,14 @@ collateData <- function(Experiment, reference_path, output_path,
     # Determine strandedness based on splice junction motif
     if (nrow(junc.common.unanno) != 0) {
         genome <- Get_Genome(reference_path, as_DNAStringSet = !lowMemoryMode)
-        seqinfo <- as.data.frame(seqinfo(genome))
+        seqnames_genome <- seqnames(seqinfo(genome))
         
         # Test 2bit inefficiency
         genome <- .check_2bit_performance(reference_path, genome)    
         
         # Filter unanno by available sequences
         junc.common.unanno <- junc.common.unanno[
-            seqnames %in% rownames(seqinfo)]
+            seqnames %in% seqnames_genome]
         
         # sanity check: remove unannotated junctions that lie outside genome
         junc.common.unanno.gr <- .grDT(junc.common.unanno)

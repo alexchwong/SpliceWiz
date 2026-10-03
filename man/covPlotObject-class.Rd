@@ -352,5 +352,5 @@ p <- plotView(plotObj_samples,
 
 }
 \seealso{
-\link{getCoverageData} \linkS4class{covPlotly}
+\link{getCoverageData} \link[=covPlotly-class]{covPlotly}
 }

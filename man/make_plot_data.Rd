@@ -94,8 +94,8 @@ Using logit-transformed PSI values is appropriate because PSI values are
 bound to the (0,1) interval, and are often thought to be beta-distributed.
 The link function often used with beta-distributed models is the logit
 function, which is defined as \code{logit(x) = function(x) log(x / (1 - x))},
-and is equivalent to \link[stats:Logistic]{stats::qlogis}. Its inverse is equivalent to
-\link[stats:Logistic]{stats::plogis}.
+and is equivalent to \link[stats:qlogis]{stats::qlogis}. Its inverse is equivalent to
+\link[stats:plogis]{stats::plogis}.
 
 Users wishing to calculate arithmetic means of PSI are advised to use
 \link{makeMatrix}, followed by \link{rowMeans} on subsetted sample columns.

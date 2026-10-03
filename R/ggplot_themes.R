@@ -13,11 +13,17 @@
 #' @seealso [plotCoverage]
 NULL
 
+if (utils::packageVersion("ggplot2") >= "3.4.0") {
+    grey_line <- element_line(linewidth = rel(0.5), colour = "grey")
+} else {
+    grey_line <- element_line(size = rel(0.5))
+}
+
 #' @describeIn theme_white White theme without figure legend
 #' @export
 theme_white <- theme(
     axis.line.x = element_line(colour = "black"),
-    panel.grid.major = element_line(size = rel(0.5), colour = "grey"),
+    panel.grid.major = grey_line,
     panel.grid.minor = element_blank(),
     panel.border = element_blank(),
     panel.background = element_blank(),
@@ -36,7 +42,7 @@ theme_white <- theme(
 #' @export
 theme_white_legend <- theme(
     axis.line.x = element_line(colour = "black"),
-    panel.grid.major = element_line(size = rel(0.5), colour = "grey"),
+    panel.grid.major = grey_line,
     panel.grid.minor = element_blank(),
     panel.border = element_blank(),
     panel.background = element_blank(),
@@ -56,7 +62,7 @@ theme_white_legend <- theme(
 #' @export
 theme_white_legend_plot_track <- theme(
     axis.line.x = element_line(colour = "black"),
-    panel.grid.major.x = element_line(size = rel(0.5), colour = "grey"),
+    panel.grid.major.x = grey_line,
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
     panel.border = element_blank(),

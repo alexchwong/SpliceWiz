@@ -24,7 +24,7 @@ In \code{SpliceWiz_example_NxtSE()}: returns a \linkS4class{NxtSE} object.
 \code{SpliceWiz_example_bams()} is a wrapper function to obtain and make a local
 copy
 of 6 example files provided by the NxtIRFdata companion package to
-demonstrate the use of SpliceWiz. See \link[NxtIRFdata:NxtIRFdata-package]{NxtIRFdata::example_bams} for
+demonstrate the use of SpliceWiz. See \link[NxtIRFdata:example_bams]{NxtIRFdata::example_bams} for
 a description of the provided BAM files. \cr\cr
 \code{SpliceWiz_example_NxtSE()} retrieves a ready-made functioning
 \linkS4class{NxtSE} object. The steps to reproduce this object is shown

@@ -129,30 +129,29 @@
 #' class(up_inc(se_real))
 #'
 #' @name NxtSE-class
-#' @aliases
-#' NxtSE-methods
-#' up_inc up_inc,NxtSE-method
-#' up_inc<- up_inc<-,NxtSE-method
-#' down_inc down_inc,NxtSE-method
-#' down_inc<- down_inc<-,NxtSE-method
-#' up_exc up_exc,NxtSE-method
-#' up_exc<- up_exc<-,NxtSE-method
-#' down_exc down_exc,NxtSE-method
-#' down_exc<- down_exc<-,NxtSE-method
-#' covfile covfile,NxtSE-method
-#' covfile<- covfile<-,NxtSE-method
-#' sampleQC sampleQC,NxtSE-method
-#' sampleQC<- sampleQC<-,NxtSE-method
-#' ref ref,NxtSE-method
-#' sourcePath sourcePath,NxtSE-method
-#' row_gr row_gr,NxtSE-method
-#' junc_PSI junc_PSI,NxtSE-method
-#' junc_counts junc_counts,NxtSE-method
-#' junc_counts_uns junc_counts_uns,NxtSE-method
-#' junc_gr junc_gr,NxtSE-method
-#' update_NxtSE update_NxtSE,NxtSE-method
-#' realize_NxtSE realize_NxtSE,NxtSE-method
-#' coerce,SummarizedExperiment,NxtSE-method
+#' @aliases NxtSE-methods
+#' @aliases up_inc up_inc,NxtSE-method
+#' @aliases up_inc<- up_inc<-,NxtSE-method
+#' @aliases down_inc down_inc,NxtSE-method
+#' @aliases down_inc<- down_inc<-,NxtSE-method
+#' @aliases up_exc up_exc,NxtSE-method
+#' @aliases up_exc<- up_exc<-,NxtSE-method
+#' @aliases down_exc down_exc,NxtSE-method
+#' @aliases down_exc<- down_exc<-,NxtSE-method
+#' @aliases covfile covfile,NxtSE-method
+#' @aliases covfile<- covfile<-,NxtSE-method
+#' @aliases sampleQC sampleQC,NxtSE-method
+#' @aliases sampleQC<- sampleQC<-,NxtSE-method
+#' @aliases ref ref,NxtSE-method
+#' @aliases sourcePath sourcePath,NxtSE-method
+#' @aliases row_gr row_gr,NxtSE-method
+#' @aliases junc_PSI junc_PSI,NxtSE-method
+#' @aliases junc_counts junc_counts,NxtSE-method
+#' @aliases junc_counts_uns junc_counts_uns,NxtSE-method
+#' @aliases junc_gr junc_gr,NxtSE-method
+#' @aliases update_NxtSE update_NxtSE,NxtSE-method
+#' @aliases realize_NxtSE realize_NxtSE,NxtSE-method
+#' @aliases coerce,SummarizedExperiment,NxtSE-method
 #' @md
 #' @export
 setClass("NxtSE",

@@ -191,5 +191,5 @@ plotAnnoTrack(dataObj, Event = "SE:SRSF3-203-exon4;SRSF3-202-int3")
 
 }
 \seealso{
-\linkS4class{covPlotObject}
+\link[=covPlotObject-class]{covPlotObject}
 }

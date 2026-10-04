@@ -216,7 +216,7 @@ getCoverage_DF <- function(file, seqname = "", start = 0, end = 0,
     view <- IRanges::Views(cov, start + 1, end)
     view.df <- as.data.frame(view[[1]])
     return(data.frame(
-        coordinate = seq(start + 1, end), value = view.df$value
+        coordinate = seq(start + 1, end), value = view.df[,ncol(view.df)] 
     ))
 }
 

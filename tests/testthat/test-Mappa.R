@@ -14,8 +14,11 @@ test_that("SpliceWiz pipeline reproduces NxtSE object", {
     )
 
     setwd(ref_path)
-    buildindex(basename = "./reference_index",
-        reference = chrZ_genome())
+    buildindex(
+        basename = "./reference_index",
+        reference = chrZ_genome(),
+        gappedIndex = TRUE
+    )
 
     subjunc(
         index = "./reference_index",

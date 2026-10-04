@@ -98,7 +98,7 @@ and is equivalent to \link[stats:qlogis]{stats::qlogis}. Its inverse is equivale
 \link[stats:plogis]{stats::plogis}.
 
 Users wishing to calculate arithmetic means of PSI are advised to use
-\link{makeMatrix}, followed by \link{rowMeans} on subsetted sample columns.
+\link{makeMatrix}, followed by \link[base:rowMeans]{base::rowMeans} on subsetted sample columns.
 }
 \section{Functions}{
 \itemize{

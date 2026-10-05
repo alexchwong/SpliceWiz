@@ -1,3 +1,6 @@
+Changes to version 1.15.2 (2026-10-06)
++ In the C code, fixed a single 'FALSE' -> 'false'
+
 Changes to version 1.15.1 (2026-10-04)
 + Fixes to account for seqinfo data.frame conversion no longer having named rows
 

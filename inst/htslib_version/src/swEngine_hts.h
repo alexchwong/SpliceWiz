@@ -91,7 +91,7 @@ class swEngine_hts {
     int Set_Threads(int n_threads);
     bool checkFileExists(const std::string& name);
     int ReadChrAlias(std::istringstream &IN);
-    int readReference(std::string &reference_file, bool const verbose = FALSE);
+    int readReference(std::string &reference_file, bool const verbose = false);
 
     int loadReference();
     int loadReference(
